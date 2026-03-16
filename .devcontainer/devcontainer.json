@@ -1,0 +1,88 @@
+{
+  "name": "${localWorkspaceFolderBasename} Dev",
+  "dockerComposeFile": "compose.yml",
+  "service": "litcrop",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "developer",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Universal - Container & DevOps
+        "ms-vscode-remote.remote-containers",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions",
+        "redhat.vscode-yaml",
+        "timonwong.shellcheck",
+        "ms-vscode.makefile-tools",
+
+        // Universal - Documentation
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-mermaid",
+
+        // Universal - Git
+        "eamodio.gitlens",
+
+        // Universal - AI
+        "anthropic.claude-code",
+        "openai.chatgpt",
+
+        // Python (all profiles except java-plugin)
+        "ms-python.python",
+        "charliermarsh.ruff",
+
+        // JavaScript/TypeScript (web and fullstack profiles)
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+
+        // Java (java-plugin and fullstack profiles)
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-maven",
+        "vscjava.vscode-gradle"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          },
+          "zsh": {
+            "path": "zsh"
+          }
+        },
+        // Terminal font (requires nerd font installed on host)
+        "terminal.integrated.fontFamily": "'HackGen Console NF', 'MesloLGS NF', 'Hack Nerd Font', monospace",
+        "terminal.integrated.fontSize": 14,
+        // Port forwarding - reduce noise from auto-detected ports
+        "remote.autoForwardPortsSource": "output",
+        // Java settings
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.compile.nullAnalysis.mode": "automatic"
+      }
+    }
+  },
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW"
+  ],
+  "initializeCommand": "bash -c 'mkdir -p /tmp/claude-host-resolved && chmod 700 /tmp/claude-host-resolved && (rsync -aL --delete ~/.claude/ /tmp/claude-host-resolved/ 2>/dev/null || cp -rL ~/.claude/. /tmp/claude-host-resolved/ 2>/dev/null || true)'",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.cache,target=/home/developer/.cache,type=bind",
+    "source=litcrop-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=/tmp/claude-host-resolved,target=/home/developer/.claude-host,type=bind,readonly",
+    "source=litcrop-claude-state-${devcontainerId},target=/home/developer/.claude-state,type=volume"
+  ],
+  "containerEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/developer/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+  },
+  "postCreateCommand": "bash /workspace/.devcontainer/post-create.sh",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh || true; bash /workspace/.devcontainer/post-start.sh",
+  "waitFor": "postStartCommand"
+}

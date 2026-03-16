@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Pre-commit hook to prevent diff in agent files
+
+set -euo pipefail
+
+echo "[pre-commit] running: make sync"
+make sync
+
+# generated files changed? fail to force staging them
+if ! git diff --quiet; then
+  echo ""
+  echo "[pre-commit] Generated files updated by sync."
+  echo "Please stage the changes and re-commit:"
+  echo "  git add -A"
+  echo "  git commit"
+  echo ""
+  exit 1
+fi
+
+echo "[pre-commit] OK"

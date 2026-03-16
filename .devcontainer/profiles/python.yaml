@@ -1,0 +1,32 @@
+# python.yaml - Python toolbox/scripting profile
+# Lightweight setup for Python utilities and scripts
+
+runtimes:
+  python:
+    enabled: true
+    version: "3.12"
+    packages:
+      - pyyaml
+      - requests
+  node:
+    enabled: false
+  java:
+    enabled: false
+
+extensions:
+  add:
+    - ms-python.python
+    - charliermarsh.ruff
+  remove:
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - vscjava.vscode-java-pack
+    - vscjava.vscode-maven
+
+directories:
+  - src
+  - tests
+
+hooks:
+  post_create: []
+  post_start: []

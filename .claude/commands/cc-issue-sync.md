@@ -1,0 +1,1 @@
+../../.agent/commands/cc-issue-sync.md

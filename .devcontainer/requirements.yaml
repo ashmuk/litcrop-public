@@ -1,0 +1,47 @@
+# requirements.yaml - DevContainer project configuration
+# This file controls which runtimes and packages are set up in post-create.sh
+#
+# Available profiles: fullstack, web, java-plugin, python
+# See profiles/*.yaml for profile defaults
+#
+# Usage:
+#   1. Set 'profile' to one of the available profiles
+#   2. Override specific settings under 'runtimes', 'directories', or 'hooks'
+#   3. Run 'devcontainer rebuild' to apply changes
+
+version: 1
+
+# Profile determines the default runtime configuration
+# Options: fullstack (default), web, java-plugin, python
+profile: fullstack
+
+# Override profile defaults for specific runtimes
+# Uncomment and modify as needed
+#
+# runtimes:
+#   python:
+#     enabled: true
+#     version: "3.12"
+#     packages:
+#       - requests
+#       - pyyaml
+#   node:
+#     enabled: true
+#     package_manager: npm  # npm, pnpm, or yarn
+#     packages: []
+#   java:
+#     enabled: true
+#     build_tool: maven  # maven or gradle
+
+# Project-specific directories to create
+# directories:
+#   - src
+#   - tests
+#   - docs
+
+# Custom commands to run during container lifecycle
+# hooks:
+#   post_create:
+#     - echo "Custom post-create command"
+#   post_start:
+#     - echo "Custom post-start command"

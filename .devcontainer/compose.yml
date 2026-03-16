@@ -1,0 +1,48 @@
+services:
+  litcrop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CLAUDE_CODE_VERSION: "latest"
+        GIT_DELTA_VERSION: "0.18.2"
+        ZSH_IN_DOCKER_VERSION: "1.2.0"
+        YQ_VERSION: "v4.44.1"
+    image: litcrop-devcontainer
+    command: sleep infinity
+    user: developer
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace:rw,cached
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      # API Keys (passed through from host)
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - GITHUB_TOKEN
+      # Python settings
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      # Java settings (uses symlink created in Dockerfile for arch compatibility)
+      - JAVA_HOME=/usr/lib/jvm/default-java
+      - MAVEN_OPTS=-Xmx1024m
+      # Node.js settings
+      - NODE_OPTIONS=--max-old-space-size=4096
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: "6g"
+
+  litcrop_nonet:
+    extends: litcrop
+    network_mode: "none"
+    profiles:
+      - no-net

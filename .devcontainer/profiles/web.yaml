@@ -1,0 +1,31 @@
+# web.yaml - Web application development profile
+# Optimized for React, Vue, Node.js projects
+
+runtimes:
+  python:
+    enabled: true
+    version: "3.12"
+    packages: []
+  node:
+    enabled: true
+    version: "lts"
+    package_manager: npm
+    packages: []
+  java:
+    enabled: false
+
+extensions:
+  add:
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - bradlc.vscode-tailwindcss
+    - ms-python.python
+  remove:
+    - vscjava.vscode-java-pack
+    - vscjava.vscode-maven
+
+directories: []
+
+hooks:
+  post_create: []
+  post_start: []

@@ -1,0 +1,208 @@
+{
+  "env": {
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
+    "BASH_MAX_TIMEOUT_MS": "300000",
+    "BASH_DEFAULT_TIMEOUT_MS": "60000",
+    "MCP_TIMEOUT": "30000",
+    "MCP_TOOL_TIMEOUT": "180000",
+    "MAX_MCP_OUTPUT_TOKENS": "50000",
+    "CLAUDE_CODE_WORKSPACE": "~/projects",
+    "CLAUDE_CODE_HISTORY_SIZE": "1000",
+    "CLAUDE_CODE_RETRY_ATTEMPTS": "3"
+  },
+  "includeCoAuthoredBy": true,
+  "permissions": {
+    "allow": [
+      "Read(~/.zshrc)",
+      "Read(~/.bashrc)",
+      "Read(~/.gitconfig)",
+      "Read(~/.ssh/config)",
+      "Read(~/.npmrc)",
+      "Read(~/.cargo/config.toml)",
+      "Read(~/.m2/settings.xml)",
+      "Read(./package.json)",
+      "Read(./package-lock.json)",
+      "Read(./yarn.lock)",
+      "Read(./pom.xml)",
+      "Read(./build.gradle)",
+      "Read(./Cargo.toml)",
+      "Read(./pyproject.toml)",
+      "Read(./requirements.txt)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(yarn test:*)",
+      "Bash(cargo test:*)",
+      "Bash(pytest:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(find:*)",
+      "Bash(shellcheck:*)",
+      "Bash(bash:*)",
+      "Bash(make validate:*)",
+      "Bash(make status:*)",
+      "Bash(make test:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./credentials/**)",
+      "Read(./config/credentials.json)",
+      "Read(./config/secrets.*)",
+      "Read(./**/*secret*)",
+      "Read(./**/*password*)",
+      "Read(./**/*token*)",
+      "Read(./**/*key.pem)",
+      "Read(./**/*.key)",
+      "Read(./build/**)",
+      "Read(./dist/**)",
+      "Read(./target/**)",
+      "Read(./node_modules/**)",
+      "Read(./.git/objects/**)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(rm -rf /)",
+      "OgkoKSB7IDp8OiYgfTs6",
+      "Bash(fork:*)",
+      "Bash(bomb:*)",
+      "Bash(nc:*)",
+      "Bash(netcat:*)",
+      "Bash(telnet:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(npm publish:*)",
+      "Bash(mvn deploy:*)",
+      "Bash(gradle publish:*)",
+      "Bash(cargo publish:*)",
+      "Bash(poetry publish:*)",
+      "Bash(docker push:*)",
+      "Bash(docker run:*)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(yarn add:*)",
+      "Bash(cargo install:*)",
+      "Bash(psql:*)",
+      "Bash(mysql:*)",
+      "Bash(mongosh:*)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(make install:*)",
+      "Bash(make clean:*)"
+    ],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "filesystem",
+    "git",
+    "github",
+    "sqlite"
+  ],
+  "disabledMcpjsonServers": [
+    "chrome-devtools",
+    "playwright"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/load-project-env.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/auto-format.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/security-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/file-guard.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notify-completion.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/maybe-simplify.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/trigger-simplifier.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notify-attention.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
+  },
+  "outputStyle": "Explanatory"
+}

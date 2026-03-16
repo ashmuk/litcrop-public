@@ -1,0 +1,2 @@
+# This directory is auto-populated by gen_cursor_rules.py
+# Run: make sync (or python scripts/gen_cursor_rules.py)

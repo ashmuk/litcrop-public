@@ -1,0 +1,8 @@
+{
+  "cdk-mcp-server": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["awslabs.cdk-mcp-server@latest"],
+    "env": {}
+  }
+}

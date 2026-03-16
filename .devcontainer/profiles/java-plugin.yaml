@@ -1,0 +1,31 @@
+# java-plugin.yaml - Java plugin development profile
+# Optimized for Capital CAD plugins and similar Java projects
+
+runtimes:
+  python:
+    enabled: false
+  node:
+    enabled: false
+  java:
+    enabled: true
+    version: "21"
+    build_tool: maven
+
+extensions:
+  add:
+    - vscjava.vscode-java-pack
+    - vscjava.vscode-maven
+    - vscjava.vscode-gradle
+  remove:
+    - ms-python.python
+    - charliermarsh.ruff
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+
+directories:
+  - src/main/java
+  - src/test/java
+
+hooks:
+  post_create: []
+  post_start: []

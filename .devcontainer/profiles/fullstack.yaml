@@ -1,0 +1,33 @@
+# fullstack.yaml - Full-stack development profile (default)
+# All runtimes enabled for polyglot projects
+
+runtimes:
+  python:
+    enabled: true
+    version: "3.12"
+    packages: []
+  node:
+    enabled: true
+    version: "lts"
+    package_manager: npm
+    packages: []
+  java:
+    enabled: true
+    version: "21"
+    build_tool: maven
+
+extensions:
+  add:
+    - ms-python.python
+    - charliermarsh.ruff
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - vscjava.vscode-java-pack
+    - vscjava.vscode-maven
+  remove: []
+
+directories: []
+
+hooks:
+  post_create: []
+  post_start: []
