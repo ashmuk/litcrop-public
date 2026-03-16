@@ -287,7 +287,7 @@ Hub-and-spoke pattern, max depth 3, suitable for mobile.
 | # | Question | Resolution | Date |
 |---|----------|------------|------|
 | Q-1 | What image capture interval should the simulated node use? | **10 minutes** (default, configurable). Used for cost/bandwidth modeling. | 2026-03-17 |
-| Q-2 | Is there a target physical deployment location? (LTE coverage, solar sizing) | **Deferred** — not relevant for PoC (simulated node). Revisit at MVP when real hardware is deployed. | 2026-03-17 |
+| Q-2 | Is there a target physical deployment location? (LTE coverage, solar sizing) | **Nagano Prefecture, Japan** (36.0, 138.3). Implications: excellent LTE coverage (SORACOM IoT SIM), AWS `ap-northeast-1` (Tokyo) region, cold winters (-10°C) require weatherproof enclosures, solar sizing for ~35°N latitude (2–5 peak sun hours seasonally). Not blocking for PoC (simulated node). | 2026-03-17 |
 | Q-3 | Should the 2MB image size limit be validated against LTE bandwidth constraints? | **2MB confirmed** as PoC limit. Revisit if real hardware testing reveals bandwidth issues. | 2026-03-17 |
 | Q-4 | Does the "waiting list" user model imply email collection in MVP? | **Yes** — MVP auth should include email-based waiting list / signup gate. | 2026-03-17 |
 
