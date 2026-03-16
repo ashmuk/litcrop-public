@@ -61,6 +61,8 @@ Use these commands for common workflows:
 - `/cc-pr-merge` — Validate and merge an open pull request on GitHub
 - `/cc-push` — Push changes to remote with safety checks
 - `/cc-pr-create` — Create pull request with auto-generated title and description (auto-links issues when enabled)
+- `/cc-tag-create` — Create next annotated tag following `v{X}.{yy}` convention
+- `/cc-tag-update` — Move latest tag to current HEAD with updated message
 
 **Issue Tracking**:
 - `/cc-issue-create` — Create GitHub Issue with labels and milestones

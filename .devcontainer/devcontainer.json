@@ -1,7 +1,7 @@
 {
   "name": "${localWorkspaceFolderBasename} Dev",
   "dockerComposeFile": "compose.yml",
-  "service": "litcrop",
+  "service": "devcontainer",
   "workspaceFolder": "/workspace",
   "remoteUser": "developer",
   "customizations": {
@@ -73,9 +73,9 @@
   "initializeCommand": "bash -c 'mkdir -p /tmp/claude-host-resolved && chmod 700 /tmp/claude-host-resolved && (rsync -aL --delete ~/.claude/ /tmp/claude-host-resolved/ 2>/dev/null || cp -rL ~/.claude/. /tmp/claude-host-resolved/ 2>/dev/null || true)'",
   "mounts": [
     "source=${localWorkspaceFolder}/.cache,target=/home/developer/.cache,type=bind",
-    "source=litcrop-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=project-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=/tmp/claude-host-resolved,target=/home/developer/.claude-host,type=bind,readonly",
-    "source=litcrop-claude-state-${devcontainerId},target=/home/developer/.claude-state,type=volume"
+    "source=project-claude-state-${devcontainerId},target=/home/developer/.claude-state,type=volume"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
