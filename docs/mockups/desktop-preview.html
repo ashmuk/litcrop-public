@@ -50,6 +50,8 @@
       margin: 0 auto;
       background: var(--color-surface);
       min-height: 100vh;
+      border-left: var(--border-default);
+      border-right: var(--border-default);
     }
 
     /* Section separators */
@@ -373,12 +375,13 @@
     .d-detail__image-area {
       background: var(--color-gray-100);
       border-radius: var(--radius-lg);
-      aspect-ratio: 16/9;
+      aspect-ratio: 16/10;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 48px;
       position: relative;
+      max-height: 360px;
     }
     .d-detail__trigger-badge {
       position: absolute;
@@ -529,6 +532,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 24px;
       padding: 24px;
+      align-items: start; /* prevent stretching fields to equal height */
     }
     .d-field-section {
       background: var(--color-surface);
@@ -695,9 +699,14 @@
     /* ===== SETTINGS — DESKTOP ===== */
     .d-settings {
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 220px 1fr;
       gap: 0;
       min-height: 500px;
+      margin: 0 24px 24px;
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
     }
     .d-settings__nav {
       border-right: var(--border-default);
@@ -1198,11 +1207,11 @@
             <div class="d-theme-card__preview" style="background: #1E1E1E; color: #F0F0F0; border-bottom: 1px solid #333;">&#127769; Aa</div>
             <div class="d-theme-card__label">Dark</div>
           </div>
-          <div class="d-theme-card">
+          <div class="d-theme-card d-theme-card--selected">
             <div class="d-theme-card__preview" style="background: #FDFBF7; color: #3B3530; border-bottom: 1px solid #C9BFB3;">&#127793; Aa</div>
             <div class="d-theme-card__label">Earthy</div>
           </div>
-          <div class="d-theme-card d-theme-card--selected">
+          <div class="d-theme-card">
             <div class="d-theme-card__preview" style="background: linear-gradient(135deg, #fff 50%, #1E1E1E 50%); border-bottom: 1px solid #e0e0e0;"></div>
             <div class="d-theme-card__label">System</div>
           </div>
