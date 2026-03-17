@@ -15,7 +15,7 @@
   /* Neutral Palette */
   --color-gray-900:         #1A1A1A;
   --color-gray-700:         #4A4A4A;
-  --color-gray-500:         #767676;
+  --color-gray-500:         #595959;  /* Darkened from #767676 to meet 7:1 outdoor readability */
   --color-gray-300:         #C4C4C4;
   --color-gray-100:         #F2F2F2;
   --color-white:            #FFFFFF;
@@ -132,6 +132,22 @@
     --shadow-sm:       0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md:       0 2px 8px rgba(0, 0, 0, 0.4);
     --shadow-lg:       0 4px 16px rgba(0, 0, 0, 0.5);
+
+    /* Status Background Tints (darkened for dark mode) */
+    --color-status-healthy-bg:     #1A3A25;
+    --color-status-slow-growth-bg: #3A3520;
+    --color-status-issue-bg:       #3A1E1E;
+    --color-status-animal-bg:      #3A2A1A;
+    --color-status-no-data-bg:     #2A2A2A;
+    --color-motion-bg:             #3A2A1A;
+
+    /* Status colors lightened for dark backgrounds */
+    --color-status-healthy:     #4CAF50;
+    --color-status-slow-growth: #FFB300;
+    --color-status-issue:       #EF5350;
+    --color-status-animal:      #FF7043;
+    --color-status-no-data:     #9E9E9E;
+    --color-motion:             #FF8A65;
   }
 }
 
@@ -510,8 +526,8 @@ button:focus-visible {
    ---------------------------------------------------------- */
 .thumb-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-2);
+  grid-template-columns: repeat(3, 1fr);  /* 3-col for 48px+ targets with 12px gaps */
+  gap: var(--space-3);  /* 12px gap meets --touch-gap-min */
   padding: 0 var(--space-4);
 }
 
