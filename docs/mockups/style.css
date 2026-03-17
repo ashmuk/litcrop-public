@@ -152,6 +152,64 @@
 }
 
 /* ----------------------------------------------------------
+   2b. Earthy Theme (soft pastel, natural tones)
+   Activated via data-theme="earthy" on <html>
+   ---------------------------------------------------------- */
+[data-theme="earthy"] {
+  /* Primary: sage green (muted, warm) */
+  --color-primary:          #6B7F5E;
+  --color-primary-dark:     #4A5A3F;
+  --color-primary-light:    #F0EDE4;
+
+  /* Neutral: warm grays with beige undertone */
+  --color-gray-900:         #3B3530;
+  --color-gray-700:         #5E5549;
+  --color-gray-500:         #857A6E;
+  --color-gray-300:         #C9BFB3;
+  --color-gray-100:         #F5F0EA;
+  --color-white:            #FDFBF7;
+
+  /* Surface: warm cream and linen */
+  --color-surface:          #FDFBF7;
+  --color-surface-elevated: #FFFFFF;
+  --color-background:       #F0EDE4;
+
+  /* Status: earthy, desaturated versions */
+  --color-status-healthy:     #6B8F5E;   /* sage green */
+  --color-status-slow-growth: #B89B5E;   /* warm amber / wheat */
+  --color-status-issue:       #B85C4A;   /* terracotta red */
+  --color-status-animal:      #C07842;   /* burnt sienna */
+  --color-status-no-data:     #8A7F73;   /* warm gray */
+
+  /* Status background tints: soft earthy pastels */
+  --color-status-healthy-bg:     #ECF0E8;  /* pale sage */
+  --color-status-slow-growth-bg: #F5F0E0;  /* pale wheat */
+  --color-status-issue-bg:       #F5E8E4;  /* pale terracotta */
+  --color-status-animal-bg:      #F5EDE4;  /* pale sienna */
+  --color-status-no-data-bg:     #EDEBE8;  /* warm linen */
+
+  /* Motion: warm orange (less vivid) */
+  --color-motion:           #C07842;
+  --color-motion-bg:        #F5EDE4;
+
+  /* Semantic (earthy versions) */
+  --color-error:            #B85C4A;
+  --color-success:          #6B8F5E;
+  --color-info:             #5E7F9B;
+
+  /* Borders: warmer */
+  --border-default:         1px solid #C9BFB3;
+
+  /* Shadows: warmer tint */
+  --shadow-sm:  0 1px 2px rgba(59, 53, 48, 0.08);
+  --shadow-md:  0 2px 8px rgba(59, 53, 48, 0.10);
+  --shadow-lg:  0 4px 16px rgba(59, 53, 48, 0.14);
+
+  /* Focus ring: sage tint */
+  --focus-ring: 0 0 0 3px rgba(107, 127, 94, 0.4);
+}
+
+/* ----------------------------------------------------------
    3. Reset & Base
    ---------------------------------------------------------- */
 *, *::before, *::after {

@@ -484,11 +484,21 @@
                 </div>
                 <div class="theme-card__label">Dark</div>
               </div>
+              <div class="theme-card" role="radio" aria-checked="false" tabindex="0" aria-label="Earthy theme">
+                <div class="theme-card__preview" style="background: #FDFBF7; color: #3B3530; border-bottom: 1px solid #C9BFB3;">
+                  <span aria-hidden="true">&#127793;</span> Aa
+                </div>
+                <div class="theme-card__label">Earthy</div>
+              </div>
               <div class="theme-card theme-card--selected" role="radio" aria-checked="true" tabindex="0" aria-label="System theme — selected">
                 <div class="theme-card__preview theme-card__preview--auto"></div>
                 <div class="theme-card__label">System</div>
               </div>
             </div>
+
+            <p style="font-size: var(--font-size-xs); color: var(--color-gray-500); margin-top: var(--space-2); padding: 0 var(--space-1);">
+              <strong>Earthy</strong>: Soft pastel palette with warm cream, sage green, and terracotta tones — designed to feel natural and gentle on the eyes during outdoor use.
+            </p>
           </div>
 
         </div>
@@ -596,6 +606,37 @@
             <div class="toggle toggle--on" role="switch" aria-checked="true" aria-label="Motion detection enabled" tabindex="0">
               <div class="toggle__track"></div>
               <div class="toggle__thumb"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live View (MVP/Future) -->
+      <section class="settings-section" aria-label="Live view settings">
+        <div class="settings-section__title">Live View (Future)</div>
+        <div class="settings-group" style="opacity: 0.6;">
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#128249;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Realtime Camera Feed</div>
+              <div class="setting-row__desc">Live video from camera nodes (requires hardware upgrade)</div>
+            </div>
+            <div class="toggle" role="switch" aria-checked="false" aria-disabled="true" aria-label="Realtime feed — not available yet" tabindex="0">
+              <div class="toggle__track"></div>
+              <div class="toggle__thumb"></div>
+            </div>
+          </div>
+          <div class="setting-row" style="flex-direction: column; align-items: stretch;">
+            <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+              <span class="setting-row__icon" aria-hidden="true">&#128161;</span>
+              <div class="setting-row__content">
+                <div class="setting-row__label" style="color: var(--color-gray-500);">Coming in a future release</div>
+                <div class="setting-row__desc" style="margin-top: var(--space-2); line-height: var(--line-height-relaxed);">
+                  Real-time video streaming from camera nodes via WebRTC or HLS.
+                  Requires upgraded hardware (Raspberry Pi 4+) and broadband connectivity.
+                  Current periodic capture (1 image/hour) continues alongside live view.
+                </div>
+              </div>
             </div>
           </div>
         </div>
