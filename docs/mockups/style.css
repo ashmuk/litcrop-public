@@ -152,6 +152,41 @@
 }
 
 /* ----------------------------------------------------------
+   2a. Dark Theme (manual toggle via data-theme)
+   Mirrors the prefers-color-scheme dark values
+   ---------------------------------------------------------- */
+[data-theme="dark"] {
+  --color-surface:          #1E1E1E;
+  --color-surface-elevated: #2A2A2A;
+  --color-background:       #121212;
+  --color-white:            #1E1E1E;
+  --color-gray-900:  #F0F0F0;
+  --color-gray-700:  #C0C0C0;
+  --color-gray-500:  #909090;
+  --color-gray-300:  #444444;
+  --color-gray-100:  #2A2A2A;
+  --border-default:  1px solid #444444;
+  --shadow-sm:       0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md:       0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg:       0 4px 16px rgba(0, 0, 0, 0.5);
+  --color-primary:          #4CAF50;
+  --color-primary-light:    #1A3A25;
+  --color-status-healthy-bg:     #1A3A25;
+  --color-status-slow-growth-bg: #3A3520;
+  --color-status-issue-bg:       #3A1E1E;
+  --color-status-animal-bg:      #3A2A1A;
+  --color-status-no-data-bg:     #2A2A2A;
+  --color-motion-bg:             #3A2A1A;
+  --color-status-healthy:     #4CAF50;
+  --color-status-slow-growth: #FFB300;
+  --color-status-issue:       #EF5350;
+  --color-status-animal:      #FF7043;
+  --color-status-no-data:     #9E9E9E;
+  --color-motion:             #FF8A65;
+  --focus-ring: 0 0 0 3px rgba(76, 175, 80, 0.4);
+}
+
+/* ----------------------------------------------------------
    2b. Earthy Theme (soft pastel, natural tones)
    Activated via data-theme="earthy" on <html>
    ---------------------------------------------------------- */
