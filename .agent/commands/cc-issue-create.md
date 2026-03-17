@@ -171,7 +171,7 @@ Inform the user that TASKS.md has been updated.
 Read the task board source in this priority order:
 
 1. `PLANS.md` or `BACKLOG.md` (preferred — manually authored task definitions)
-2. `docs/TASK_BREAKDOWN.md` (fallback — design artifact from cc-design Step 6)
+2. `docs/TASK-BREAKDOWN.md` (fallback — design artifact from cc-design Step 6)
 
 ### Filter by Scope Level
 

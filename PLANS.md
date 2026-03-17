@@ -1,5 +1,7 @@
 # PLANS.md - Project Roadmap
 
+> **This is the strategic scope document** — it defines *what* we're building, *why*, and the pass/fail exit criteria for each scope level. For the tactical implementation schedule (phases, task ordering, AWS provisioning), see [docs/EXECUTION-PLAN.md](docs/EXECUTION-PLAN.md).
+
 ## Current Scope Level: PoC
 
 ## Scope Level Progress
@@ -79,3 +81,4 @@ Simulated Camera Node → HTTPS Image Upload → Cloud Storage → Web Dashboard
 - **2026-03-17**: Theme options (Light/Dark/Earthy/System) and i18n (EN/JA) included in PoC
 - **2026-03-17**: Realtime camera streaming deferred to Production (requires hardware upgrade)
 - **2026-03-17**: ADRs 001-006 accepted (see docs/decisions/)
+- **2026-03-17**: ADR-007 accepted — Least-privilege IAM policy for litcrop-poc-admin (see docs/decisions/ADR-20260317-iam-least-privilege.md)

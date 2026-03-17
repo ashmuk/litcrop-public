@@ -1,58 +1,87 @@
-# <project-name>
+# LitCrop
 
-<!-- TODO: Write a 1-2 sentence project summary. What does it do and for whom? -->
-<to-be-filled>
+Remote farm observation and management web app — digitally track planting layouts, monitor crop growth through camera images, and make informed farming decisions from anywhere.
 
 ## Overview
 
-<!-- TODO: Describe the project goals, target audience, and key outcomes. -->
-<to-be-filled>
+LitCrop builds a digital twin of a small farm, enabling remote visibility into field conditions through periodic and motion-triggered camera captures. The system represents a farm's physical structure (fields, beds, plots) and associates camera images with specific plots, creating a time-ordered growth record viewable on a mobile-first dashboard.
+
+**Target deployment**: Nagano Prefecture, Japan (760m elevation, humid continental climate). Bilingual: English / Japanese.
+
+**Name origin**: "Lit" as in Little, Lite, and Enlight.
 
 ## Project Status
 
-**Current Stage**: <!-- TODO: e.g., Stage 1 - Discovery -->
+**Current Stage**: PoC — Design complete (Steps 1–7), implementation next
 
-**Live URL**: <!-- TODO: e.g., https://example.com --> (if deployed)
+**Scope Level**: PoC → MVP → Production ([PLANS.md](PLANS.md))
+
+### Design Artifacts Completed
+- Requirements: 54 functional, 24 non-functional ([REQUIREMENTS.md](REQUIREMENTS.md))
+- Architecture: System design with 7 ADRs ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
+- UX/UI: 7 screens, 10 interactive HTML/CSS mockups ([docs/UX-DESIGNS.md](docs/UX-DESIGNS.md))
+- API: 11 endpoints with full request/response schemas ([docs/API-CONTRACTS.md](docs/API-CONTRACTS.md))
+- System design: Sequence diagrams, component interfaces ([docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md))
+- Execution plan: 39 tasks across 6 phases ([docs/EXECUTION-PLAN.md](docs/EXECUTION-PLAN.md))
 
 ## Tech Stack
 
-<!-- TODO: List frameworks, languages, infrastructure, and tooling choices. -->
-
 ### Application
-- **Framework**: <to-be-filled>
-- **Language**: <to-be-filled>
-- **Styling**: <to-be-filled>
+- **Frontend**: [Astro](https://astro.build/) + [Preact](https://preactjs.com/) islands (SSG, zero-JS default)
+- **Backend**: [Hono](https://hono.dev/) on AWS Lambda (11 REST endpoints)
+- **Database**: DynamoDB single-table design (2 GSIs)
+- **Language**: TypeScript
+- **Styling**: CSS custom properties (design tokens), mobile-first
 
 ### Infrastructure
-- **Hosting**: <to-be-filled>
-- **CI/CD**: <to-be-filled>
+- **Cloud**: AWS ap-northeast-1 (Tokyo)
+- **Compute**: Lambda behind API Gateway HTTP API (v2)
+- **Storage**: S3 for images (lifecycle: Standard → IA 30d → Glacier 90d)
+- **CDN**: CloudFront for static hosting (HTTPS)
+- **Cost**: ~$0.73–1.18/month (well under $5 target)
+
+### External Services
+- **Weather**: [Open-Meteo API](https://open-meteo.com/) (free, no API key)
+- **AI Chatbot**: LLM API for crop planning guidance
 
 ### Development
-- **Package Manager**: <to-be-filled>
+- **Package Manager**: npm
 - **DevContainer**: Docker-based development environment
 - **Branch Strategy**: Git Flow (`main`, `develop`, `feature/*`)
+- **CI**: GitHub Actions (lint, build, type check, test)
+
+## PoC Deliverables
+
+1. Simulated camera node uploading sample images (periodic + motion-triggered) via HTTPS
+2. Cloud backend receiving, storing, and serving farm images with plot association
+3. Mobile-first web dashboard with 7 screens: Farm Overview (list + layout), Plot Detail, Image Timeline, Weather, Farm Setup, Settings
+4. Static farm layout with seed data (fields, beds, plots, crop metadata)
+5. Manual image tagging (Healthy / Slow Growth / Possible Issue / Animal Intrusion)
+6. Weather integration via Open-Meteo with crop impact analysis
+7. Farm setup with location input driving weather and climate profile
+8. AI chatbot for location-aware crop planning
+9. Theme options (Light / Dark / Earthy / System) and language toggle (EN / JA)
 
 ## Getting Started
 
 ### Prerequisites
 
-- <!-- TODO: List runtime versions, tools, and accounts required -->
-- Node.js 20+ (or your runtime)
+- Node.js 20+
 - Docker (for DevContainer)
 - Git
+- AWS CLI (configured with `litcrop` profile)
 
 ### Setup
 
 ```bash
 # Clone the repository
-git clone <repo-url>
-cd <project-name>
+git clone https://github.com/ashmuk/litcrop.git
+cd litcrop
 
 # Start DevContainer (recommended)
 devcontainer up --workspace-folder .
 
 # Or install dependencies locally
-# TODO: replace with your install command
 npm install
 ```
 
@@ -61,14 +90,12 @@ npm install
 ### Running Locally
 
 ```bash
-# TODO: replace with your dev server command
 npm run dev
 ```
 
 ### Building
 
 ```bash
-# TODO: replace with your build command
 npm run build
 ```
 
@@ -92,32 +119,55 @@ Commit format: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, etc.
 ## Repository Structure
 
 ```text
-<project-root>/
-├── .agent/                     # AI agent source of truth (commands, subagents, skills, prompts, mcp)
+litcrop/
+├── .agent/                     # AI agent source of truth (commands, subagents, skills)
 ├── .claude/                    # Claude Code configuration (generated by make sync)
 ├── .codex/                     # OpenAI Codex configuration (generated by make sync)
 ├── .cursor/                    # Cursor IDE rules (generated by make sync)
 ├── .devcontainer/              # Docker DevContainer setup
 ├── .github/                    # GitHub Actions workflows and templates
 ├── .githooks/                  # Git hooks (branch protection, pre-commit)
-├── src/                        # TODO: Application source code
 ├── docs/
-│   └── decisions/              # Architecture Decision Records (ADRs)
-├── scripts/                    # Utility and automation scripts
+│   ├── decisions/              # Architecture Decision Records (7 ADRs)
+│   ├── mockups/                # Interactive HTML/CSS mock-ups (10 screens)
+│   ├── gantt/                  # Execution timeline visualization
+│   ├── ARCHITECTURE.md         # System architecture
+│   ├── API-CONTRACTS.md        # API request/response schemas
+│   ├── SYSTEM-DESIGN.md        # Sequence diagrams, component interfaces
+│   ├── UX-DESIGNS.md           # UX/UI specification
+│   ├── TASK-BREAKDOWN.md       # 39 implementable tasks
+│   ├── EXECUTION-PLAN.md       # 6-phase implementation schedule
+│   └── PREREQUISITES.md        # Knowledge and tooling requirements
+├── scripts/
+│   └── iam-policy.json         # AWS IAM policy (least-privilege)
 ├── AGENTS.md                   # Repo map and quick commands
 ├── CLAUDE.md                   # AI assistant guidelines
-├── PLANS.md                    # Scope-leveled implementation plan
+├── PLANS.md                    # Scope-leveled roadmap
+├── REQUIREMENTS.md             # Functional and non-functional requirements
 ├── RULES.md                    # Stable project policy
+├── Vision.md                   # Project vision and concept
 └── README.md                   # This file
 ```
 
+## Architecture Decisions
+
+| ADR | Decision |
+|-----|----------|
+| [ADR-001](docs/decisions/ADR-20260317-frontend-framework.md) | Astro + Preact islands |
+| [ADR-002](docs/decisions/ADR-20260317-backend-platform.md) | Hono on single Lambda |
+| [ADR-003](docs/decisions/ADR-20260317-database-selection.md) | DynamoDB single-table |
+| [ADR-004](docs/decisions/ADR-20260317-image-storage-lifecycle.md) | S3 with lifecycle policies |
+| [ADR-005](docs/decisions/ADR-20260317-device-communication.md) | HTTPS POST upload |
+| [ADR-006](docs/decisions/ADR-20260317-cloud-provider-hosting.md) | AWS ap-northeast-1 |
+| [ADR-007](docs/decisions/ADR-20260317-iam-least-privilege.md) | Least-privilege IAM policy |
+
 ## Deployment
 
-<!-- TODO: Describe how to deploy and any environment-specific steps. -->
+Not yet deployed. PoC implementation is the next milestone.
 
 ```bash
-# TODO: replace with your deploy command
-npm run deploy
+# (Placeholder — deployment commands will be added during implementation)
+aws cloudformation deploy ...
 ```
 
 See [docs/decisions/](docs/decisions/) for Architecture Decision Records explaining infrastructure choices.
@@ -132,5 +182,4 @@ See [docs/decisions/](docs/decisions/) for Architecture Decision Records explain
 
 ## License
 
-<!-- TODO: specify license, e.g., MIT, Apache 2.0, or Private -->
-<to-be-filled>
+Private — All rights reserved.
