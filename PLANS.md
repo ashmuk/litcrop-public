@@ -18,11 +18,15 @@ Simulated Camera Node → HTTPS Image Upload → Cloud Storage → Web Dashboard
 ```
 
 ### PoC Deliverables
-1. A simulated camera node script that uploads sample images to cloud storage via HTTPS
+1. A simulated camera node script that uploads sample images (periodic + motion-triggered) via HTTPS
 2. A cloud backend that receives, stores, and serves farm images with plot association
-3. A mobile-first web dashboard with: Farm Overview, Plot Detail, and Image Timeline views
-4. A static farm layout with seed data (fields, beds, plots, crop metadata)
-5. Manual image tagging (Healthy / Slow Growth / Possible Issue)
+3. A mobile-first web dashboard with 7 screens: Farm Overview (list + layout), Plot Detail, Image Timeline, Weather, Farm Setup, Settings
+4. A static farm layout with seed data (fields, beds, plots, crop metadata) in both list and spatial views
+5. Manual image tagging (Healthy / Slow Growth / Possible Issue / Animal Intrusion)
+6. Weather integration via Open-Meteo API with crop impact analysis
+7. Farm setup with location input (GPS/coordinates/address) driving weather and climate profile
+8. AI chatbot for location-aware crop planning and farm setup guidance
+9. Theme options (Light / Dark / Earthy / System) and language toggle (EN / JA)
 
 ### Exit Criteria
 - [ ] Simulated camera node uploads an image to cloud storage via HTTPS
@@ -33,16 +37,16 @@ Simulated Camera Node → HTTPS Image Upload → Cloud Storage → Web Dashboard
 - [ ] End-to-end latency from upload to viewable-in-browser is under 30 seconds
 
 ### Scope Exclusions (PoC)
-- **AI chatbot** — Deferred. Vision.md itself marks as uncertain; adds scope without validating core value.
 - **Sprinkler / actuator control** — Deferred. Separate risk domain (IoT control); observation-only for PoC.
-- **Visual layout editor** — Deferred. Seed data with static layout is sufficient to validate the digital twin concept.
+- **Visual layout editor** (interactive) — Deferred to MVP. PoC has read-only spatial view.
 - **User authentication** — Deferred. Single-user, no auth for PoC. "Waiting list" model is an MVP concern.
 - **Image processing / computer vision** — Deferred. No thumbnails, compression on cloud side, or AI analysis.
 - **Real hardware** — Simulated camera node only. Hardware procurement is not a PoC blocker.
 - **Multi-farm / multi-tenant** — Single farm, single user.
-- **Dark mode, desktop optimization** — Mobile-first single breakpoint only.
+- **Desktop optimization** — Mobile-first single breakpoint only.
 - **CI/CD, IaC, custom domain** — Manual deploy from CLI is sufficient.
-- **Alerting / monitoring / observability** — Basic cloud provider metrics only.
+- **Cloud-side alerting / monitoring / observability** — Basic cloud provider metrics only.
+- **Realtime camera streaming** — Deferred to Production. Requires hardware upgrade (Pi 4+) and WebRTC/HLS.
 
 ### Key Risks
 | Risk | Likelihood | Impact | Mitigation |
@@ -65,6 +69,12 @@ Simulated Camera Node → HTTPS Image Upload → Cloud Storage → Web Dashboard
 
 ## Decisions Made
 <!-- Link to ADRs: docs/decisions/ADR-*.md -->
-- **2026-03-17**: AI chatbot deferred from PoC scope (uncertain value, adds scope)
 - **2026-03-17**: Sprinkler control deferred from PoC scope (separate risk domain)
 - **2026-03-17**: PoC uses simulated camera node (no real hardware required)
+- **2026-03-17**: Motion-triggered capture added to PoC (wildlife/pest detection)
+- **2026-03-17**: AI chatbot included in PoC with focused scope (farm setup + crop planning)
+- **2026-03-17**: Weather integration via Open-Meteo API included in PoC
+- **2026-03-17**: Farm layout spatial view (read-only) included in PoC; interactive editor deferred to MVP
+- **2026-03-17**: Theme options (Light/Dark/Earthy/System) and i18n (EN/JA) included in PoC
+- **2026-03-17**: Realtime camera streaming deferred to Production (requires hardware upgrade)
+- **2026-03-17**: ADRs 001-006 accepted (see docs/decisions/)

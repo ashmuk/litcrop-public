@@ -79,6 +79,58 @@ Identify 1–2 real users matching this persona for feedback after PoC is built.
 | FR-5.5 | Simulates motion-triggered captures at random intervals | Should | Simulates PIR sensor events for testing event-based capture flow |
 | FR-5.4 | Handles upload failure gracefully (retry with exponential backoff) | Should | Validates error handling path |
 
+### FR-6: Farm Layout View (Spatial)
+
+| ID | Requirement | Priority | Notes |
+|----|-------------|----------|-------|
+| FR-6.1 | Display farm in spatial layout: Fields as sections, Beds as ridges, Plots as cells | Must | Read-only in PoC; shows physical arrangement |
+| FR-6.2 | Toggle between List view (severity-sorted) and Layout view (spatial) on Farm Overview | Must | Tab-style toggle at top of screen |
+| FR-6.3 | Plot cells show crop icon, label, and status-tinted background | Must | Consistent status colors with list view |
+| FR-6.4 | Tap a plot cell to navigate to Plot Detail | Must | Same destination as list view tiles |
+| FR-6.5 | Show empty/unassigned plot placeholders | Should | Visual indication of available space |
+| FR-6.6 | Compass/orientation indicator | Should | Helps user orient spatial view to physical farm |
+
+### FR-7: Weather & Environment
+
+| ID | Requirement | Priority | Notes |
+|----|-------------|----------|-------|
+| FR-7.1 | Display current weather conditions on Farm Overview (temperature, condition, hi/lo) | Must | Tappable weather strip below header |
+| FR-7.2 | Fetch weather data from Open-Meteo API using farm coordinates | Must | Free API, no key required; lat/lon from farm setup |
+| FR-7.3 | Show hourly forecast (scrollable, next 12-24 hours) | Should | Helps plan same-day farm activities |
+| FR-7.4 | Show 7-day forecast with temperature range bars and rain probability | Should | Helps plan weekly activities |
+| FR-7.5 | Crop impact analysis cards linking weather to specific plots | Should | E.g., "Frost risk: Strawberry (C1) is frost-sensitive" |
+| FR-7.6 | Weather alert banners for frost, heavy rain, extreme heat | Must | Displayed prominently on Farm Overview |
+| FR-7.7 | Compact weather context on Plot Detail (air temp, soil temp, humidity, rain %) | Should | Helps interpret crop images in weather context |
+
+### FR-8: Farm Setup & Onboarding
+
+| ID | Requirement | Priority | Notes |
+|----|-------------|----------|-------|
+| FR-8.1 | Farm location input via GPS, coordinates (lat/lon), or address search | Must | Drives weather API and climate profile |
+| FR-8.2 | Auto-detect climate profile from coordinates (hardiness zone, frost dates, growing season) | Should | Open-Meteo historical data or static lookup |
+| FR-8.3 | Farm name input | Must | User-defined label for their farm |
+| FR-8.4 | AI chatbot-guided farm setup option | Should | Conversational alternative to form-based setup |
+
+### FR-9: AI Chatbot (Crop Planning)
+
+| ID | Requirement | Priority | Notes |
+|----|-------------|----------|-------|
+| FR-9.1 | Location-aware crop recommendations based on farm coordinates and climate zone | Must | "What grows well at 36°N, 760m?" |
+| FR-9.2 | Beginner-friendly guidance with planting schedules | Should | Dates calibrated to local frost/climate |
+| FR-9.3 | Quick-action buttons for common queries (what to plant, season planner, frost tips) | Should | Reduces typing for mobile users |
+| FR-9.4 | Chatbot-assisted layout creation ("Create this layout in my farm") | Could | Bridges chatbot → layout editor |
+
+### FR-10: Settings & Preferences
+
+| ID | Requirement | Priority | Notes |
+|----|-------------|----------|-------|
+| FR-10.1 | Theme toggle: Light / Dark / Earthy / System | Must | Manual override + OS-preference option |
+| FR-10.2 | Language toggle: English / Japanese (日本語) | Must | i18n with JSON locale files |
+| FR-10.3 | Temperature unit toggle (°C / °F) | Should | Affects weather display |
+| FR-10.4 | Weather alerts on/off toggle | Should | User control over alert banners |
+| FR-10.5 | Camera capture interval display | Should | Shows current setting (1 hour default) |
+| FR-10.6 | Motion detection on/off toggle | Should | User control over motion-triggered captures |
+
 ---
 
 ## 3. Non-Functional Requirements
@@ -126,14 +178,23 @@ Identify 1–2 real users matching this persona for feedback after PoC is built.
 | NFR-5.1 | Image uploads must not lose data silently | — | Return clear success/failure to node |
 | NFR-5.2 | Dashboard must handle missing images gracefully | — | "No Data" state for plots without images |
 
-### NFR-6: Privacy & Security
+### NFR-6: Internationalization (i18n)
 
 | ID | Requirement | Target | Notes |
 |----|-------------|--------|-------|
-| NFR-6.1 | Images served via signed/expiring URLs, not public | — | Prevent unauthorized access to farm images |
-| NFR-6.2 | No personally identifiable information stored beyond farm data | — | Camera images may capture people |
-| NFR-6.3 | Upload endpoint validates content type (JPEG only) | — | Prevent abuse |
-| NFR-6.4 | API routes defined behind a middleware layer where auth can be inserted without modifying route handlers | — | No auth enforced in PoC; auth middleware is an MVP requirement |
+| NFR-6.1i | Support English and Japanese (日本語) UI text | — | JSON locale files (en.json, ja.json) |
+| NFR-6.2i | Font stack includes Japanese fonts (Hiragino Sans, Noto Sans JP) | — | Already in design tokens |
+| NFR-6.3i | Date/time formatting respects locale | — | ISO 8601 storage, locale-aware display |
+| NFR-6.4i | UI text externalized (no hardcoded strings) | — | Enables future language additions |
+
+### NFR-7: Privacy & Security
+
+| ID | Requirement | Target | Notes |
+|----|-------------|--------|-------|
+| NFR-7.1 | Images served via signed/expiring URLs, not public | — | Prevent unauthorized access to farm images |
+| NFR-7.2 | No personally identifiable information stored beyond farm data | — | Camera images may capture people |
+| NFR-7.3 | Upload endpoint validates content type (JPEG only) | — | Prevent abuse |
+| NFR-7.4 | API routes defined behind a middleware layer where auth can be inserted without modifying route handlers | — | No auth enforced in PoC; auth middleware is an MVP requirement |
 
 ---
 
@@ -157,6 +218,12 @@ Farm (1)
 | id | string (UUID) | Primary key |
 | name | string | Farm name |
 | description | string | Optional |
+| latitude | number | Farm location (drives weather API) |
+| longitude | number | Farm location (drives weather API) |
+| elevation_m | number | Optional; auto-detected from coordinates |
+| climate_zone | string | Optional; e.g., "USDA 7a" or "Köppen Dfa" |
+| locale | string | User language preference: "en" or "ja" |
+| theme | string | User theme preference: "light", "dark", "earthy", "system" |
 | created_at | ISO 8601 | |
 
 ### Field
@@ -219,13 +286,17 @@ Farm (1)
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/api/v1/farms/{farmId}` | Farm metadata + layout structure | None (PoC) |
+| GET | `/api/v1/farms/{farmId}` | Farm metadata + layout structure + location | None (PoC) |
+| POST | `/api/v1/farms` | Create farm (onboarding: name, lat, lon) | None (PoC) |
+| PATCH | `/api/v1/farms/{farmId}` | Update farm settings (name, locale, theme) | None (PoC) |
 | GET | `/api/v1/farms/{farmId}/plots` | All plots with latest status and thumbnail | None |
 | GET | `/api/v1/plots/{plotId}` | Plot detail with crop metadata | None |
 | GET | `/api/v1/plots/{plotId}/images?limit=N&cursor=X` | Paginated image history | None |
 | POST | `/api/v1/plots/{plotId}/images` | Upload image from camera node | None |
 | GET | `/api/v1/images/{imageId}` | Image metadata + signed URL | None |
 | POST | `/api/v1/images/{imageId}/tags` | Add manual tag to image | None |
+| GET | `/api/v1/farms/{farmId}/weather` | Current weather + forecast (proxy to Open-Meteo) | None |
+| POST | `/api/v1/chat` | AI chatbot message (crop planning, farm setup) | None |
 
 ### Upload Contract
 
@@ -256,18 +327,29 @@ Errors:  400 (invalid), 413 (too large), 503 (storage unavailable)
 
 | # | Screen | Purpose | Navigation |
 |---|--------|---------|------------|
-| 1 | **Farm Overview** | Grid of plot tiles with status badges and thumbnails | Home screen |
-| 2 | **Plot Detail** | Latest image, crop metadata, tagging buttons, image history grid | Tap plot tile |
-| 3 | **Image Timeline** | Full-size image view with chronological browsing | Tap image thumbnail |
+| 1 | **Farm Overview (List)** | Severity-sorted plot tiles with weather strip and status summary | Home screen (List tab) |
+| 2 | **Farm Overview (Layout)** | Spatial field → bed → plot view | Home screen (Layout tab) |
+| 3 | **Plot Detail** | Latest image, crop metadata, weather context, tagging buttons, image history | Tap plot tile/cell |
+| 4 | **Image Timeline** | Full-size image view with chronological browsing | Tap image thumbnail |
+| 5 | **Weather & Environment** | Current conditions, hourly/7-day forecast, crop impact analysis | Tap weather strip |
+| 6 | **Farm Setup & AI Assistant** | Location input, climate profile, AI chatbot crop planner | Onboarding / Settings |
+| 7 | **Settings** | Theme (4 options), language (EN/JA), weather/camera config | Menu/gear icon |
 
 ### Navigation Model
 ```
-Farm Overview (home)
-  └── tap plot tile → Plot Detail
-                        ├── tap tag button → Tag applied (inline)
-                        └── tap image thumbnail → Image Timeline
+Farm Setup (onboarding, first use)
+  └── Farm Overview (home)
+        ├── [List tab] → severity-sorted tiles
+        ├── [Layout tab] → spatial field/bed/plot view
+        ├── tap weather strip → Weather & Environment
+        ├── tap plot tile/cell → Plot Detail
+        │                         ├── tap tag → Tag applied (inline)
+        │                         └── tap image → Image Timeline
+        └── gear icon → Settings
+                          ├── Theme / Language / Weather config
+                          └── Farm profile → Farm Setup (edit)
 ```
-Hub-and-spoke pattern, max depth 3, suitable for mobile.
+Hub-and-spoke pattern with onboarding entry point, suitable for mobile.
 
 ---
 
@@ -301,17 +383,25 @@ Hub-and-spoke pattern, max depth 3, suitable for mobile.
 
 | Vision.md Feature | PoC Coverage | Requirements |
 |-------------------|-------------|--------------|
-| Farm Layout Management (read/display) | Partial (read-only, seed data) | FR-1.x |
+| Farm Layout Management (read/display) | Full (list + spatial views) | FR-1.x, FR-6.x |
 | Farm Layout Management (visual 2D editor) | Deferred to MVP | — |
-| Remote Growth Monitoring (cameras, periodic + motion-triggered) | Full (simulated) | FR-2.x, FR-3.x, FR-5.5 |
+| Remote Growth Monitoring (periodic + motion-triggered) | Full (simulated) | FR-2.x, FR-3.x, FR-5.x |
+| Remote Growth Monitoring (live video streaming) | Deferred to Production | — |
 | Remote Growth Monitoring (sprinkler control) | Deferred to post-PoC | — |
 | Camera Node Concept | Simulated only | FR-2.x, FR-5.x |
 | Growth Visualization Phase 1 | Full | FR-3.x, FR-4.x |
 | Growth Visualization Phase 2–3 | Deferred | — |
-| Web Dashboard (core views) | Full (3 screens) | FR-1.3, FR-3.1, Screen Inventory |
-| Web Dashboard (alerts: missing data, abnormal trends) | Deferred to MVP | — |
-| AI Chatbot | Deferred to post-PoC | — |
-| Dark mode, desktop optimization | Deferred to MVP | — |
+| Web Dashboard (7 screens) | Full | FR-1.3, FR-6.x, FR-7.x, Screen Inventory |
+| Web Dashboard (alerts: weather, intrusion) | Full (weather + motion alerts) | FR-7.6 |
+| Web Dashboard (alerts: abnormal growth trends) | Deferred to MVP | — |
+| Weather & Environment | Full (Open-Meteo API) | FR-7.x |
+| Farm Setup & Onboarding | Full (location-driven) | FR-8.x |
+| AI Chatbot (crop planning) | Full (focused on setup + planning) | FR-9.x |
+| Settings (theme, language, preferences) | Full | FR-10.x |
+| Theme options (Light/Dark/Earthy/System) | Full | FR-10.1, NFR-6.x |
+| i18n (English/Japanese) | Full | FR-10.2, NFR-6.xi |
+| Dark mode | Full (manual toggle + system preference) | FR-10.1 |
+| Desktop optimization | Deferred to MVP | — |
 
 ---
 
@@ -319,12 +409,12 @@ Hub-and-spoke pattern, max depth 3, suitable for mobile.
 
 | Category | Count |
 |----------|-------|
-| Functional Requirements | 29 (FR-1: 5, FR-2: 7, FR-3: 6, FR-4: 5, FR-5: 6) |
-| Non-Functional Requirements | 16 (NFR-1: 3, NFR-2: 2, NFR-3: 6, NFR-4: 5, NFR-5: 2, NFR-6: 4 — note: some counts overlap with shared constraints) |
+| Functional Requirements | 54 (FR-1: 5, FR-2: 7, FR-3: 6, FR-4: 5, FR-5: 6, FR-6: 6, FR-7: 7, FR-8: 4, FR-9: 4, FR-10: 6) |
+| Non-Functional Requirements | 24 (NFR-1: 3, NFR-2: 2, NFR-3: 6, NFR-4: 5, NFR-5: 2, NFR-6/i18n: 4, NFR-7/security: 4) |
 | Constraints | 8 |
-| Open Questions | 4 |
-| API Endpoints | 7 |
-| Screens | 3 |
+| Open Questions | 4 (all resolved) |
+| API Endpoints | 11 |
+| Screens | 7 |
 | Data Entities | 6 |
 
-**Next step**: Run `/cc-design` to proceed to Step 2: Architecture.
+> Updated 2026-03-17 after Step 4 (Mock-up) feedback consolidation.
