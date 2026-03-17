@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Settings</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Settings page styles */
+
+    .nav-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .nav-header__back {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: var(--color-primary);
+      font-size: var(--font-size-xl);
+    }
+
+    .nav-header__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .settings-content {
+      padding: var(--space-4);
+    }
+
+    /* Settings section */
+    .settings-section {
+      margin-bottom: var(--space-6);
+    }
+
+    .settings-section__title {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-gray-500);
+      padding: 0 var(--space-1);
+      margin-bottom: var(--space-3);
+    }
+
+    .settings-group {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    /* Setting row */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      min-height: var(--touch-target-preferred);
+      border-bottom: var(--border-default);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-row__icon {
+      font-size: var(--font-size-xl);
+      width: 32px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .setting-row__content {
+      flex: 1;
+    }
+
+    .setting-row__label {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+    }
+
+    .setting-row__desc {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-top: 2px;
+    }
+
+    .setting-row__value {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+    }
+
+    .setting-row__arrow {
+      color: var(--color-gray-300);
+      font-size: var(--font-size-lg);
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .toggle__track {
+      width: 100%;
+      height: 100%;
+      background: var(--color-gray-300);
+      border-radius: 16px;
+      transition: background-color var(--transition-normal);
+    }
+
+    .toggle--on .toggle__track {
+      background: var(--color-primary);
+    }
+
+    .toggle__thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 26px;
+      height: 26px;
+      background: var(--color-surface);
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-sm);
+      transition: transform var(--transition-normal);
+    }
+
+    .toggle--on .toggle__thumb {
+      transform: translateX(20px);
+    }
+
+    /* Segmented control (for theme/language selection) */
+    .segmented {
+      display: flex;
+      gap: 0;
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      width: 100%;
+    }
+
+    .segmented__option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      height: 40px;
+      border-radius: 6px;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-500);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: inherit;
+    }
+
+    .segmented__option--active {
+      background: var(--color-surface);
+      color: var(--color-gray-900);
+      font-weight: var(--font-weight-semibold);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .segmented__option:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    /* Theme preview cards */
+    .theme-preview {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-3);
+    }
+
+    .theme-card {
+      flex: 1;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 2px solid var(--color-gray-300);
+      cursor: pointer;
+      transition: border-color var(--transition-fast);
+    }
+
+    .theme-card--selected {
+      border-color: var(--color-primary);
+    }
+
+    .theme-card__preview {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .theme-card__preview--light {
+      background: #FFFFFF;
+      color: #1A1A1A;
+      border-bottom: 1px solid #E0E0E0;
+    }
+
+    .theme-card__preview--dark {
+      background: #1E1E1E;
+      color: #F0F0F0;
+      border-bottom: 1px solid #333;
+    }
+
+    .theme-card__preview--auto {
+      background: linear-gradient(135deg, #FFFFFF 50%, #1E1E1E 50%);
+      color: transparent;
+      position: relative;
+    }
+
+    .theme-card__preview--auto::before {
+      content: "Auto";
+      position: absolute;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: #1A1A1A;
+      left: 8px;
+    }
+
+    .theme-card__preview--auto::after {
+      content: "Auto";
+      position: absolute;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: #F0F0F0;
+      right: 8px;
+    }
+
+    .theme-card__label {
+      padding: var(--space-2);
+      text-align: center;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-700);
+      background: var(--color-gray-100);
+    }
+
+    /* Language option with flag */
+    .lang-option {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      min-height: var(--touch-target-min);
+    }
+
+    .lang-option--selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+
+    .lang-option:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .lang-option__flag {
+      font-size: 24px;
+    }
+
+    .lang-option__name {
+      flex: 1;
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+    }
+
+    .lang-option__native {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+    }
+
+    .lang-option__check {
+      color: var(--color-primary);
+      font-size: var(--font-size-xl);
+    }
+
+    .lang-options {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    /* Farm profile section */
+    .farm-profile {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      background: var(--color-primary-light);
+      border: 2px solid var(--color-primary);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-3);
+    }
+
+    .farm-profile__icon {
+      font-size: 36px;
+    }
+
+    .farm-profile__info {
+      flex: 1;
+    }
+
+    .farm-profile__name {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+    }
+
+    .farm-profile__location {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+      margin-top: 2px;
+    }
+
+    .farm-profile__edit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      border: var(--border-default);
+      background: var(--color-surface);
+      color: var(--color-primary);
+      font-size: var(--font-size-lg);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    /* Section divider */
+    .section-divider {
+      margin: var(--space-8) 0 var(--space-4);
+      padding: var(--space-6) var(--space-4) 0;
+      border-top: 2px solid var(--color-gray-300);
+    }
+
+    .section-divider__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .section-divider__desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-4);
+    }
+
+    /* i18n preview */
+    .i18n-preview {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-top: var(--space-4);
+    }
+
+    .i18n-preview__header {
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-gray-100);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .i18n-row {
+      display: flex;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: var(--border-default);
+      gap: var(--space-4);
+    }
+
+    .i18n-row:last-child {
+      border-bottom: none;
+    }
+
+    .i18n-col {
+      flex: 1;
+    }
+
+    .i18n-col__label {
+      font-size: 10px;
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .i18n-col__text {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-900);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav-header" role="banner">
+    <a href="farm-overview.html" class="nav-header__back" aria-label="Back to Farm Overview">
+      <span aria-hidden="true">&#8249;</span>
+    </a>
+    <span class="nav-header__title">Settings</span>
+  </header>
+
+  <main role="main">
+    <div class="settings-content">
+
+      <!-- Farm Profile -->
+      <section class="settings-section" aria-label="Farm profile">
+        <div class="settings-section__title">Farm</div>
+        <div class="farm-profile">
+          <span class="farm-profile__icon" aria-hidden="true">&#127806;</span>
+          <div class="farm-profile__info">
+            <div class="farm-profile__name">My Nagano Farm</div>
+            <div class="farm-profile__location">&#128205; 36.0°N, 138.3°E &bull; Nagano, Japan</div>
+          </div>
+          <a href="farm-setup.html" class="farm-profile__edit" aria-label="Edit farm profile">
+            <span aria-hidden="true">&#9998;</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Appearance -->
+      <section class="settings-section" aria-label="Appearance settings">
+        <div class="settings-section__title">Appearance</div>
+        <div class="settings-group">
+
+          <!-- Theme selection -->
+          <div class="setting-row" style="flex-direction: column; align-items: stretch;">
+            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+              <span class="setting-row__icon" aria-hidden="true">&#127912;</span>
+              <div class="setting-row__content">
+                <div class="setting-row__label">Theme</div>
+                <div class="setting-row__desc">Choose light, dark, or match system</div>
+              </div>
+            </div>
+
+            <!-- Theme preview cards -->
+            <div class="theme-preview" role="radiogroup" aria-label="Theme selection">
+              <div class="theme-card" role="radio" aria-checked="false" tabindex="0" aria-label="Light theme">
+                <div class="theme-card__preview theme-card__preview--light">
+                  <span aria-hidden="true">&#9728;</span> Aa
+                </div>
+                <div class="theme-card__label">Light</div>
+              </div>
+              <div class="theme-card" role="radio" aria-checked="false" tabindex="0" aria-label="Dark theme">
+                <div class="theme-card__preview theme-card__preview--dark">
+                  <span aria-hidden="true">&#127769;</span> Aa
+                </div>
+                <div class="theme-card__label">Dark</div>
+              </div>
+              <div class="theme-card theme-card--selected" role="radio" aria-checked="true" tabindex="0" aria-label="System theme — selected">
+                <div class="theme-card__preview theme-card__preview--auto"></div>
+                <div class="theme-card__label">System</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Language -->
+      <section class="settings-section" aria-label="Language settings">
+        <div class="settings-section__title">Language / 言語</div>
+        <div class="lang-options" role="radiogroup" aria-label="Language selection">
+          <div class="lang-option lang-option--selected" role="radio" aria-checked="true" tabindex="0">
+            <span class="lang-option__flag" aria-hidden="true">&#127468;&#127463;</span>
+            <span class="lang-option__name">English</span>
+            <span class="lang-option__native"></span>
+            <span class="lang-option__check" aria-hidden="true">&#10003;</span>
+          </div>
+          <div class="lang-option" role="radio" aria-checked="false" tabindex="0">
+            <span class="lang-option__flag" aria-hidden="true">&#127471;&#127477;</span>
+            <span class="lang-option__name">Japanese</span>
+            <span class="lang-option__native">日本語</span>
+            <span class="lang-option__check" aria-hidden="true" style="visibility: hidden;">&#10003;</span>
+          </div>
+        </div>
+
+        <!-- i18n preview -->
+        <div class="i18n-preview">
+          <div class="i18n-preview__header">Translation Preview</div>
+          <div class="i18n-row">
+            <div class="i18n-col"><div class="i18n-col__label">EN</div><div class="i18n-col__text">Farm Overview</div></div>
+            <div class="i18n-col"><div class="i18n-col__label">JA</div><div class="i18n-col__text">農場概要</div></div>
+          </div>
+          <div class="i18n-row">
+            <div class="i18n-col"><div class="i18n-col__label">EN</div><div class="i18n-col__text">Healthy</div></div>
+            <div class="i18n-col"><div class="i18n-col__label">JA</div><div class="i18n-col__text">健康</div></div>
+          </div>
+          <div class="i18n-row">
+            <div class="i18n-col"><div class="i18n-col__label">EN</div><div class="i18n-col__text">Slow Growth</div></div>
+            <div class="i18n-col"><div class="i18n-col__label">JA</div><div class="i18n-col__text">成長遅延</div></div>
+          </div>
+          <div class="i18n-row">
+            <div class="i18n-col"><div class="i18n-col__label">EN</div><div class="i18n-col__text">Animal Intrusion</div></div>
+            <div class="i18n-col"><div class="i18n-col__label">JA</div><div class="i18n-col__text">動物侵入</div></div>
+          </div>
+          <div class="i18n-row">
+            <div class="i18n-col"><div class="i18n-col__label">EN</div><div class="i18n-col__text">Frost Warning</div></div>
+            <div class="i18n-col"><div class="i18n-col__label">JA</div><div class="i18n-col__text">霜注意報</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Weather & Data -->
+      <section class="settings-section" aria-label="Weather and data settings">
+        <div class="settings-section__title">Weather &amp; Data</div>
+        <div class="settings-group">
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#127777;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Temperature Unit</div>
+            </div>
+            <div class="segmented" style="width: 140px;" role="radiogroup" aria-label="Temperature unit">
+              <button class="segmented__option segmented__option--active" role="radio" aria-checked="true">°C</button>
+              <button class="segmented__option" role="radio" aria-checked="false">°F</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#127783;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Weather Alerts</div>
+              <div class="setting-row__desc">Frost, heavy rain, extreme heat</div>
+            </div>
+            <div class="toggle toggle--on" role="switch" aria-checked="true" aria-label="Weather alerts enabled" tabindex="0">
+              <div class="toggle__track"></div>
+              <div class="toggle__thumb"></div>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#128225;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Weather Source</div>
+              <div class="setting-row__desc">Open-Meteo (free, no API key)</div>
+            </div>
+            <span class="setting-row__value">Auto</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Camera & Images -->
+      <section class="settings-section" aria-label="Camera settings">
+        <div class="settings-section__title">Camera &amp; Images</div>
+        <div class="settings-group">
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#128247;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Capture Interval</div>
+              <div class="setting-row__desc">How often the camera takes a photo</div>
+            </div>
+            <span class="setting-row__value">1 hour</span>
+            <span class="setting-row__arrow" aria-hidden="true">&#8250;</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#128062;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Motion Detection</div>
+              <div class="setting-row__desc">Capture when movement detected</div>
+            </div>
+            <div class="toggle toggle--on" role="switch" aria-checked="true" aria-label="Motion detection enabled" tabindex="0">
+              <div class="toggle__track"></div>
+              <div class="toggle__thumb"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Assistant -->
+      <section class="settings-section" aria-label="AI assistant settings">
+        <div class="settings-section__title">AI Assistant</div>
+        <div class="settings-group">
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#129302;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Crop Impact Analysis</div>
+              <div class="setting-row__desc">AI-powered weather impact on crops</div>
+            </div>
+            <div class="toggle toggle--on" role="switch" aria-checked="true" aria-label="Crop impact analysis enabled" tabindex="0">
+              <div class="toggle__track"></div>
+              <div class="toggle__thumb"></div>
+            </div>
+          </div>
+          <a href="farm-setup.html" class="setting-row" style="text-decoration: none; color: inherit;">
+            <span class="setting-row__icon" aria-hidden="true">&#127793;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">Crop Planning Assistant</div>
+              <div class="setting-row__desc">Get personalized crop recommendations</div>
+            </div>
+            <span class="setting-row__arrow" aria-hidden="true">&#8250;</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section class="settings-section" aria-label="About">
+        <div class="settings-section__title">About</div>
+        <div class="settings-group">
+          <div class="setting-row">
+            <span class="setting-row__icon" aria-hidden="true">&#127793;</span>
+            <div class="setting-row__content">
+              <div class="setting-row__label">LitCrop</div>
+              <div class="setting-row__desc">Version 0.1.0 (PoC)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>
