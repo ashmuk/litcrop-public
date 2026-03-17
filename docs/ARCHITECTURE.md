@@ -303,9 +303,9 @@ IaC (CDK, SAM, or SST) is deferred to MVP (ADR-008).
 ## 7. Cost Estimate (PoC)
 
 ### Assumptions
-- 1 simulated camera node uploading every 10 minutes
+- 1 simulated camera node uploading every 1 hour
 - Average image size: 1MB (max 2MB)
-- ~4,320 images/month, ~4.3 GB new storage/month
+- ~720 images/month, ~720 MB new storage/month
 - ~50 dashboard page views/day (single user)
 - ~200 API calls/day (page loads + image fetches)
 - AWS Free Tier active (first 12 months for S3, Lambda, API Gateway)
@@ -314,28 +314,28 @@ IaC (CDK, SAM, or SST) is deferred to MVP (ADR-008).
 
 | Service | Usage | Free Tier | Estimated Cost |
 |---------|-------|-----------|---------------|
-| **S3 Storage** | ~4.3 GB (month 1, growing) | 5 GB (12 mo) | $0.00 |
-| **S3 PUT** | ~4,320 requests | 2,000 free (12 mo) | $0.01 |
+| **S3 Storage** | ~720 MB (month 1, growing) | 5 GB (12 mo) | $0.00 |
+| **S3 PUT** | ~720 requests | 2,000 free (12 mo) | $0.00 |
 | **S3 GET** | ~6,000 requests | 20,000 free (12 mo) | $0.00 |
 | **DynamoDB** | < 1 GB storage, < 5 RCU/WCU | 25 GB, 25 RCU/WCU (perpetual) | $0.00 |
 | **Lambda** | ~10,000 invocations, ~128MB, ~200ms avg | 1M requests (12 mo) | $0.00 |
 | **API Gateway** | ~10,000 requests | 1M requests (12 mo) | $0.00 |
 | **Data Transfer** | ~5 GB outbound | 100 GB (12 mo) | $0.00 |
-| **Total (with free tier)** | | | **~$0.01/month** |
+| **Total (with free tier)** | | | **~$0.00/month** |
 
 ### Monthly Cost Breakdown (Without Free Tier)
 
 | Service | Usage | Unit Price (ap-northeast-1) | Estimated Cost |
 |---------|-------|-----------------------------|---------------|
-| **S3 Storage** | ~10 GB (after a few months) | $0.025/GB | $0.25 |
-| **S3 Requests** | ~10,000 PUT + GET | $0.0047/1K PUT, $0.00037/1K GET | $0.03 |
+| **S3 Storage** | ~4 GB (after 6 months) | $0.025/GB | $0.10 |
+| **S3 Requests** | ~2,000 PUT + GET | $0.0047/1K PUT, $0.00037/1K GET | $0.01 |
 | **DynamoDB** | < 1 GB, < 5 RCU/WCU | Perpetual free tier | $0.00 |
 | **Lambda** | ~10,000 invocations | $0.20/1M requests | $0.00 |
 | **API Gateway** | ~10,000 requests | $1.00/1M requests | $0.01 |
 | **Data Transfer** | ~5 GB outbound | $0.114/GB (first 10TB) | $0.57 |
-| **Total (without free tier)** | | | **~$0.86/month** |
+| **Total (without free tier)** | | | **~$0.68/month** |
 
-**Verdict**: Well under the $5/month constraint in both scenarios. Even with 3x the assumed usage, costs remain under $3/month.
+**Verdict**: Well under the $5/month constraint in both scenarios. The 1-hour capture interval keeps storage growth modest (~720MB/month per node).
 
 ---
 

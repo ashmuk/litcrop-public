@@ -4,10 +4,10 @@
 Accepted
 
 ## Context
-LitCrop captures periodic crop images (max 2MB JPEG, every 10 minutes per node) and must store, serve, and eventually age-out these images. For PoC, a single simulated node generates approximately:
-- 144 images/day (every 10 minutes)
-- ~288 MB/day (at 2MB max; likely ~500KB-1MB average)
-- ~4,320 images/month (~4-9 GB/month)
+LitCrop captures periodic crop images (max 2MB JPEG, every 1 hour per node) and must store, serve, and eventually age-out these images. For PoC, a single simulated node generates approximately:
+- 24 images/day (every 1 hour)
+- ~24 MB/day (at ~1MB average)
+- ~720 images/month (~720 MB/month)
 
 Images must be:
 - Uploaded via the API (multipart form data)

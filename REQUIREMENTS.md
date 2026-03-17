@@ -74,7 +74,7 @@ Identify 1–2 real users matching this persona for feedback after PoC is built.
 |----|-------------|----------|-------|
 | FR-5.1 | CLI script or small program that uploads sample JPEG images to the API | Must | Configurable interval and target plot |
 | FR-5.2 | Includes realistic metadata (timestamp, simulated node ID, resolution) | Must | For realistic testing |
-| FR-5.3 | Supports configurable upload interval (default: every 10 minutes) | Should | 10-minute default for cost/bandwidth modeling; configurable for demos |
+| FR-5.3 | Supports configurable upload interval (default: every 1 hour) | Should | 1-hour default for cost/bandwidth modeling; configurable for demos |
 | FR-5.4 | Handles upload failure gracefully (retry with exponential backoff) | Should | Validates error handling path |
 
 ---
@@ -286,7 +286,7 @@ Hub-and-spoke pattern, max depth 3, suitable for mobile.
 
 | # | Question | Resolution | Date |
 |---|----------|------------|------|
-| Q-1 | What image capture interval should the simulated node use? | **10 minutes** (default, configurable). Used for cost/bandwidth modeling. | 2026-03-17 |
+| Q-1 | What image capture interval should the simulated node use? | **1 hour** (default, configurable). Used for cost/bandwidth modeling. | 2026-03-17 |
 | Q-2 | Is there a target physical deployment location? (LTE coverage, solar sizing) | **Nagano Prefecture, Japan** (36.0, 138.3). Implications: excellent LTE coverage (SORACOM IoT SIM), AWS `ap-northeast-1` (Tokyo) region, cold winters (-10°C) require weatherproof enclosures, solar sizing for ~35°N latitude (2–5 peak sun hours seasonally). Not blocking for PoC (simulated node). | 2026-03-17 |
 | Q-3 | Should the 2MB image size limit be validated against LTE bandwidth constraints? | **2MB confirmed** as PoC limit. Revisit if real hardware testing reveals bandwidth issues. | 2026-03-17 |
 | Q-4 | Does the "waiting list" user model imply email collection in MVP? | **Yes** — MVP auth should include email-based waiting list / signup gate. | 2026-03-17 |
