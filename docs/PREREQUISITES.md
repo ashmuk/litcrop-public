@@ -25,12 +25,14 @@ Review and confirm the following architectural decisions before proceeding to im
 
 ### Required Knowledge
 - [ ] **TypeScript** -- Used across all three packages (frontend, API, simulator)
-- [ ] **Astro** -- Frontend framework; island architecture pattern
-- [ ] **Preact** -- Lightweight React alternative for interactive islands
-- [ ] **Hono** -- Lightweight HTTP framework for Lambda API
+- [ ] **Astro** -- Frontend framework; island architecture pattern; i18n support
+- [ ] **Preact** -- Lightweight React alternative for interactive islands (chat, theme switcher, tagging)
+- [ ] **Hono** -- Lightweight HTTP framework for Lambda API (11 endpoints)
 - [ ] **DynamoDB** -- Single-table design, queries, GSIs
 - [ ] **AWS SDK v3** -- S3 operations, DynamoDB DocumentClient
 - [ ] **S3 presigned URLs** -- Image serving pattern
+- [ ] **CSS custom properties** -- Theme system (Light/Dark/Earthy/System)
+- [ ] **i18n patterns** -- JSON locale files, locale-aware formatting (EN/JA)
 
 ### Development Tools Required
 - [ ] **Node.js 20+** installed locally
@@ -44,6 +46,22 @@ Review and confirm the following architectural decisions before proceeding to im
 - [ ] DynamoDB local (for offline development)
 - [ ] SAM CLI (for local Lambda testing) -- or use Hono's built-in dev server
 - [ ] `jq` (for JSON manipulation in scripts)
+
+---
+
+## 2b. External API Keys and Services
+
+### Required for PoC
+- [ ] **Open-Meteo API** -- No API key required. Free, no registration. Confirm access to `https://api.open-meteo.com/v1/forecast` with farm coordinates (36.03, 138.26).
+- [ ] **LLM API for AI chatbot** -- One of the following:
+  - [ ] **Anthropic Claude API key** (recommended: Claude Haiku for cost efficiency) -- obtain from https://console.anthropic.com
+  - [ ] **OpenAI API key** (alternative: GPT-4o-mini) -- obtain from https://platform.openai.com
+  - Budget: ~$0.05-0.50/month for PoC usage (~10-20 chat messages/day)
+  - Store API key in environment variable (never commit to repo)
+
+### Not Required for PoC
+- [ ] Geocoding API (for address → coordinates conversion) -- manual coordinate entry sufficient for PoC
+- [ ] Map tiles API (for visual map in layout view) -- CSS-based layout sufficient for PoC
 
 ---
 
@@ -119,6 +137,11 @@ These items are documented for awareness but do not block PoC:
 | CI/CD pipeline | MVP | Manual deploy via scripts for PoC |
 | Real camera hardware | MVP | Raspberry Pi procurement and testing |
 | Server-side image processing | MVP | No thumbnails or compression in PoC |
+| Interactive layout editor | MVP | PoC has read-only spatial view only |
+| Geocoding API (address search) | MVP | Manual coordinate entry for PoC |
+| Map tile integration | MVP | CSS-based layout view for PoC |
+| Realtime video streaming | Production | Requires Pi 4+, WebRTC/HLS |
+| On-site temperature/humidity sensor | MVP | Weather from Open-Meteo API for PoC |
 
 ---
 

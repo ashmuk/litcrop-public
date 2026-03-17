@@ -10,23 +10,29 @@
 ### High-Level Architecture
 
 ```
-+--------------------+         +----------------------------+        +------------------+
-|  Simulated Camera  |  HTTPS  |       AWS Cloud            |        |  Mobile Browser  |
-|  Node (CLI script) | ------> |  (ap-northeast-1, Tokyo)   | <----- |  (320-480px)     |
-+--------------------+  POST   |                            |  GET   +------------------+
-                               |  +----------------------+  |
-                               |  | API Gateway HTTP API |  |
-                               |  +----------+-----------+  |
-                               |             |              |
-                               |  +----------v-----------+  |
-                               |  | Lambda (Hono router) |  |
-                               |  +--+-------+--------+--+  |
-                               |     |       |        |     |
-                               |  +--v--+ +--v---+ +--v--+  |
-                               |  | S3  | | DDB  | | S3  |  |
-                               |  |image| | meta | |static| |
-                               |  +-----+ +------+ +-----+  |
-                               +----------------------------+
+                                                              +------------------+
++--------------------+         +----------------------------+ |  Mobile Browser  |
+|  Simulated Camera  |  HTTPS  |       AWS Cloud            | |  (320-480px)     |
+|  Node (CLI script) | ------> |  (ap-northeast-1, Tokyo)   |-|  EN / JA         |
++--------------------+  POST   |                            | |  Light/Dark/Earthy|
+                               |  +----------------------+  | +------------------+
+                               |  | API Gateway HTTP API |  |        |
+                               |  +----------+-----------+  |        | GET
+                               |             |              |        |
+                               |  +----------v-----------+  |        |
+                               |  | Lambda (Hono router) |  |<-------+
+                               |  |   11 endpoints       |  |
+                               |  +--+---+----+---+---+--+  |
+                               |     |   |    |   |   |     |
+                               |  +--v-+ | +--v-+ | +-v--+  |  +------------------+
+                               |  | S3 | | |DDB | | | S3 |  |  | External APIs    |
+                               |  |img | | |meta| | |static| |  |                  |
+                               |  +----+ | +----+ | +-----+  |  | Open-Meteo       |
+                               |         |        |           |  | (weather, free)  |
+                               |  +------v--------v--------+ |  |                  |
+                               |  | CloudFront (HTTPS)     | |  | LLM API          |
+                               |  +------------------------+ |  | (AI chatbot)     |
+                               +----------------------------+  +------------------+
 ```
 
 ### Component Responsibilities
@@ -40,6 +46,10 @@
 | **Image Storage** | S3 (ap-northeast-1) | JPEG image storage with lifecycle policies |
 | **Static Hosting** | S3 + CloudFront | Astro SSG build output (HTML, CSS, JS). CloudFront provides HTTPS (free tier perpetual: 1TB/month). |
 | **Camera Simulator** | Node.js CLI script | Uploads sample images on schedule (periodic) and at random intervals (motion-triggered) |
+| **Weather Proxy** | Hono route → Open-Meteo API | Fetches weather data using farm lat/lon; caches responses (15-min TTL) |
+| **AI Chatbot** | Hono route → LLM API | Location-aware crop planning via external LLM (Claude/OpenAI); farm setup guidance |
+| **i18n** | Astro + JSON locale files | English (en.json) and Japanese (ja.json); locale-aware date/number formatting |
+| **Theme System** | CSS custom properties | Light / Dark / Earthy / System; `data-theme` attribute on `<html>` |
 
 ### Data Flow
 
@@ -104,13 +114,17 @@
 
 | # | Method | Path | Handler | Description |
 |---|--------|------|---------|-------------|
-| 1 | GET | `/api/v1/farms/{farmId}` | `getFarm` | Farm metadata + layout structure (fields, beds) |
-| 2 | GET | `/api/v1/farms/{farmId}/plots` | `getFarmPlots` | All plots with latest_status (Farm Overview) |
-| 3 | GET | `/api/v1/plots/{plotId}` | `getPlot` | Single plot with crop metadata (Plot Detail) |
-| 4 | GET | `/api/v1/plots/{plotId}/images` | `getPlotImages` | Paginated image list (cursor-based, newest first) |
-| 5 | POST | `/api/v1/plots/{plotId}/images` | `uploadImage` | Image upload from camera node |
-| 6 | GET | `/api/v1/images/{imageId}` | `getImage` | Image metadata + S3 signed URL |
-| 7 | POST | `/api/v1/images/{imageId}/tags` | `addTag` | Add manual tag; update plot latest_status |
+| 1 | GET | `/api/v1/farms/{farmId}` | `getFarm` | Farm metadata + layout structure + location |
+| 2 | POST | `/api/v1/farms` | `createFarm` | Create farm (onboarding: name, lat, lon) |
+| 3 | PATCH | `/api/v1/farms/{farmId}` | `updateFarm` | Update farm settings (name, locale, theme) |
+| 4 | GET | `/api/v1/farms/{farmId}/plots` | `getFarmPlots` | All plots with latest_status (Farm Overview) |
+| 5 | GET | `/api/v1/plots/{plotId}` | `getPlot` | Single plot with crop metadata (Plot Detail) |
+| 6 | GET | `/api/v1/plots/{plotId}/images` | `getPlotImages` | Paginated image list (cursor-based, newest first) |
+| 7 | POST | `/api/v1/plots/{plotId}/images` | `uploadImage` | Image upload from camera node |
+| 8 | GET | `/api/v1/images/{imageId}` | `getImage` | Image metadata + S3 signed URL |
+| 9 | POST | `/api/v1/images/{imageId}/tags` | `addTag` | Add manual tag; update plot latest_status |
+| 10 | GET | `/api/v1/farms/{farmId}/weather` | `getWeather` | Proxy to Open-Meteo API; cached 15-min TTL |
+| 11 | POST | `/api/v1/chat` | `chatMessage` | AI chatbot (crop planning, farm setup guidance) |
 
 ### Middleware Stack (Hono)
 
@@ -122,7 +136,42 @@ app.use('/api/*', authMiddleware)  // No-op for PoC; insert auth here later
 app.use('/api/*', errorHandler)   // Consistent error responses
 ```
 
-The `authMiddleware` is a pass-through in PoC. At MVP, it will validate JWT tokens without changing route handlers (satisfies NFR-6.4).
+The `authMiddleware` is a pass-through in PoC. At MVP, it will validate JWT tokens without changing route handlers (satisfies NFR-7.4).
+
+### Weather Proxy Flow (Endpoint #10)
+
+```
+Browser                       Lambda                          Open-Meteo API
+  |                              |                               |
+  |-- GET /weather ------------->|                               |
+  |                              |-- check in-memory cache ----->|
+  |                              |   (miss if > 15 min old)      |
+  |                              |-- GET open-meteo.com/v1/ ---->|
+  |                              |   ?latitude=36.03&longitude=138.26
+  |                              |   &hourly=temperature_2m,rain
+  |                              |   &daily=temperature_2m_max,...
+  |                              |<-- JSON response -------------|
+  |                              |-- cache response (15 min) --->|
+  |<-- { current, hourly, daily, crop_impact } ---|
+```
+
+Open-Meteo is free with no API key. The Lambda caches responses in-memory (or DynamoDB TTL) to avoid excessive calls. Crop impact analysis is computed server-side by matching forecast data against known crop temperature tolerances.
+
+### AI Chatbot Flow (Endpoint #11)
+
+```
+Browser                       Lambda                          LLM API
+  |                              |                               |
+  |-- POST /chat { message } --->|                               |
+  |                              |-- build context prompt ------->|
+  |                              |   (farm location, climate,     |
+  |                              |    current crops, season)      |
+  |                              |-- POST LLM API -------------->|
+  |                              |<-- completion response --------|
+  |<-- { reply, suggestions } ---|
+```
+
+The LLM API provider (Claude or OpenAI) is configured via environment variable. The system prompt includes farm-specific context (location, climate zone, current crop list) for personalized recommendations.
 
 ### Image Upload Flow (Endpoint #5)
 
@@ -172,7 +221,7 @@ Standard HTTP status codes: 400 (validation), 404 (not found), 413 (too large), 
 
 | Entity | PK | SK | Attributes |
 |--------|----|----|------------|
-| Farm | `FARM#{farmId}` | `#META` | name, description, created_at |
+| Farm | `FARM#{farmId}` | `#META` | name, description, latitude, longitude, elevation_m, climate_zone, locale, theme, created_at |
 | Field | `FARM#{farmId}` | `FIELD#{position}#{fieldId}` | name, position |
 | Bed | `FIELD#{fieldId}` | `BED#{position}#{bedId}` | name, position |
 | Plot | `BED#{bedId}` | `PLOT#{plotId}` | label, crop_type, crop_variety, planted_at, expected_harvest, notes, latest_status, farm_id (denormalized for GSI2) |
@@ -282,7 +331,7 @@ S3 Bucket: litcrop-poc-static     -- Astro SSG build (HTML, CSS, JS) (origin for
 CloudFront Distribution            -- HTTPS delivery of static frontend
 S3 Bucket: litcrop-poc-images     -- Uploaded crop images
 DynamoDB Table: litcrop-poc       -- All metadata (single-table)
-Lambda Function: litcrop-poc-api  -- Hono router (all 7 endpoints)
+Lambda Function: litcrop-poc-api  -- Hono router (all 11 endpoints)
 API Gateway: litcrop-poc-api      -- HTTP API (v2) routing to Lambda
 IAM Role: litcrop-poc-lambda      -- Lambda execution role (S3, DynamoDB access)
 ```
@@ -335,7 +384,14 @@ IaC (CDK, SAM, or SST) is deferred to MVP (ADR-008).
 | **Data Transfer** | ~5 GB outbound | $0.114/GB (first 10TB) | $0.57 |
 | **Total (without free tier)** | | | **~$0.68/month** |
 
-**Verdict**: Well under the $5/month constraint in both scenarios. The 1-hour capture interval keeps storage growth modest (~720MB/month per node).
+### External API Costs
+
+| Service | Usage | Cost | Notes |
+|---------|-------|------|-------|
+| **Open-Meteo** | ~100 requests/day | **$0.00** | Free, no API key, no rate limit for personal use |
+| **LLM API (AI chatbot)** | ~10-20 messages/day | **$0.05-0.50/month** | Depends on provider (Claude Haiku ~$0.25/1M input tokens, GPT-4o-mini ~$0.15/1M). Crop planning queries are short. |
+
+**Total Verdict**: Well under the $5/month constraint. AWS costs ~$0-0.68/month + LLM API ~$0.05-0.50/month = **~$0.73-1.18/month worst case**.
 
 ---
 
@@ -353,8 +409,13 @@ IaC (CDK, SAM, or SST) is deferred to MVP (ADR-008).
 | **Deployment** | AWS CLI manual | CDK or SAM (IaC) | CI/CD pipeline (GitHub Actions) |
 | **Monitoring** | CloudWatch basics | CloudWatch alarms, error tracking | Full observability (X-Ray, dashboards) |
 | **Image processing** | None | Server-side thumbnails (Lambda) | WebP conversion, multiple sizes |
-| **Layout editor** | Seed data only | Visual 2D editor | Collaborative editing |
-| **Alerting** | None | Missing data alerts | Anomaly detection |
+| **Layout view** | Read-only spatial + list toggle | Interactive 2D editor | Collaborative editing |
+| **Weather** | Open-Meteo API + crop impact | Same + on-site sensor data | Multi-source fusion |
+| **AI chatbot** | Crop planning (LLM API) | + growth analysis, disease Q&A | Advanced diagnostics |
+| **i18n** | EN / JA | + locale-specific content | Multi-language |
+| **Themes** | Light / Dark / Earthy / System | Same | + custom brand themes |
+| **Alerting** | Weather + motion alerts | + missing data, growth trends | Anomaly detection |
+| **Live video** | None | Optional (Pi 4+, WebRTC) | Fleet streaming via IoT Core |
 | **Domain** | S3 URL / API Gateway URL | Custom domain (litcrop.example.com) | Production domain with SSL |
 | **Cost model** | Free tier ($0-1/mo) | $5-15/month | $20-50/month |
 
@@ -390,21 +451,22 @@ litcrop/
   src/
     frontend/              # Astro project
       src/
-        pages/             # Farm Overview, Plot Detail, Image Timeline
-        components/        # Shared UI components
-        islands/           # Preact interactive islands (tagging, lightbox)
+        pages/             # 7 screens: overview, layout, detail, timeline, weather, setup, settings
+        components/        # Shared UI components (plot-tile, status-badge, weather-strip, etc.)
+        islands/           # Preact interactive islands (tagging, chat, theme-switcher)
         layouts/           # Base layout with mobile-first responsive shell
-        styles/            # Global CSS (variables, tokens, reset)
+        styles/            # Global CSS (tokens for light/dark/earthy themes, reset)
+        i18n/              # Locale files (en.json, ja.json)
         lib/               # API client, utilities
       astro.config.mjs
       tsconfig.json
     api/                   # Hono Lambda project
       src/
-        routes/            # Route handlers (farms, plots, images, tags)
-        middleware/         # Auth placeholder, error handler, CORS
-        services/          # DynamoDB access, S3 operations
+        routes/            # Route handlers (farms, plots, images, tags, weather, chat)
+        middleware/         # Auth placeholder, error handler, CORS, locale
+        services/          # DynamoDB access, S3 operations, Open-Meteo client, LLM client
         models/            # Entity types and validation
-        utils/             # Helpers (signed URLs, pagination)
+        utils/             # Helpers (signed URLs, pagination, crop-impact analyzer)
       handler.ts           # Lambda entry point
       tsconfig.json
     simulator/             # Camera node simulator
@@ -440,6 +502,10 @@ This is a monorepo with three packages (`frontend`, `api`, `simulator`) sharing 
 | 4 | Database | DynamoDB (single-table) | Perpetual free tier, zero ops, millisecond latency | [Link](decisions/ADR-20260317-database-selection.md) |
 | 5 | Image storage | S3 Standard + lifecycle | Free tier, signed URLs, lifecycle automation | [Link](decisions/ADR-20260317-image-storage-lifecycle.md) |
 | 6 | Device protocol | HTTPS POST | Simplest, universal, no extra infrastructure | [Link](decisions/ADR-20260317-device-communication.md) |
+| 7 | Weather data | Open-Meteo API (free) | No API key, coordinate-based, soil temp data | — (no ADR, zero-risk) |
+| 8 | AI chatbot | External LLM API (Claude/OpenAI) | Provider-agnostic via env var; crop planning focus | — (ADR candidate for MVP) |
+| 9 | i18n | Astro + JSON locale files (EN/JA) | Externalized strings, Japanese font stack | — (standard pattern) |
+| 10 | Theme system | CSS custom properties + `data-theme` | Light/Dark/Earthy/System; ~20 lines JS | — (standard pattern) |
 
 ---
 
