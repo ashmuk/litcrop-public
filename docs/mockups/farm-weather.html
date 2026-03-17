@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Weather &amp; Environment</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page-specific styles for Weather integration demo */
+
+    .farm-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .farm-header__name {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+      line-height: var(--line-height-tight);
+    }
+
+    /* ===== Weather Strip (embedded in Farm Overview) ===== */
+    .weather-strip {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+      border-bottom: var(--border-default);
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+
+    .weather-strip:hover {
+      background: linear-gradient(135deg, #BBDEFB 0%, #90CAF9 100%);
+    }
+
+    .weather-strip__icon {
+      font-size: 32px;
+      line-height: 1;
+    }
+
+    .weather-strip__temp {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      line-height: 1;
+    }
+
+    .weather-strip__details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .weather-strip__condition {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .weather-strip__meta {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+    }
+
+    .weather-strip__arrow {
+      color: var(--color-gray-500);
+      font-size: var(--font-size-lg);
+    }
+
+    /* Weather alert banner */
+    .weather-alert {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-status-slow-growth-bg);
+      border-bottom: 2px solid var(--color-status-slow-growth);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+    }
+
+    .weather-alert__icon {
+      font-size: var(--font-size-lg);
+    }
+
+    .weather-alert--frost {
+      background: #E8EAF6;
+      border-color: #5C6BC0;
+    }
+
+    /* ===== Weather Detail Panel ===== */
+    .weather-detail {
+      padding: var(--space-4);
+    }
+
+    .weather-detail__section {
+      margin-bottom: var(--space-6);
+    }
+
+    .weather-detail__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-3);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    /* Current conditions card */
+    .conditions-card {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .conditions-card__header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .conditions-card__icon {
+      font-size: 48px;
+      line-height: 1;
+    }
+
+    .conditions-card__temp-group {
+      flex: 1;
+    }
+
+    .conditions-card__temp {
+      font-size: 40px;
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      line-height: 1;
+    }
+
+    .conditions-card__condition {
+      font-size: var(--font-size-base);
+      color: var(--color-gray-700);
+      margin-top: var(--space-1);
+    }
+
+    .conditions-card__location {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-top: var(--space-1);
+    }
+
+    .conditions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+    }
+
+    .conditions-grid__item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: var(--space-3);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+    }
+
+    .conditions-grid__label {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .conditions-grid__value {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+    }
+
+    .conditions-grid__unit {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      font-weight: var(--font-weight-regular);
+    }
+
+    /* Hourly forecast scroll */
+    .hourly-forecast {
+      display: flex;
+      gap: var(--space-3);
+      overflow-x: auto;
+      padding: var(--space-2) 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .hourly-forecast::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hourly-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      min-width: 64px;
+      padding: var(--space-3) var(--space-2);
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+    }
+
+    .hourly-item--now {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary);
+    }
+
+    .hourly-item__time {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .hourly-item__icon {
+      font-size: 20px;
+    }
+
+    .hourly-item__temp {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+    }
+
+    .hourly-item__rain {
+      font-size: 10px;
+      color: var(--color-info);
+      font-weight: var(--font-weight-medium);
+    }
+
+    /* Daily forecast */
+    .daily-forecast {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .daily-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+    }
+
+    .daily-item--today {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary);
+    }
+
+    .daily-item__day {
+      width: 48px;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .daily-item__icon {
+      font-size: 20px;
+      width: 28px;
+      text-align: center;
+    }
+
+    .daily-item__temp-bar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .daily-item__low {
+      width: 32px;
+      text-align: right;
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+    }
+
+    .daily-item__bar {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--color-gray-300);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .daily-item__bar-fill {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #64B5F6, #FF8A65);
+    }
+
+    .daily-item__high {
+      width: 32px;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .daily-item__rain {
+      width: 36px;
+      text-align: right;
+      font-size: var(--font-size-xs);
+      color: var(--color-info);
+    }
+
+    /* Crop impact section */
+    .crop-impact {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .impact-card {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+      border-left: 4px solid;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .impact-card--warning {
+      border-left-color: var(--color-status-slow-growth);
+      background: var(--color-status-slow-growth-bg);
+    }
+
+    .impact-card--danger {
+      border-left-color: var(--color-status-issue);
+      background: var(--color-status-issue-bg);
+    }
+
+    .impact-card--info {
+      border-left-color: var(--color-info);
+      background: #E3F2FD;
+    }
+
+    .impact-card--good {
+      border-left-color: var(--color-status-healthy);
+      background: var(--color-status-healthy-bg);
+    }
+
+    .impact-card__icon {
+      font-size: var(--font-size-xl);
+      line-height: 1;
+    }
+
+    .impact-card__content {
+      flex: 1;
+    }
+
+    .impact-card__title {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: 2px;
+    }
+
+    .impact-card__desc {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+      line-height: var(--line-height-relaxed);
+    }
+
+    /* Data source indicator */
+    .data-source {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      border-top: var(--border-default);
+    }
+
+    .data-source__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 2px 8px;
+      background: var(--color-gray-100);
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: var(--font-weight-semibold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .data-source__badge--api {
+      color: var(--color-info);
+    }
+
+    .data-source__badge--sensor {
+      color: var(--color-status-healthy);
+    }
+
+    /* Section dividers */
+    .section-divider {
+      margin: var(--space-8) 0 var(--space-4);
+      padding: var(--space-6) var(--space-4) 0;
+      border-top: 2px solid var(--color-gray-300);
+    }
+
+    .section-divider__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .section-divider__desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-4);
+    }
+
+    /* Plot weather context (embedded in Plot Detail) */
+    .plot-weather {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      margin: 0 var(--space-4) var(--space-3);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+    }
+
+    .plot-weather__item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .plot-weather__icon {
+      font-size: var(--font-size-lg);
+    }
+
+    .plot-weather__value {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+    }
+
+    .plot-weather__label {
+      font-size: 10px;
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Nav header */
+    .nav-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .nav-header__back {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: var(--color-primary);
+      font-size: var(--font-size-xl);
+    }
+
+    .nav-header__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== DEMO 1: Weather Strip on Farm Overview ===== -->
+  <header class="farm-header" role="banner" aria-label="Farm header">
+    <h1 class="farm-header__name">LitCrop Demo Farm</h1>
+  </header>
+
+  <main role="main">
+
+    <div class="section-divider" style="margin-top: 0; border-top: none; padding-top: var(--space-4);">
+      <h2 class="section-divider__title">Demo 1: Weather Strip on Farm Overview</h2>
+      <p class="section-divider__desc">
+        Tappable weather summary embedded below the Farm Overview header.
+        Shows current conditions at a glance. Tap to expand weather detail.
+      </p>
+    </div>
+
+    <!-- Weather strip (tappable, expands to detail) -->
+    <div class="weather-strip" role="button" tabindex="0"
+         aria-label="Current weather: 18 degrees, Partly Cloudy. Tap for details.">
+      <span class="weather-strip__icon" aria-hidden="true">&#9925;</span>
+      <span class="weather-strip__temp">18°</span>
+      <div class="weather-strip__details">
+        <span class="weather-strip__condition">Partly Cloudy</span>
+        <span class="weather-strip__meta">H:22° L:8° &bull; Rain 20% at 15:00</span>
+      </div>
+      <span class="weather-strip__arrow" aria-hidden="true">&#8250;</span>
+    </div>
+
+    <!-- Weather alert example (frost warning) -->
+    <div class="weather-alert weather-alert--frost" role="alert" aria-label="Frost warning">
+      <span class="weather-alert__icon" aria-hidden="true">&#10052;</span>
+      <span><strong>Frost Warning:</strong> Temperature dropping to 2°C tonight. Consider covering sensitive crops.</span>
+    </div>
+
+    <!-- ===== DEMO 2: Weather Detail Panel ===== -->
+    <div class="section-divider">
+      <h2 class="section-divider__title">Demo 2: Weather Detail Panel</h2>
+      <p class="section-divider__desc">
+        Expanded view when user taps the weather strip. Shows full conditions,
+        hourly forecast, 7-day outlook, and crop impact analysis.
+      </p>
+    </div>
+
+    <header class="nav-header" role="banner" aria-label="Weather detail">
+      <a href="farm-overview.html" class="nav-header__back" aria-label="Back to Farm Overview">
+        <span aria-hidden="true">&#8249;</span>
+      </a>
+      <span class="nav-header__title">Weather &amp; Environment</span>
+    </header>
+
+    <div class="weather-detail">
+
+      <!-- Current Conditions -->
+      <section class="weather-detail__section" aria-label="Current conditions">
+        <div class="conditions-card">
+          <div class="conditions-card__header">
+            <span class="conditions-card__icon" aria-hidden="true">&#9925;</span>
+            <div class="conditions-card__temp-group">
+              <div class="conditions-card__temp">18°C</div>
+              <div class="conditions-card__condition">Partly Cloudy</div>
+              <div class="conditions-card__location">&#128205; Nagano, Japan (36.03°N)</div>
+            </div>
+          </div>
+          <div class="conditions-grid">
+            <div class="conditions-grid__item">
+              <span class="conditions-grid__label">Humidity</span>
+              <span class="conditions-grid__value">65<span class="conditions-grid__unit">%</span></span>
+            </div>
+            <div class="conditions-grid__item">
+              <span class="conditions-grid__label">Wind</span>
+              <span class="conditions-grid__value">12<span class="conditions-grid__unit"> km/h NW</span></span>
+            </div>
+            <div class="conditions-grid__item">
+              <span class="conditions-grid__label">UV Index</span>
+              <span class="conditions-grid__value">4<span class="conditions-grid__unit"> Moderate</span></span>
+            </div>
+            <div class="conditions-grid__item">
+              <span class="conditions-grid__label">Soil Temp</span>
+              <span class="conditions-grid__value">14<span class="conditions-grid__unit">°C</span></span>
+            </div>
+            <div class="conditions-grid__item">
+              <span class="conditions-grid__label">Rainfall (24h)</span>
+              <span class="conditions-grid__value">0<span class="conditions-grid__unit"> mm</span></span>
+            </div>
+            <div class="conditions-grid__item">
+              <span class="conditions-grid__label">Sunrise / Set</span>
+              <span class="conditions-grid__value" style="font-size: var(--font-size-sm);">5:52 / 17:48</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="data-source">
+          <span class="data-source__badge data-source__badge--api">API</span>
+          <span>Open-Meteo &bull; Updated 5 min ago</span>
+        </div>
+      </section>
+
+      <!-- Hourly Forecast -->
+      <section class="weather-detail__section" aria-label="Hourly forecast">
+        <h3 class="weather-detail__title">
+          <span aria-hidden="true">&#128336;</span> Hourly Forecast
+        </h3>
+        <div class="hourly-forecast" role="list" aria-label="Hourly temperature forecast">
+          <div class="hourly-item hourly-item--now" role="listitem">
+            <span class="hourly-item__time">Now</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#9925;</span>
+            <span class="hourly-item__temp">18°</span>
+            <span class="hourly-item__rain">&nbsp;</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">13:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#9925;</span>
+            <span class="hourly-item__temp">20°</span>
+            <span class="hourly-item__rain">&nbsp;</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">14:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#9925;</span>
+            <span class="hourly-item__temp">21°</span>
+            <span class="hourly-item__rain">&nbsp;</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">15:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#127783;</span>
+            <span class="hourly-item__temp">19°</span>
+            <span class="hourly-item__rain">20%</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">16:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#127783;</span>
+            <span class="hourly-item__temp">17°</span>
+            <span class="hourly-item__rain">35%</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">17:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#127780;</span>
+            <span class="hourly-item__temp">15°</span>
+            <span class="hourly-item__rain">10%</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">18:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#127769;</span>
+            <span class="hourly-item__temp">12°</span>
+            <span class="hourly-item__rain">&nbsp;</span>
+          </div>
+          <div class="hourly-item" role="listitem">
+            <span class="hourly-item__time">21:00</span>
+            <span class="hourly-item__icon" aria-hidden="true">&#127769;</span>
+            <span class="hourly-item__temp">8°</span>
+            <span class="hourly-item__rain">&nbsp;</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7-Day Forecast -->
+      <section class="weather-detail__section" aria-label="7-day forecast">
+        <h3 class="weather-detail__title">
+          <span aria-hidden="true">&#128197;</span> 7-Day Forecast
+        </h3>
+        <div class="daily-forecast">
+          <div class="daily-item daily-item--today">
+            <span class="daily-item__day">Today</span>
+            <span class="daily-item__icon" aria-hidden="true">&#9925;</span>
+            <div class="daily-item__temp-bar">
+              <span class="daily-item__low">8°</span>
+              <div class="daily-item__bar">
+                <div class="daily-item__bar-fill" style="left: 20%; width: 50%;"></div>
+              </div>
+              <span class="daily-item__high">22°</span>
+            </div>
+            <span class="daily-item__rain">20%</span>
+          </div>
+          <div class="daily-item">
+            <span class="daily-item__day">Tue</span>
+            <span class="daily-item__icon" aria-hidden="true">&#127782;</span>
+            <div class="daily-item__temp-bar">
+              <span class="daily-item__low">6°</span>
+              <div class="daily-item__bar">
+                <div class="daily-item__bar-fill" style="left: 15%; width: 40%;"></div>
+              </div>
+              <span class="daily-item__high">16°</span>
+            </div>
+            <span class="daily-item__rain">60%</span>
+          </div>
+          <div class="daily-item">
+            <span class="daily-item__day">Wed</span>
+            <span class="daily-item__icon" aria-hidden="true">&#127782;</span>
+            <div class="daily-item__temp-bar">
+              <span class="daily-item__low">5°</span>
+              <div class="daily-item__bar">
+                <div class="daily-item__bar-fill" style="left: 12%; width: 35%;"></div>
+              </div>
+              <span class="daily-item__high">14°</span>
+            </div>
+            <span class="daily-item__rain">70%</span>
+          </div>
+          <div class="daily-item">
+            <span class="daily-item__day">Thu</span>
+            <span class="daily-item__icon" aria-hidden="true">&#9728;</span>
+            <div class="daily-item__temp-bar">
+              <span class="daily-item__low">3°</span>
+              <div class="daily-item__bar">
+                <div class="daily-item__bar-fill" style="left: 8%; width: 55%;"></div>
+              </div>
+              <span class="daily-item__high">20°</span>
+            </div>
+            <span class="daily-item__rain">5%</span>
+          </div>
+          <div class="daily-item">
+            <span class="daily-item__day">Fri</span>
+            <span class="daily-item__icon" aria-hidden="true">&#9728;</span>
+            <div class="daily-item__temp-bar">
+              <span class="daily-item__low">4°</span>
+              <div class="daily-item__bar">
+                <div class="daily-item__bar-fill" style="left: 10%; width: 60%;"></div>
+              </div>
+              <span class="daily-item__high">23°</span>
+            </div>
+            <span class="daily-item__rain">0%</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Crop Impact Analysis -->
+      <section class="weather-detail__section" aria-label="Crop impact analysis">
+        <h3 class="weather-detail__title">
+          <span aria-hidden="true">&#127793;</span> Crop Impact
+        </h3>
+        <div class="crop-impact">
+          <div class="impact-card impact-card--danger">
+            <span class="impact-card__icon" aria-hidden="true">&#10052;</span>
+            <div class="impact-card__content">
+              <div class="impact-card__title">Frost Risk — Wednesday Night</div>
+              <div class="impact-card__desc">
+                Temp dropping to 3°C. <strong>Strawberry (C1)</strong> and <strong>Basil (A2)</strong>
+                are frost-sensitive. Consider row covers or harvest basil early.
+              </div>
+            </div>
+          </div>
+          <div class="impact-card impact-card--warning">
+            <span class="impact-card__icon" aria-hidden="true">&#127783;</span>
+            <div class="impact-card__content">
+              <div class="impact-card__title">Heavy Rain — Tuesday-Wednesday</div>
+              <div class="impact-card__desc">
+                60-70% rain probability. <strong>Cucumber (B1)</strong> already has issues —
+                excess moisture may worsen fungal risk. Check drainage.
+              </div>
+            </div>
+          </div>
+          <div class="impact-card impact-card--good">
+            <span class="impact-card__icon" aria-hidden="true">&#9728;</span>
+            <div class="impact-card__content">
+              <div class="impact-card__title">Warm Period — Thursday-Friday</div>
+              <div class="impact-card__desc">
+                20-23°C with sunshine. Ideal growing conditions for <strong>Tomato (A1)</strong>
+                and <strong>Eggplant (C2)</strong>. Good window for fertilizer application.
+              </div>
+            </div>
+          </div>
+          <div class="impact-card impact-card--info">
+            <span class="impact-card__icon" aria-hidden="true">&#128167;</span>
+            <div class="impact-card__content">
+              <div class="impact-card__title">Soil Moisture Adequate</div>
+              <div class="impact-card__desc">
+                14°C soil temp with recent moisture. No irrigation needed until Thursday.
+                <em>(MVP: sensor data will replace estimate)</em>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Sources -->
+      <section class="weather-detail__section" aria-label="Data sources">
+        <h3 class="weather-detail__title">
+          <span aria-hidden="true">&#128225;</span> Data Sources
+        </h3>
+        <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <div class="conditions-card" style="padding: var(--space-3);">
+            <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);">
+              <span class="data-source__badge data-source__badge--api">API</span>
+              <strong style="font-size: var(--font-size-sm);">Open-Meteo Weather API</strong>
+            </div>
+            <p style="font-size: var(--font-size-xs); color: var(--color-gray-700); margin: 0;">
+              Free, no API key required. Provides hourly/daily forecasts, historical data,
+              soil temperature. Coordinates: 36.03°N, 138.26°E (Nagano).
+              Updated every 15 minutes.
+            </p>
+          </div>
+          <div class="conditions-card" style="padding: var(--space-3); opacity: 0.6;">
+            <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);">
+              <span class="data-source__badge data-source__badge--sensor">SENSOR</span>
+              <strong style="font-size: var(--font-size-sm);">On-Site Sensor (MVP)</strong>
+            </div>
+            <p style="font-size: var(--font-size-xs); color: var(--color-gray-700); margin: 0;">
+              DHT22 temperature/humidity sensor on camera node. Readings uploaded with each image
+              via the existing <code>metadata</code> JSON field. Provides hyperlocal ground-truth.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ===== DEMO 3: Plot Detail Weather Context ===== -->
+    <div class="section-divider">
+      <h2 class="section-divider__title">Demo 3: Weather Context on Plot Detail</h2>
+      <p class="section-divider__desc">
+        Compact weather strip embedded in the Plot Detail screen, showing
+        conditions relevant to interpreting crop images.
+      </p>
+    </div>
+
+    <div class="plot-weather" aria-label="Current weather at plot">
+      <div class="plot-weather__item">
+        <span class="plot-weather__icon" aria-hidden="true">&#127777;</span>
+        <span class="plot-weather__value">18°C</span>
+        <span class="plot-weather__label">Air</span>
+      </div>
+      <div class="plot-weather__item">
+        <span class="plot-weather__icon" aria-hidden="true">&#127793;</span>
+        <span class="plot-weather__value">14°C</span>
+        <span class="plot-weather__label">Soil</span>
+      </div>
+      <div class="plot-weather__item">
+        <span class="plot-weather__icon" aria-hidden="true">&#128167;</span>
+        <span class="plot-weather__value">65%</span>
+        <span class="plot-weather__label">Humidity</span>
+      </div>
+      <div class="plot-weather__item">
+        <span class="plot-weather__icon" aria-hidden="true">&#127783;</span>
+        <span class="plot-weather__value">20%</span>
+        <span class="plot-weather__label">Rain</span>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>
