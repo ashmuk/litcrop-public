@@ -45,7 +45,8 @@
 
     /* Desktop container */
     .desktop-page {
-      max-width: 1200px;
+      min-width: 1024px;
+      max-width: 1400px;
       margin: 0 auto;
       background: var(--color-surface);
       min-height: 100vh;
@@ -142,7 +143,7 @@
     /* ===== FARM OVERVIEW — DESKTOP 2-COLUMN ===== */
     .d-overview {
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 300px 1fr;
       gap: 0;
       min-height: 600px;
     }
@@ -150,9 +151,12 @@
       border-right: var(--border-default);
       padding: 20px;
       background: var(--color-background);
+      min-width: 0; /* prevent grid blowout */
     }
     .d-overview__main {
       padding: 20px;
+      min-width: 0; /* prevent grid blowout */
+      overflow: hidden;
     }
 
     /* Weather panel (sidebar) */
@@ -238,14 +242,11 @@
     }
     .d-impact-mini__text strong { font-weight: 600; }
 
-    /* Plot grid (main area) — 2 or 3 columns on desktop */
+    /* Plot grid (main area) — auto-fill with minimum card width */
     .d-plot-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 16px;
-    }
-    @media (min-width: 900px) {
-      .d-plot-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
     /* Plot card (desktop version — more horizontal) */
@@ -290,16 +291,23 @@
     }
     .d-plot-card__body {
       padding: 12px 16px;
+      min-width: 0; /* allow text truncation */
     }
     .d-plot-card__name {
       font-size: 15px;
       font-weight: 600;
       color: var(--color-gray-900);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .d-plot-card__meta {
       font-size: 12px;
       color: var(--color-gray-500);
       margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .d-plot-card__badge {
       display: inline-flex;
@@ -357,9 +365,10 @@
     /* ===== PLOT DETAIL — DESKTOP 2-COLUMN ===== */
     .d-detail {
       display: grid;
-      grid-template-columns: 1fr 360px;
+      grid-template-columns: 1fr 340px;
       gap: 24px;
       padding: 24px;
+      min-width: 0;
     }
     .d-detail__image-area {
       background: var(--color-gray-100);
@@ -583,7 +592,7 @@
     /* ===== AI CHAT — DESKTOP (panel) ===== */
     .d-chat-layout {
       display: grid;
-      grid-template-columns: 1fr 400px;
+      grid-template-columns: 1fr minmax(340px, 400px);
       gap: 24px;
       padding: 24px;
     }
