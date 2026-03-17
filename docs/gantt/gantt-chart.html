@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitCrop PoC — Gantt Chart (11-Day Execution Plan)</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    color: #222;
+    padding: 24px;
+    line-height: 1.4;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 20px; }
+
+  /* ── Legend ────────────────────────────────────── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-bottom: 20px;
+    font-size: 0.8rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .legend-sep {
+    border-left: 1px solid #ccc;
+    height: 16px;
+  }
+  .legend-risk {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2.5px solid #d32f2f;
+    border-radius: 3px;
+    background: #fff;
+  }
+  .legend-critical {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 6px
+    );
+    border: 1px solid #333;
+  }
+
+  /* ── Chart Container ──────────────────────────── */
+  .chart-wrapper {
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .chart {
+    display: grid;
+    /* Columns: label (220px) + 11 day columns */
+    grid-template-columns: 220px repeat(11, minmax(90px, 1fr));
+    min-width: 1300px;
+  }
+
+  /* ── Header Row ───────────────────────────────── */
+  .header-cell {
+    padding: 10px 8px;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-align: center;
+    background: #f5f5f5;
+    border-bottom: 2px solid #ccc;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .header-cell.label {
+    text-align: left;
+    padding-left: 12px;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #f5f5f5;
+  }
+  .header-day { font-size: 0.85rem; }
+  .header-phase {
+    display: block;
+    font-weight: 400;
+    font-size: 0.65rem;
+    color: #888;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Phase Separator Row ──────────────────────── */
+  .phase-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+  }
+  .phase-label {
+    grid-column: 1 / -1;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #555;
+    background: #eee;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ddd;
+  }
+
+  /* ── Task Row ─────────────────────────────────── */
+  .task-row {
+    display: contents;
+  }
+  .task-label {
+    padding: 6px 8px 6px 12px;
+    font-size: 0.72rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 1;
+    white-space: nowrap;
+  }
+  .task-label .task-id {
+    font-weight: 600;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+  .task-label .task-title {
+    color: #555;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-cell {
+    border-bottom: 1px solid #eee;
+    padding: 4px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* ── Day column backgrounds (alternating) ────── */
+  .task-cell:nth-child(even) { background: rgba(0,0,0,0.015); }
+
+  /* ── Phase boundary columns ───────────────────── */
+  .phase-boundary {
+    border-left: 2px dashed #bbb;
+  }
+
+  /* ── Task Bar ─────────────────────────────────── */
+  .bar {
+    width: 100%;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    padding: 3px 4px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+    position: relative;
+  }
+  /* Size variants */
+  .bar.size-S { height: 18px; }
+  .bar.size-M { height: 22px; }
+  .bar.size-L { height: 26px; }
+
+  /* Package colors */
+  .bar.pkg-infra    { background: #9E9E9E; }
+  .bar.pkg-shared   { background: #7E57C2; }
+  .bar.pkg-api      { background: #1E88E5; }
+  .bar.pkg-frontend { background: #43A047; }
+  .bar.pkg-sim      { background: #FF9800; }
+  .bar.pkg-scripts  { background: #E53935; }
+
+  /* Risk indicator */
+  .bar.risk {
+    box-shadow: 0 0 0 2.5px #d32f2f;
+  }
+
+  /* Critical path */
+  .bar.critical {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 4px, rgba(255,255,255,0.18) 4px, rgba(255,255,255,0.18) 8px
+    );
+  }
+
+  /* ── Multi-day spanning ───────────────────────── */
+  .task-cell.span-start {
+    padding-right: 0;
+  }
+  .task-cell.span-end {
+    padding-left: 0;
+  }
+
+  /* ── Footer ───────────────────────────────────── */
+  .footer {
+    margin-top: 16px;
+    font-size: 0.72rem;
+    color: #999;
+  }
+  .footer a { color: #1E88E5; text-decoration: none; }
+
+  /* ── Tooltip on hover ─────────────────────────── */
+  .bar[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 400;
+    white-space: nowrap;
+    z-index: 10;
+    text-shadow: none;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>LitCrop PoC — 11-Day Execution Plan</h1>
+<p class="subtitle">39 tasks across 6 phases &middot; Single developer &middot; Source: EXECUTION-PLAN.md</p>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#9E9E9E"></span> Infra</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#7E57C2"></span> Shared</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#1E88E5"></span> API</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#43A047"></span> Frontend</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#FF9800"></span> Simulator</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#E53935"></span> Scripts</div>
+  <div class="legend-sep"></div>
+  <div class="legend-item"><span class="legend-swatch size-S" style="background:#aaa;height:10px"></span> S (2-4h)</div>
+  <div class="legend-item"><span class="legend-swatch size-M" style="background:#aaa;height:14px"></span> M (half day)</div>
+  <div class="legend-item"><span class="legend-swatch size-L" style="background:#aaa;height:18px"></span> L (full day)</div>
+  <div class="legend-sep"></div>
+  <div class="legend-item"><span class="legend-risk"></span> High Risk</div>
+  <div class="legend-item"><span class="legend-critical"></span> Critical Path</div>
+</div>
+
+<!-- Chart -->
+<div class="chart-wrapper">
+<div class="chart">
+
+  <!-- ═══ Header Row ═══ -->
+  <div class="header-cell label">Task</div>
+  <div class="header-cell"><span class="header-day">Day 1</span><span class="header-phase">P0: Scaffold</span></div>
+  <div class="header-cell"><span class="header-day">Day 2</span><span class="header-phase">P1: Types</span></div>
+  <div class="header-cell"><span class="header-day">Day 3</span><span class="header-phase">P2: API Core</span></div>
+  <div class="header-cell"><span class="header-day">Day 4</span><span class="header-phase">P2: API Core</span></div>
+  <div class="header-cell"><span class="header-day">Day 5</span><span class="header-phase">P3: Services</span></div>
+  <div class="header-cell"><span class="header-day">Day 6</span><span class="header-phase">P3: Services</span></div>
+  <div class="header-cell"><span class="header-day">Day 7</span><span class="header-phase">P3: FE Found.</span></div>
+  <div class="header-cell"><span class="header-day">Day 8</span><span class="header-phase">P4: Screens</span></div>
+  <div class="header-cell"><span class="header-day">Day 9</span><span class="header-phase">P4: Screens</span></div>
+  <div class="header-cell"><span class="header-day">Day 10</span><span class="header-phase">P4: Screens</span></div>
+  <div class="header-cell"><span class="header-day">Day 11</span><span class="header-phase">P5: Polish</span></div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PHASE 0: Infrastructure Scaffolding (Day 1)     -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="phase-label">Phase 0 — Infrastructure Scaffolding</div>
+
+  <!-- T-INFRA-01 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-INFRA-01</span><span class="task-title">Initialize monorepo</span></div>
+    <div class="task-cell"><div class="bar size-M pkg-infra critical" data-tooltip="T-INFRA-01 | M | Critical Path">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-SIM-03 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SIM-03</span><span class="task-title">Collect sample images</span></div>
+    <div class="task-cell"><div class="bar size-S pkg-sim" data-tooltip="T-SIM-03 | S | Independent">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PHASE 1: Shared Types + Scaffolding (Day 2)     -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="phase-label">Phase 1 — Shared Types + Project Scaffolding</div>
+
+  <!-- T-SHARED-01 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SHARED-01</span><span class="task-title">Domain entity types</span></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-shared critical" data-tooltip="T-SHARED-01 | S | Critical Path — unlocks most work">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- T-INFRA-02 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-INFRA-02</span><span class="task-title">Configure Astro + Preact</span></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-infra" data-tooltip="T-INFRA-02 | M | Depends: T-INFRA-01">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- T-INFRA-03 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-INFRA-03</span><span class="task-title">Configure Hono Lambda</span></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-infra critical" data-tooltip="T-INFRA-03 | M | Critical Path — enables API track">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- T-INFRA-04 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-INFRA-04</span><span class="task-title">Configure simulator</span></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-infra" data-tooltip="T-INFRA-04 | S | Depends: T-INFRA-01">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- T-SHARED-03 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SHARED-03</span><span class="task-title">Constants & configuration</span></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-shared" data-tooltip="T-SHARED-03 | S | Depends: T-SHARED-01">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PHASE 2: API Core + Shared Contracts (Day 3-4)  -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="phase-label">Phase 2 — API Core + Shared Contracts</div>
+
+  <!-- T-SHARED-02 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SHARED-02</span><span class="task-title">API response/request types</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-shared" data-tooltip="T-SHARED-02 | S | Day 3">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-SHARED-04 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SHARED-04</span><span class="task-title">Validation utilities</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-shared" data-tooltip="T-SHARED-04 | S | Day 3">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-01 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-01</span><span class="task-title">Hono app + middleware</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-api critical" data-tooltip="T-API-01 | M | Critical Path — middleware stack">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-02 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-02</span><span class="task-title">Error class hierarchy</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-api" data-tooltip="T-API-02 | S | Depends: T-SHARED-02">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-03 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-03</span><span class="task-title">DynamoDB repository</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-L pkg-api critical risk" data-tooltip="T-API-03 | L | RISK R1: Single-table design | Critical Path">L</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-04 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-04</span><span class="task-title">S3 storage service</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-api" data-tooltip="T-API-04 | S | Depends: T-API-01">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PHASE 3: API Services + FE Foundation (Day 5-7) -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="phase-label">Phase 3 — API Services + Frontend Foundation</div>
+
+  <!-- T-SCRIPT-01 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SCRIPT-01</span><span class="task-title">DynamoDB seed data</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-scripts critical" data-tooltip="T-SCRIPT-01 | M | Validates Risk R1 with real data">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-SCRIPT-02 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SCRIPT-02</span><span class="task-title">AWS resource setup</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-scripts" data-tooltip="T-SCRIPT-02 | M | Risk R7: AWS provisioning">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-05 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-05</span><span class="task-title">Farm routes</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-api critical" data-tooltip="T-API-05 | M | Critical Path — first endpoint set">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-07 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-07</span><span class="task-title">Image routes (upload)</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-L pkg-api critical risk" data-tooltip="T-API-07 | L | RISK R2: Multipart upload in Lambda | Critical Path">L</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-06 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-06</span><span class="task-title">Plot routes</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-api" data-tooltip="T-API-06 | M | Day 6">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-09 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-09</span><span class="task-title">Weather proxy route</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-L pkg-api risk" data-tooltip="T-API-09 | L | RISK R3: External API reliability">L</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-10 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-10</span><span class="task-title">Chat route (LLM)</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-api risk" data-tooltip="T-API-10 | M | RISK R4: LLM integration">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-01 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-01</span><span class="task-title">Base layout shell</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend critical" data-tooltip="T-FE-01 | M | Critical Path — mobile-first shell">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-02 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-02</span><span class="task-title">CSS design tokens</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend critical" data-tooltip="T-FE-02 | M | Critical Path — global styles">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-03 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-03</span><span class="task-title">i18n system (EN/JA)</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend" data-tooltip="T-FE-03 | M | Day 7">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-05 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-05</span><span class="task-title">API client module</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend critical" data-tooltip="T-FE-05 | M | Critical Path — connects FE to API">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PHASE 4: Feature Screens + Integration (Day 8-10) -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="phase-label">Phase 4 — Feature Screens + Integration</div>
+
+  <!-- T-API-08 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-08</span><span class="task-title">Tag route</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-api" data-tooltip="T-API-08 | M | Day 8">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-API-11 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-API-11</span><span class="task-title">Wire all routes</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-api critical" data-tooltip="T-API-11 | S | Critical Path — API complete">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-04 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-04</span><span class="task-title">Theme switcher island</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-frontend" data-tooltip="T-FE-04 | S | Day 8">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-13 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-13</span><span class="task-title">Toast notifications</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-frontend" data-tooltip="T-FE-13 | S | Day 8">S</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-06 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-06</span><span class="task-title">Farm Overview (List)</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-L pkg-frontend critical risk" data-tooltip="T-FE-06 | L | RISK R5: Most complex screen | Critical Path">L</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-07 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-07</span><span class="task-title">Farm Overview (Layout)</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend" data-tooltip="T-FE-07 | M | Day 9">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-08 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-08</span><span class="task-title">Plot Detail page</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-L pkg-frontend critical risk" data-tooltip="T-FE-08 | L | RISK R6: 4 Preact islands | Critical Path">L</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-SIM-01 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SIM-01</span><span class="task-title">Camera upload logic</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-sim" data-tooltip="T-SIM-01 | M | Day 9">M</div></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-10 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-10</span><span class="task-title">Weather & Environment</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-L pkg-frontend critical" data-tooltip="T-FE-10 | L | Critical Path — weather integration">L</div></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- T-FE-11 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-11</span><span class="task-title">Farm Setup & AI</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend" data-tooltip="T-FE-11 | M | Day 10">M</div></div>
+    <div class="task-cell"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PHASE 5: Polish + Deployment (Day 11)           -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="phase-label">Phase 5 — Polish + Deployment</div>
+
+  <!-- T-FE-09 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-09</span><span class="task-title">Image Timeline/Viewer</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-frontend" data-tooltip="T-FE-09 | M | Day 11">M</div></div>
+  </div>
+
+  <!-- T-FE-12 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-FE-12</span><span class="task-title">Settings page</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-frontend" data-tooltip="T-FE-12 | S | Day 11">S</div></div>
+  </div>
+
+  <!-- T-SIM-02 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SIM-02</span><span class="task-title">CLI config + scheduling</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-M pkg-sim" data-tooltip="T-SIM-02 | M | Day 11">M</div></div>
+  </div>
+
+  <!-- T-SCRIPT-03 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SCRIPT-03</span><span class="task-title">Frontend deploy script</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-scripts" data-tooltip="T-SCRIPT-03 | S | Day 11">S</div></div>
+  </div>
+
+  <!-- T-SCRIPT-04 -->
+  <div class="task-row">
+    <div class="task-label"><span class="task-id">T-SCRIPT-04</span><span class="task-title">API deploy script</span></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"></div><div class="task-cell"></div>
+    <div class="task-cell"><div class="bar size-S pkg-scripts" data-tooltip="T-SCRIPT-04 | S | Day 11">S</div></div>
+  </div>
+
+</div><!-- .chart -->
+</div><!-- .chart-wrapper -->
+
+<p class="footer">
+  LitCrop PoC Execution Plan &middot; 39 tasks, 6 phases, ~11 days &middot;
+  Data source: <a href="../EXECUTION-PLAN.md">EXECUTION-PLAN.md</a> &middot;
+  <a href="../TASK-BREAKDOWN.md">TASK-BREAKDOWN.md</a>
+</p>
+
+</body>
+</html>
