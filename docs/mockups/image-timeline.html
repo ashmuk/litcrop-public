@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Image Timeline: Plot A1</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page-specific styles for Image Timeline */
+
+    /* Dark background body for image viewing context */
+    .timeline-body {
+      background-color: #0F0F0F;
+      min-height: 100vh;
+    }
+
+    /* Navigation header on dark background */
+    .timeline-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: #1A1A1A;
+      border-bottom: 1px solid #333333;
+      gap: var(--space-2);
+    }
+
+    .timeline-header__back {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: var(--radius-md);
+      color: #CCCCCC;
+      font-size: 22px;
+      text-decoration: none;
+      transition: background-color var(--transition-fast);
+    }
+
+    .timeline-header__back:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      text-decoration: none;
+    }
+
+    .timeline-header__title {
+      flex: 1;
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      color: #F0F0F0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .timeline-header__counter {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: #AAAAAA;
+      white-space: nowrap;
+      padding: 4px 8px;
+      background-color: rgba(255,255,255,0.08);
+      border-radius: var(--radius-sm);
+    }
+
+    /* Full-size image area */
+    .viewer-area {
+      width: 100%;
+      background-color: #0F0F0F;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-height: calc(100vh - 220px);
+      min-height: 200px;
+      overflow: hidden;
+    }
+
+    .viewer-image-placeholder {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(
+        145deg,
+        #1A2E14 0%,
+        #2A4E20 25%,
+        #1E3A18 50%,
+        #2A4520 75%,
+        #162810 100%
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: var(--space-3);
+      position: relative;
+    }
+
+    .viewer-image-placeholder__icon {
+      font-size: 72px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+      line-height: 1;
+    }
+
+    .viewer-image-placeholder__label {
+      font-size: var(--font-size-xs);
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.04em;
+    }
+
+    /* Metadata bar */
+    .viewer-metadata {
+      background-color: var(--color-surface);
+      padding: var(--space-4);
+      border-bottom: var(--border-default);
+    }
+
+    .viewer-metadata__timestamp {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .viewer-metadata__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+    }
+
+    /* Nav controls */
+    .viewer-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-4);
+      background-color: var(--color-surface);
+      gap: var(--space-3);
+    }
+
+    .viewer-nav__hint {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      text-align: center;
+      flex: 1;
+    }
+
+    /* Swipe hint indicator */
+    .swipe-hint {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-2) 0;
+    }
+
+    .swipe-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #555;
+    }
+
+    .swipe-dot--active {
+      background-color: var(--color-primary);
+      width: 18px;
+      border-radius: 3px;
+    }
+
+    /* Full-image label in dark surround */
+    .viewer-caption {
+      background-color: #1A1A1A;
+      padding: var(--space-2) var(--space-4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .viewer-caption__text {
+      font-size: var(--font-size-xs);
+      color: #777;
+    }
+
+    /* States section */
+    .demo-states {
+      background-color: var(--color-surface);
+      margin-top: var(--space-2);
+    }
+
+    .demo-state-section {
+      padding: var(--space-4);
+      border-top: 4px solid var(--color-gray-100);
+    }
+
+    .demo-state-label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-3);
+    }
+
+    /* Disabled nav state example */
+    .viewer-nav--last-image .btn-secondary:last-child {
+      opacity: 0.4;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* Skeleton for viewer */
+    .skeleton-viewer-meta {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+  </style>
+</head>
+<body class="timeline-body">
+
+  <!-- Navigation header (dark theme) -->
+  <header class="timeline-header" role="navigation" aria-label="Image timeline navigation">
+    <a href="plot-detail.html"
+       class="timeline-header__back"
+       aria-label="Back to Plot Detail">
+      &#8592;
+    </a>
+    <h1 class="timeline-header__title">Plot A1 Images</h1>
+    <span class="timeline-header__counter" aria-label="Image 3 of 24">3 of 24</span>
+  </header>
+
+  <main role="main">
+
+    <!-- Full-size image viewer area -->
+    <section aria-label="Full-size image viewer">
+      <div class="viewer-area" role="img" aria-label="Plot A1 - Cherry Tomato - captured Mar 17, 2026 at 8:45 AM, motion triggered">
+        <div class="viewer-image-placeholder">
+          <span class="viewer-image-placeholder__icon" aria-hidden="true">🍅</span>
+          <span class="viewer-image-placeholder__label" aria-hidden="true">Plot A1 &bull; Cherry Tomato &bull; 1280 &times; 720</span>
+        </div>
+      </div>
+
+      <div class="viewer-caption" aria-hidden="true">
+        <span class="viewer-caption__text">Pinch to zoom &bull; Swipe to navigate</span>
+      </div>
+    </section>
+
+    <!-- Metadata bar -->
+    <section class="viewer-metadata" aria-label="Image metadata">
+      <div class="viewer-metadata__timestamp">
+        Mar 17, 2026 at 8:45 AM
+      </div>
+      <div class="viewer-metadata__badges">
+        <span class="badge-trigger-motion" aria-label="Motion triggered">
+          <span aria-hidden="true">&#128062;</span>
+          Motion
+        </span>
+        <span class="badge status-intrusion" aria-label="Tagged: Animal Intrusion">
+          <span class="badge-icon" aria-hidden="true">&#128062;</span>
+          Animal Intrusion
+        </span>
+      </div>
+    </section>
+
+    <!-- Navigation controls -->
+    <nav class="viewer-nav" aria-label="Image navigation">
+      <button class="btn-secondary"
+              type="button"
+              aria-label="Previous image (newer)">
+        &#8592; Prev
+      </button>
+
+      <!-- Swipe position dots -->
+      <div class="swipe-hint" aria-hidden="true">
+        <div class="swipe-dot"></div>
+        <div class="swipe-dot"></div>
+        <div class="swipe-dot swipe-dot--active"></div>
+        <div class="swipe-dot"></div>
+        <div class="swipe-dot"></div>
+      </div>
+
+      <button class="btn-secondary"
+              type="button"
+              aria-label="Next image (older)">
+        Next &#8594;
+      </button>
+    </nav>
+
+    <!-- ======================================================
+         DEMO: States section
+         ====================================================== -->
+    <div class="demo-states">
+
+      <!-- First image state (Prev disabled) -->
+      <div class="demo-state-section">
+        <div class="demo-state-label" aria-hidden="true">Demo state &mdash; First image (Prev disabled)</div>
+        <div class="viewer-metadata" style="background: var(--color-gray-100); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
+          <div class="viewer-metadata__timestamp" style="font-size: var(--font-size-sm);">
+            Mar 17, 2026 at 2:00 PM &mdash; latest image
+          </div>
+          <div class="viewer-metadata__badges">
+            <span class="badge-trigger-scheduled">
+              <span aria-hidden="true">&#128336;</span>
+              Scheduled
+            </span>
+            <span class="badge status-healthy">
+              <span class="badge-icon" aria-hidden="true">&#10003;</span>
+              Healthy
+            </span>
+          </div>
+        </div>
+        <nav class="viewer-nav" aria-label="Image navigation (first image example)">
+          <button class="btn-secondary"
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  aria-label="No previous image — this is the newest">
+            &#8592; Prev
+          </button>
+          <div class="swipe-hint" aria-hidden="true">
+            <div class="swipe-dot swipe-dot--active"></div>
+            <div class="swipe-dot"></div>
+            <div class="swipe-dot"></div>
+          </div>
+          <button class="btn-secondary"
+                  type="button"
+                  aria-label="Next image (older)">
+            Next &#8594;
+          </button>
+        </nav>
+      </div>
+
+      <!-- Loading state -->
+      <div class="demo-state-section">
+        <div class="demo-state-label" aria-hidden="true">Demo state &mdash; Loading image</div>
+        <div role="status" aria-label="Loading image...">
+          <div class="skeleton" style="width:100%; aspect-ratio: 16/9; background-color: #2A2A2A;"></div>
+          <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);">
+            <div class="skeleton skeleton-text-long"></div>
+            <div style="display: flex; gap: var(--space-2);">
+              <div class="skeleton skeleton-badge"></div>
+              <div class="skeleton skeleton-badge"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image error state -->
+      <div class="demo-state-section">
+        <div class="demo-state-label" aria-hidden="true">Demo state &mdash; Image load error</div>
+        <div style="background: #1A1A1A; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); flex-direction: column; gap: var(--space-3);">
+          <span style="font-size: 36px; opacity: 0.4;" aria-hidden="true">&#9785;</span>
+          <span style="font-size: var(--font-size-sm); color: #888;">Image could not be loaded</span>
+          <button class="btn-primary" type="button" style="height: 40px; padding: 0 var(--space-4); font-size: var(--font-size-sm);">
+            Retry
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Back to index -->
+  <nav style="padding: var(--space-4); background: var(--color-surface); border-top: var(--border-default);" aria-label="Mock-up navigation">
+    <a href="index.html" style="font-size: var(--font-size-sm); color: var(--color-gray-500);">
+      &#8592; Back to mock-up index
+    </a>
+  </nav>
+
+</body>
+</html>
