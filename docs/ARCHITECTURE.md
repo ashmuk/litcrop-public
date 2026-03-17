@@ -40,7 +40,7 @@
 | Component | Technology | Responsibility |
 |-----------|-----------|----------------|
 | **Frontend** | Astro + Preact islands | Mobile-first dashboard: Farm Overview, Plot Detail, Image Timeline |
-| **API** | Hono on AWS Lambda | REST API (7 endpoints), image upload handling, signed URL generation |
+| **API** | Hono on AWS Lambda | REST API (11 endpoints), image upload handling, signed URL generation |
 | **API Gateway** | AWS API Gateway HTTP API (v2) | HTTPS termination, routing, CORS, future auth integration point |
 | **Database** | DynamoDB (single-table) | Farm/Field/Bed/Plot/Image/Tag metadata storage |
 | **Image Storage** | S3 (ap-northeast-1) | JPEG image storage with lifecycle policies |
