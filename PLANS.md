@@ -66,6 +66,7 @@ Simulated Camera Node → HTTPS Image Upload → Cloud Storage → Web Dashboard
 - ADR-006: Cloud Provider and Hosting Strategy
 - ADR-007: Authentication and User Management
 - ADR-008: Infrastructure as Code Approach
+- ADR-009: AI/LLM Framework Selection (Direct API vs Bedrock vs Strands vs Mastra)
 
 ## Decisions Made
 <!-- Link to ADRs: docs/decisions/ADR-*.md -->

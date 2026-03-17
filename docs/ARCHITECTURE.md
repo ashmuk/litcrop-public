@@ -171,7 +171,29 @@ Browser                       Lambda                          LLM API
   |<-- { reply, suggestions } ---|
 ```
 
-The LLM API provider (Claude or OpenAI) is configured via environment variable. The system prompt includes farm-specific context (location, climate zone, current crop list) for personalized recommendations.
+The LLM API provider is configured via environment variable. The system prompt includes farm-specific context (location, climate zone, current crop list) for personalized recommendations.
+
+### AI/LLM Technology Options
+
+The chatbot implementation has several architectural approaches, ranging from simple to sophisticated:
+
+| Option | Description | PoC Fit | Pros | Cons |
+|--------|-------------|---------|------|------|
+| **A. Direct API calls** | HTTP POST to Claude/OpenAI API from Hono route | **Best for PoC** | Simplest (~50 LOC), no framework dependency, fastest to implement | No tool use, manual prompt engineering, provider-specific code |
+| **B. AWS Bedrock** | Managed LLM service in AWS; access Claude, Llama, etc. via AWS SDK | Good | AWS-native (aligns with ADR-006), IAM auth (no separate API key), pay-per-token, model flexibility | Slightly more setup than direct API, Bedrock pricing may differ from direct |
+| **C. Strands Agents SDK** | AWS open-source agent framework; built on Bedrock | MVP candidate | Tool use (agent can call weather API, query DynamoDB, modify layout), structured multi-step reasoning, Python/TS support | Heavier framework, adds complexity beyond PoC needs, newer ecosystem |
+| **D. Mastra** | TypeScript-native AI agent framework | MVP candidate | TypeScript-first (matches our stack), structured workflows, provider-agnostic, good DX | External dependency, smaller community than AWS-native options |
+
+**PoC recommendation**: **Option A (Direct API calls)** for simplicity. The PoC chatbot is a single-turn Q&A with farm context — no tool use or multi-step reasoning needed yet.
+
+**MVP upgrade path**: When the chatbot needs to *act* (e.g., "Create this layout in my farm" → actually writes to DynamoDB), upgrade to **Option B (Bedrock) + Option C (Strands)** for:
+- Tool use: chatbot calls weather API, queries crop database, modifies farm layout
+- AWS-native: no external API keys, IAM-managed, same billing account
+- Agent patterns: structured reasoning chains for complex crop planning
+
+**Production consideration**: Evaluate whether Mastra's TypeScript-native DX offers advantages over Strands for the frontend team, or whether AWS-native tooling (Bedrock + Strands) provides better operational consistency.
+
+This decision is tracked as an **ADR candidate** — a formal ADR (ADR-009: AI/LLM Framework Selection) should be created at MVP when the chatbot's capabilities expand beyond simple Q&A.
 
 ### Image Upload Flow (Endpoint #5)
 
@@ -503,7 +525,7 @@ This is a monorepo with three packages (`frontend`, `api`, `simulator`) sharing 
 | 5 | Image storage | S3 Standard + lifecycle | Free tier, signed URLs, lifecycle automation | [Link](decisions/ADR-20260317-image-storage-lifecycle.md) |
 | 6 | Device protocol | HTTPS POST | Simplest, universal, no extra infrastructure | [Link](decisions/ADR-20260317-device-communication.md) |
 | 7 | Weather data | Open-Meteo API (free) | No API key, coordinate-based, soil temp data | — (no ADR, zero-risk) |
-| 8 | AI chatbot | External LLM API (Claude/OpenAI) | Provider-agnostic via env var; crop planning focus | — (ADR candidate for MVP) |
+| 8 | AI chatbot (PoC) | Direct LLM API calls (Claude/OpenAI) | Simplest approach; Bedrock+Strands or Mastra for MVP | — (ADR-009 candidate for MVP) |
 | 9 | i18n | Astro + JSON locale files (EN/JA) | Externalized strings, Japanese font stack | — (standard pattern) |
 | 10 | Theme system | CSS custom properties + `data-theme` | Light/Dark/Earthy/System; ~20 lines JS | — (standard pattern) |
 
