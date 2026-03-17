@@ -41,11 +41,12 @@ Identify 1–2 real users matching this persona for feedback after PoC is built.
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | FR-2.1 | Accept image uploads via HTTPS POST from a camera node | Must | Simulated node for PoC |
-| FR-2.2 | Upload payload: JPEG image (max 2MB), timestamp, plot ID, node ID | Must | Multipart/form-data |
+| FR-2.2 | Upload payload: JPEG image (max 2MB), timestamp, plot ID, node ID, trigger type | Must | Multipart/form-data; trigger: `scheduled` or `motion` |
 | FR-2.3 | Store uploaded images in cloud object storage with metadata | Must | Plot association, timestamp, node ID |
 | FR-2.4 | Return confirmation with image ID and URL on successful upload | Must | HTTP 201 response |
 | FR-2.5 | Reject invalid uploads with appropriate error codes (400, 413) | Must | Missing fields, oversized images |
 | FR-2.6 | Simulated camera node script that uploads sample images on a schedule | Must | Used for PoC testing and demos |
+| FR-2.7 | Support motion-triggered image capture for wildlife/pest intrusion detection | Must | Camera node captures on PIR motion sensor trigger; simulated in PoC |
 
 ### FR-3: Image Viewing & Timeline
 
@@ -62,7 +63,7 @@ Identify 1–2 real users matching this persona for feedback after PoC is built.
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| FR-4.1 | One-tap tagging of images with preset tags: Healthy, Slow Growth, Possible Issue | Must | Three buttons on Plot Detail |
+| FR-4.1 | One-tap tagging of images with preset tags: Healthy, Slow Growth, Possible Issue, Animal Intrusion | Must | Four buttons on Plot Detail; Animal Intrusion tag supports motion-triggered images |
 | FR-4.2 | Tags are persisted and visible on the image | Must | Badge/label on thumbnail |
 | FR-4.3 | Optional free-text note per tag | Could | Simple text input |
 | FR-4.4 | Status badge on Farm Overview reflects latest tag for each plot | Must | Aggregated from latest tagged image |
@@ -73,8 +74,9 @@ Identify 1–2 real users matching this persona for feedback after PoC is built.
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | FR-5.1 | CLI script or small program that uploads sample JPEG images to the API | Must | Configurable interval and target plot |
-| FR-5.2 | Includes realistic metadata (timestamp, simulated node ID, resolution) | Must | For realistic testing |
-| FR-5.3 | Supports configurable upload interval (default: every 1 hour) | Should | 1-hour default for cost/bandwidth modeling; configurable for demos |
+| FR-5.2 | Includes realistic metadata (timestamp, simulated node ID, resolution, trigger type) | Must | For realistic testing |
+| FR-5.3 | Supports configurable upload interval (default: every 1 hour) for scheduled mode | Should | 1-hour default for cost/bandwidth modeling; configurable for demos |
+| FR-5.5 | Simulates motion-triggered captures at random intervals | Should | Simulates PIR sensor events for testing event-based capture flow |
 | FR-5.4 | Handles upload failure gracefully (retry with exponential backoff) | Should | Validates error handling path |
 
 ---
@@ -184,7 +186,7 @@ Farm (1)
 | planted_at | ISO 8601 date | |
 | expected_harvest | ISO 8601 date | Approximate |
 | notes | string | Free-text observations |
-| latest_status | enum | healthy / slow_growth / issue / no_data. Auto-updated from the most recent Tag on the plot's latest image. |
+| latest_status | enum | healthy / slow_growth / issue / animal_intrusion / no_data. Auto-updated from the most recent Tag on the plot's latest image. |
 
 ### Image
 | Field | Type | Notes |
@@ -195,6 +197,7 @@ Farm (1)
 | captured_at | ISO 8601 | When the image was taken |
 | uploaded_at | ISO 8601 | When received by server |
 | storage_key | string | Object storage path/key |
+| trigger | enum | `scheduled` (periodic) or `motion` (PIR sensor event) |
 | content_type | string | Always "image/jpeg" for PoC; retained for future format support (WebP, PNG) |
 | size_bytes | integer | File size |
 | metadata | JSON | Resolution, battery %, etc. |
@@ -204,7 +207,7 @@ Farm (1)
 |-------|------|-------|
 | id | string (UUID) | Primary key |
 | image_id | string | FK to Image |
-| tag | enum | healthy / slow_growth / issue. Multiple Tags per Image form an audit trail; the most recent Tag determines effective status. |
+| tag | enum | healthy / slow_growth / issue / animal_intrusion. Multiple Tags per Image form an audit trail; the most recent Tag determines effective status. |
 | note | string | Optional free-text |
 | created_at | ISO 8601 | |
 
@@ -234,6 +237,7 @@ Fields:
   image:        JPEG file (max 2MB)
   captured_at:  ISO 8601 timestamp
   node_id:      string
+  trigger:      string ("scheduled" | "motion")
   metadata:     JSON string (optional) { "resolution": "1280x720", "battery_pct": 85 }
 
 Success: 201 Created  { "id": "...", "url": "...", "created_at": "..." }
@@ -299,7 +303,7 @@ Hub-and-spoke pattern, max depth 3, suitable for mobile.
 |-------------------|-------------|--------------|
 | Farm Layout Management (read/display) | Partial (read-only, seed data) | FR-1.x |
 | Farm Layout Management (visual 2D editor) | Deferred to MVP | — |
-| Remote Growth Monitoring (cameras) | Full (simulated) | FR-2.x, FR-3.x |
+| Remote Growth Monitoring (cameras, periodic + motion-triggered) | Full (simulated) | FR-2.x, FR-3.x, FR-5.5 |
 | Remote Growth Monitoring (sprinkler control) | Deferred to post-PoC | — |
 | Camera Node Concept | Simulated only | FR-2.x, FR-5.x |
 | Growth Visualization Phase 1 | Full | FR-3.x, FR-4.x |
@@ -315,7 +319,7 @@ Hub-and-spoke pattern, max depth 3, suitable for mobile.
 
 | Category | Count |
 |----------|-------|
-| Functional Requirements | 26 (FR-1: 5, FR-2: 6, FR-3: 6, FR-4: 5, FR-5: 4) |
+| Functional Requirements | 29 (FR-1: 5, FR-2: 7, FR-3: 6, FR-4: 5, FR-5: 6) |
 | Non-Functional Requirements | 16 (NFR-1: 3, NFR-2: 2, NFR-3: 6, NFR-4: 5, NFR-5: 2, NFR-6: 4 — note: some counts overlap with shared constraints) |
 | Constraints | 8 |
 | Open Questions | 4 |

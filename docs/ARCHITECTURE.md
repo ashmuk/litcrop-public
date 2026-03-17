@@ -39,7 +39,7 @@
 | **Database** | DynamoDB (single-table) | Farm/Field/Bed/Plot/Image/Tag metadata storage |
 | **Image Storage** | S3 (ap-northeast-1) | JPEG image storage with lifecycle policies |
 | **Static Hosting** | S3 + CloudFront | Astro SSG build output (HTML, CSS, JS). CloudFront provides HTTPS (free tier perpetual: 1TB/month). |
-| **Camera Simulator** | Node.js CLI script | Uploads sample images on a configurable schedule |
+| **Camera Simulator** | Node.js CLI script | Uploads sample images on schedule (periodic) and at random intervals (motion-triggered) |
 
 ### Data Flow
 
@@ -47,10 +47,10 @@
 [Capture] Camera Node takes JPEG
      |
      v
-[Upload] POST /api/v1/plots/{plotId}/images (multipart/form-data)
+[Upload] POST /api/v1/plots/{plotId}/images (multipart/form-data, trigger=scheduled|motion)
      |
      v
-[Validate] Lambda: check content-type (JPEG), size (<=2MB), required fields
+[Validate] Lambda: check content-type (JPEG), size (<=2MB), trigger type, required fields
      |
      v
 [Store Image] Lambda -> S3 PutObject (images/{farmId}/{plotId}/{YYYY}/{MM}/{DD}/{imageId}.jpg)
@@ -176,7 +176,7 @@ Standard HTTP status codes: 400 (validation), 404 (not found), 413 (too large), 
 | Field | `FARM#{farmId}` | `FIELD#{position}#{fieldId}` | name, position |
 | Bed | `FIELD#{fieldId}` | `BED#{position}#{bedId}` | name, position |
 | Plot | `BED#{bedId}` | `PLOT#{plotId}` | label, crop_type, crop_variety, planted_at, expected_harvest, notes, latest_status, farm_id (denormalized for GSI2) |
-| Image | `PLOT#{plotId}` | `IMG#{capturedAt}#{imageId}` | node_id, uploaded_at, storage_key, content_type, size_bytes, metadata |
+| Image | `PLOT#{plotId}` | `IMG#{capturedAt}#{imageId}` | node_id, trigger (scheduled/motion), uploaded_at, storage_key, content_type, size_bytes, metadata |
 | Tag | `IMG#{imageId}` | `TAG#{createdAt}#{tagId}` | tag (enum), note |
 
 **Global Secondary Indexes**:
