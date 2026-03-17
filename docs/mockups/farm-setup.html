@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Farm Setup &amp; AI Assistant</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Farm Setup & Onboarding styles */
+
+    .setup-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .setup-header__back {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: var(--color-primary);
+      font-size: var(--font-size-xl);
+    }
+
+    .setup-header__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    /* Step indicator */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-4);
+    }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: var(--radius-full);
+      background: var(--color-gray-300);
+    }
+
+    .step-dot--active {
+      background: var(--color-primary);
+      width: 24px;
+    }
+
+    .step-dot--done {
+      background: var(--color-status-healthy);
+    }
+
+    .step-label {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-left: var(--space-2);
+    }
+
+    /* Setup content area */
+    .setup-content {
+      padding: 0 var(--space-4) var(--space-8);
+    }
+
+    .setup-title {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .setup-subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-6);
+      line-height: var(--line-height-relaxed);
+    }
+
+    /* Form elements */
+    .form-group {
+      margin-bottom: var(--space-5);
+    }
+
+    .form-label {
+      display: block;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-700);
+      margin-bottom: var(--space-2);
+    }
+
+    .form-input {
+      width: 100%;
+      height: var(--touch-target-preferred);
+      padding: 0 var(--space-4);
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-family: inherit;
+      color: var(--color-gray-900);
+      background: var(--color-surface);
+      box-sizing: border-box;
+      transition: border-color var(--transition-fast);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--focus-ring);
+    }
+
+    .form-input::placeholder {
+      color: var(--color-gray-500);
+    }
+
+    .form-hint {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-top: var(--space-1);
+    }
+
+    /* Location input methods */
+    .location-methods {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+
+    .location-method {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      min-height: var(--touch-target-preferred);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .location-method:hover,
+    .location-method:focus-visible {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+
+    .location-method:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .location-method--selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+
+    .location-method__icon {
+      font-size: 28px;
+      width: 40px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .location-method__content {
+      flex: 1;
+    }
+
+    .location-method__title {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: 2px;
+    }
+
+    .location-method__desc {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      line-height: var(--line-height-relaxed);
+    }
+
+    .location-method__arrow {
+      color: var(--color-gray-300);
+      font-size: var(--font-size-lg);
+    }
+
+    /* Coordinate input pair */
+    .coord-row {
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    .coord-row .form-group {
+      flex: 1;
+    }
+
+    /* Location result card */
+    .location-result {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      background: var(--color-status-healthy-bg);
+      border: 2px solid var(--color-status-healthy);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-4);
+    }
+
+    .location-result__icon {
+      font-size: 24px;
+    }
+
+    .location-result__content {
+      flex: 1;
+    }
+
+    .location-result__name {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .location-result__details {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+      line-height: var(--line-height-relaxed);
+      margin-top: 2px;
+    }
+
+    /* Climate profile card */
+    .climate-card {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .climate-card__title {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-3);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .climate-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-2);
+    }
+
+    .climate-grid__item {
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-sm);
+    }
+
+    .climate-grid__label {
+      font-size: 10px;
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .climate-grid__value {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    /* AI Chatbot */
+    .chat-container {
+      background: var(--color-gray-100);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: var(--space-4);
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-primary);
+      color: #FFFFFF;
+    }
+
+    .chat-header__icon {
+      font-size: var(--font-size-xl);
+    }
+
+    .chat-header__title {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .chat-header__subtitle {
+      font-size: var(--font-size-xs);
+      opacity: 0.8;
+    }
+
+    .chat-messages {
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .chat-msg {
+      max-width: 85%;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-lg);
+      font-size: var(--font-size-sm);
+      line-height: var(--line-height-relaxed);
+    }
+
+    .chat-msg--bot {
+      align-self: flex-start;
+      background: var(--color-surface);
+      border: var(--border-default);
+      color: var(--color-gray-900);
+      border-bottom-left-radius: var(--radius-sm);
+    }
+
+    .chat-msg--user {
+      align-self: flex-end;
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border-bottom-right-radius: var(--radius-sm);
+    }
+
+    .chat-msg__sender {
+      font-size: 10px;
+      font-weight: var(--font-weight-semibold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-1);
+      opacity: 0.7;
+    }
+
+    .chat-msg strong {
+      font-weight: var(--font-weight-semibold);
+    }
+
+    /* Crop suggestion cards from chatbot */
+    .crop-suggestions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    .crop-suggestion {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-primary-light);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+    }
+
+    .crop-suggestion__icon {
+      font-size: var(--font-size-lg);
+    }
+
+    .crop-suggestion__name {
+      flex: 1;
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+    }
+
+    .crop-suggestion__season {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+    }
+
+    /* Chat input */
+    .chat-input {
+      display: flex;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border-top: var(--border-default);
+    }
+
+    .chat-input__field {
+      flex: 1;
+      height: var(--touch-target-min);
+      padding: 0 var(--space-4);
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-sm);
+      font-family: inherit;
+      color: var(--color-gray-900);
+      background: var(--color-gray-100);
+    }
+
+    .chat-input__field:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--focus-ring);
+      background: var(--color-surface);
+    }
+
+    .chat-input__send {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--touch-target-min);
+      height: var(--touch-target-min);
+      border-radius: var(--radius-full);
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border: none;
+      font-size: var(--font-size-lg);
+      cursor: pointer;
+    }
+
+    /* Quick action buttons in chat */
+    .chat-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    .chat-action {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-2) var(--space-3);
+      border: 2px solid var(--color-primary);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-primary);
+      background: transparent;
+      cursor: pointer;
+      min-height: 36px;
+    }
+
+    /* Primary CTA button */
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      width: 100%;
+      height: var(--touch-target-preferred);
+      border: none;
+      border-radius: var(--radius-md);
+      background: var(--color-primary);
+      color: #FFFFFF;
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: var(--space-4);
+    }
+
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      width: 100%;
+      height: var(--touch-target-preferred);
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      color: var(--color-gray-700);
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: var(--space-3);
+    }
+
+    /* Section divider */
+    .section-divider {
+      margin: var(--space-8) 0 var(--space-4);
+      padding: var(--space-6) var(--space-4) 0;
+      border-top: 2px solid var(--color-gray-300);
+    }
+
+    .section-divider__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .section-divider__desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-4);
+    }
+
+    /* Map placeholder */
+    .map-placeholder {
+      width: 100%;
+      aspect-ratio: 16/10;
+      background: linear-gradient(135deg, #C8E6C9 0%, #A5D6A7 50%, #81C784 100%);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: var(--space-2);
+      color: var(--color-primary-dark);
+      font-size: var(--font-size-sm);
+      margin-bottom: var(--space-3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-placeholder__pin {
+      font-size: 36px;
+    }
+
+    .map-placeholder__label {
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .map-placeholder__coord {
+      font-size: var(--font-size-xs);
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== DEMO 1: Farm Location Setup (Step 1 of onboarding) ===== -->
+  <header class="setup-header" role="banner">
+    <a href="index.html" class="setup-header__back" aria-label="Back">
+      <span aria-hidden="true">&#8249;</span>
+    </a>
+    <span class="setup-header__title">New Farm Setup</span>
+  </header>
+
+  <main role="main">
+
+    <div class="section-divider" style="margin-top: 0; border-top: none; padding-top: var(--space-4);">
+      <h2 class="section-divider__title">Demo 1: Farm Location Setup</h2>
+      <p class="section-divider__desc">
+        First step of onboarding. User specifies their farm location — this drives weather data, climate profile, and crop recommendations.
+      </p>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="step-indicator" aria-label="Setup progress: Step 1 of 3">
+      <span class="step-dot step-dot--active" aria-hidden="true"></span>
+      <span class="step-dot" aria-hidden="true"></span>
+      <span class="step-dot" aria-hidden="true"></span>
+      <span class="step-label">Step 1: Location</span>
+    </div>
+
+    <div class="setup-content">
+      <h2 class="setup-title">Where is your farm?</h2>
+      <p class="setup-subtitle">
+        Your location helps us provide accurate weather data, climate information, and crop recommendations.
+      </p>
+
+      <!-- Location input methods -->
+      <div class="location-methods">
+        <button class="location-method" aria-label="Use current location via GPS">
+          <span class="location-method__icon" aria-hidden="true">&#128205;</span>
+          <div class="location-method__content">
+            <div class="location-method__title">Use Current Location</div>
+            <div class="location-method__desc">Detect via GPS (most accurate if you're at the farm)</div>
+          </div>
+          <span class="location-method__arrow" aria-hidden="true">&#8250;</span>
+        </button>
+
+        <button class="location-method location-method--selected" aria-label="Enter coordinates manually — selected">
+          <span class="location-method__icon" aria-hidden="true">&#127760;</span>
+          <div class="location-method__content">
+            <div class="location-method__title">Enter Coordinates</div>
+            <div class="location-method__desc">Latitude and longitude (e.g., from Google Maps)</div>
+          </div>
+          <span class="location-method__arrow" aria-hidden="true">&#8250;</span>
+        </button>
+
+        <button class="location-method" aria-label="Search by address">
+          <span class="location-method__icon" aria-hidden="true">&#128269;</span>
+          <div class="location-method__content">
+            <div class="location-method__title">Search Address</div>
+            <div class="location-method__desc">Type an address or place name</div>
+          </div>
+          <span class="location-method__arrow" aria-hidden="true">&#8250;</span>
+        </button>
+
+        <button class="location-method" aria-label="Get help from AI assistant">
+          <span class="location-method__icon" aria-hidden="true">&#129302;</span>
+          <div class="location-method__content">
+            <div class="location-method__title">Ask AI Assistant</div>
+            <div class="location-method__desc">Describe your location and get help setting up</div>
+          </div>
+          <span class="location-method__arrow" aria-hidden="true">&#8250;</span>
+        </button>
+      </div>
+
+      <!-- Coordinate input (shown when "Enter Coordinates" selected) -->
+      <div class="coord-row">
+        <div class="form-group">
+          <label class="form-label" for="lat">Latitude</label>
+          <input class="form-input" type="text" id="lat" value="36.0" placeholder="e.g., 36.0" aria-label="Latitude">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="lng">Longitude</label>
+          <input class="form-input" type="text" id="lng" value="138.3" placeholder="e.g., 138.3" aria-label="Longitude">
+        </div>
+      </div>
+
+      <!-- Map placeholder showing pin -->
+      <div class="map-placeholder" aria-label="Map showing farm location near Nagano, Japan">
+        <span class="map-placeholder__pin" aria-hidden="true">&#128204;</span>
+        <span class="map-placeholder__label">Near Suwa, Nagano</span>
+        <span class="map-placeholder__coord">36.0°N, 138.3°E &bull; Elevation: ~760m</span>
+      </div>
+
+      <!-- Location confirmed result -->
+      <div class="location-result" aria-label="Location confirmed">
+        <span class="location-result__icon" aria-hidden="true">&#9989;</span>
+        <div class="location-result__content">
+          <div class="location-result__name">Nagano Prefecture, Japan</div>
+          <div class="location-result__details">
+            36.0°N, 138.3°E &bull; Elevation ~760m<br>
+            Climate Zone: Humid continental (Köppen Dfa/Dfb)<br>
+            USDA Hardiness: Zone 7a (-17.8°C to -15°C)
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-generated climate profile -->
+      <div class="climate-card">
+        <div class="climate-card__title">
+          <span aria-hidden="true">&#127777;</span> Climate Profile (auto-detected)
+        </div>
+        <div class="climate-grid">
+          <div class="climate-grid__item">
+            <div class="climate-grid__label">Avg Summer High</div>
+            <div class="climate-grid__value">28-32°C</div>
+          </div>
+          <div class="climate-grid__item">
+            <div class="climate-grid__label">Avg Winter Low</div>
+            <div class="climate-grid__value">-5 to -10°C</div>
+          </div>
+          <div class="climate-grid__item">
+            <div class="climate-grid__label">Last Frost</div>
+            <div class="climate-grid__value">Late April</div>
+          </div>
+          <div class="climate-grid__item">
+            <div class="climate-grid__label">First Frost</div>
+            <div class="climate-grid__value">Late October</div>
+          </div>
+          <div class="climate-grid__item">
+            <div class="climate-grid__label">Growing Season</div>
+            <div class="climate-grid__value">~150 days</div>
+          </div>
+          <div class="climate-grid__item">
+            <div class="climate-grid__label">Annual Rain</div>
+            <div class="climate-grid__value">~1,200mm</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="farm-name">Farm Name</label>
+        <input class="form-input" type="text" id="farm-name" value="My Nagano Farm" placeholder="Give your farm a name" aria-label="Farm name">
+      </div>
+
+      <button class="btn-primary" aria-label="Continue to step 2">
+        Continue — Choose Crops <span aria-hidden="true">&#8594;</span>
+      </button>
+    </div>
+
+    <!-- ===== DEMO 2: AI Chatbot Guided Setup ===== -->
+    <div class="section-divider">
+      <h2 class="section-divider__title">Demo 2: AI Assistant — Crop Planning</h2>
+      <p class="section-divider__desc">
+        The AI chatbot helps plan what to grow based on location, climate, and user preferences.
+        This replaces the general "farming knowledge" chatbot with a focused, actionable tool.
+      </p>
+    </div>
+
+    <div class="chat-container">
+      <div class="chat-header">
+        <span class="chat-header__icon" aria-hidden="true">&#129302;</span>
+        <div>
+          <div class="chat-header__title">LitCrop AI Assistant</div>
+          <div class="chat-header__subtitle">Crop planning for Nagano (Zone 7a)</div>
+        </div>
+      </div>
+
+      <div class="chat-messages" role="log" aria-label="Chat conversation">
+        <div class="chat-msg chat-msg--bot">
+          <div class="chat-msg__sender">LitCrop AI</div>
+          <p>Welcome! I see your farm is in <strong>Nagano Prefecture</strong> at ~760m elevation. Great location for highland vegetables! &#127806;</p>
+          <p style="margin-top: 8px;">It's mid-March now. What would you like help with?</p>
+          <div class="chat-actions">
+            <button class="chat-action">&#127793; What to plant now?</button>
+            <button class="chat-action">&#128197; Season planner</button>
+            <button class="chat-action">&#127807; Beginner crops</button>
+          </div>
+        </div>
+
+        <div class="chat-msg chat-msg--user">
+          <p>What vegetables grow well here? I'm a beginner.</p>
+        </div>
+
+        <div class="chat-msg chat-msg--bot">
+          <div class="chat-msg__sender">LitCrop AI</div>
+          <p>Great question! For Nagano at this elevation, here are <strong>beginner-friendly crops</strong> you can start in March-April:</p>
+          <div class="crop-suggestions">
+            <div class="crop-suggestion">
+              <span class="crop-suggestion__icon" aria-hidden="true">&#127813;</span>
+              <span class="crop-suggestion__name">Cherry Tomato</span>
+              <span class="crop-suggestion__season">Start indoors Mar → Transplant May</span>
+            </div>
+            <div class="crop-suggestion">
+              <span class="crop-suggestion__icon" aria-hidden="true">&#129362;</span>
+              <span class="crop-suggestion__name">Cucumber</span>
+              <span class="crop-suggestion__season">Direct sow May → Harvest Jul-Sep</span>
+            </div>
+            <div class="crop-suggestion">
+              <span class="crop-suggestion__icon" aria-hidden="true">&#127814;</span>
+              <span class="crop-suggestion__name">Eggplant</span>
+              <span class="crop-suggestion__season">Start indoors Mar → Transplant Jun</span>
+            </div>
+            <div class="crop-suggestion">
+              <span class="crop-suggestion__icon" aria-hidden="true">&#129388;</span>
+              <span class="crop-suggestion__name">Lettuce</span>
+              <span class="crop-suggestion__season">Direct sow Apr → Harvest May-Jun</span>
+            </div>
+            <div class="crop-suggestion">
+              <span class="crop-suggestion__icon" aria-hidden="true">&#127827;</span>
+              <span class="crop-suggestion__name">Strawberry</span>
+              <span class="crop-suggestion__season">Plant Apr → Harvest Jun-Jul</span>
+            </div>
+          </div>
+          <p style="margin-top: 8px;">Nagano's cool nights are great for tomato sweetness! Want me to help you <strong>plan your bed layout</strong> for these crops?</p>
+          <div class="chat-actions">
+            <button class="chat-action">&#9638; Plan my layout</button>
+            <button class="chat-action">&#128218; More about tomatoes</button>
+            <button class="chat-action">&#10052; Frost protection tips</button>
+          </div>
+        </div>
+
+        <div class="chat-msg chat-msg--user">
+          <p>Yes, plan my layout. I have about 20 square meters.</p>
+        </div>
+
+        <div class="chat-msg chat-msg--bot">
+          <div class="chat-msg__sender">LitCrop AI</div>
+          <p>For 20m², I'd suggest <strong>2 fields with 3 beds</strong>:</p>
+          <p style="margin-top: 8px;">
+            <strong>Bed A</strong> (sunny side): Tomato + Basil (companion planting!)<br>
+            <strong>Bed B</strong>: Cucumber + Lettuce (lettuce provides ground shade)<br>
+            <strong>Bed C</strong>: Strawberry + Eggplant
+          </p>
+          <p style="margin-top: 8px;">Shall I create this layout in your farm? You can adjust it later in the Layout Editor.</p>
+          <div class="chat-actions">
+            <button class="chat-action" style="background: var(--color-primary-light);">&#10003; Create this layout</button>
+            <button class="chat-action">&#9998; I'll adjust first</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input">
+        <input class="chat-input__field" type="text" placeholder="Ask about crops, climate, planting..." aria-label="Type a message">
+        <button class="chat-input__send" aria-label="Send message">
+          <span aria-hidden="true">&#9654;</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+</body>
+</html>

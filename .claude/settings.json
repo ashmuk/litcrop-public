@@ -162,14 +162,6 @@
             "command": "~/.claude/hooks/notify-completion.sh"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/maybe-simplify.sh"
-          }
-        ]
       }
     ],
     "UserPromptSubmit": [

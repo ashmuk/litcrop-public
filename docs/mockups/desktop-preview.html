@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Desktop Layout Preview</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Desktop preview — demonstrates responsive expansion from mobile (480px) to desktop (1024px+) */
+
+    body {
+      background: var(--color-background);
+    }
+
+    /* Theme switcher */
+    .theme-bar {
+      position: sticky;
+      top: 0;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #222;
+      color: #ccc;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .theme-bar__label { font-weight: 600; margin-right: 8px; }
+    .theme-bar__btn {
+      padding: 4px 12px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: transparent;
+      color: #ccc;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .theme-bar__btn--active {
+      background: var(--color-primary, #1B6B3A);
+      color: #fff;
+      border-color: var(--color-primary, #1B6B3A);
+    }
+
+    /* Desktop container */
+    .desktop-page {
+      min-width: 1024px;
+      max-width: 1400px;
+      margin: 0 auto;
+      background: var(--color-surface);
+      min-height: 100vh;
+      border-left: var(--border-default);
+      border-right: var(--border-default);
+    }
+
+    /* Section separators */
+    .demo-section {
+      padding: 32px 24px 24px;
+      border-bottom: 2px solid var(--color-gray-300);
+    }
+    .demo-section:last-child { border-bottom: none; }
+    .demo-section__title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      margin-bottom: 4px;
+    }
+    .demo-section__desc {
+      font-size: 13px;
+      color: var(--color-gray-500);
+      margin-bottom: 20px;
+    }
+    .demo-section__viewport {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--color-gray-100);
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-gray-500);
+      margin-bottom: 16px;
+    }
+
+    /* ===== DESKTOP FARM HEADER + NAV ===== */
+    .d-header {
+      display: flex;
+      align-items: center;
+      height: 64px;
+      padding: 0 24px;
+      background: var(--color-surface);
+      border-bottom: var(--border-default);
+      gap: 24px;
+    }
+    .d-header__logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-primary);
+      white-space: nowrap;
+    }
+    .d-header__nav {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+    .d-header__nav-item {
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--color-gray-700);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .d-header__nav-item:hover {
+      background: var(--color-gray-100);
+    }
+    .d-header__nav-item--active {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+    .d-header__actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .d-header__icon-btn {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      border: none;
+      background: none;
+      color: var(--color-gray-700);
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .d-header__icon-btn:hover {
+      background: var(--color-gray-100);
+    }
+
+    /* ===== FARM OVERVIEW — DESKTOP 2-COLUMN ===== */
+    .d-overview {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 0;
+      min-height: 600px;
+    }
+    .d-overview__sidebar {
+      border-right: var(--border-default);
+      padding: 20px;
+      background: var(--color-background);
+      min-width: 0; /* prevent grid blowout */
+    }
+    .d-overview__main {
+      padding: 20px;
+      min-width: 0; /* prevent grid blowout */
+      overflow: hidden;
+    }
+
+    /* Weather panel (sidebar) */
+    .d-weather-panel {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .d-weather-panel__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    }
+    .d-weather-panel__icon { font-size: 36px; }
+    .d-weather-panel__temp {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+    .d-weather-panel__info { flex: 1; }
+    .d-weather-panel__condition {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+    }
+    .d-weather-panel__meta {
+      font-size: 12px;
+      color: var(--color-gray-700);
+    }
+    .d-weather-panel__grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--color-gray-300);
+    }
+    .d-weather-panel__cell {
+      padding: 10px 12px;
+      background: var(--color-surface);
+    }
+    .d-weather-panel__cell-label {
+      font-size: 10px;
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .d-weather-panel__cell-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+      margin-top: 2px;
+    }
+
+    /* Crop impact mini cards (sidebar) */
+    .d-impact-mini {
+      display: flex;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border-left: 3px solid;
+      margin-bottom: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .d-impact-mini--danger {
+      border-left-color: var(--color-status-issue);
+      background: var(--color-status-issue-bg);
+    }
+    .d-impact-mini--warning {
+      border-left-color: var(--color-status-slow-growth);
+      background: var(--color-status-slow-growth-bg);
+    }
+    .d-impact-mini--good {
+      border-left-color: var(--color-status-healthy);
+      background: var(--color-status-healthy-bg);
+    }
+    .d-impact-mini__icon { font-size: 14px; }
+    .d-impact-mini__text {
+      color: var(--color-gray-900);
+    }
+    .d-impact-mini__text strong { font-weight: 600; }
+
+    /* Plot grid (main area) — auto-fill with minimum card width */
+    .d-plot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    /* Plot card (desktop version — more horizontal) */
+    .d-plot-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.15s, transform 0.15s;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+    .d-plot-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .d-plot-card__image {
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      position: relative;
+    }
+    .d-plot-card__motion {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: var(--color-motion);
+      color: #fff;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .d-plot-card__body {
+      padding: 12px 16px;
+      min-width: 0; /* allow text truncation */
+    }
+    .d-plot-card__name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .d-plot-card__meta {
+      font-size: 12px;
+      color: var(--color-gray-500);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .d-plot-card__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    /* Status summary bar (desktop: horizontal) */
+    .d-status-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .d-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* View toggle */
+    .d-view-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+    }
+    .d-view-toggle__btn {
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      border: var(--border-default);
+      background: var(--color-surface);
+      color: var(--color-gray-500);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .d-view-toggle__btn:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+    .d-view-toggle__btn:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; border-left: none; }
+    .d-view-toggle__btn--active {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    /* ===== PLOT DETAIL — DESKTOP 2-COLUMN ===== */
+    .d-detail {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      padding: 24px;
+      min-width: 0;
+    }
+    .d-detail__image-area {
+      background: var(--color-gray-100);
+      border-radius: var(--radius-lg);
+      aspect-ratio: 16/10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      position: relative;
+      max-height: 360px;
+    }
+    .d-detail__trigger-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+    }
+    .d-detail__sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .d-detail__section {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .d-detail__section-title {
+      padding: 10px 16px;
+      background: var(--color-gray-100);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-gray-500);
+      border-bottom: var(--border-default);
+    }
+    .d-detail__section-body {
+      padding: 16px;
+    }
+
+    /* Tag buttons (desktop: horizontal row) */
+    .d-tags {
+      display: flex;
+      gap: 8px;
+    }
+    .d-tag-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      border: 2px solid;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--color-surface);
+      font-family: inherit;
+    }
+    .d-tag-btn--healthy { border-color: var(--color-status-healthy); color: var(--color-status-healthy); }
+    .d-tag-btn--slow { border-color: var(--color-status-slow-growth); color: var(--color-status-slow-growth); }
+    .d-tag-btn--issue { border-color: var(--color-status-issue); color: var(--color-status-issue); }
+    .d-tag-btn--intrusion { border-color: var(--color-status-animal); color: var(--color-status-animal); }
+    .d-tag-btn--active {
+      color: #fff;
+    }
+    .d-tag-btn--active.d-tag-btn--healthy { background: var(--color-status-healthy); }
+
+    /* Crop metadata (dl) */
+    .d-crop-meta {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 4px 12px;
+      font-size: 13px;
+    }
+    .d-crop-meta dt {
+      color: var(--color-gray-500);
+      font-weight: 500;
+    }
+    .d-crop-meta dd {
+      color: var(--color-gray-900);
+      font-weight: 500;
+    }
+
+    /* Weather context (compact) */
+    .d-weather-ctx {
+      display: flex;
+      gap: 12px;
+    }
+    .d-weather-ctx__item {
+      flex: 1;
+      text-align: center;
+    }
+    .d-weather-ctx__icon { font-size: 18px; }
+    .d-weather-ctx__value {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+    }
+    .d-weather-ctx__label {
+      font-size: 10px;
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Image history (desktop: larger grid) */
+    .d-history-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .d-history-item {
+      aspect-ratio: 1;
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 24px;
+      position: relative;
+      border: 2px solid transparent;
+    }
+    .d-history-item--active {
+      border-color: var(--color-primary);
+    }
+    .d-history-item__date {
+      font-size: 10px;
+      color: var(--color-gray-500);
+      font-weight: 500;
+    }
+    .d-history-item__motion {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-motion);
+    }
+
+    /* ===== FARM LAYOUT — DESKTOP ===== */
+    .d-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 24px;
+      align-items: start; /* prevent stretching fields to equal height */
+    }
+    .d-field-section {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .d-field-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--color-gray-100);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-gray-900);
+      border-bottom: var(--border-default);
+    }
+    .d-bed-row {
+      border-bottom: var(--border-default);
+    }
+    .d-bed-row:last-child { border-bottom: none; }
+    .d-bed-label {
+      padding: 6px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-gray-500);
+      background: var(--color-gray-100);
+      border-bottom: var(--border-default);
+    }
+    .d-plot-row {
+      display: flex;
+    }
+    .d-plot-cell {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      border-right: var(--border-default);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .d-plot-cell:last-child { border-right: none; }
+    .d-plot-cell:hover { filter: brightness(0.95); }
+    .d-plot-cell__icon { font-size: 28px; }
+    .d-plot-cell__label { font-size: 11px; font-weight: 700; color: var(--color-gray-700); }
+    .d-plot-cell__name { font-size: 13px; font-weight: 500; color: var(--color-gray-900); text-align: center; }
+    .d-plot-cell__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 8px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* ===== AI CHAT — DESKTOP (panel) ===== */
+    .d-chat-layout {
+      display: grid;
+      grid-template-columns: 1fr minmax(340px, 400px);
+      gap: 24px;
+      padding: 24px;
+    }
+    .d-chat-context {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .d-chat-context__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      margin-bottom: 12px;
+    }
+    .d-chat-panel {
+      background: var(--color-gray-100);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 500px;
+    }
+    .d-chat-header {
+      padding: 12px 16px;
+      background: var(--color-primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .d-chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .d-chat-msg {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: var(--radius-lg);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .d-chat-msg--bot {
+      align-self: flex-start;
+      background: var(--color-surface);
+      border: var(--border-default);
+      color: var(--color-gray-900);
+    }
+    .d-chat-msg--user {
+      align-self: flex-end;
+      background: var(--color-primary);
+      color: #fff;
+    }
+    .d-chat-input {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--color-surface);
+      border-top: var(--border-default);
+    }
+    .d-chat-input__field {
+      flex: 1;
+      height: 40px;
+      padding: 0 16px;
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .d-chat-input__send {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    /* Crop suggestion mini cards */
+    .d-crop-sug {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--color-primary-light);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .d-crop-sug__name { font-weight: 600; color: var(--color-gray-900); flex: 1; }
+    .d-crop-sug__season { font-size: 11px; color: var(--color-gray-500); }
+
+    /* ===== SETTINGS — DESKTOP ===== */
+    .d-settings {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 0;
+      min-height: 500px;
+      margin: 0 24px 24px;
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .d-settings__nav {
+      border-right: var(--border-default);
+      padding: 20px 0;
+      background: var(--color-background);
+    }
+    .d-settings__nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      font-size: 14px;
+      color: var(--color-gray-700);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .d-settings__nav-item:hover {
+      background: var(--color-gray-100);
+    }
+    .d-settings__nav-item--active {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      font-weight: 600;
+      border-right: 3px solid var(--color-primary);
+    }
+    .d-settings__content {
+      padding: 24px;
+    }
+    .d-settings__group-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--color-gray-900);
+      margin-bottom: 16px;
+    }
+    /* Theme cards (desktop: 4 in a row) */
+    .d-theme-cards {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .d-theme-card {
+      flex: 1;
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      text-align: center;
+    }
+    .d-theme-card--selected {
+      border-color: var(--color-primary);
+    }
+    .d-theme-card__preview {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .d-theme-card__label {
+      padding: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--color-gray-100);
+      color: var(--color-gray-700);
+    }
+    /* Language cards */
+    .d-lang-cards {
+      display: flex;
+      gap: 12px;
+    }
+    .d-lang-card {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 2px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+    .d-lang-card--selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+    .d-lang-card__flag { font-size: 24px; }
+    .d-lang-card__name { font-size: 14px; font-weight: 500; color: var(--color-gray-900); }
+    .d-lang-card__native { font-size: 13px; color: var(--color-gray-500); }
+    .d-lang-card__check { color: var(--color-primary); font-size: 18px; margin-left: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Theme switcher bar -->
+  <div class="theme-bar">
+    <span class="theme-bar__label">Theme:</span>
+    <button class="theme-bar__btn theme-bar__btn--active" onclick="document.documentElement.removeAttribute('data-theme'); document.querySelectorAll('.theme-bar__btn').forEach(b=>b.classList.remove('theme-bar__btn--active')); this.classList.add('theme-bar__btn--active');">Light</button>
+    <button class="theme-bar__btn" onclick="document.documentElement.setAttribute('data-theme','earthy'); document.querySelectorAll('.theme-bar__btn').forEach(b=>b.classList.remove('theme-bar__btn--active')); this.classList.add('theme-bar__btn--active');">Earthy</button>
+    <button class="theme-bar__btn" onclick="document.documentElement.setAttribute('data-theme','dark'); document.querySelectorAll('.theme-bar__btn').forEach(b=>b.classList.remove('theme-bar__btn--active')); this.classList.add('theme-bar__btn--active');">Dark</button>
+    <span style="margin-left: auto; font-size: 11px; color: #888;">Desktop Preview — min viewport: 1024px</span>
+  </div>
+
+  <div class="desktop-page">
+
+    <!-- ===== 1. FARM OVERVIEW — DESKTOP ===== -->
+    <div class="demo-section">
+      <div class="demo-section__title">Farm Overview — Desktop</div>
+      <div class="demo-section__desc">2-column layout: weather/alerts sidebar + plot grid. Nav moves to top horizontal bar.</div>
+      <div class="demo-section__viewport">1024px+</div>
+    </div>
+
+    <!-- Desktop header with horizontal nav -->
+    <div class="d-header">
+      <span class="d-header__logo">&#127793; LitCrop</span>
+      <nav class="d-header__nav">
+        <a class="d-header__nav-item d-header__nav-item--active" href="#">&#9776; Overview</a>
+        <a class="d-header__nav-item" href="#">&#9638; Layout</a>
+        <a class="d-header__nav-item" href="#">&#127777; Weather</a>
+        <a class="d-header__nav-item" href="#">&#129302; AI Assistant</a>
+      </nav>
+      <div class="d-header__actions">
+        <button class="d-header__icon-btn" title="Refresh">&#8635;</button>
+        <button class="d-header__icon-btn" title="Settings">&#9881;</button>
+      </div>
+    </div>
+
+    <!-- 2-column: sidebar (weather + impacts) | main (status bar + plot grid) -->
+    <div class="d-overview">
+      <aside class="d-overview__sidebar">
+        <!-- Weather panel -->
+        <div class="d-weather-panel">
+          <div class="d-weather-panel__header">
+            <span class="d-weather-panel__icon">&#9925;</span>
+            <span class="d-weather-panel__temp">18°C</span>
+            <div class="d-weather-panel__info">
+              <div class="d-weather-panel__condition">Partly Cloudy</div>
+              <div class="d-weather-panel__meta">H:22° L:8° &bull; Rain 20% at 15:00</div>
+            </div>
+          </div>
+          <div class="d-weather-panel__grid">
+            <div class="d-weather-panel__cell">
+              <div class="d-weather-panel__cell-label">Humidity</div>
+              <div class="d-weather-panel__cell-value">65%</div>
+            </div>
+            <div class="d-weather-panel__cell">
+              <div class="d-weather-panel__cell-label">Wind</div>
+              <div class="d-weather-panel__cell-value">12 km/h</div>
+            </div>
+            <div class="d-weather-panel__cell">
+              <div class="d-weather-panel__cell-label">Soil Temp</div>
+              <div class="d-weather-panel__cell-value">14°C</div>
+            </div>
+            <div class="d-weather-panel__cell">
+              <div class="d-weather-panel__cell-label">UV Index</div>
+              <div class="d-weather-panel__cell-value">4</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Crop impact mini cards -->
+        <div style="font-size: 12px; font-weight: 700; color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Crop Impact</div>
+        <div class="d-impact-mini d-impact-mini--danger">
+          <span class="d-impact-mini__icon">&#10052;</span>
+          <span class="d-impact-mini__text"><strong>Frost risk Wed</strong> — Strawberry, Basil sensitive</span>
+        </div>
+        <div class="d-impact-mini d-impact-mini--warning">
+          <span class="d-impact-mini__icon">&#127783;</span>
+          <span class="d-impact-mini__text"><strong>Rain Tue-Wed</strong> — Check Cucumber drainage</span>
+        </div>
+        <div class="d-impact-mini d-impact-mini--good">
+          <span class="d-impact-mini__icon">&#9728;</span>
+          <span class="d-impact-mini__text"><strong>Warm Thu-Fri</strong> — Ideal for Tomato, Eggplant</span>
+        </div>
+      </aside>
+
+      <div class="d-overview__main">
+        <!-- Status bar -->
+        <div class="d-status-bar">
+          <span class="d-status-pill" style="background: var(--color-status-issue-bg); color: var(--color-status-issue);">&#9888; 1 Issue</span>
+          <span class="d-status-pill" style="background: var(--color-motion-bg); color: var(--color-motion);">&#128062; 1 Motion</span>
+          <span class="d-status-pill" style="background: var(--color-status-slow-growth-bg); color: var(--color-status-slow-growth);">&#128260; 1 Slow</span>
+          <span class="d-status-pill" style="background: var(--color-status-healthy-bg); color: var(--color-status-healthy);">&#10003; 2 Healthy</span>
+          <span class="d-status-pill" style="background: var(--color-status-no-data-bg); color: var(--color-status-no-data);">&#8212; 1 No Data</span>
+        </div>
+
+        <!-- View toggle -->
+        <div class="d-view-toggle">
+          <button class="d-view-toggle__btn d-view-toggle__btn--active">&#9776; List</button>
+          <button class="d-view-toggle__btn">&#9638; Layout</button>
+        </div>
+
+        <!-- Plot card grid -->
+        <div class="d-plot-grid">
+          <div class="d-plot-card">
+            <div class="d-plot-card__image" style="background: var(--color-status-animal-bg);">&#127807;
+              <span class="d-plot-card__motion">&#9888; MOTION</span>
+            </div>
+            <div class="d-plot-card__body">
+              <div class="d-plot-card__name">Basil (A2)</div>
+              <div class="d-plot-card__meta">Bed A &bull; Planted Feb 20</div>
+              <span class="d-plot-card__badge" style="background: var(--color-status-animal-bg); color: var(--color-status-animal);">&#128038; Intrusion</span>
+            </div>
+          </div>
+          <div class="d-plot-card">
+            <div class="d-plot-card__image" style="background: var(--color-status-issue-bg);">&#129362;</div>
+            <div class="d-plot-card__body">
+              <div class="d-plot-card__name">Cucumber (B1)</div>
+              <div class="d-plot-card__meta">Bed B &bull; Planted Mar 1</div>
+              <span class="d-plot-card__badge" style="background: var(--color-status-issue-bg); color: var(--color-status-issue);">&#9888; Issue</span>
+            </div>
+          </div>
+          <div class="d-plot-card">
+            <div class="d-plot-card__image" style="background: var(--color-status-slow-growth-bg);">&#129388;</div>
+            <div class="d-plot-card__body">
+              <div class="d-plot-card__name">Lettuce (B2)</div>
+              <div class="d-plot-card__meta">Bed B &bull; Planted Feb 25</div>
+              <span class="d-plot-card__badge" style="background: var(--color-status-slow-growth-bg); color: var(--color-status-slow-growth);">&#128260; Slow</span>
+            </div>
+          </div>
+          <div class="d-plot-card">
+            <div class="d-plot-card__image" style="background: var(--color-status-healthy-bg);">&#127813;</div>
+            <div class="d-plot-card__body">
+              <div class="d-plot-card__name">Cherry Tomato (A1)</div>
+              <div class="d-plot-card__meta">Bed A &bull; Planted Feb 10</div>
+              <span class="d-plot-card__badge" style="background: var(--color-status-healthy-bg); color: var(--color-status-healthy);">&#10003; Healthy</span>
+            </div>
+          </div>
+          <div class="d-plot-card">
+            <div class="d-plot-card__image" style="background: var(--color-status-healthy-bg);">&#127827;</div>
+            <div class="d-plot-card__body">
+              <div class="d-plot-card__name">Strawberry (C1)</div>
+              <div class="d-plot-card__meta">Bed C &bull; Planted Mar 5</div>
+              <span class="d-plot-card__badge" style="background: var(--color-status-healthy-bg); color: var(--color-status-healthy);">&#10003; Healthy</span>
+            </div>
+          </div>
+          <div class="d-plot-card">
+            <div class="d-plot-card__image" style="background: var(--color-status-no-data-bg);">&#127814;</div>
+            <div class="d-plot-card__body">
+              <div class="d-plot-card__name">Eggplant (C2)</div>
+              <div class="d-plot-card__meta">Bed C &bull; Planted Mar 10</div>
+              <span class="d-plot-card__badge" style="background: var(--color-status-no-data-bg); color: var(--color-status-no-data);">&#8212; No Data</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 2. PLOT DETAIL — DESKTOP ===== -->
+    <div class="demo-section">
+      <div class="demo-section__title">Plot Detail — Desktop</div>
+      <div class="demo-section__desc">2-column: hero image left, metadata/tags/history right. More information visible without scrolling.</div>
+      <div class="demo-section__viewport">1024px+</div>
+    </div>
+
+    <div class="d-header" style="border-bottom: var(--border-default);">
+      <a href="#" style="text-decoration: none; color: var(--color-primary); font-size: 18px;">&#8249;</a>
+      <span style="font-size: 16px; font-weight: 600; color: var(--color-gray-900);">Plot A1: Cherry Tomato</span>
+    </div>
+
+    <div class="d-detail">
+      <div>
+        <!-- Hero image -->
+        <div class="d-detail__image-area" style="background: linear-gradient(135deg, var(--color-status-healthy-bg), var(--color-gray-100));">
+          &#127813;
+          <span class="d-detail__trigger-badge">&#128247; Scheduled &bull; 2 hours ago</span>
+        </div>
+        <!-- Image history below -->
+        <div style="margin-top: 16px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Image History</div>
+          <div class="d-history-grid">
+            <div class="d-history-item d-history-item--active">&#127813;<span class="d-history-item__date">Mar 17</span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 16</span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 15</span><span class="d-history-item__motion"></span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 14</span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 13</span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 12</span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 11</span></div>
+            <div class="d-history-item">&#127813;<span class="d-history-item__date">Mar 10</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-detail__sidebar">
+        <!-- Tags -->
+        <div class="d-detail__section">
+          <div class="d-detail__section-title">Tag This Image</div>
+          <div class="d-detail__section-body">
+            <div class="d-tags">
+              <button class="d-tag-btn d-tag-btn--healthy d-tag-btn--active">&#10003; Healthy</button>
+              <button class="d-tag-btn d-tag-btn--slow">&#128260; Slow</button>
+              <button class="d-tag-btn d-tag-btn--issue">&#9888; Issue</button>
+              <button class="d-tag-btn d-tag-btn--intrusion">&#128038;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Crop metadata -->
+        <div class="d-detail__section">
+          <div class="d-detail__section-title">Crop Details</div>
+          <div class="d-detail__section-body">
+            <dl class="d-crop-meta">
+              <dt>Crop</dt><dd>Cherry Tomato</dd>
+              <dt>Planted</dt><dd>Feb 10, 2026</dd>
+              <dt>Harvest</dt><dd>May 2026</dd>
+              <dt>Bed</dt><dd>A, North Field</dd>
+              <dt>Notes</dt><dd>Added fertilizer Mar 5</dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- Weather context -->
+        <div class="d-detail__section">
+          <div class="d-detail__section-title">Weather Now</div>
+          <div class="d-detail__section-body">
+            <div class="d-weather-ctx">
+              <div class="d-weather-ctx__item">
+                <div class="d-weather-ctx__icon">&#127777;</div>
+                <div class="d-weather-ctx__value">18°C</div>
+                <div class="d-weather-ctx__label">Air</div>
+              </div>
+              <div class="d-weather-ctx__item">
+                <div class="d-weather-ctx__icon">&#127793;</div>
+                <div class="d-weather-ctx__value">14°C</div>
+                <div class="d-weather-ctx__label">Soil</div>
+              </div>
+              <div class="d-weather-ctx__item">
+                <div class="d-weather-ctx__icon">&#128167;</div>
+                <div class="d-weather-ctx__value">65%</div>
+                <div class="d-weather-ctx__label">Humidity</div>
+              </div>
+              <div class="d-weather-ctx__item">
+                <div class="d-weather-ctx__icon">&#127783;</div>
+                <div class="d-weather-ctx__value">20%</div>
+                <div class="d-weather-ctx__label">Rain</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 3. FARM LAYOUT — DESKTOP ===== -->
+    <div class="demo-section">
+      <div class="demo-section__title">Farm Layout — Desktop</div>
+      <div class="demo-section__desc">Fields side by side. More plot cells visible at once. Hover effects on cells.</div>
+      <div class="demo-section__viewport">1024px+</div>
+    </div>
+
+    <div class="d-layout">
+      <!-- North Field -->
+      <div class="d-field-section">
+        <div class="d-field-header">&#127806; North Field</div>
+        <div class="d-bed-row">
+          <div class="d-bed-label">Bed A — ridge</div>
+          <div class="d-plot-row">
+            <div class="d-plot-cell" style="background: var(--color-status-healthy-bg);">
+              <span class="d-plot-cell__label">A1</span>
+              <span class="d-plot-cell__icon">&#127813;</span>
+              <span class="d-plot-cell__name">Cherry Tomato</span>
+              <span class="d-plot-cell__badge" style="background: var(--color-status-healthy); color: #fff;">&#10003; Healthy</span>
+            </div>
+            <div class="d-plot-cell" style="background: var(--color-status-animal-bg); position: relative;">
+              <span style="position:absolute;top:4px;right:4px;padding:1px 6px;background:var(--color-motion);color:#fff;border-radius:8px;font-size:9px;font-weight:700;">MOTION</span>
+              <span class="d-plot-cell__label">A2</span>
+              <span class="d-plot-cell__icon">&#127807;</span>
+              <span class="d-plot-cell__name">Basil</span>
+              <span class="d-plot-cell__badge" style="background: var(--color-status-animal); color: #fff;">&#128038; Intrusion</span>
+            </div>
+          </div>
+        </div>
+        <div class="d-bed-row">
+          <div class="d-bed-label">Bed B — ridge</div>
+          <div class="d-plot-row">
+            <div class="d-plot-cell" style="background: var(--color-status-issue-bg);">
+              <span class="d-plot-cell__label">B1</span>
+              <span class="d-plot-cell__icon">&#129362;</span>
+              <span class="d-plot-cell__name">Cucumber</span>
+              <span class="d-plot-cell__badge" style="background: var(--color-status-issue); color: #fff;">&#9888; Issue</span>
+            </div>
+            <div class="d-plot-cell" style="background: var(--color-status-slow-growth-bg);">
+              <span class="d-plot-cell__label">B2</span>
+              <span class="d-plot-cell__icon">&#129388;</span>
+              <span class="d-plot-cell__name">Lettuce</span>
+              <span class="d-plot-cell__badge" style="background: var(--color-status-slow-growth); color: #fff;">&#128260; Slow</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- South Field -->
+      <div class="d-field-section">
+        <div class="d-field-header">&#127806; South Field</div>
+        <div class="d-bed-row">
+          <div class="d-bed-label">Bed C — ridge</div>
+          <div class="d-plot-row">
+            <div class="d-plot-cell" style="background: var(--color-status-healthy-bg);">
+              <span class="d-plot-cell__label">C1</span>
+              <span class="d-plot-cell__icon">&#127827;</span>
+              <span class="d-plot-cell__name">Strawberry</span>
+              <span class="d-plot-cell__badge" style="background: var(--color-status-healthy); color: #fff;">&#10003; Healthy</span>
+            </div>
+            <div class="d-plot-cell" style="background: var(--color-status-no-data-bg);">
+              <span class="d-plot-cell__label">C2</span>
+              <span class="d-plot-cell__icon">&#127814;</span>
+              <span class="d-plot-cell__name">Eggplant</span>
+              <span class="d-plot-cell__badge" style="background: var(--color-status-no-data); color: #fff;">&#8212; No Data</span>
+            </div>
+            <div class="d-plot-cell" style="background: var(--color-gray-100); border-style: dashed;">
+              <span class="d-plot-cell__icon" style="color: var(--color-gray-300);">&#10133;</span>
+              <span class="d-plot-cell__name" style="color: var(--color-gray-500); font-style: italic;">Unassigned</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 4. AI CHAT — DESKTOP ===== -->
+    <div class="demo-section">
+      <div class="demo-section__title">AI Assistant — Desktop</div>
+      <div class="demo-section__desc">Chat panel on the right with farm context on the left. Larger viewport shows more conversation history.</div>
+      <div class="demo-section__viewport">1024px+</div>
+    </div>
+
+    <div class="d-chat-layout">
+      <div class="d-chat-context">
+        <div class="d-chat-context__title">&#127806; Farm Context</div>
+        <dl class="d-crop-meta">
+          <dt>Location</dt><dd>Nagano, Japan (36.03°N)</dd>
+          <dt>Elevation</dt><dd>~760m</dd>
+          <dt>Zone</dt><dd>USDA 7a (Köppen Dfa)</dd>
+          <dt>Season</dt><dd>~150 days (May-Oct)</dd>
+          <dt>Plots</dt><dd>6 active (2 fields, 3 beds)</dd>
+        </dl>
+        <div style="margin-top: 16px; font-size: 12px; font-weight: 700; color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Current Crops</div>
+        <div class="d-crop-sug"><span>&#127813;</span><span class="d-crop-sug__name">Cherry Tomato</span><span class="d-crop-sug__season">Healthy</span></div>
+        <div class="d-crop-sug"><span>&#127807;</span><span class="d-crop-sug__name">Basil</span><span class="d-crop-sug__season" style="color: var(--color-status-animal);">Intrusion</span></div>
+        <div class="d-crop-sug"><span>&#129362;</span><span class="d-crop-sug__name">Cucumber</span><span class="d-crop-sug__season" style="color: var(--color-status-issue);">Issue</span></div>
+        <div class="d-crop-sug"><span>&#129388;</span><span class="d-crop-sug__name">Lettuce</span><span class="d-crop-sug__season" style="color: var(--color-status-slow-growth);">Slow</span></div>
+        <div class="d-crop-sug"><span>&#127827;</span><span class="d-crop-sug__name">Strawberry</span><span class="d-crop-sug__season">Healthy</span></div>
+        <div class="d-crop-sug"><span>&#127814;</span><span class="d-crop-sug__name">Eggplant</span><span class="d-crop-sug__season" style="color: var(--color-status-no-data);">No Data</span></div>
+      </div>
+
+      <div class="d-chat-panel">
+        <div class="d-chat-header">&#129302; LitCrop AI — Crop Planning</div>
+        <div class="d-chat-messages">
+          <div class="d-chat-msg d-chat-msg--bot">
+            Your farm is in <strong>Nagano</strong> at ~760m. Cool nights are great for tomato sweetness! What would you like help with?
+          </div>
+          <div class="d-chat-msg d-chat-msg--user">What grows well here for a beginner?</div>
+          <div class="d-chat-msg d-chat-msg--bot">
+            For Nagano at this elevation, beginner-friendly crops you can start now:
+            <div class="d-crop-sug" style="margin-top: 8px;"><span>&#127813;</span><span class="d-crop-sug__name">Cherry Tomato</span><span class="d-crop-sug__season">Start indoors → May</span></div>
+            <div class="d-crop-sug"><span>&#129362;</span><span class="d-crop-sug__name">Cucumber</span><span class="d-crop-sug__season">Direct sow May</span></div>
+            <div class="d-crop-sug"><span>&#129388;</span><span class="d-crop-sug__name">Lettuce</span><span class="d-crop-sug__season">Direct sow Apr</span></div>
+          </div>
+          <div class="d-chat-msg d-chat-msg--user">Plan my layout for 20m²</div>
+          <div class="d-chat-msg d-chat-msg--bot">
+            For 20m², I'd suggest <strong>2 fields with 3 beds</strong>:<br><br>
+            <strong>Bed A</strong>: Tomato + Basil (companion planting)<br>
+            <strong>Bed B</strong>: Cucumber + Lettuce<br>
+            <strong>Bed C</strong>: Strawberry + Eggplant
+          </div>
+        </div>
+        <div class="d-chat-input">
+          <input class="d-chat-input__field" placeholder="Ask about crops, climate, planting...">
+          <button class="d-chat-input__send">&#9654;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 5. SETTINGS — DESKTOP ===== -->
+    <div class="demo-section">
+      <div class="demo-section__title">Settings — Desktop</div>
+      <div class="demo-section__desc">Sidebar navigation + content panel. Theme and language cards in a horizontal row.</div>
+      <div class="demo-section__viewport">1024px+</div>
+    </div>
+
+    <div class="d-settings">
+      <nav class="d-settings__nav">
+        <a class="d-settings__nav-item" href="#">&#127806; Farm Profile</a>
+        <a class="d-settings__nav-item d-settings__nav-item--active" href="#">&#127912; Appearance</a>
+        <a class="d-settings__nav-item" href="#">&#127760; Language</a>
+        <a class="d-settings__nav-item" href="#">&#127777; Weather</a>
+        <a class="d-settings__nav-item" href="#">&#128247; Camera</a>
+        <a class="d-settings__nav-item" href="#">&#129302; AI Assistant</a>
+        <a class="d-settings__nav-item" href="#">&#9432; About</a>
+      </nav>
+      <div class="d-settings__content">
+        <div class="d-settings__group-title">Appearance</div>
+
+        <div style="font-size: 13px; font-weight: 600; color: var(--color-gray-700); margin-bottom: 8px;">Theme</div>
+        <div class="d-theme-cards">
+          <div class="d-theme-card">
+            <div class="d-theme-card__preview" style="background: #fff; color: #1A1A1A; border-bottom: 1px solid #e0e0e0;">&#9728; Aa</div>
+            <div class="d-theme-card__label">Light</div>
+          </div>
+          <div class="d-theme-card">
+            <div class="d-theme-card__preview" style="background: #1E1E1E; color: #F0F0F0; border-bottom: 1px solid #333;">&#127769; Aa</div>
+            <div class="d-theme-card__label">Dark</div>
+          </div>
+          <div class="d-theme-card d-theme-card--selected">
+            <div class="d-theme-card__preview" style="background: #FDFBF7; color: #3B3530; border-bottom: 1px solid #C9BFB3;">&#127793; Aa</div>
+            <div class="d-theme-card__label">Earthy</div>
+          </div>
+          <div class="d-theme-card">
+            <div class="d-theme-card__preview" style="background: linear-gradient(135deg, #fff 50%, #1E1E1E 50%); border-bottom: 1px solid #e0e0e0;"></div>
+            <div class="d-theme-card__label">System</div>
+          </div>
+        </div>
+
+        <div style="font-size: 13px; font-weight: 600; color: var(--color-gray-700); margin-bottom: 8px;">Language</div>
+        <div class="d-lang-cards">
+          <div class="d-lang-card d-lang-card--selected">
+            <span class="d-lang-card__flag">&#127468;&#127463;</span>
+            <span class="d-lang-card__name">English</span>
+            <span class="d-lang-card__check">&#10003;</span>
+          </div>
+          <div class="d-lang-card">
+            <span class="d-lang-card__flag">&#127471;&#127477;</span>
+            <span class="d-lang-card__name">Japanese</span>
+            <span class="d-lang-card__native">日本語</span>
+            <span class="d-lang-card__check" style="visibility: hidden;">&#10003;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

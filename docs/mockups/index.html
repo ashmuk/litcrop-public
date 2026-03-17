@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop PoC — UI Mock-ups</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .hub-header {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      color: white;
+      padding: var(--space-8) var(--space-4) var(--space-6);
+      text-align: center;
+    }
+
+    .hub-header__logo {
+      font-size: 48px;
+      line-height: 1;
+      margin-bottom: var(--space-3);
+    }
+
+    .hub-header__title {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: white;
+      margin-bottom: var(--space-2);
+      line-height: var(--line-height-tight);
+    }
+
+    .hub-header__subtitle {
+      font-size: var(--font-size-sm);
+      color: rgba(255, 255, 255, 0.8);
+      line-height: var(--line-height-relaxed);
+    }
+
+    .hub-meta {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: var(--space-4);
+    }
+
+    .hub-meta-tag {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .hub-screens {
+      padding: var(--space-6) var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .screen-card {
+      display: block;
+      padding: var(--space-4);
+      background-color: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .screen-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .screen-card__number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      background-color: var(--color-primary);
+      color: white;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-bold);
+      margin-bottom: var(--space-3);
+    }
+
+    .screen-card__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .screen-card__desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-700);
+      line-height: var(--line-height-relaxed);
+      margin-bottom: var(--space-3);
+    }
+
+    .screen-card__features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .screen-card__features li {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .screen-card__features li::before {
+      content: "—";
+      color: var(--color-primary);
+    }
+
+    .screen-card__arrow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: var(--border-default);
+    }
+
+    .screen-card__link-text {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-primary);
+    }
+
+    .hub-footer {
+      padding: var(--space-6) var(--space-4) var(--space-10);
+      text-align: center;
+    }
+
+    .hub-footer__text {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      line-height: var(--line-height-relaxed);
+    }
+
+    .nav-diagram {
+      background-color: var(--color-gray-100);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin: 0 var(--space-4) var(--space-4);
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+    }
+
+    .nav-diagram__title {
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .nav-flow {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      margin-top: var(--space-2);
+    }
+
+    .nav-flow__screen {
+      background-color: var(--color-primary-light);
+      color: var(--color-primary-dark);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-weight: var(--font-weight-semibold);
+      white-space: nowrap;
+    }
+
+    .nav-flow__arrow {
+      color: var(--color-gray-500);
+    }
+  </style>
+</head>
+<body>
+  <header class="hub-header" role="banner">
+    <div class="hub-header__logo" aria-hidden="true">🌱</div>
+    <h1 class="hub-header__title">LitCrop PoC</h1>
+    <p class="hub-header__subtitle">UI Mock-ups &mdash; Step 4 of 7</p>
+    <div class="hub-meta">
+      <span class="hub-meta-tag">PoC scope</span>
+      <span class="hub-meta-tag">3 screens</span>
+      <span class="hub-meta-tag">Mobile-first (375px)</span>
+      <span class="hub-meta-tag">Pure HTML/CSS</span>
+    </div>
+  </header>
+
+  <div class="nav-diagram" role="note" aria-label="Navigation flow between screens">
+    <div class="nav-diagram__title">Navigation Model (Hub &amp; Spoke)</div>
+    <div class="nav-flow">
+      <span class="nav-flow__screen">Farm Overview</span>
+      <span class="nav-flow__arrow">&#8594; tap tile &#8594;</span>
+      <span class="nav-flow__screen">Plot Detail</span>
+      <span class="nav-flow__arrow">&#8594; tap thumb &#8594;</span>
+      <span class="nav-flow__screen">Image Timeline</span>
+    </div>
+  </div>
+
+  <main class="hub-screens" role="main">
+    <a href="farm-overview.html" class="screen-card" aria-label="Open Farm Overview mock-up">
+      <div class="screen-card__number" aria-hidden="true">1</div>
+      <h2 class="screen-card__title">Farm Overview</h2>
+      <p class="screen-card__desc">
+        Home screen. Answers "Is everything OK?" at a glance with a status summary bar and a scrollable grid of plot tiles.
+      </p>
+      <ul class="screen-card__features">
+        <li>Status summary bar (counts per severity)</li>
+        <li>6 plot tiles with mixed statuses</li>
+        <li>Motion-triggered alert badge (vivid orange)</li>
+        <li>Skeleton loading state section</li>
+        <li>Empty state (no plots) section</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+
+    <a href="plot-detail.html" class="screen-card" aria-label="Open Plot Detail mock-up">
+      <div class="screen-card__number" aria-hidden="true">2</div>
+      <h2 class="screen-card__title">Plot Detail</h2>
+      <p class="screen-card__desc">
+        Drill-down view for a single plot. Shows the latest camera image, crop metadata, one-tap tagging, and image history.
+      </p>
+      <ul class="screen-card__features">
+        <li>Full-width 16:9 hero image with overlay badges</li>
+        <li>Crop metadata (variety, planted date, harvest)</li>
+        <li>4 tag buttons at 56px height in thumb zone</li>
+        <li>Image history thumbnail grid (4 columns)</li>
+        <li>One tag shown as active state</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+
+    <a href="image-timeline.html" class="screen-card" aria-label="Open Image Timeline mock-up">
+      <div class="screen-card__number" aria-hidden="true">3</div>
+      <h2 class="screen-card__title">Image Timeline</h2>
+      <p class="screen-card__desc">
+        Full-size image viewer. Browse chronologically through a plot's image history with prev/next navigation.
+      </p>
+      <ul class="screen-card__features">
+        <li>Full-viewport image with dark surround</li>
+        <li>Position counter ("3 of 24")</li>
+        <li>Metadata bar (date, trigger type, tags)</li>
+        <li>Prev / Next navigation buttons (56px tall)</li>
+        <li>Disabled state shown for last image</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+
+    <!-- Screen 4: Farm Layout -->
+    <a href="farm-layout.html" class="screen-card" aria-label="Open Farm Layout mock-up">
+      <div class="screen-card__number" aria-hidden="true">4</div>
+      <h2 class="screen-card__title">Farm Layout</h2>
+      <p class="screen-card__desc">
+        Spatial view of the farm showing fields, beds (ridges), and plots in their physical arrangement. Toggle between List and Layout views.
+      </p>
+      <ul class="screen-card__features">
+        <li>Fields as sections, beds as ridges, plots as cells</li>
+        <li>Status-tinted plot cells with crop icons</li>
+        <li>Compass orientation indicator</li>
+        <li>MVP preview: interactive layout editor with draw/split/assign tools</li>
+        <li>Empty plot placeholders for unassigned areas</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+    <!-- Screen 5: Weather & Environment -->
+    <a href="farm-weather.html" class="screen-card" aria-label="Open Weather mock-up">
+      <div class="screen-card__number" aria-hidden="true">5</div>
+      <h2 class="screen-card__title">Weather &amp; Environment</h2>
+      <p class="screen-card__desc">
+        Weather data integration: ambient strip on Farm Overview, detailed panel with forecasts, and crop impact analysis.
+      </p>
+      <ul class="screen-card__features">
+        <li>Weather strip on Farm Overview (current temp, forecast, alerts)</li>
+        <li>Frost/rain alert banners</li>
+        <li>Hourly + 7-day forecast with temperature bars</li>
+        <li>Crop impact cards (frost risk, rain, growing conditions)</li>
+        <li>Compact weather context on Plot Detail</li>
+        <li>Data sources: Open-Meteo API (PoC) + on-site sensor (MVP)</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+    <!-- Screen 6: Farm Setup & AI Assistant -->
+    <a href="farm-setup.html" class="screen-card" aria-label="Open Farm Setup mock-up">
+      <div class="screen-card__number" aria-hidden="true">6</div>
+      <h2 class="screen-card__title">Farm Setup &amp; AI Assistant</h2>
+      <p class="screen-card__desc">
+        Onboarding flow: specify farm location (GPS, coordinates, address, or AI-guided), auto-detect climate profile, and AI chatbot for crop planning.
+      </p>
+      <ul class="screen-card__features">
+        <li>Location input: GPS, coordinates, address search, AI-guided</li>
+        <li>Auto-detected climate profile (zone, frost dates, growing season)</li>
+        <li>AI chatbot for crop recommendations based on location</li>
+        <li>Chatbot-assisted layout creation</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+
+    <!-- Screen 7: Settings -->
+    <a href="settings.html" class="screen-card" aria-label="Open Settings mock-up">
+      <div class="screen-card__number" aria-hidden="true">7</div>
+      <h2 class="screen-card__title">Settings</h2>
+      <p class="screen-card__desc">
+        App preferences: theme toggle (light/dark/system), language selection (EN/JA), weather config, camera settings.
+      </p>
+      <ul class="screen-card__features">
+        <li>Theme: Light / Dark / System with visual preview cards</li>
+        <li>Language: English / Japanese (日本語) with translation preview</li>
+        <li>Temperature unit (°C / °F), weather alerts toggle</li>
+        <li>Camera capture interval, motion detection toggle</li>
+        <li>AI assistant settings</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+    <!-- Desktop Preview -->
+    <a href="desktop-preview.html" class="screen-card" aria-label="Open Desktop Layout Preview">
+      <div class="screen-card__number" aria-hidden="true">D</div>
+      <h2 class="screen-card__title">Desktop Layout Preview</h2>
+      <p class="screen-card__desc">
+        All key screens adapted for desktop viewport (1024px+). Shows how mobile layouts expand to multi-column with sidebar navigation.
+      </p>
+      <ul class="screen-card__features">
+        <li>Farm Overview: 2-column (weather sidebar + plot grid)</li>
+        <li>Plot Detail: 2-column (image left, metadata/tags right)</li>
+        <li>Farm Layout: fields side by side</li>
+        <li>AI Assistant: chat panel + farm context side by side</li>
+        <li>Settings: sidebar nav + content panel</li>
+        <li>Theme switcher: Light / Earthy / Dark toggle</li>
+      </ul>
+      <div class="screen-card__arrow">
+        <span class="screen-card__link-text">View mock-up</span>
+        <span aria-hidden="true">&#8594;</span>
+      </div>
+    </a>
+  </main>
+
+  <footer class="hub-footer" role="contentinfo">
+    <p class="hub-footer__text">
+      LitCrop PoC &mdash; UI Mock-ups generated 2026-03-17<br>
+      Pure HTML/CSS, mobile-first (375px viewport)<br>
+      Design tokens from UX-DESIGNS.md &bull; Scope: PoC
+    </p>
+  </footer>
+</body>
+</html>

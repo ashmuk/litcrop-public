@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Plot Detail: Cherry Tomato A1</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page-specific styles for Plot Detail */
+
+    /* Hero image placeholder — simulates a lush tomato plant image */
+    .hero-placeholder {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(
+        135deg,
+        #2D4A1E 0%,
+        #3D6B2A 30%,
+        #4A8035 55%,
+        #3A6B28 75%,
+        #2A4A1A 100%
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      position: relative;
+    }
+
+    .hero-placeholder__crop-icon {
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+      z-index: 1;
+    }
+
+    .hero-placeholder__gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent 40%,
+        rgba(0, 0, 0, 0.55) 100%
+      );
+    }
+
+    .hero-overlay-badges {
+      position: absolute;
+      bottom: var(--space-3);
+      left: 0;
+      right: 0;
+      padding: 0 var(--space-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 2;
+    }
+
+    /* History grid thumbnails with colored backgrounds */
+    .thumb-bg-1 { background: linear-gradient(135deg, #2D4A1E, #4A8035); }
+    .thumb-bg-2 { background: linear-gradient(135deg, #3A3A1A, #6A6A2A); }
+    .thumb-bg-3 { background: linear-gradient(135deg, #2D4A1E, #3D6B2A); }
+    .thumb-bg-4 { background: linear-gradient(135deg, #5A2A1A, #8A4A2A); }
+    .thumb-bg-5 { background: linear-gradient(135deg, #2D4A1E, #4A8035); }
+    .thumb-bg-6 { background: linear-gradient(135deg, #1A2A3A, #2A4A6A); }
+    .thumb-bg-7 { background: linear-gradient(135deg, #2D4A1E, #3A6B28); }
+    .thumb-bg-8 { background: linear-gradient(135deg, #3A2A1A, #6A4A2A); }
+
+    .thumb-emoji-sm {
+      font-size: 20px;
+      opacity: 0.8;
+    }
+
+    /* Tag area spacing */
+    .tag-section {
+      border-top: var(--border-default);
+      padding: var(--space-4);
+    }
+
+    .tag-section__heading {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-3);
+    }
+
+    .tag-section__buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+
+    /* History section */
+    .history-section {
+      border-top: var(--border-default);
+      padding-top: var(--space-1);
+    }
+
+    .history-section__heading {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      padding: var(--space-4) var(--space-4) var(--space-3);
+    }
+
+    /* Bottom padding for scroll */
+    .page-bottom {
+      height: var(--space-10);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation header -->
+  <header class="nav-header" role="banner" aria-label="Plot detail">
+    <a href="farm-overview.html"
+       class="nav-header__back"
+       aria-label="Back to Farm Overview">
+      &#8592;
+    </a>
+    <h1 class="nav-header__title">Plot A1: Cherry Tomato</h1>
+    <div class="nav-header__action" aria-hidden="true" title="More options">&#8942;</div>
+  </header>
+
+  <main role="main">
+
+    <!-- Hero image area -->
+    <section aria-label="Latest camera image">
+      <div class="hero-placeholder" role="img" aria-label="Plot A1 - Cherry Tomato - captured Mar 17, 2026 at 2:00 PM">
+        <div class="hero-placeholder__gradient" aria-hidden="true"></div>
+        <span class="hero-placeholder__crop-icon" aria-hidden="true">🍅</span>
+
+        <!-- Overlaid badges -->
+        <div class="hero-overlay-badges" aria-hidden="true">
+          <span class="badge-trigger-scheduled">
+            <span>&#128336;</span>
+            Scheduled
+          </span>
+          <span class="badge status-healthy">
+            <span class="badge-icon">&#10003;</span>
+            Healthy
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Capture timestamp -->
+    <div class="capture-timestamp" aria-label="Capture time">
+      Captured: Mar 17, 2026 at 2:00 PM
+    </div>
+
+    <!-- Crop info section -->
+    <section class="crop-info" aria-label="Crop information">
+      <h2 class="crop-info__title">Crop Info</h2>
+      <dl>
+        <dt>Type</dt>
+        <dd>Tomato</dd>
+
+        <dt>Variety</dt>
+        <dd>Cherry Tomato</dd>
+
+        <dt>Planted</dt>
+        <dd>Feb 10, 2026</dd>
+
+        <dt>Harvest</dt>
+        <dd>~May 2026</dd>
+
+        <dt>Bed</dt>
+        <dd>Bed A (North Field)</dd>
+
+        <dt>Notes</dt>
+        <dd>Row closest to fence. Staking needed.</dd>
+      </dl>
+    </section>
+
+    <!-- Tag buttons section -->
+    <section class="tag-section" aria-label="Tag this image">
+      <h2 class="tag-section__heading">Tag this image</h2>
+      <div class="tag-section__buttons" role="group" aria-label="Observation tags">
+
+        <!-- Healthy — active state -->
+        <button class="tag-btn tag-btn--healthy tag-btn--active"
+                type="button"
+                aria-pressed="true"
+                aria-label="Tag as Healthy (currently selected)">
+          <span class="tag-icon" aria-hidden="true">&#10003;</span>
+          Healthy
+        </button>
+
+        <!-- Slow Growth -->
+        <button class="tag-btn tag-btn--slow"
+                type="button"
+                aria-pressed="false"
+                aria-label="Tag as Slow Growth">
+          <span class="tag-icon" aria-hidden="true">&#9201;</span>
+          Slow Growth
+        </button>
+
+        <!-- Issue -->
+        <button class="tag-btn tag-btn--issue"
+                type="button"
+                aria-pressed="false"
+                aria-label="Tag as Issue">
+          <span class="tag-icon" aria-hidden="true">&#9888;</span>
+          Issue
+        </button>
+
+        <!-- Animal Intrusion -->
+        <button class="tag-btn tag-btn--animal"
+                type="button"
+                aria-pressed="false"
+                aria-label="Tag as Animal Intrusion">
+          <span class="tag-icon" aria-hidden="true">&#128062;</span>
+          Animal Intrusion
+        </button>
+
+      </div>
+    </section>
+
+    <!-- Image history section -->
+    <section class="history-section" aria-label="Image history">
+      <h2 class="history-section__heading">Image History</h2>
+
+      <div class="thumb-grid" role="list">
+
+        <!-- Image 1: Today 2:00 PM — Scheduled, Healthy (tagged) -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-1 thumb-item--tagged-healthy"
+           role="listitem"
+           aria-label="Image captured Mar 17, 2:00 PM, Scheduled, tagged Healthy">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/17 2:00p</div>
+        </a>
+
+        <!-- Image 2: Today 8:45 AM — Motion triggered -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-2"
+           role="listitem"
+           aria-label="Image captured Mar 17, 8:45 AM, Motion triggered">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/17 8:45a</div>
+          <div class="thumb-item__motion" aria-hidden="true">
+            <span class="badge-motion badge-motion-sm">&#128062; M</span>
+          </div>
+        </a>
+
+        <!-- Image 3: Mar 16 2:00 PM — Scheduled -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-3"
+           role="listitem"
+           aria-label="Image captured Mar 16, 2:00 PM, Scheduled">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/16 2:00p</div>
+        </a>
+
+        <!-- Image 4: Mar 16 2:00 AM — Scheduled, Slow Growth -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-4 thumb-item--tagged-slow"
+           role="listitem"
+           aria-label="Image captured Mar 16, 2:00 AM, Scheduled, tagged Slow Growth">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/16 2:00a</div>
+        </a>
+
+        <!-- Image 5: Mar 15 2:00 PM — Scheduled -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-5"
+           role="listitem"
+           aria-label="Image captured Mar 15, 2:00 PM, Scheduled">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/15 2:00p</div>
+        </a>
+
+        <!-- Image 6: Mar 15 6:12 AM — Motion triggered -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-6"
+           role="listitem"
+           aria-label="Image captured Mar 15, 6:12 AM, Motion triggered">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/15 6:12a</div>
+          <div class="thumb-item__motion" aria-hidden="true">
+            <span class="badge-motion badge-motion-sm">&#128062; M</span>
+          </div>
+        </a>
+
+        <!-- Image 7: Mar 14 2:00 PM — Scheduled -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-7"
+           role="listitem"
+           aria-label="Image captured Mar 14, 2:00 PM, Scheduled">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/14 2:00p</div>
+        </a>
+
+        <!-- Image 8: Mar 14 2:00 AM — Scheduled, Healthy -->
+        <a href="image-timeline.html"
+           class="thumb-item thumb-bg-8 thumb-item--tagged-healthy"
+           role="listitem"
+           aria-label="Image captured Mar 14, 2:00 AM, Scheduled, tagged Healthy">
+          <span class="thumb-emoji-sm" aria-hidden="true">🍅</span>
+          <div class="thumb-item__date" aria-hidden="true">3/14 2:00a</div>
+        </a>
+
+      </div>
+
+      <!-- Load more -->
+      <div class="load-more">
+        <button class="load-more-btn" type="button" aria-label="Load older images">
+          Load More (16 remaining)
+        </button>
+      </div>
+
+    </section>
+
+    <div class="page-bottom" aria-hidden="true"></div>
+
+  </main>
+
+  <!-- Toast: tag applied -->
+  <div class="toast toast--success" role="status" aria-live="polite">
+    <span class="toast__icon" aria-hidden="true">&#10003;</span>
+    Healthy applied to image
+  </div>
+
+  <!-- Back to index -->
+  <nav style="padding: var(--space-4); border-top: var(--border-default);" aria-label="Mock-up navigation">
+    <a href="index.html" style="font-size: var(--font-size-sm); color: var(--color-gray-500);">
+      &#8592; Back to mock-up index
+    </a>
+  </nav>
+
+</body>
+</html>

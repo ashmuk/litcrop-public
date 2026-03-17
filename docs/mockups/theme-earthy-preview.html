@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="earthy">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Earthy Theme Preview</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Theme switcher at top */
+    .theme-switcher {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      display: flex;
+      gap: 0;
+      background: #333;
+      padding: 4px;
+    }
+
+    .theme-switcher__btn {
+      flex: 1;
+      height: 40px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .theme-switcher__btn--light {
+      background: #FFFFFF;
+      color: #1A1A1A;
+    }
+
+    .theme-switcher__btn--earthy {
+      background: #FDFBF7;
+      color: #3B3530;
+      outline: 2px solid #6B7F5E;
+      outline-offset: -2px;
+    }
+
+    .theme-switcher__btn--dark {
+      background: #1E1E1E;
+      color: #F0F0F0;
+    }
+
+    /* Page layout */
+    .preview-page {
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--color-background);
+      min-height: 100vh;
+    }
+
+    .preview-section {
+      padding: var(--space-4);
+      margin-bottom: var(--space-2);
+    }
+
+    .preview-section__title {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-3);
+    }
+
+    /* Color swatches */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+    }
+
+    .swatch {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: var(--border-default);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .swatch__color {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      font-family: monospace;
+    }
+
+    .swatch__label {
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-surface);
+      font-size: 11px;
+      color: var(--color-gray-700);
+    }
+
+    /* Farm header recreation */
+    .farm-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .farm-header__name {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+
+    .farm-header__refresh {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: none;
+      color: var(--color-gray-700);
+      font-size: 20px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    /* Weather strip */
+    .weather-strip {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-primary-light);
+      border-bottom: var(--border-default);
+    }
+
+    .weather-strip__icon { font-size: 28px; }
+    .weather-strip__temp {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+    }
+    .weather-strip__details { flex: 1; }
+    .weather-strip__condition {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+    .weather-strip__meta {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+    }
+
+    /* Status summary */
+    .status-bar {
+      display: flex;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      overflow-x: auto;
+      border-bottom: var(--border-default);
+      background: var(--color-surface);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      white-space: nowrap;
+    }
+
+    /* Plot tile */
+    .plot-tile {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--space-3);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .plot-tile__image {
+      width: 72px;
+      height: 72px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .plot-tile__info { flex: 1; }
+
+    .plot-tile__name {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .plot-tile__meta {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-top: 2px;
+    }
+
+    .plot-tile__badges {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    /* Tag buttons */
+    .tag-bar {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+    }
+
+    .tag-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 56px;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      border: 2px solid;
+      font-size: 11px;
+      font-weight: var(--font-weight-semibold);
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--color-surface);
+    }
+
+    .tag-btn--healthy {
+      border-color: var(--color-status-healthy);
+      color: var(--color-status-healthy);
+    }
+
+    .tag-btn--slow {
+      border-color: var(--color-status-slow-growth);
+      color: var(--color-status-slow-growth);
+    }
+
+    .tag-btn--issue {
+      border-color: var(--color-status-issue);
+      color: var(--color-status-issue);
+    }
+
+    .tag-btn--intrusion {
+      border-color: var(--color-status-animal);
+      color: var(--color-status-animal);
+    }
+
+    .tag-btn--active {
+      color: #FFFFFF;
+    }
+
+    .tag-btn--active.tag-btn--healthy { background: var(--color-status-healthy); }
+    .tag-btn--active.tag-btn--slow { background: var(--color-status-slow-growth); }
+    .tag-btn--active.tag-btn--issue { background: var(--color-status-issue); }
+    .tag-btn--active.tag-btn--intrusion { background: var(--color-status-animal); }
+
+    /* Impact cards */
+    .impact-card {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      border-left: 4px solid;
+      margin-bottom: var(--space-3);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .impact-card--warning {
+      border-left-color: var(--color-status-slow-growth);
+      background: var(--color-status-slow-growth-bg);
+    }
+
+    .impact-card--danger {
+      border-left-color: var(--color-status-issue);
+      background: var(--color-status-issue-bg);
+    }
+
+    .impact-card--good {
+      border-left-color: var(--color-status-healthy);
+      background: var(--color-status-healthy-bg);
+    }
+
+    .impact-card__icon { font-size: var(--font-size-xl); }
+
+    .impact-card__content { flex: 1; }
+
+    .impact-card__title {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .impact-card__desc {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+      margin-top: 2px;
+      line-height: var(--line-height-relaxed);
+    }
+
+    /* Chat preview */
+    .chat-preview {
+      background: var(--color-gray-100);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .chat-preview__header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-primary);
+      color: #FFFFFF;
+      font-weight: var(--font-weight-semibold);
+      font-size: var(--font-size-sm);
+    }
+
+    .chat-preview__msg {
+      margin: var(--space-3) var(--space-4);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      line-height: var(--line-height-relaxed);
+      max-width: 85%;
+    }
+
+    .chat-preview__msg--bot {
+      background: var(--color-surface);
+      border: var(--border-default);
+      color: var(--color-gray-900);
+    }
+
+    .chat-preview__msg--user {
+      background: var(--color-primary);
+      color: #FFFFFF;
+      margin-left: auto;
+    }
+
+    /* Settings row preview */
+    .setting-preview {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-2);
+    }
+
+    .setting-preview__icon { font-size: var(--font-size-xl); width: 32px; text-align: center; }
+
+    .setting-preview__label {
+      flex: 1;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+    }
+
+    .toggle-preview {
+      width: 44px;
+      height: 26px;
+      background: var(--color-primary);
+      border-radius: 13px;
+      position: relative;
+    }
+
+    .toggle-preview__thumb {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 20px;
+      height: 20px;
+      background: #FFFFFF;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Theme switcher -->
+  <div class="theme-switcher">
+    <button class="theme-switcher__btn theme-switcher__btn--light"
+            onclick="document.documentElement.removeAttribute('data-theme'); this.style.outline='2px solid #1B6B3A'; this.style.outlineOffset='-2px'; document.querySelectorAll('.theme-switcher__btn').forEach(b=>{ if(b!==this) b.style.outline='none'; });">
+      Light
+    </button>
+    <button class="theme-switcher__btn theme-switcher__btn--earthy"
+            onclick="document.documentElement.setAttribute('data-theme','earthy'); this.style.outline='2px solid #6B7F5E'; this.style.outlineOffset='-2px'; document.querySelectorAll('.theme-switcher__btn').forEach(b=>{ if(b!==this) b.style.outline='none'; });">
+      Earthy
+    </button>
+    <button class="theme-switcher__btn theme-switcher__btn--dark"
+            onclick="document.documentElement.setAttribute('data-theme','dark'); this.style.outline='2px solid #4CAF50'; this.style.outlineOffset='-2px'; document.querySelectorAll('.theme-switcher__btn').forEach(b=>{ if(b!==this) b.style.outline='none'; });">
+      Dark
+    </button>
+  </div>
+
+  <div class="preview-page">
+
+    <!-- ===== Color Palette ===== -->
+    <div class="preview-section">
+      <div class="preview-section__title">Color Palette</div>
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-primary); color: #FFFFFF;">Primary</div>
+          <div class="swatch__label">--color-primary</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-primary-light); color: var(--color-primary);">Light</div>
+          <div class="swatch__label">--color-primary-light</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-surface); color: var(--color-gray-900); border-bottom: var(--border-default);">Surface</div>
+          <div class="swatch__label">--color-surface</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-background); color: var(--color-gray-700); border-bottom: var(--border-default);">Background</div>
+          <div class="swatch__label">--color-background</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-gray-900); color: var(--color-white);">Text</div>
+          <div class="swatch__label">--color-gray-900</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-gray-500); color: #FFFFFF;">Secondary</div>
+          <div class="swatch__label">--color-gray-500</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Colors -->
+    <div class="preview-section">
+      <div class="preview-section__title">Status Colors</div>
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-healthy); color: #FFFFFF;">&#10003; Healthy</div>
+          <div class="swatch__label">--color-status-healthy</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-slow-growth); color: #FFFFFF;">&#128260; Slow</div>
+          <div class="swatch__label">--color-status-slow-growth</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-issue); color: #FFFFFF;">&#9888; Issue</div>
+          <div class="swatch__label">--color-status-issue</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-animal); color: #FFFFFF;">&#128038; Intrusion</div>
+          <div class="swatch__label">--color-status-animal</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-motion); color: #FFFFFF;">&#9888; Motion</div>
+          <div class="swatch__label">--color-motion</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-no-data); color: #FFFFFF;">&#8212; No Data</div>
+          <div class="swatch__label">--color-status-no-data</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Tint Backgrounds -->
+    <div class="preview-section">
+      <div class="preview-section__title">Status Tint Backgrounds</div>
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-healthy-bg); color: var(--color-status-healthy);">Healthy BG</div>
+          <div class="swatch__label">--color-status-healthy-bg</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-slow-growth-bg); color: var(--color-status-slow-growth);">Slow BG</div>
+          <div class="swatch__label">--color-status-slow-growth-bg</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-issue-bg); color: var(--color-status-issue);">Issue BG</div>
+          <div class="swatch__label">--color-status-issue-bg</div>
+        </div>
+        <div class="swatch">
+          <div class="swatch__color" style="background: var(--color-status-animal-bg); color: var(--color-status-animal);">Intrusion BG</div>
+          <div class="swatch__label">--color-status-animal-bg</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Farm Overview Recreation ===== -->
+    <div class="preview-section" style="padding: 0;">
+      <div style="padding: var(--space-4) var(--space-4) var(--space-2);">
+        <div class="preview-section__title">Farm Overview</div>
+      </div>
+
+      <div class="farm-header">
+        <span class="farm-header__name">LitCrop Demo Farm</span>
+        <button class="farm-header__refresh" aria-label="Refresh">&#8635;</button>
+      </div>
+
+      <div class="weather-strip">
+        <span class="weather-strip__icon">&#9925;</span>
+        <span class="weather-strip__temp">18°</span>
+        <div class="weather-strip__details">
+          <span class="weather-strip__condition">Partly Cloudy</span>
+          <span class="weather-strip__meta">H:22° L:8° &bull; Rain 20% at 15:00</span>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span class="status-pill" style="background: var(--color-status-issue-bg); color: var(--color-status-issue);">
+          &#9888; 1 Issue
+        </span>
+        <span class="status-pill" style="background: var(--color-motion-bg); color: var(--color-motion);">
+          &#128062; 1 Motion
+        </span>
+        <span class="status-pill" style="background: var(--color-status-slow-growth-bg); color: var(--color-status-slow-growth);">
+          &#128260; 1 Slow
+        </span>
+        <span class="status-pill" style="background: var(--color-status-healthy-bg); color: var(--color-status-healthy);">
+          &#10003; 2 Healthy
+        </span>
+      </div>
+
+      <div style="padding: var(--space-4);">
+        <!-- Plot tiles -->
+        <div class="plot-tile">
+          <div class="plot-tile__image" style="background: var(--color-status-animal-bg);">&#127807;</div>
+          <div class="plot-tile__info">
+            <div class="plot-tile__name">Basil (A2)</div>
+            <div class="plot-tile__meta">Planted Feb 20 &bull; Bed A, North Field</div>
+            <div class="plot-tile__badges">
+              <span class="badge badge--sm status-animal" style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:600; background:var(--color-status-animal-bg); color:var(--color-status-animal);">
+                &#128038; Intrusion
+              </span>
+              <span class="badge-motion-sm" style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:700; background:var(--color-motion); color:#FFF;">
+                &#9888; MOTION
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="plot-tile">
+          <div class="plot-tile__image" style="background: var(--color-status-issue-bg);">&#129362;</div>
+          <div class="plot-tile__info">
+            <div class="plot-tile__name">Cucumber (B1)</div>
+            <div class="plot-tile__meta">Planted Mar 1 &bull; Bed B, North Field</div>
+            <div class="plot-tile__badges">
+              <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:600; background:var(--color-status-issue-bg); color:var(--color-status-issue);">
+                &#9888; Issue
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="plot-tile">
+          <div class="plot-tile__image" style="background: var(--color-status-healthy-bg);">&#127813;</div>
+          <div class="plot-tile__info">
+            <div class="plot-tile__name">Cherry Tomato (A1)</div>
+            <div class="plot-tile__meta">Planted Feb 10 &bull; Bed A, North Field</div>
+            <div class="plot-tile__badges">
+              <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:600; background:var(--color-status-healthy-bg); color:var(--color-status-healthy);">
+                &#10003; Healthy
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tag Buttons ===== -->
+    <div class="preview-section">
+      <div class="preview-section__title">Tag Buttons</div>
+      <div class="tag-bar" style="padding: 0;">
+        <button class="tag-btn tag-btn--healthy tag-btn--active">&#10003;<br>Healthy</button>
+        <button class="tag-btn tag-btn--slow">&#128260;<br>Slow</button>
+        <button class="tag-btn tag-btn--issue">&#9888;<br>Issue</button>
+        <button class="tag-btn tag-btn--intrusion">&#128038;<br>Intrusion</button>
+      </div>
+    </div>
+
+    <!-- ===== Crop Impact Cards ===== -->
+    <div class="preview-section">
+      <div class="preview-section__title">Crop Impact Cards</div>
+      <div class="impact-card impact-card--danger">
+        <span class="impact-card__icon">&#10052;</span>
+        <div class="impact-card__content">
+          <div class="impact-card__title">Frost Risk — Wednesday Night</div>
+          <div class="impact-card__desc">Temp dropping to 3°C. Strawberry and Basil are frost-sensitive.</div>
+        </div>
+      </div>
+      <div class="impact-card impact-card--warning">
+        <span class="impact-card__icon">&#127783;</span>
+        <div class="impact-card__content">
+          <div class="impact-card__title">Heavy Rain — Tuesday</div>
+          <div class="impact-card__desc">60% rain probability. Check drainage on Cucumber bed.</div>
+        </div>
+      </div>
+      <div class="impact-card impact-card--good">
+        <span class="impact-card__icon">&#9728;</span>
+        <div class="impact-card__content">
+          <div class="impact-card__title">Warm Period — Thursday</div>
+          <div class="impact-card__desc">Ideal growing conditions for Tomato and Eggplant.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AI Chat Preview ===== -->
+    <div class="preview-section">
+      <div class="preview-section__title">AI Assistant</div>
+      <div class="chat-preview">
+        <div class="chat-preview__header">
+          &#129302; LitCrop AI — Crop Planning
+        </div>
+        <div class="chat-preview__msg chat-preview__msg--bot">
+          Your farm is in Nagano at ~760m. Cool nights are great for tomato sweetness! What would you like to plant?
+        </div>
+        <div class="chat-preview__msg chat-preview__msg--user">
+          What grows well here for a beginner?
+        </div>
+        <div class="chat-preview__msg chat-preview__msg--bot">
+          I recommend Cherry Tomato, Cucumber, Lettuce, and Strawberry — all beginner-friendly for your zone.
+        </div>
+        <div style="height: var(--space-3);"></div>
+      </div>
+    </div>
+
+    <!-- ===== Settings Preview ===== -->
+    <div class="preview-section">
+      <div class="preview-section__title">Settings Components</div>
+      <div class="setting-preview">
+        <span class="setting-preview__icon">&#127777;</span>
+        <span class="setting-preview__label">Weather Alerts</span>
+        <div class="toggle-preview">
+          <div class="toggle-preview__thumb"></div>
+        </div>
+      </div>
+      <div class="setting-preview">
+        <span class="setting-preview__icon">&#128062;</span>
+        <span class="setting-preview__label">Motion Detection</span>
+        <div class="toggle-preview">
+          <div class="toggle-preview__thumb"></div>
+        </div>
+      </div>
+      <div class="setting-preview">
+        <span class="setting-preview__icon">&#129302;</span>
+        <span class="setting-preview__label">Crop Impact Analysis</span>
+        <div class="toggle-preview">
+          <div class="toggle-preview__thumb"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Typography ===== -->
+    <div class="preview-section">
+      <div class="preview-section__title">Typography</div>
+      <div style="background: var(--color-surface); border: var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4);">
+        <p style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-gray-900); margin-bottom: var(--space-2);">
+          LitCrop Demo Farm
+        </p>
+        <p style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-gray-900); margin-bottom: var(--space-2);">
+          Cherry Tomato — Plot A1
+        </p>
+        <p style="font-size: var(--font-size-base); color: var(--color-gray-900); margin-bottom: var(--space-2); line-height: var(--line-height-relaxed);">
+          Body text: Planted on February 10, 2026. Expected harvest in May. Currently showing healthy growth with no issues detected.
+        </p>
+        <p style="font-size: var(--font-size-sm); color: var(--color-gray-700); margin-bottom: var(--space-2);">
+          Secondary: Bed A, North Field &bull; Last image: 2 hours ago
+        </p>
+        <p style="font-size: var(--font-size-xs); color: var(--color-gray-500);">
+          Caption: Captured March 17, 2026 at 08:30 &bull; Scheduled &bull; Node cam-001
+        </p>
+        <p style="font-size: var(--font-size-base); color: var(--color-gray-900); margin-top: var(--space-3);">
+          日本語テスト: 長野県の農場 &bull; チェリートマト &bull; 健康
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Minimal JS for theme switching demo (exception: mock-ups are normally no-JS)
+    document.querySelectorAll('.theme-switcher__btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.theme-switcher__btn').forEach(b => b.style.outline = 'none');
+      });
+    });
+
+    // Apply dark theme via data attribute (overriding prefers-color-scheme)
+    // This simulates the "Dark" button using the same CSS custom properties
+    const darkBtn = document.querySelector('.theme-switcher__btn--dark');
+    darkBtn.addEventListener('click', function() {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    });
+  </script>
+</body>
+</html>

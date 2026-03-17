@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Farm Layout</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page-specific styles for Farm Layout View */
+    .farm-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .farm-header__name {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+      line-height: var(--line-height-tight);
+    }
+
+    /* View toggle tabs (List / Layout) */
+    .view-toggle {
+      display: flex;
+      gap: 0;
+      padding: var(--space-3) var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .view-toggle__tab {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      height: var(--touch-target-min);
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-500);
+      background: var(--color-gray-100);
+      border: var(--border-default);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-decoration: none;
+    }
+
+    .view-toggle__tab:first-child {
+      border-radius: var(--radius-md) 0 0 var(--radius-md);
+    }
+
+    .view-toggle__tab:last-child {
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      border-left: none;
+    }
+
+    .view-toggle__tab--active {
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border-color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .view-toggle__tab:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      z-index: 1;
+    }
+
+    /* Farm layout container */
+    .layout-container {
+      padding: var(--space-4);
+    }
+
+    .layout-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-3);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-700);
+    }
+
+    .layout-legend__item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .layout-legend__swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    /* Field sections */
+    .field-section {
+      margin-bottom: var(--space-6);
+    }
+
+    .field-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) 0;
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      border-bottom: 2px solid var(--color-primary);
+      margin-bottom: var(--space-3);
+    }
+
+    .field-header__icon {
+      color: var(--color-primary);
+    }
+
+    /* Bed (ridge) representation */
+    .bed-row {
+      margin-bottom: var(--space-4);
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .bed-label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-gray-100);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-700);
+      border-bottom: var(--border-default);
+    }
+
+    .bed-label__ridge-icon {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      font-weight: var(--font-weight-regular);
+    }
+
+    /* Plot cells within a bed */
+    .plot-row {
+      display: flex;
+      gap: 0;
+    }
+
+    .plot-cell {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 96px;
+      padding: var(--space-3);
+      text-decoration: none;
+      color: inherit;
+      border-right: var(--border-default);
+      transition: background-color var(--transition-fast);
+      position: relative;
+      cursor: pointer;
+    }
+
+    .plot-cell:last-child {
+      border-right: none;
+    }
+
+    .plot-cell:hover,
+    .plot-cell:focus-visible {
+      background-color: var(--color-gray-100);
+    }
+
+    .plot-cell:focus-visible {
+      outline: none;
+      box-shadow: inset var(--focus-ring);
+    }
+
+    /* Status-tinted backgrounds for plot cells */
+    .plot-cell--healthy {
+      background-color: var(--color-status-healthy-bg);
+    }
+    .plot-cell--slow {
+      background-color: var(--color-status-slow-growth-bg);
+    }
+    .plot-cell--issue {
+      background-color: var(--color-status-issue-bg);
+    }
+    .plot-cell--intrusion {
+      background-color: var(--color-status-animal-bg);
+    }
+    .plot-cell--nodata {
+      background-color: var(--color-status-no-data-bg);
+    }
+
+    .plot-cell__label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-700);
+      margin-bottom: var(--space-1);
+    }
+
+    .plot-cell__crop-icon {
+      font-size: 28px;
+      margin-bottom: var(--space-1);
+    }
+
+    .plot-cell__crop-name {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-900);
+      text-align: center;
+      line-height: var(--line-height-tight);
+    }
+
+    .plot-cell__status {
+      margin-top: var(--space-1);
+    }
+
+    /* Motion badge on plot cell */
+    .plot-cell__motion {
+      position: absolute;
+      top: var(--space-1);
+      right: var(--space-1);
+    }
+
+    /* Empty plot cell (unassigned) */
+    .plot-cell--empty {
+      background-color: var(--color-gray-100);
+      border-style: dashed;
+    }
+
+    .plot-cell--empty .plot-cell__crop-icon {
+      color: var(--color-gray-300);
+      font-size: 24px;
+    }
+
+    .plot-cell--empty .plot-cell__crop-name {
+      color: var(--color-gray-500);
+      font-style: italic;
+    }
+
+    /* Compass / orientation indicator */
+    .compass {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-2);
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+    }
+
+    .compass__arrow {
+      font-size: var(--font-size-lg);
+    }
+
+    /* MVP teaser: Edit mode CTA */
+    .edit-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      margin: var(--space-4) 0;
+      padding: var(--space-4);
+      background: var(--color-gray-100);
+      border: 2px dashed var(--color-gray-300);
+      border-radius: var(--radius-lg);
+      color: var(--color-gray-500);
+      font-size: var(--font-size-base);
+    }
+
+    .edit-cta__icon {
+      font-size: var(--font-size-xl);
+    }
+
+    /* Section divider */
+    .section-divider {
+      margin: var(--space-8) 0 var(--space-6);
+      padding-top: var(--space-6);
+      border-top: 2px solid var(--color-gray-300);
+    }
+
+    .section-divider__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .section-divider__desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-4);
+    }
+
+    /* Interactive edit mode preview (MVP) */
+    .edit-preview {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+
+    .edit-toolbar {
+      display: flex;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      background: var(--color-gray-100);
+      border-bottom: var(--border-default);
+      overflow-x: auto;
+    }
+
+    .edit-tool {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      min-height: var(--touch-target-min);
+      padding: 0 var(--space-3);
+      border-radius: var(--radius-md);
+      border: var(--border-default);
+      background: var(--color-surface);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-gray-700);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .edit-tool--active {
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border-color: var(--color-primary);
+    }
+
+    .edit-canvas {
+      padding: var(--space-4);
+      min-height: 200px;
+      position: relative;
+    }
+
+    .edit-canvas__grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(4, 48px);
+      gap: 2px;
+      background: var(--color-gray-300);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .edit-canvas__cell {
+      background: var(--color-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+    }
+
+    .edit-canvas__cell--bed {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .edit-canvas__cell--path {
+      background: var(--color-gray-100);
+      color: var(--color-gray-300);
+    }
+
+    .edit-canvas__cell--selected {
+      outline: 3px solid var(--color-primary);
+      outline-offset: -3px;
+    }
+
+    .edit-hint {
+      padding: var(--space-3);
+      background: var(--color-info);
+      color: #FFFFFF;
+      font-size: var(--font-size-sm);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sticky header -->
+  <header class="farm-header" role="banner" aria-label="Farm header">
+    <span class="farm-header__name">LitCrop Demo Farm</span>
+    <button class="farm-header__refresh" aria-label="Refresh" title="Refresh">
+      <span aria-hidden="true">&#8635;</span>
+    </button>
+  </header>
+
+  <!-- View toggle: List vs Layout -->
+  <div class="view-toggle" role="tablist" aria-label="Farm view">
+    <a href="farm-overview.html"
+       class="view-toggle__tab"
+       role="tab"
+       aria-selected="false"
+       aria-label="List view">
+      <span aria-hidden="true">&#9776;</span> List
+    </a>
+    <span class="view-toggle__tab view-toggle__tab--active"
+          role="tab"
+          aria-selected="true"
+          aria-label="Layout view">
+      <span aria-hidden="true">&#9638;</span> Layout
+    </span>
+  </div>
+
+  <main role="main">
+    <!-- Compass orientation -->
+    <div class="compass" aria-label="Farm orientation: North is up">
+      <span class="compass__arrow" aria-hidden="true">&#8593;</span>
+      <span>North</span>
+    </div>
+
+    <!-- Legend -->
+    <div class="layout-legend" role="img" aria-label="Status legend">
+      <span class="layout-legend__item">
+        <span class="layout-legend__swatch" style="background: var(--color-status-healthy);" aria-hidden="true"></span>
+        Healthy
+      </span>
+      <span class="layout-legend__item">
+        <span class="layout-legend__swatch" style="background: var(--color-status-slow-growth);" aria-hidden="true"></span>
+        Slow
+      </span>
+      <span class="layout-legend__item">
+        <span class="layout-legend__swatch" style="background: var(--color-status-issue);" aria-hidden="true"></span>
+        Issue
+      </span>
+      <span class="layout-legend__item">
+        <span class="layout-legend__swatch" style="background: var(--color-status-animal);" aria-hidden="true"></span>
+        Intrusion
+      </span>
+      <span class="layout-legend__item">
+        <span class="layout-legend__swatch" style="background: var(--color-gray-300);" aria-hidden="true"></span>
+        No data
+      </span>
+    </div>
+
+    <div class="layout-container">
+
+      <!-- ===== North Field ===== -->
+      <section class="field-section" aria-label="North Field">
+        <div class="field-header">
+          <span class="field-header__icon" aria-hidden="true">&#127806;</span>
+          North Field
+        </div>
+
+        <!-- Bed A (Ridge) — 2 plots -->
+        <div class="bed-row" aria-label="Bed A">
+          <div class="bed-label">
+            <span>Bed A</span>
+            <span class="bed-label__ridge-icon">&#9472;&#9472; ridge &#9472;&#9472;</span>
+          </div>
+          <div class="plot-row">
+            <a href="plot-detail.html" class="plot-cell plot-cell--healthy"
+               aria-label="Plot A1: Cherry Tomato — Healthy">
+              <span class="plot-cell__label">A1</span>
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#127813;</span>
+              <span class="plot-cell__crop-name">Cherry<br>Tomato</span>
+              <span class="plot-cell__status">
+                <span class="badge badge--sm status-healthy">
+                  <span aria-hidden="true">&#10003;</span> Healthy
+                </span>
+              </span>
+            </a>
+            <a href="plot-detail.html" class="plot-cell plot-cell--intrusion"
+               aria-label="Plot A2: Basil — Animal Intrusion, Motion alert">
+              <span class="plot-cell__motion">
+                <span class="badge-motion-sm">
+                  <span aria-hidden="true">&#9888;</span> MOTION
+                </span>
+              </span>
+              <span class="plot-cell__label">A2</span>
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#127807;</span>
+              <span class="plot-cell__crop-name">Basil</span>
+              <span class="plot-cell__status">
+                <span class="badge badge--sm status-animal">
+                  <span aria-hidden="true">&#128038;</span> Intrusion
+                </span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Bed B (Ridge) — 2 plots -->
+        <div class="bed-row" aria-label="Bed B">
+          <div class="bed-label">
+            <span>Bed B</span>
+            <span class="bed-label__ridge-icon">&#9472;&#9472; ridge &#9472;&#9472;</span>
+          </div>
+          <div class="plot-row">
+            <a href="plot-detail.html" class="plot-cell plot-cell--issue"
+               aria-label="Plot B1: Cucumber — Issue">
+              <span class="plot-cell__label">B1</span>
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#129362;</span>
+              <span class="plot-cell__crop-name">Cucumber</span>
+              <span class="plot-cell__status">
+                <span class="badge badge--sm status-issue">
+                  <span aria-hidden="true">&#9888;</span> Issue
+                </span>
+              </span>
+            </a>
+            <a href="plot-detail.html" class="plot-cell plot-cell--slow"
+               aria-label="Plot B2: Lettuce — Slow Growth">
+              <span class="plot-cell__label">B2</span>
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#129388;</span>
+              <span class="plot-cell__crop-name">Lettuce</span>
+              <span class="plot-cell__status">
+                <span class="badge badge--sm status-slow-growth">
+                  <span aria-hidden="true">&#128260;</span> Slow
+                </span>
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== South Field ===== -->
+      <section class="field-section" aria-label="South Field">
+        <div class="field-header">
+          <span class="field-header__icon" aria-hidden="true">&#127806;</span>
+          South Field
+        </div>
+
+        <!-- Bed C (Ridge) — 2 plots + 1 empty -->
+        <div class="bed-row" aria-label="Bed C">
+          <div class="bed-label">
+            <span>Bed C</span>
+            <span class="bed-label__ridge-icon">&#9472;&#9472; ridge &#9472;&#9472;</span>
+          </div>
+          <div class="plot-row">
+            <a href="plot-detail.html" class="plot-cell plot-cell--healthy"
+               aria-label="Plot C1: Strawberry — Healthy">
+              <span class="plot-cell__label">C1</span>
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#127827;</span>
+              <span class="plot-cell__crop-name">Strawberry</span>
+              <span class="plot-cell__status">
+                <span class="badge badge--sm status-healthy">
+                  <span aria-hidden="true">&#10003;</span> Healthy
+                </span>
+              </span>
+            </a>
+            <a href="plot-detail.html" class="plot-cell plot-cell--nodata"
+               aria-label="Plot C2: Eggplant — No Data">
+              <span class="plot-cell__label">C2</span>
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#127814;</span>
+              <span class="plot-cell__crop-name">Eggplant</span>
+              <span class="plot-cell__status">
+                <span class="badge badge--sm status-no-data">
+                  <span aria-hidden="true">&#8212;</span> No data
+                </span>
+              </span>
+            </a>
+            <div class="plot-cell plot-cell--empty"
+                 aria-label="Empty plot — unassigned">
+              <span class="plot-cell__crop-icon" aria-hidden="true">&#10133;</span>
+              <span class="plot-cell__crop-name">Unassigned</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Edit mode CTA (MVP teaser) -->
+      <div class="edit-cta" aria-label="Edit layout — available in future version">
+        <span class="edit-cta__icon" aria-hidden="true">&#9998;</span>
+        <span>Edit Layout — coming in MVP</span>
+      </div>
+
+    </div>
+
+    <!-- ===== DEMO SECTION: Interactive Edit Mode (MVP Preview) ===== -->
+    <div class="section-divider">
+      <h2 class="section-divider__title">MVP Preview: Interactive Layout Editor</h2>
+      <p class="section-divider__desc">
+        This section previews the interactive editing experience planned for MVP.
+        Users will be able to create fields, draw ridges (beds), and assign plots.
+      </p>
+
+      <div class="edit-preview">
+        <div class="edit-toolbar" role="toolbar" aria-label="Layout editing tools">
+          <button class="edit-tool" aria-label="Select tool">
+            <span aria-hidden="true">&#9757;</span> Select
+          </button>
+          <button class="edit-tool edit-tool--active" aria-label="Draw ridge — active">
+            <span aria-hidden="true">&#9473;</span> Draw Ridge
+          </button>
+          <button class="edit-tool" aria-label="Split plot tool">
+            <span aria-hidden="true">&#9474;</span> Split Plot
+          </button>
+          <button class="edit-tool" aria-label="Assign crop tool">
+            <span aria-hidden="true">&#127793;</span> Assign Crop
+          </button>
+          <button class="edit-tool" aria-label="Erase tool">
+            <span aria-hidden="true">&#128465;</span> Erase
+          </button>
+        </div>
+
+        <div class="edit-hint">
+          &#128161; Tap and drag to draw a new ridge (bed). Tap a cell to assign a crop.
+        </div>
+
+        <div class="edit-canvas">
+          <div class="edit-canvas__grid" role="grid" aria-label="Farm layout grid editor">
+            <!-- Row 1 -->
+            <div class="edit-canvas__cell edit-canvas__cell--bed">A1</div>
+            <div class="edit-canvas__cell edit-canvas__cell--bed">A2</div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--bed edit-canvas__cell--selected">New</div>
+            <div class="edit-canvas__cell edit-canvas__cell--bed">New</div>
+            <div class="edit-canvas__cell"></div>
+            <!-- Row 2 -->
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <!-- Row 3 -->
+            <div class="edit-canvas__cell edit-canvas__cell--bed">B1</div>
+            <div class="edit-canvas__cell edit-canvas__cell--bed">B2</div>
+            <div class="edit-canvas__cell edit-canvas__cell--path"></div>
+            <div class="edit-canvas__cell edit-canvas__cell--bed">C1</div>
+            <div class="edit-canvas__cell edit-canvas__cell--bed">C2</div>
+            <div class="edit-canvas__cell"></div>
+            <!-- Row 4 -->
+            <div class="edit-canvas__cell"></div>
+            <div class="edit-canvas__cell"></div>
+            <div class="edit-canvas__cell"></div>
+            <div class="edit-canvas__cell"></div>
+            <div class="edit-canvas__cell"></div>
+            <div class="edit-canvas__cell"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — Farm Overview</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page-specific styles for Farm Overview */
+    .farm-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      padding: 0 var(--space-4);
+      background-color: var(--color-surface);
+      border-bottom: var(--border-default);
+    }
+
+    .farm-header__name {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+      line-height: var(--line-height-tight);
+    }
+
+    .farm-header__refresh {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-gray-700);
+      font-size: 20px;
+      transition: background-color var(--transition-fast);
+    }
+
+    .farm-header__refresh:hover {
+      background-color: var(--color-gray-100);
+    }
+
+    .plots-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      padding: var(--space-4);
+    }
+
+    .demo-section {
+      padding: var(--space-4);
+      border-top: 4px solid var(--color-gray-100);
+      margin-top: var(--space-4);
+    }
+
+    .demo-section__label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-gray-500);
+      margin-bottom: var(--space-3);
+    }
+
+    /* Thumb background colors by crop for visual variety */
+    .thumb-tomato    { background: linear-gradient(135deg, #6B3A2A 0%, #9E4C2E 100%); }
+    .thumb-basil     { background: linear-gradient(135deg, #2A5A2A 0%, #3D7A3D 100%); }
+    .thumb-cucumber  { background: linear-gradient(135deg, #2A5A35 0%, #4A8A50 100%); }
+    .thumb-lettuce   { background: linear-gradient(135deg, #4A6A2A 0%, #6A9A40 100%); }
+    .thumb-strawberry{ background: linear-gradient(135deg, #7A2A3A 0%, #AA4050 100%); }
+    .thumb-eggplant  { background: linear-gradient(135deg, #4A2A6A 0%, #6A3A9A 100%); }
+
+    .thumb-emoji {
+      font-size: 28px;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    }
+
+    /* Skeleton grid */
+    .skeleton-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .skeleton-tile-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background-color: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+    }
+
+    .skeleton-thumb-sq {
+      width: 64px;
+      height: 64px;
+      min-width: 64px;
+      border-radius: var(--radius-md);
+    }
+
+    .skeleton-tile-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    /* Farm name in header green */
+    .farm-name-text {
+      color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation header -->
+  <header class="farm-header" role="banner">
+    <h1 class="farm-header__name">LitCrop Demo Farm</h1>
+    <button class="farm-header__refresh" aria-label="Refresh farm data" title="Refresh">
+      &#8635;
+    </button>
+  </header>
+
+  <!-- Status summary bar (display-only in PoC; tappable filters deferred to MVP) -->
+  <div class="status-summary-bar" role="status" aria-label="Farm status summary">
+    <span class="summary-pill status-issue">
+      <span aria-hidden="true">&#9888;</span>
+      2 Issues
+    </span>
+    <span class="summary-pill status-intrusion badge-motion" style="height:32px; padding: 0 12px; font-size: var(--font-size-sm);">
+      <span aria-hidden="true">&#128062;</span>
+      1 Motion
+    </span>
+    <span class="summary-pill status-slow">
+      <span aria-hidden="true">&#9201;</span>
+      1 Slow
+    </span>
+    <span class="summary-pill status-healthy">
+      <span aria-hidden="true">&#10003;</span>
+      2 Healthy
+    </span>
+    <span class="summary-pill status-nodata">
+      <span aria-hidden="true">&#8212;</span>
+      1 No Data
+    </span>
+  </div>
+
+  <main role="main">
+    <!-- Plot tiles list -->
+    <section aria-label="Plot tiles" class="plots-list">
+
+      <!-- Plot 1: Basil A2 — Animal Intrusion (motion) — shown first as highest severity -->
+      <a href="plot-detail.html"
+         class="plot-tile"
+         aria-label="Basil, Plot A2, Status: Animal Intrusion — motion detected">
+        <div class="plot-tile__thumb thumb-basil" aria-hidden="true">
+          <span class="thumb-emoji">🌿</span>
+        </div>
+        <div class="plot-tile__info">
+          <span class="plot-tile__crop-name">Basil</span>
+          <span class="plot-tile__plot-label">Plot A2 &middot; Bed A</span>
+        </div>
+        <div class="plot-tile__badges">
+          <span class="badge-motion" aria-label="Motion triggered capture">
+            <span aria-hidden="true">&#128062;</span>
+            MOTION
+          </span>
+          <span class="badge status-intrusion" aria-label="Status: Animal Intrusion">
+            <span class="badge-icon" aria-hidden="true">&#128062;</span>
+            Animal
+          </span>
+        </div>
+      </a>
+
+      <!-- Plot 2: Strawberry C1 — Issue -->
+      <a href="plot-detail.html"
+         class="plot-tile"
+         aria-label="Strawberry, Plot C1, Status: Issue">
+        <div class="plot-tile__thumb thumb-strawberry" aria-hidden="true">
+          <span class="thumb-emoji">🍓</span>
+        </div>
+        <div class="plot-tile__info">
+          <span class="plot-tile__crop-name">Strawberry</span>
+          <span class="plot-tile__plot-label">Plot C1 &middot; Bed C</span>
+        </div>
+        <div class="plot-tile__badges">
+          <span class="badge status-issue" aria-label="Status: Issue">
+            <span class="badge-icon" aria-hidden="true">&#9888;</span>
+            Issue
+          </span>
+        </div>
+      </a>
+
+      <!-- Plot 3: Cucumber B1 — Slow Growth -->
+      <a href="plot-detail.html"
+         class="plot-tile"
+         aria-label="Cucumber, Plot B1, Status: Slow Growth">
+        <div class="plot-tile__thumb thumb-cucumber" aria-hidden="true">
+          <span class="thumb-emoji">🥒</span>
+        </div>
+        <div class="plot-tile__info">
+          <span class="plot-tile__crop-name">Cucumber</span>
+          <span class="plot-tile__plot-label">Plot B1 &middot; Bed B</span>
+        </div>
+        <div class="plot-tile__badges">
+          <span class="badge status-slow" aria-label="Status: Slow Growth">
+            <span class="badge-icon" aria-hidden="true">&#9201;</span>
+            Slow Growth
+          </span>
+        </div>
+      </a>
+
+      <!-- Plot 4: Cherry Tomato A1 — Healthy -->
+      <a href="plot-detail.html"
+         class="plot-tile"
+         aria-label="Cherry Tomato, Plot A1, Status: Healthy">
+        <div class="plot-tile__thumb thumb-tomato" aria-hidden="true">
+          <span class="thumb-emoji">🍅</span>
+        </div>
+        <div class="plot-tile__info">
+          <span class="plot-tile__crop-name">Cherry Tomato</span>
+          <span class="plot-tile__plot-label">Plot A1 &middot; Bed A</span>
+        </div>
+        <div class="plot-tile__badges">
+          <span class="badge status-healthy" aria-label="Status: Healthy">
+            <span class="badge-icon" aria-hidden="true">&#10003;</span>
+            Healthy
+          </span>
+        </div>
+      </a>
+
+      <!-- Plot 5: Eggplant C2 — Healthy -->
+      <a href="plot-detail.html"
+         class="plot-tile"
+         aria-label="Eggplant, Plot C2, Status: Healthy">
+        <div class="plot-tile__thumb thumb-eggplant" aria-hidden="true">
+          <span class="thumb-emoji">🍆</span>
+        </div>
+        <div class="plot-tile__info">
+          <span class="plot-tile__crop-name">Eggplant</span>
+          <span class="plot-tile__plot-label">Plot C2 &middot; Bed C</span>
+        </div>
+        <div class="plot-tile__badges">
+          <span class="badge status-healthy" aria-label="Status: Healthy">
+            <span class="badge-icon" aria-hidden="true">&#10003;</span>
+            Healthy
+          </span>
+        </div>
+      </a>
+
+      <!-- Plot 6: Lettuce B2 — No Data -->
+      <a href="plot-detail.html"
+         class="plot-tile"
+         aria-label="Lettuce, Plot B2, Status: No Data">
+        <div class="plot-tile__thumb" style="background-color: var(--color-gray-100);" aria-hidden="true">
+          <span style="font-size: 28px; opacity: 0.35;">&#128247;</span>
+        </div>
+        <div class="plot-tile__info">
+          <span class="plot-tile__crop-name">Lettuce</span>
+          <span class="plot-tile__plot-label">Plot B2 &middot; Bed B</span>
+        </div>
+        <div class="plot-tile__badges">
+          <span class="badge status-nodata" aria-label="Status: No Data">
+            <span class="badge-icon" aria-hidden="true">&#8212;</span>
+            No Data
+          </span>
+        </div>
+      </a>
+
+    </section>
+
+    <!-- ======================================================
+         DEMO SECTION: Skeleton Loading State
+         ====================================================== -->
+    <section class="demo-section" aria-label="Example: skeleton loading state">
+      <div class="demo-section__label" aria-hidden="true">Demo state &mdash; Loading (skeleton)</div>
+
+      <div class="skeleton-list" role="status" aria-label="Loading farm data...">
+        <!-- Skeleton tile 1 -->
+        <div class="skeleton-tile-card" aria-hidden="true">
+          <div class="skeleton skeleton-thumb-sq"></div>
+          <div class="skeleton-tile-info">
+            <div class="skeleton skeleton-text-long"></div>
+            <div class="skeleton skeleton-text-short"></div>
+          </div>
+          <div class="skeleton skeleton-badge"></div>
+        </div>
+        <!-- Skeleton tile 2 -->
+        <div class="skeleton-tile-card" aria-hidden="true">
+          <div class="skeleton skeleton-thumb-sq"></div>
+          <div class="skeleton-tile-info">
+            <div class="skeleton skeleton-text-long" style="width:55%"></div>
+            <div class="skeleton skeleton-text-short" style="width:35%"></div>
+          </div>
+          <div class="skeleton skeleton-badge"></div>
+        </div>
+        <!-- Skeleton tile 3 -->
+        <div class="skeleton-tile-card" aria-hidden="true">
+          <div class="skeleton skeleton-thumb-sq"></div>
+          <div class="skeleton-tile-info">
+            <div class="skeleton skeleton-text-long" style="width:65%"></div>
+            <div class="skeleton skeleton-text-short"></div>
+          </div>
+          <div class="skeleton skeleton-badge" style="width: 100px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+         DEMO SECTION: Empty State (no plots)
+         ====================================================== -->
+    <section class="demo-section" aria-label="Example: empty state when no plots exist">
+      <div class="demo-section__label" aria-hidden="true">Demo state &mdash; Empty (no plots configured)</div>
+
+      <div class="empty-state" role="status">
+        <div class="empty-state__icon" aria-hidden="true">🌱</div>
+        <h2 class="empty-state__heading">No plots yet</h2>
+        <p class="empty-state__body">
+          Plots will appear here once your farm is set up and a camera node is connected.
+        </p>
+        <button class="btn-primary" type="button" disabled>
+          Set up farm
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast example (success) -->
+  <div class="toast toast--success" role="status" aria-live="polite" style="bottom: 24px;">
+    <span class="toast__icon" aria-hidden="true">&#10003;</span>
+    Farm data refreshed
+  </div>
+
+  <!-- Back to index -->
+  <nav style="padding: var(--space-4) var(--space-4) var(--space-10); border-top: var(--border-default); margin-top: var(--space-8);" aria-label="Mock-up navigation">
+    <a href="index.html" style="font-size: var(--font-size-sm); color: var(--color-gray-500);">
+      &#8592; Back to mock-up index
+    </a>
+  </nav>
+
+</body>
+</html>

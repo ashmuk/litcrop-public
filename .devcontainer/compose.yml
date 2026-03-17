@@ -1,5 +1,5 @@
 services:
-  litcrop:
+  devcontainer:
     build:
       context: .
       dockerfile: Dockerfile
@@ -8,7 +8,7 @@ services:
         GIT_DELTA_VERSION: "0.18.2"
         ZSH_IN_DOCKER_VERSION: "1.2.0"
         YQ_VERSION: "v4.44.1"
-    image: litcrop-devcontainer
+    image: project-devcontainer
     command: sleep infinity
     user: developer
     working_dir: /workspace
@@ -41,8 +41,8 @@ services:
           cpus: "4.0"
           memory: "6g"
 
-  litcrop_nonet:
-    extends: litcrop
+  devcontainer_nonet:
+    extends: devcontainer
     network_mode: "none"
     profiles:
       - no-net
