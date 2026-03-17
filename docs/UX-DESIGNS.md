@@ -1276,10 +1276,148 @@ src/frontend/src/styles/
 
 ---
 
+---
+
+## 9. Additional Screens (from Step 4 Mockup Feedback)
+
+> The following screens were added during the Step 4 mockup phase based on user feedback.
+> They expand the PoC from 3 screens to 7, plus desktop layouts.
+
+### 9.1 Farm Layout View (Spatial)
+
+**Purpose**: Show the farm's physical arrangement — Fields as sections, Beds as ridges, Plots as tappable cells. Toggle between List and Layout views on Farm Overview.
+
+**Key Components**:
+- **View toggle**: Tab bar at top of Farm Overview (`List | Layout`)
+- **Field sections**: Labeled groups with field name and icon
+- **Bed rows**: Labeled ridges within fields
+- **Plot cells**: Tappable cells with status-tinted backgrounds, crop icon, label, status badge
+- **Empty plots**: Dashed border placeholder for unassigned areas
+- **Compass**: Orientation indicator (North arrow)
+- **Status legend**: Color + icon mapping for all status types
+
+**PoC scope**: Read-only spatial view with seed data. Interactive editor (draw ridge, split plot, assign crop) is deferred to MVP — shown as a preview section in mockups.
+
+**Mockup**: `docs/mockups/farm-layout.html`
+
+### 9.2 Weather & Environment
+
+**Purpose**: Weather data integration at three levels — ambient strip on Farm Overview, detailed panel with forecasts, and crop impact analysis.
+
+**Key Components**:
+- **Weather strip** (Farm Overview): Tappable bar showing current temp, condition, hi/lo, rain probability. Background: light blue gradient.
+- **Weather alert banner**: Frost warning, heavy rain alert. Prominent colored bar below header.
+- **Weather detail panel**: Expanded view with current conditions grid (humidity, wind, UV, soil temp, rainfall, sunrise/set), hourly forecast (horizontal scroll), 7-day forecast (temperature range bars).
+- **Crop impact cards**: Actionable cards linking weather to specific plots. Border-left color indicates severity (danger=red, warning=amber, good=green, info=blue). Each card names specific crops affected.
+- **Plot weather context**: Compact 4-stat bar on Plot Detail (air temp, soil temp, humidity, rain %).
+- **Data source indicator**: Badge showing `API` (Open-Meteo) or `SENSOR` (on-site, MVP).
+
+**Mockup**: `docs/mockups/farm-weather.html`
+
+### 9.3 Farm Setup & AI Assistant
+
+**Purpose**: Onboarding flow for location input + AI chatbot for crop planning.
+
+**Key Components**:
+- **Step indicator**: 3-step progress dots (Location → Crops → Layout)
+- **Location methods**: 4 tappable cards (GPS, Coordinates, Address Search, AI Assistant)
+- **Coordinate input**: Lat/lon fields with map placeholder showing pin
+- **Location result card**: Green confirmation with detected place name, elevation, climate zone
+- **Climate profile card**: Auto-detected grid (summer high, winter low, frost dates, growing season, annual rain)
+- **AI chatbot**: Full chat interface with bot/user message bubbles, quick-action buttons, crop suggestion cards with planting schedules, chatbot-assisted layout creation flow.
+- **Chat input**: Text field with send button, rounded pill style.
+
+**Mockup**: `docs/mockups/farm-setup.html`
+
+### 9.4 Settings
+
+**Purpose**: App preferences — theme, language, weather config, camera settings, AI assistant.
+
+**Key Components**:
+- **Farm profile card**: Green-tinted card showing farm name, location, edit button
+- **Theme selection**: 4 preview cards (Light, Dark, Earthy, System) with visual previews showing font/background samples
+- **Language selection**: 2 cards with flag emoji, language name, native name, checkmark for selected
+- **i18n preview table**: Side-by-side EN/JA translations of key UI terms
+- **Toggle switches**: For weather alerts, motion detection, crop impact analysis
+- **Segmented control**: For temperature unit (°C / °F)
+- **Setting rows**: Icon + label + value/control pattern, grouped in bordered sections
+- **Live View placeholder**: Grayed-out future feature section for realtime camera
+
+**Mockup**: `docs/mockups/settings.html`
+
+---
+
+## 10. Earthy Theme Tokens
+
+> Added as a third theme option alongside Light and Dark. Activated via `data-theme="earthy"` on `<html>`.
+
+| Category | Token | Earthy Value | Description |
+|----------|-------|-------------|-------------|
+| Primary | `--color-primary` | `#6B7F5E` | Sage green (muted, warm) |
+| Primary | `--color-primary-dark` | `#4A5A3F` | Deep sage |
+| Primary | `--color-primary-light` | `#F0EDE4` | Warm linen |
+| Surface | `--color-surface` | `#FDFBF7` | Cream |
+| Surface | `--color-background` | `#F0EDE4` | Warm linen |
+| Text | `--color-gray-900` | `#3B3530` | Warm charcoal |
+| Text | `--color-gray-500` | `#857A6E` | Warm gray |
+| Status | `--color-status-healthy` | `#6B8F5E` | Sage green |
+| Status | `--color-status-slow-growth` | `#B89B5E` | Wheat amber |
+| Status | `--color-status-issue` | `#B85C4A` | Terracotta red |
+| Status | `--color-status-animal` | `#C07842` | Burnt sienna |
+| Status | `--color-status-no-data` | `#8A7F73` | Warm gray |
+| Motion | `--color-motion` | `#C07842` | Warm orange |
+| Border | `--border-default` | `1px solid #C9BFB3` | Warm border |
+| Focus | `--focus-ring` | `rgba(107, 127, 94, 0.4)` | Sage tint ring |
+
+**Design rationale**: Soft pastel palette with warm earth tones — reflects the farming context. Cream backgrounds reduce eye strain for outdoor use. Desaturated status colors feel natural without losing semantic meaning.
+
+**Mockup**: `docs/mockups/theme-earthy-preview.html` (interactive comparison with Light and Dark)
+
+---
+
+## 11. Desktop Layout Specifications
+
+> Reference design for 1024px+ viewports. Implementation deferred to MVP but design decisions documented here.
+
+### 11.1 Responsive Breakpoints
+
+| Breakpoint | Target | Layout |
+|------------|--------|--------|
+| 320-480px | Phone (primary, PoC) | Single column |
+| 481-768px | Large phone / small tablet | 2-column plot grid |
+| 769-1023px | Tablet | 2-column with sidebar hints |
+| **1024px+** | **Desktop (reference design)** | **Full 2-column with sidebars** |
+
+### 11.2 Desktop Layout Patterns
+
+| Screen | Mobile Layout | Desktop Layout (1024px+) |
+|--------|--------------|--------------------------|
+| Farm Overview | Stacked: header → weather strip → status bar → plot list | 2-column: weather/impact sidebar (300px) + plot card grid (auto-fill, min 200px) |
+| Plot Detail | Stacked: image → metadata → tags → history | 2-column: image+history (left, 1fr) + tags/metadata/weather (right, 340px) |
+| Farm Layout | Fields stacked vertically | Fields side by side (2-column grid, align-items: start) |
+| AI Chat | Full-screen chat | 2-column: farm context panel (left, 1fr) + chat panel (right, 340-400px) |
+| Settings | Stacked sections | Sidebar nav (220px) + content panel (1fr) |
+| Navigation | Stacked header with back buttons | Horizontal top nav bar with logo, nav items, action icons |
+
+### 11.3 Desktop-Specific Components
+
+- **Top navigation bar**: Logo (left) → nav items (center) → action icons (right). Active item highlighted with primary-light background.
+- **Plot card grid**: Cards with vertical layout (image top, body bottom) instead of horizontal tile. Hover effect: subtle lift + shadow increase.
+- **Sidebar weather panel**: Persistent weather + crop impact, always visible alongside plot data.
+- **Settings sidebar**: Left navigation with icon + label, active-state border, content panel on right.
+
+**Mockup**: `docs/mockups/desktop-preview.html` (interactive theme switcher included)
+
+---
+
 ## References
 
-- [REQUIREMENTS.md](../REQUIREMENTS.md) -- Full requirements specification (29 FRs, 16 NFRs)
-- [ARCHITECTURE.md](ARCHITECTURE.md) -- System architecture and tech stack
+- [REQUIREMENTS.md](../REQUIREMENTS.md) -- Full requirements specification (54 FRs, 24 NFRs)
+- [ARCHITECTURE.md](ARCHITECTURE.md) -- System architecture and tech stack (11 endpoints)
 - [Vision.md](../Vision.md) -- Project vision and long-term direction
+- [PLANS.md](../PLANS.md) -- PoC scope (9 deliverables, 7 screens)
 - [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/) -- Design principles reference
 - [WCAG 2.1 AA](https://www.w3.org/WAI/WCAG21/quickref/) -- Accessibility compliance reference
+- Mock-ups: `docs/mockups/` (10 HTML files + 1 CSS file)
+
+> Updated 2026-03-17 after Step 4 mockup feedback consolidation.

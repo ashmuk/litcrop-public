@@ -401,7 +401,7 @@ Hub-and-spoke pattern with onboarding entry point, suitable for mobile.
 | Theme options (Light/Dark/Earthy/System) | Full | FR-10.1, NFR-6.x |
 | i18n (English/Japanese) | Full | FR-10.2, NFR-6.xi |
 | Dark mode | Full (manual toggle + system preference) | FR-10.1 |
-| Desktop optimization | Deferred to MVP | — |
+| Desktop layout (1024px+) | Reference design created (mockups); implementation deferred to MVP | desktop-preview.html |
 
 ---
 

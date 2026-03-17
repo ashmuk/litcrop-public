@@ -49,7 +49,8 @@
 | **Weather Proxy** | Hono route → Open-Meteo API | Fetches weather data using farm lat/lon; caches responses (15-min TTL) |
 | **AI Chatbot** | Hono route → LLM API | Location-aware crop planning via external LLM (Claude/OpenAI); farm setup guidance |
 | **i18n** | Astro + JSON locale files | English (en.json) and Japanese (ja.json); locale-aware date/number formatting |
-| **Theme System** | CSS custom properties | Light / Dark / Earthy / System; `data-theme` attribute on `<html>` |
+| **Theme System** | CSS custom properties | Light / Dark / Earthy / System; `data-theme` attribute on `<html>`, ~20 lines JS |
+| **Responsive Layout** | CSS Grid + media queries | Mobile-first (320-480px) primary; desktop (1024px+) reference design with 2-column layouts |
 
 ### Data Flow
 
