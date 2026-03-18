@@ -162,7 +162,7 @@ describe('POST /api/v1/plots/:plotId/images', () => {
     extra: Record<string, string> = {},
   ): Request {
     const formData = new FormData();
-    formData.append('image', new Blob([imageBytes], { type: 'image/jpeg' }), 'capture.jpg');
+    formData.append('image', new Blob([imageBytes as BlobPart], { type: 'image/jpeg' }), 'capture.jpg');
     formData.append('captured_at', '2026-03-17T10:00:00.000Z');
     formData.append('node_id', 'cam-001');
     formData.append('trigger', 'scheduled');
