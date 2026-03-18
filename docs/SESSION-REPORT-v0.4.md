@@ -141,9 +141,80 @@ Multi-agent team coordinating implementation across 6 phases.
 
 ---
 
+## Resource Consumption
+
+### Time
+
+| Milestone | Timestamp (JST) | Elapsed |
+|-----------|-----------------|---------|
+| Session start (team creation) | ~12:00 | — |
+| Phase 0 commit (`86a6ac9`) | 12:40 | +40 min |
+| Phase 1 commit (`be1ff8b`) | ~13:15 | +35 min |
+| Phase 2 commit (`1b333ad`) | ~13:50 | +35 min |
+| Phase 3 API commit (`d42b731`) | ~14:10 | +20 min |
+| Phase 3 FE commit (`4f623ec`) | ~14:12 | +2 min (recovery) |
+| Phase 4 commit (`d1cfe1d`) | ~14:35 | +23 min |
+| Phase 5 commit (`a26433b`) | 14:48 | +13 min |
+| Session report + tag (`e87c824`) | 15:12 | +24 min |
+| **Total implementation wall-clock** | | **~2h 8min** |
+| **Total session (incl. planning + review)** | | **~3h 12min** |
+
+### Token Usage
+
+| Category | Tokens | % of 1M Context |
+|----------|--------|-----------------|
+| System prompt | ~6.1k | 0.6% |
+| System tools | ~12.9k | 1.3% |
+| Custom agents | ~406 | 0.0% |
+| Memory files | ~2k | 0.2% |
+| Skills | ~2.7k | 0.3% |
+| Messages (conversation) | ~123.8k | 12.4% |
+| **Total consumed** | **~153k** | **15.3%** |
+| Free space remaining | ~819k | 81.9% |
+| Autocompact buffer | ~33k | 3.3% |
+
+**Model**: Claude Opus 4.6 (1M context) — team lead
+**Subagent model**: Claude Sonnet — all 8 builder/issue agents
+
+### Agent Cost Summary
+
+| Agent | Role | Approx. Cost | Notes |
+|-------|------|-------------|-------|
+| team-lead (Opus) | Coordination, review | — | Main conversation context |
+| issue-creator (Sonnet) | GitHub issues | ~$0.30 | Blocked early, partial work |
+| phase0-builder (Sonnet) | Monorepo scaffold | ~$0.50 | 2 tasks |
+| phase1-builder (Sonnet) | Shared types + scaffolding | ~$1.20 | 5 tasks, read design docs |
+| phase2-builder (Sonnet) | API core + DynamoDB | ~$1.50 | 6 tasks, highest-risk code |
+| phase3-api (Sonnet) | API routes + scripts | ~$2.00 | 7 tasks, external integrations |
+| phase3-frontend (Sonnet) | Frontend foundation | ~$1.80 | 4 tasks, read mockups (killed) |
+| phase4-builder (Sonnet) | Feature screens | ~$3.50 | 10 tasks, most complex phase |
+| phase5-builder (Sonnet) | Polish + deploy | ~$1.20 | 5 tasks |
+| issue-closer (Sonnet) | Issue recovery | ~$1.00 | 26 creates + 39 closes |
+| **Total estimated subagent cost** | | **~$13.00** | Sonnet pricing |
+
+*Note: Costs are approximate estimates based on typical Sonnet token consumption per agent session. Actual billing depends on input/output token counts per agent, which are not directly visible to the team lead.*
+
+### Productivity Metrics
+
+| Metric | Value |
+|--------|-------|
+| Tasks implemented | 39 / 39 (100%) |
+| Files created/modified | 78 |
+| Lines of code added | 17,511 |
+| Agents spawned | 10 (8 builders + 1 issue-creator + 1 issue-closer) |
+| Agents that completed successfully | 7 / 8 builders (1 killed, work recovered) |
+| Commits produced | 8 (7 implementation + 1 session report) |
+| Lines per minute (implementation) | ~136 lines/min |
+| Tasks per hour | ~19 tasks/hour |
+| Context utilization | 15.3% of 1M window |
+
+---
+
 ## Next Steps
 
-1. **Fix GitHub PAT** — Add Issues read/write permission, respawn issue-creator for 39 issues
-2. **`/cc-test`** — Define test strategy (Step 9)
-3. **`/cc-deploy`** — Provision AWS resources and deploy (when ready)
-4. **PR to develop** — Merge feature/infra-monorepo → develop
+1. ~~**Fix GitHub PAT**~~ — Done (Issues read/write permission added mid-session)
+2. ~~**Recover GitHub issues**~~ — In progress (26 missing issues being created, all 39 being closed with implementation refs)
+3. **`/cc-pr-create`** — Create PR: feature/infra-monorepo → develop
+4. **`/cc-test`** — Define test strategy (Step 9)
+5. **`/cc-deploy`** — Provision AWS resources and deploy
+6. **Merge to develop** — Via `/cc-pr-merge` after review
