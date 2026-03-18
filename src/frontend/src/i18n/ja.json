@@ -1,0 +1,123 @@
+{
+  "nav": {
+    "farm": "農場",
+    "weather": "天気",
+    "setup": "セットアップ",
+    "settings": "設定"
+  },
+  "status": {
+    "healthy": "健全",
+    "slow_growth": "生育不良",
+    "issue": "問題あり",
+    "animal_intrusion": "動物侵入",
+    "no_data": "データなし"
+  },
+  "tags": {
+    "healthy": "健全",
+    "slow_growth": "生育不良",
+    "issue": "問題あり",
+    "animal_intrusion": "動物侵入"
+  },
+  "motion": {
+    "motion": "動体検知",
+    "scheduled": "定期撮影"
+  },
+  "screens": {
+    "farm_overview": "農場概要",
+    "plot_detail": "区画詳細",
+    "image_timeline": "画像履歴",
+    "weather": "天気予報",
+    "setup": "農場設定",
+    "settings": "アプリ設定"
+  },
+  "buttons": {
+    "refresh": "更新",
+    "retry": "再試行",
+    "load_more": "もっと見る",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "upload": "画像をアップロード",
+    "back": "戻る"
+  },
+  "farm": {
+    "no_plots": "区画がありません",
+    "no_plots_body": "農場を設定してカメラノードを接続すると、区画が表示されます。",
+    "error_loading": "農場データを読み込めませんでした",
+    "error_body": "接続を確認して、もう一度お試しください。",
+    "loading": "農場データを読み込み中…",
+    "refreshed": "農場データを更新しました"
+  },
+  "plot": {
+    "tag_this": "この画像にタグを付ける：",
+    "image_history": "画像履歴",
+    "captured": "撮影日時",
+    "crop_type": "作物種別",
+    "crop_variety": "品種",
+    "planted": "植付日",
+    "harvest": "収穫予定",
+    "notes": "メモ",
+    "no_images": "まだ画像がありません",
+    "no_images_body": "カメラノードが撮影を開始すると、画像が表示されます。"
+  },
+  "weather": {
+    "temperature": "気温",
+    "humidity": "湿度",
+    "wind": "風速",
+    "rain_probability": "降水確率",
+    "rain_sum": "降水量",
+    "sunrise": "日の出",
+    "sunset": "日の入り",
+    "high": "最高",
+    "low": "最低",
+    "today": "今日",
+    "hourly": "時間ごと",
+    "weekly": "7日間",
+    "alerts": "気象警報",
+    "crop_impact": "作物への影響",
+    "no_alerts": "現在の警報はありません"
+  },
+  "settings": {
+    "theme": "テーマ",
+    "locale": "言語",
+    "temp_unit": "温度単位",
+    "save_success": "設定を保存しました",
+    "themes": {
+      "light": "ライト",
+      "dark": "ダーク",
+      "earthy": "アーシー",
+      "system": "システム"
+    },
+    "locales": {
+      "en": "English",
+      "ja": "日本語"
+    },
+    "temp_units": {
+      "C": "摂氏 (°C)",
+      "F": "華氏 (°F)"
+    }
+  },
+  "setup": {
+    "farm_name": "農場名",
+    "location": "場所",
+    "latitude": "緯度",
+    "longitude": "経度",
+    "elevation": "標高（メートル）",
+    "description": "説明",
+    "climate_zone": "気候区分",
+    "save_success": "農場設定を保存しました"
+  },
+  "chat": {
+    "placeholder": "農場について質問する…",
+    "send": "送信",
+    "thinking": "考え中…",
+    "error": "応答を取得できませんでした。もう一度お試しください。"
+  },
+  "upload": {
+    "select_image": "画像を選択",
+    "uploading": "アップロード中…",
+    "success": "画像をアップロードしました",
+    "error": "アップロードに失敗しました",
+    "too_large": "画像サイズが2MBを超えています",
+    "wrong_type": "JPEGファイルのみ対応しています"
+  }
+}

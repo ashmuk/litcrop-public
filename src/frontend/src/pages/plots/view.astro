@@ -1,0 +1,20 @@
+---
+/**
+ * Plot Detail — T-FE-08
+ * Static page; plotId read from ?id=<plotId> query param at runtime.
+ * Renders: hero image, crop metadata, tag buttons (optimistic UI), image history.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PlotDetail from '../../components/PlotDetail';
+import Toast from '../../components/Toast';
+---
+
+<BaseLayout title="LitCrop — Plot Detail" activeTab="farm">
+  <nav class="nav-header" aria-label="Page navigation">
+    <a href="/" class="nav-header__back" aria-label="Back to Farm Overview">←</a>
+    <span class="nav-header__title" id="plot-title">Plot Detail</span>
+  </nav>
+
+  <PlotDetail client:load />
+  <Toast client:load />
+</BaseLayout>

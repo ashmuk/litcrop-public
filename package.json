@@ -1,0 +1,28 @@
+{
+  "name": "litcrop",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "src/frontend",
+    "src/api",
+    "src/simulator"
+  ],
+  "scripts": {
+    "dev": "echo 'Use workspace-specific dev commands'",
+    "build": "npm run build --workspaces",
+    "typecheck": "tsc --noEmit --workspaces",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "@astrojs/preact": {
+      "@preact/preset-vite": "2.8.3"
+    }
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
+  }
+}

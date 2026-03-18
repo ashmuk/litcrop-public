@@ -1,0 +1,123 @@
+{
+  "nav": {
+    "farm": "Farm",
+    "weather": "Weather",
+    "setup": "Setup",
+    "settings": "Settings"
+  },
+  "status": {
+    "healthy": "Healthy",
+    "slow_growth": "Slow Growth",
+    "issue": "Issue",
+    "animal_intrusion": "Animal",
+    "no_data": "No Data"
+  },
+  "tags": {
+    "healthy": "Healthy",
+    "slow_growth": "Slow Growth",
+    "issue": "Issue",
+    "animal_intrusion": "Animal Intrusion"
+  },
+  "motion": {
+    "motion": "MOTION",
+    "scheduled": "Scheduled"
+  },
+  "screens": {
+    "farm_overview": "Farm Overview",
+    "plot_detail": "Plot Detail",
+    "image_timeline": "Image Timeline",
+    "weather": "Weather",
+    "setup": "Farm Setup",
+    "settings": "Settings"
+  },
+  "buttons": {
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "load_more": "Load more",
+    "save": "Save",
+    "cancel": "Cancel",
+    "upload": "Upload image",
+    "back": "Back"
+  },
+  "farm": {
+    "no_plots": "No plots yet",
+    "no_plots_body": "Plots will appear here once your farm is set up and a camera node is connected.",
+    "error_loading": "Could not load farm data",
+    "error_body": "Check your connection and try again.",
+    "loading": "Loading farm data…",
+    "refreshed": "Farm data refreshed"
+  },
+  "plot": {
+    "tag_this": "Tag this image:",
+    "image_history": "Image History",
+    "captured": "Captured",
+    "crop_type": "Type",
+    "crop_variety": "Variety",
+    "planted": "Planted",
+    "harvest": "Harvest",
+    "notes": "Notes",
+    "no_images": "No images yet",
+    "no_images_body": "Images will appear here once the camera node starts capturing."
+  },
+  "weather": {
+    "temperature": "Temperature",
+    "humidity": "Humidity",
+    "wind": "Wind",
+    "rain_probability": "Rain Chance",
+    "rain_sum": "Rainfall",
+    "sunrise": "Sunrise",
+    "sunset": "Sunset",
+    "high": "High",
+    "low": "Low",
+    "today": "Today",
+    "hourly": "Hourly",
+    "weekly": "7-Day",
+    "alerts": "Alerts",
+    "crop_impact": "Crop Impact",
+    "no_alerts": "No active alerts"
+  },
+  "settings": {
+    "theme": "Theme",
+    "locale": "Language",
+    "temp_unit": "Temperature Unit",
+    "save_success": "Settings saved",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "earthy": "Earthy",
+      "system": "System"
+    },
+    "locales": {
+      "en": "English",
+      "ja": "日本語"
+    },
+    "temp_units": {
+      "C": "Celsius (°C)",
+      "F": "Fahrenheit (°F)"
+    }
+  },
+  "setup": {
+    "farm_name": "Farm Name",
+    "location": "Location",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "elevation": "Elevation (m)",
+    "description": "Description",
+    "climate_zone": "Climate Zone",
+    "save_success": "Farm settings saved"
+  },
+  "chat": {
+    "placeholder": "Ask about your farm…",
+    "send": "Send",
+    "thinking": "Thinking…",
+    "error": "Could not get a response. Please try again."
+  },
+  "upload": {
+    "select_image": "Select image",
+    "uploading": "Uploading…",
+    "success": "Image uploaded",
+    "error": "Upload failed",
+    "too_large": "Image exceeds 2 MB limit",
+    "wrong_type": "Only JPEG images are accepted"
+  }
+}

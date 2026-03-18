@@ -1,0 +1,28 @@
+---
+/**
+ * Farm Layout View — T-FE-07
+ * Spatial grid: Field → Bed → Plot hierarchy, status-colored cells.
+ * Toggle from list view (Farm Overview) via nav header.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FarmLayoutView from '../../components/FarmLayoutView';
+
+const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
+---
+
+<BaseLayout title="LitCrop — Farm Layout" activeTab="farm">
+  <nav class="nav-header" aria-label="Page navigation">
+    <a href="/" class="nav-header__back" aria-label="Back to list view">←</a>
+    <span class="nav-header__title">Layout View</span>
+    <a
+      href="/"
+      class="nav-header__action"
+      aria-label="Switch to list view"
+      title="List view"
+    >
+      ☰
+    </a>
+  </nav>
+
+  <FarmLayoutView farmId={farmId} client:load />
+</BaseLayout>

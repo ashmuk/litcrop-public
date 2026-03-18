@@ -1,0 +1,19 @@
+{
+  "name": "@litcrop/frontend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^5.0.1",
+    "@litcrop/shared": "*",
+    "preact": "^10.29.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.8.3",
+    "astro": "^5.0.0"
+  }
+}

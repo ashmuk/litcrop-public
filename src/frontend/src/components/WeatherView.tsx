@@ -1,0 +1,238 @@
+/**
+ * Weather View Island — T-FE-10
+ * Current conditions, hourly forecast, 7-day forecast, crop impact, alerts.
+ */
+
+import { useState, useEffect } from 'preact/hooks';
+import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
+import { getWeather } from '../lib/api';
+import { t } from '../i18n/i18n';
+import { useLocalFarmId } from '../lib/hooks';
+
+const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
+  danger: 'status-issue',
+  warning: 'status-slow',
+  good: 'status-healthy',
+  info: 'status-nodata',
+};
+
+function formatHour(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', hour12: false });
+}
+
+function formatWeekday(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export interface Props {
+  farmId: string;
+}
+
+export default function WeatherView({ farmId }: Props) {
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const effectiveFarmId = useLocalFarmId(farmId);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWeather(effectiveFarmId)
+      .then((data) => { if (!cancelled) setWeather(data); })
+      .catch(() => { if (!cancelled) setError(t('farm.error_loading')); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [effectiveFarmId]);
+
+  if (loading) {
+    return (
+      <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)">
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-lg)" />
+        <div class="skeleton" style="height:120px;border-radius:var(--radius-lg)" />
+        <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)" />
+      </div>
+    );
+  }
+
+  if (error || !weather) {
+    return (
+      <div class="empty-state">
+        <span class="empty-state__icon">⛅</span>
+        <p class="empty-state__heading">{t('farm.error_loading')}</p>
+        <p class="empty-state__body">{t('farm.error_body')}</p>
+        <button class="btn-primary mt-4" onClick={() => location.reload()}>
+          {t('buttons.retry')}
+        </button>
+      </div>
+    );
+  }
+
+  const { current, today, hourly, daily, alerts, crop_impact } = weather;
+
+  return (
+    <div style="padding-bottom:80px">
+      {/* Weather alerts */}
+      {alerts.map((alert, i) => (
+        <div
+          key={i}
+          class="offline-banner"
+          style={
+            alert.severity === 'danger'
+              ? 'background-color:#FFEBEE;color:#C62828;border-bottom-color:#EF9A9A'
+              : 'background-color:#FFF8E1;color:#795B00;border-bottom-color:#F9DE7A'
+          }
+          role="alert"
+          aria-live="assertive"
+        >
+          <span aria-hidden="true">{alert.severity === 'danger' ? '🚨' : '⚠️'}</span>
+          <span>{alert.message}</span>
+        </div>
+      ))}
+
+      {/* Current conditions */}
+      <div
+        style="padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default)"
+      >
+        <div style="display:flex;align-items:center;gap:var(--space-4)">
+          <span style="font-size:64px;line-height:1" aria-hidden="true">
+            {current.condition_icon}
+          </span>
+          <div>
+            <div
+              style="font-size:48px;font-weight:var(--font-weight-bold);line-height:1;color:var(--color-text)"
+            >
+              {Math.round(current.temperature)}°C
+            </div>
+            <div style="font-size:var(--font-size-base);color:var(--color-gray-700)">
+              {current.condition}
+            </div>
+          </div>
+        </div>
+        <div
+          style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--border-default)"
+        >
+          <div style="text-align:center">
+            <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
+              {t('weather.humidity')}
+            </div>
+            <div style="font-weight:var(--font-weight-semibold)">{current.humidity}%</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
+              {t('weather.wind')}
+            </div>
+            <div style="font-weight:var(--font-weight-semibold)">
+              {Math.round(current.wind_speed)} km/h {current.wind_direction}
+            </div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
+              {t('weather.rain_probability')}
+            </div>
+            <div style="font-weight:var(--font-weight-semibold)">{today.rain_probability}%</div>
+          </div>
+        </div>
+        <div
+          style="display:flex;justify-content:space-between;margin-top:var(--space-3);font-size:var(--font-size-sm);color:var(--color-gray-700)"
+        >
+          <span>↑ {Math.round(today.high)}°  ↓ {Math.round(today.low)}°</span>
+          <span>🌅 {today.sunrise} &nbsp; 🌇 {today.sunset}</span>
+        </div>
+      </div>
+
+      {/* Hourly forecast */}
+      <div class="section-heading">{t('weather.hourly')}</div>
+      <div
+        style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:var(--space-3) var(--space-4)"
+      >
+        <div style="display:flex;gap:var(--space-3)" role="list" aria-label="Hourly forecast">
+          {hourly.slice(0, 24).map((h, i) => (
+            <div
+              key={i}
+              role="listitem"
+              style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px;padding:var(--space-2);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md);flex-shrink:0"
+            >
+              <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
+                {formatHour(h.time)}
+              </div>
+              <div style="font-size:24px" aria-hidden="true">{h.condition_icon}</div>
+              <div style="font-weight:var(--font-weight-semibold)">{Math.round(h.temperature)}°</div>
+              {h.rain_probability > 20 && (
+                <div style="font-size:var(--font-size-xs);color:#1565C0">
+                  💧{h.rain_probability}%
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 7-day forecast */}
+      <div class="section-heading">{t('weather.weekly')}</div>
+      <div
+        style="padding:0 var(--space-4);display:flex;flex-direction:column;gap:var(--space-2)"
+        role="list"
+        aria-label="7-day forecast"
+      >
+        {daily.map((day, i) => (
+          <div
+            key={i}
+            role="listitem"
+            style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md)"
+          >
+            <div
+              style="min-width:80px;font-size:var(--font-size-sm);font-weight:var(--font-weight-medium)"
+            >
+              {i === 0 ? t('weather.today') : formatWeekday(day.date)}
+            </div>
+            <span style="font-size:24px" aria-hidden="true">{day.condition_icon}</span>
+            <div style="flex:1;font-size:var(--font-size-sm);color:var(--color-gray-700)">
+              {day.condition}
+            </div>
+            <div style="display:flex;gap:var(--space-2);font-size:var(--font-size-sm)">
+              {day.rain_probability > 20 && (
+                <span style="color:#1565C0">💧{day.rain_probability}%</span>
+              )}
+              <span style="font-weight:var(--font-weight-semibold)">{Math.round(day.high)}°</span>
+              <span style="color:var(--color-gray-500)">{Math.round(day.low)}°</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Crop impact */}
+      {crop_impact.length > 0 && (
+        <>
+          <div class="section-heading">{t('weather.crop_impact')}</div>
+          <div
+            style="padding:0 var(--space-4) var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"
+          >
+            {crop_impact.map((card, i) => (
+              <div
+                key={i}
+                class={IMPACT_CSS[card.severity]}
+                style="padding:var(--space-3);border-radius:var(--radius-md)"
+                role="region"
+                aria-label={card.title}
+              >
+                <div style="font-weight:var(--font-weight-semibold)">{card.title}</div>
+                <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
+                  {card.description}
+                </div>
+                {card.affected_plots.length > 0 && (
+                  <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
+                    {card.affected_plots.map((p) => p.crop_type).join(', ')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

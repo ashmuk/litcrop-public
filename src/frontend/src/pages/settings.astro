@@ -1,0 +1,28 @@
+---
+/**
+ * Settings — T-FE-12
+ * Theme, locale, and temperature unit preferences.
+ * All settings persist via localStorage.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ThemeSwitcher from '../components/ThemeSwitcher';
+import SettingsPanel from '../components/SettingsPanel';
+import Toast from '../components/Toast';
+---
+
+<BaseLayout title="LitCrop — Settings" activeTab="settings">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      ⚙️ Settings
+    </h1>
+  </div>
+
+  <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)">
+    <ThemeSwitcher client:load />
+    <SettingsPanel client:load />
+  </div>
+
+  <Toast client:load />
+</BaseLayout>
