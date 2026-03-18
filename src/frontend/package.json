@@ -8,9 +8,12 @@
     "build": "astro build"
   },
   "dependencies": {
-    "@litcrop/shared": "*"
+    "@astrojs/preact": "^5.0.1",
+    "@litcrop/shared": "*",
+    "preact": "^10.29.0"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.8.3",
     "astro": "^5.0.0"
   }
 }

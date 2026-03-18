@@ -1,7 +1,8 @@
-import { Hono } from "hono";
+import { serve } from '@hono/node-server';
+import app from './app';
 
-const app = new Hono();
+const port = Number(process.env.PORT) || 3000;
 
-app.get("/", (c) => c.json({ status: "ok", service: "litcrop-api" }));
-
-export default app;
+serve({ fetch: app.fetch, port }, (info) => {
+  console.log(`LitCrop API running at http://localhost:${info.port}`);
+});

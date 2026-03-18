@@ -1,8 +1,17 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
+    "baseUrl": ".",
+    "paths": {
+      "@litcrop/shared": [
+        "../../packages/shared/src/index.ts"
+      ]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    ".astro"
+  ]
 }
