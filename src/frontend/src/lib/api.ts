@@ -1,0 +1,174 @@
+/**
+ * LitCrop API Client — T-FE-05
+ *
+ * Typed client for all 11 endpoints.
+ * Base URL: import.meta.env.PUBLIC_API_BASE_URL (Vite public env var)
+ *           Falls back to '/api/v1' for same-origin SSR dev.
+ *
+ * All functions throw ApiError on non-2xx responses.
+ */
+
+import type {
+  FarmResponse,
+  FarmPlotItem,
+  PlotDetailResponse,
+  PaginatedResponse,
+  ImageListItem,
+  ImageUploadResponse,
+  ImageDetailResponse,
+  TagCreateResponse,
+  WeatherResponse,
+  ChatResponse,
+  ApiError as ApiErrorBody,
+} from '@litcrop/shared';
+
+import type { CreateFarmRequest, UpdateFarmRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
+
+// ── Base URL ──────────────────────────────────────────────────────
+
+function getBaseUrl(): string {
+  // Vite exposes PUBLIC_ prefixed vars to the browser bundle
+  const envBase = (import.meta as { env?: Record<string, string> }).env?.PUBLIC_API_BASE_URL;
+  return envBase ?? '/api/v1';
+}
+
+// ── Error Type ────────────────────────────────────────────────────
+
+export class ApiError extends Error {
+  readonly statusCode: number;
+  readonly errorBody: ApiErrorBody;
+
+  constructor(statusCode: number, body: ApiErrorBody) {
+    super(body.error.message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.errorBody = body;
+  }
+}
+
+// ── Internal fetch wrapper ────────────────────────────────────────
+
+async function request<T>(
+  method: 'GET' | 'POST' | 'PATCH',
+  path: string,
+  body?: unknown,
+  isFormData = false,
+): Promise<T> {
+  const url = `${getBaseUrl()}${path}`;
+
+  const headers: Record<string, string> = {};
+  if (!isFormData && body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: isFormData
+      ? (body as FormData)
+      : body !== undefined
+        ? JSON.stringify(body)
+        : undefined,
+  });
+
+  if (!res.ok) {
+    let errorBody: ApiErrorBody;
+    try {
+      errorBody = (await res.json()) as ApiErrorBody;
+    } catch {
+      // Non-JSON error body
+      errorBody = {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: `HTTP ${res.status} ${res.statusText}`,
+        },
+      };
+    }
+    throw new ApiError(res.status, errorBody);
+  }
+
+  // 204 No Content — return empty object cast to T
+  if (res.status === 204) {
+    return {} as T;
+  }
+
+  return res.json() as Promise<T>;
+}
+
+// ── Farm Endpoints ────────────────────────────────────────────────
+
+/** GET /api/v1/farms/{farmId} */
+export async function getFarm(farmId: string): Promise<FarmResponse> {
+  return request<FarmResponse>('GET', `/farms/${farmId}`);
+}
+
+/** POST /api/v1/farms */
+export async function createFarm(data: CreateFarmRequest): Promise<FarmResponse> {
+  return request<FarmResponse>('POST', '/farms', data);
+}
+
+/** PATCH /api/v1/farms/{farmId} */
+export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<FarmResponse> {
+  return request<FarmResponse>('PATCH', `/farms/${farmId}`, data);
+}
+
+// ── Plot Endpoints ────────────────────────────────────────────────
+
+/** GET /api/v1/farms/{farmId}/plots */
+export async function getPlots(farmId: string): Promise<FarmPlotItem[]> {
+  return request<FarmPlotItem[]>('GET', `/farms/${farmId}/plots`);
+}
+
+/** GET /api/v1/plots/{plotId} */
+export async function getPlot(plotId: string): Promise<PlotDetailResponse> {
+  return request<PlotDetailResponse>('GET', `/plots/${plotId}`);
+}
+
+// ── Image Endpoints ───────────────────────────────────────────────
+
+/**
+ * GET /api/v1/plots/{plotId}/images
+ * @param cursor Opaque pagination cursor from a previous response's meta.next_cursor
+ */
+export async function getImages(
+  plotId: string,
+  cursor?: string,
+): Promise<PaginatedResponse<ImageListItem>> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  return request<PaginatedResponse<ImageListItem>>('GET', `/plots/${plotId}/images${query}`);
+}
+
+/**
+ * POST /api/v1/plots/{plotId}/images
+ * @param plotId Target plot ID
+ * @param formData FormData containing the JPEG image file under the "image" field
+ */
+export async function uploadImage(plotId: string, formData: FormData): Promise<ImageUploadResponse> {
+  return request<ImageUploadResponse>('POST', `/plots/${plotId}/images`, formData, true);
+}
+
+/** GET /api/v1/images/{imageId} */
+export async function getImage(imageId: string): Promise<ImageDetailResponse> {
+  return request<ImageDetailResponse>('GET', `/images/${imageId}`);
+}
+
+// ── Tag Endpoint ──────────────────────────────────────────────────
+
+/** POST /api/v1/images/{imageId}/tags */
+export async function createTag(imageId: string, data: CreateTagRequest): Promise<TagCreateResponse> {
+  return request<TagCreateResponse>('POST', `/images/${imageId}/tags`, data);
+}
+
+// ── Weather Endpoint ──────────────────────────────────────────────
+
+/** GET /api/v1/farms/{farmId}/weather */
+export async function getWeather(farmId: string): Promise<WeatherResponse> {
+  return request<WeatherResponse>('GET', `/farms/${farmId}/weather`);
+}
+
+// ── Chat Endpoint ─────────────────────────────────────────────────
+
+/** POST /api/v1/chat */
+export async function sendChat(data: ChatMessageRequest): Promise<ChatResponse> {
+  return request<ChatResponse>('POST', '/chat', data);
+}

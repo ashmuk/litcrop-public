@@ -124,7 +124,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/  — disabled: conflicts with src/frontend/src/lib/ source directory
 lib64/
 parts/
 sdist/
