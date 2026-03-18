@@ -15,9 +15,11 @@ import {
   MIN_PAGE_LIMIT,
   MAX_IMAGE_SIZE_BYTES,
   ACCEPTED_IMAGE_CONTENT_TYPE,
+  TRIGGER_TYPES,
   isValidTriggerType,
 } from '@litcrop/shared';
 import type { Farm, Field, Bed, Plot, Image } from '@litcrop/shared';
+import { makeLatestImage } from './_helpers';
 
 const router = new Hono();
 
@@ -27,11 +29,6 @@ const NODE_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 
 function isJpegBytes(buf: Uint8Array): boolean {
   return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-}
-
-async function makeLatestImage(image: Image) {
-  const thumbnail_url = await getSignedImageUrl(image.storage_key);
-  return { id: image.id, thumbnail_url, captured_at: image.captured_at, trigger: image.trigger };
 }
 
 /**
@@ -230,7 +227,7 @@ router.post('/:plotId/images', async (c) => {
   if (!isValidTriggerType(trigger)) {
     throw new ValidationError("Invalid trigger type: must be 'scheduled' or 'motion'", {
       field: 'trigger',
-      valid_values: ['scheduled', 'motion'],
+      valid_values: TRIGGER_TYPES,
     });
   }
 

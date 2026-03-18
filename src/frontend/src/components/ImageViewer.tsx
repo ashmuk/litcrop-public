@@ -5,26 +5,11 @@
  */
 
 import { useState, useEffect, useCallback } from 'preact/hooks';
-import type { ImageDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
+import type { ImageDetailResponse, ImageListItem } from '@litcrop/shared';
 import { getImage, getImages } from '../lib/api';
 import { t } from '../i18n/i18n';
-
-const TAG_ICONS: Record<TagValue, string> = {
-  healthy: '✓',
-  slow_growth: '⏱',
-  issue: '⚠',
-  animal_intrusion: '🦌',
-};
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { TAG_ICONS } from '../lib/status';
+import { formatDate } from '../lib/format';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

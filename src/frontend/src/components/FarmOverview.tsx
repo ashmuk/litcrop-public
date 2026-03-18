@@ -7,6 +7,8 @@ import { useState, useEffect } from 'preact/hooks';
 import type { FarmPlotItem, WeatherResponse, PlotStatus } from '@litcrop/shared';
 import { getFarm, getPlots, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
+import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
+import { useLocalFarmId } from '../lib/hooks';
 
 // Most critical first
 const STATUS_SEVERITY: Record<PlotStatus, number> = {
@@ -15,22 +17,6 @@ const STATUS_SEVERITY: Record<PlotStatus, number> = {
   slow_growth: 2,
   healthy: 3,
   no_data: 4,
-};
-
-const STATUS_ICONS: Record<PlotStatus, string> = {
-  issue: '⚠',
-  animal_intrusion: '🦌',
-  slow_growth: '⏱',
-  healthy: '✓',
-  no_data: '—',
-};
-
-const STATUS_CSS: Record<PlotStatus, string> = {
-  issue: 'status-issue',
-  animal_intrusion: 'status-intrusion',
-  slow_growth: 'status-slow',
-  healthy: 'status-healthy',
-  no_data: 'status-nodata',
 };
 
 const STATUS_ORDER: PlotStatus[] = [
@@ -62,8 +48,7 @@ export default function FarmOverview({ farmId }: Props) {
   const [filterStatus, setFilterStatus] = useState<PlotStatus | 'all'>('all');
 
   // Allow setup page to override farmId via localStorage
-  const effectiveFarmId =
-    (typeof window !== 'undefined' && localStorage.getItem('litcrop-farmId')) || farmId;
+  const effectiveFarmId = useLocalFarmId(farmId);
 
   useEffect(() => {
     let cancelled = false;

@@ -137,8 +137,8 @@ describe('crop_impact: frost risk', () => {
     }));
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/weather`);
-    const body = await res.json() as { crop_impact: Array<{ type: string }> };
-    const frostAlerts = body.crop_impact.filter((c) => c.type === 'frost_risk');
+    const body = await res.json() as { crop_impact: Array<{ title: string }> };
+    const frostAlerts = body.crop_impact.filter((c) => c.title === 'Frost Risk');
     expect(frostAlerts.length).toBeGreaterThan(0);
   });
 
@@ -168,8 +168,8 @@ describe('crop_impact: frost risk', () => {
     }));
 
     const res = await app.request(`/api/v1/farms/${farmId5}/weather`);
-    const body = await res.json() as { crop_impact: Array<{ type: string }> };
-    const frostAlerts = body.crop_impact.filter((c) => c.type === 'frost_risk');
+    const body = await res.json() as { crop_impact: Array<{ title: string }> };
+    const frostAlerts = body.crop_impact.filter((c) => c.title === 'Frost Risk');
     expect(frostAlerts).toHaveLength(1); // break ensures only first day
   });
 
@@ -197,8 +197,8 @@ describe('crop_impact: frost risk', () => {
     }));
 
     const res = await app.request(`/api/v1/farms/${farmId6}/weather`);
-    const body = await res.json() as { crop_impact: Array<{ type: string }> };
-    const frostAlerts = body.crop_impact.filter((c) => c.type === 'frost_risk');
+    const body = await res.json() as { crop_impact: Array<{ title: string }> };
+    const frostAlerts = body.crop_impact.filter((c) => c.title === 'Frost Risk');
     expect(frostAlerts).toHaveLength(0);
   });
 });

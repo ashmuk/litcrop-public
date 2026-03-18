@@ -6,14 +6,15 @@ import {
   NotFoundError,
   ServiceUnavailableError,
 } from '../errors';
-import { getSignedImageUrl } from '../services/s3';
 import {
   THEME_OPTIONS,
   LOCALE_OPTIONS,
   DEFAULT_THEME,
   DEFAULT_LOCALE,
+  isValidLatLng,
 } from '@litcrop/shared';
-import type { Farm, Field, Bed, Plot, Image } from '@litcrop/shared';
+import type { Farm, Field, Bed, Plot } from '@litcrop/shared';
+import { makeLatestImage } from './_helpers';
 
 const router = new Hono();
 
@@ -40,7 +41,7 @@ function validateFarmFields(body: Record<string, unknown>, required?: string[]) 
   if (required?.includes('latitude') && (latitude === undefined || latitude === null)) {
     errors.push('Missing required field: latitude');
   } else if (latitude !== undefined && latitude !== null) {
-    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+    if (typeof latitude !== 'number' || !isValidLatLng(latitude, 0)) {
       errors.push('Latitude must be between -90 and 90');
     }
   }
@@ -49,7 +50,7 @@ function validateFarmFields(body: Record<string, unknown>, required?: string[]) 
   if (required?.includes('longitude') && (longitude === undefined || longitude === null)) {
     errors.push('Missing required field: longitude');
   } else if (longitude !== undefined && longitude !== null) {
-    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+    if (typeof longitude !== 'number' || !isValidLatLng(0, longitude)) {
       errors.push('Longitude must be between -180 and 180');
     }
   }
@@ -99,16 +100,6 @@ function farmToResponse(farm: Farm) {
     locale: farm.locale,
     theme: farm.theme,
     created_at: farm.created_at,
-  };
-}
-
-async function makeLatestImage(image: Image) {
-  const thumbnail_url = await getSignedImageUrl(image.storage_key);
-  return {
-    id: image.id,
-    thumbnail_url,
-    captured_at: image.captured_at,
-    trigger: image.trigger,
   };
 }
 

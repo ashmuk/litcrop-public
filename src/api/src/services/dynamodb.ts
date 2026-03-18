@@ -8,6 +8,7 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import type { Farm, Field, Bed, Plot, Image, Tag, TagValue, PlotStatus } from '@litcrop/shared';
+import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
 // ── Configuration ────────────────────────────────────────────────
@@ -27,21 +28,21 @@ const ddb = DynamoDBDocumentClient.from(ddbClient, {
 // ── Key builders ─────────────────────────────────────────────────
 
 const pk = {
-  farm: (farmId: string) => `FARM#${farmId}`,
-  field: (fieldId: string) => `FIELD#${fieldId}`,
-  bed: (bedId: string) => `BED#${bedId}`,
-  plot: (plotId: string) => `PLOT#${plotId}`,
-  image: (imageId: string) => `IMG#${imageId}`,
-  tag: (tagId: string) => `TAG#${tagId}`,
+  farm: (farmId: string) => `${DDB_KEY_PREFIXES.FARM}${farmId}`,
+  field: (fieldId: string) => `${DDB_KEY_PREFIXES.FIELD}${fieldId}`,
+  bed: (bedId: string) => `${DDB_KEY_PREFIXES.BED}${bedId}`,
+  plot: (plotId: string) => `${DDB_KEY_PREFIXES.PLOT}${plotId}`,
+  image: (imageId: string) => `${DDB_KEY_PREFIXES.IMG}${imageId}`,
+  tag: (tagId: string) => `${DDB_KEY_PREFIXES.TAG}${tagId}`,
 };
 
 const sk = {
-  meta: () => '#META',
-  field: (position: number, fieldId: string) => `FIELD#${String(position).padStart(6, '0')}#${fieldId}`,
-  bed: (position: number, bedId: string) => `BED#${String(position).padStart(6, '0')}#${bedId}`,
-  plot: (plotId: string) => `PLOT#${plotId}`,
-  image: (capturedAt: string, imageId: string) => `IMG#${capturedAt}#${imageId}`,
-  tag: (createdAt: string, tagId: string) => `TAG#${createdAt}#${tagId}`,
+  meta: () => DDB_KEY_PREFIXES.META,
+  field: (position: number, fieldId: string) => `${DDB_KEY_PREFIXES.FIELD}${String(position).padStart(6, '0')}#${fieldId}`,
+  bed: (position: number, bedId: string) => `${DDB_KEY_PREFIXES.BED}${String(position).padStart(6, '0')}#${bedId}`,
+  plot: (plotId: string) => `${DDB_KEY_PREFIXES.PLOT}${plotId}`,
+  image: (capturedAt: string, imageId: string) => `${DDB_KEY_PREFIXES.IMG}${capturedAt}#${imageId}`,
+  tag: (createdAt: string, tagId: string) => `${DDB_KEY_PREFIXES.TAG}${createdAt}#${tagId}`,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────
@@ -160,12 +161,12 @@ export class DynamoRepository {
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
         ExpressionAttributeValues: {
           ':pk': pk.farm(farmId),
-          ':prefix': 'FIELD#',
+          ':prefix': DDB_KEY_PREFIXES.FIELD,
         },
       }),
     );
     return (result.Items ?? []).map((item) => {
-      const fieldId = extractIdFromSk(item['SK'] as string, 'FIELD#');
+      const fieldId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.FIELD);
       return itemToField(item, farmId, fieldId);
     });
   }
@@ -178,12 +179,12 @@ export class DynamoRepository {
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
         ExpressionAttributeValues: {
           ':pk': pk.field(fieldId),
-          ':prefix': 'BED#',
+          ':prefix': DDB_KEY_PREFIXES.BED,
         },
       }),
     );
     return (result.Items ?? []).map((item) => {
-      const bedId = extractIdFromSk(item['SK'] as string, 'BED#');
+      const bedId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.BED);
       return itemToBed(item, fieldId, bedId);
     });
   }
@@ -201,7 +202,7 @@ export class DynamoRepository {
       }),
     );
     return (result.Items ?? []).map((item) => {
-      const plotId = extractIdFromSk(item['GSI2SK'] as string, 'PLOT#');
+      const plotId = extractIdFromSk(item['GSI2SK'] as string, DDB_KEY_PREFIXES.PLOT);
       return itemToPlot(item, plotId);
     });
   }
@@ -236,7 +237,7 @@ export class DynamoRepository {
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
       ExpressionAttributeValues: {
         ':pk': pk.plot(plotId),
-        ':prefix': 'IMG#',
+        ':prefix': DDB_KEY_PREFIXES.IMG,
       },
       ScanIndexForward: false,
       Limit: limit,
@@ -255,11 +256,7 @@ export class DynamoRepository {
 
     const result = await ddb.send(new QueryCommand(queryInput));
     const items = (result.Items ?? []).map((item) => {
-      // SK = IMG#{capturedAt}#{imageId}
-      const skValue = item['SK'] as string;
-      const withoutPrefix = skValue.slice('IMG#'.length);
-      const lastHash = withoutPrefix.lastIndexOf('#');
-      const imageId = withoutPrefix.slice(lastHash + 1);
+      const imageId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.IMG);
       return itemToImage(item, imageId);
     });
 
@@ -297,12 +294,12 @@ export class DynamoRepository {
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
         ExpressionAttributeValues: {
           ':pk': pk.image(imageId),
-          ':prefix': 'TAG#',
+          ':prefix': DDB_KEY_PREFIXES.TAG,
         },
       }),
     );
     return (result.Items ?? []).map((item) => {
-      const tagId = extractIdFromSk(item['SK'] as string, 'TAG#');
+      const tagId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.TAG);
       return itemToTag(item, tagId);
     });
   }
@@ -427,12 +424,12 @@ export class DynamoRepository {
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
         ExpressionAttributeValues: {
           ':pk': pk.bed(bedId),
-          ':prefix': 'PLOT#',
+          ':prefix': DDB_KEY_PREFIXES.PLOT,
         },
       }),
     );
     return (result.Items ?? []).map((item) => {
-      const plotId = extractIdFromSk(item['SK'] as string, 'PLOT#');
+      const plotId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.PLOT);
       return itemToPlot(item, plotId);
     });
   }
@@ -445,7 +442,7 @@ export class DynamoRepository {
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
         ExpressionAttributeValues: {
           ':pk': pk.plot(plotId),
-          ':prefix': 'IMG#',
+          ':prefix': DDB_KEY_PREFIXES.IMG,
         },
         ScanIndexForward: false,
         Limit: 1,
@@ -453,10 +450,7 @@ export class DynamoRepository {
     );
     const item = result.Items?.[0];
     if (!item) return null;
-    const skValue = item['SK'] as string;
-    const withoutPrefix = skValue.slice('IMG#'.length);
-    const lastHash = withoutPrefix.lastIndexOf('#');
-    const imageId = withoutPrefix.slice(lastHash + 1);
+    const imageId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.IMG);
     return itemToImage(item, imageId);
   }
 

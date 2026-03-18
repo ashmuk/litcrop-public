@@ -10,13 +10,8 @@ import { TAG_VALUES } from '@litcrop/shared';
 import { getPlot, getImages, createTag } from '../lib/api';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
-
-const TAG_ICONS: Record<TagValue, string> = {
-  healthy: '✓',
-  slow_growth: '⏱',
-  issue: '⚠',
-  animal_intrusion: '🦌',
-};
+import { TAG_ICONS } from '../lib/status';
+import { formatDate } from '../lib/format';
 
 const TAG_CSS: Record<TagValue, string> = {
   healthy: 'tag-btn--healthy',
@@ -32,16 +27,6 @@ const TAG_THUMB_CSS: Record<TagValue, string> = {
   issue: 'issue',
   animal_intrusion: 'animal',
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });

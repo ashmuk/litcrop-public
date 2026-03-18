@@ -4,25 +4,11 @@
  */
 
 import { useState, useEffect } from 'preact/hooks';
-import type { FarmResponse, FarmPlotItem, PlotStatus } from '@litcrop/shared';
+import type { FarmResponse, FarmPlotItem } from '@litcrop/shared';
 import { getFarm, getPlots } from '../lib/api';
 import { t } from '../i18n/i18n';
-
-const STATUS_CSS: Record<PlotStatus, string> = {
-  issue: 'status-issue',
-  animal_intrusion: 'status-intrusion',
-  slow_growth: 'status-slow',
-  healthy: 'status-healthy',
-  no_data: 'status-nodata',
-};
-
-const STATUS_ICONS: Record<PlotStatus, string> = {
-  issue: '⚠',
-  animal_intrusion: '🦌',
-  slow_growth: '⏱',
-  healthy: '✓',
-  no_data: '—',
-};
+import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
+import { useLocalFarmId } from '../lib/hooks';
 
 export interface Props {
   farmId: string;
@@ -34,8 +20,7 @@ export default function FarmLayoutView({ farmId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveFarmId =
-    (typeof window !== 'undefined' && localStorage.getItem('litcrop-farmId')) || farmId;
+  const effectiveFarmId = useLocalFarmId(farmId);
 
   useEffect(() => {
     let cancelled = false;

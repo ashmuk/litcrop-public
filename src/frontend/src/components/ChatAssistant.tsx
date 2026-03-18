@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { sendChat } from '../lib/api';
 import { t } from '../i18n/i18n';
+import { useLocalFarmId } from '../lib/hooks';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,8 +30,7 @@ export default function ChatAssistant({ farmId }: Props) {
   const [suggestions, setSuggestions] = useState<string[]>(INITIAL_SUGGESTIONS);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const effectiveFarmId =
-    (typeof window !== 'undefined' && localStorage.getItem('litcrop-farmId')) || farmId;
+  const effectiveFarmId = useLocalFarmId(farmId);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

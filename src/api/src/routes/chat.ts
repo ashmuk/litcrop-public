@@ -193,8 +193,7 @@ router.post('/', async (c) => {
   const farmId = body['farm_id'];
   if (farmId && typeof farmId === 'string') {
     try {
-      farm = await dynamoRepo.getFarm(farmId);
-      plots = await dynamoRepo.getPlotsForFarm(farmId);
+      [farm, plots] = await Promise.all([dynamoRepo.getFarm(farmId), dynamoRepo.getPlotsForFarm(farmId)]);
     } catch {
       // Non-fatal: proceed without farm context
     }

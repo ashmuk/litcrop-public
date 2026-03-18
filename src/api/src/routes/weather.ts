@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
 import { NotFoundError, UpstreamError, ServiceUnavailableError } from '../errors';
 import { WEATHER_CACHE_TTL_SECONDS } from '@litcrop/shared';
-import type { Farm, Plot } from '@litcrop/shared';
+import type { Farm, Plot, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
 
 const router = new Hono();
 
@@ -88,47 +88,19 @@ interface WeatherData {
     condition: string;
     condition_icon: string;
   };
+  today: {
+    high: number;
+    low: number;
+    rain_probability: number;
+    rain_sum_mm: number;
+    sunrise: string;
+    sunset: string;
+  };
   hourly: HourlyForecast[];
   daily: DailyForecast[];
-  crop_impact: CropImpact[];
+  alerts: WeatherAlert[];
+  crop_impact: CropImpactCard[];
   cached_at: string;
-}
-
-interface HourlyForecast {
-  time: string;
-  temperature_c: number;
-  humidity_pct: number;
-  precipitation_probability: number;
-  precipitation_mm: number;
-  weather_code: number;
-  weather_icon: string;
-  wind_speed_kmh: number;
-}
-
-interface DailyForecast {
-  date: string;
-  temperature_max_c: number;
-  temperature_min_c: number;
-  precipitation_sum_mm: number;
-  precipitation_probability: number;
-  weather_code: number;
-  weather_icon: string;
-  sunrise: string;
-  sunset: string;
-}
-
-interface CropImpact {
-  type: string;
-  severity: 'info' | 'warning' | 'critical';
-  title: string;
-  message: string;
-  affected_plots: { plot_id: string; label: string; crop_type: string }[];
-  forecast_trigger: {
-    date: string;
-    metric: string;
-    value: number;
-    threshold: number;
-  };
 }
 
 // ── Open-Meteo fetch ──────────────────────────────────────────────
@@ -174,75 +146,81 @@ function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt:
     condition_icon: wmoToIcon(weatherCode),
   };
 
-  // Hourly (next 24 hours)
+  // Hourly (next 24 hours) — aligned to shared HourlyForecast type
   const hourlyTimes = hourly['time'] as string[];
   const hourlyForecasts: HourlyForecast[] = hourlyTimes.slice(0, 24).map((time, i) => ({
     time,
-    temperature_c: (hourly['temperature_2m'] as number[])[i],
-    humidity_pct: (hourly['relative_humidity_2m'] as number[])[i],
-    precipitation_probability: (hourly['precipitation_probability'] as number[])[i] ?? 0,
-    precipitation_mm: (hourly['precipitation'] as number[])[i] ?? 0,
-    weather_code: (hourly['weather_code'] as number[])[i],
-    weather_icon: wmoToIcon((hourly['weather_code'] as number[])[i]),
-    wind_speed_kmh: (hourly['wind_speed_10m'] as number[])[i],
+    temperature: (hourly['temperature_2m'] as number[])[i],
+    rain_probability: (hourly['precipitation_probability'] as number[])[i] ?? 0,
+    condition_icon: wmoToIcon((hourly['weather_code'] as number[])[i]),
   }));
 
-  // Daily (7 days)
+  // Daily (7 days) — aligned to shared DailyForecast type
   const dailyTimes = daily['time'] as string[];
   const dailyForecasts: DailyForecast[] = dailyTimes.map((date, i) => ({
     date,
-    temperature_max_c: (daily['temperature_2m_max'] as number[])[i],
-    temperature_min_c: (daily['temperature_2m_min'] as number[])[i],
-    precipitation_sum_mm: (daily['precipitation_sum'] as number[])[i] ?? 0,
-    precipitation_probability: (daily['precipitation_probability_max'] as number[])[i] ?? 0,
-    weather_code: (daily['weather_code'] as number[])[i],
-    weather_icon: wmoToIcon((daily['weather_code'] as number[])[i]),
-    sunrise: (daily['sunrise'] as string[])[i],
-    sunset: (daily['sunset'] as string[])[i],
+    high: (daily['temperature_2m_max'] as number[])[i],
+    low: (daily['temperature_2m_min'] as number[])[i],
+    rain_probability: (daily['precipitation_probability_max'] as number[])[i] ?? 0,
+    rain_sum_mm: (daily['precipitation_sum'] as number[])[i] ?? 0,
+    condition: wmoToLabel((daily['weather_code'] as number[])[i]),
+    condition_icon: wmoToIcon((daily['weather_code'] as number[])[i]),
   }));
 
+  // Today summary from first daily entry + raw sunrise/sunset
+  const today = {
+    high: dailyForecasts[0].high,
+    low: dailyForecasts[0].low,
+    rain_probability: dailyForecasts[0].rain_probability,
+    rain_sum_mm: dailyForecasts[0].rain_sum_mm,
+    sunrise: (daily['sunrise'] as string[])[0],
+    sunset: (daily['sunset'] as string[])[0],
+  };
+
   // Crop impact analysis
-  const cropImpacts: CropImpact[] = computeCropImpact(plots, dailyForecasts);
+  const { impacts, alerts } = computeCropImpact(plots, dailyForecasts);
 
   return {
     current: currentWeather,
+    today,
     hourly: hourlyForecasts,
     daily: dailyForecasts,
-    crop_impact: cropImpacts,
+    alerts,
+    crop_impact: impacts,
     cached_at: cachedAt,
   };
 }
 
 // ── Crop impact analysis ──────────────────────────────────────────
 
-function computeCropImpact(plots: Plot[], daily: DailyForecast[]): CropImpact[] {
-  const impacts: CropImpact[] = [];
+function computeCropImpact(
+  plots: Plot[],
+  daily: DailyForecast[],
+): { impacts: CropImpactCard[]; alerts: WeatherAlert[] } {
+  const impacts: CropImpactCard[] = [];
+  const alerts: WeatherAlert[] = [];
 
   // Check frost risk
   for (const day of daily) {
-    if (day.temperature_min_c < 2) {
+    if (day.low < 2) {
       const affectedPlots = plots.filter((p) => {
         const tol = getCropTolerance(p.crop_type);
-        return tol.frostSensitive && day.temperature_min_c < tol.minTemp;
+        return tol.frostSensitive && day.low < tol.minTemp;
       });
       if (affectedPlots.length > 0) {
+        const severity = day.low < 0 ? 'danger' : 'warning';
+        const message = `Frost-sensitive crops are at risk. Expected low: ${day.low}°C on ${day.date}.`;
         impacts.push({
-          type: 'frost_risk',
-          severity: day.temperature_min_c < 0 ? 'critical' : 'warning',
+          severity,
           title: 'Frost Risk',
-          message: `Frost-sensitive crops are at risk. Expected low: ${day.temperature_min_c}°C on ${day.date}.`,
+          description: message,
           affected_plots: affectedPlots.map((p) => ({
-            plot_id: p.id,
+            id: p.id,
             label: p.label,
             crop_type: p.crop_type,
           })),
-          forecast_trigger: {
-            date: day.date,
-            metric: 'temperature_min_c',
-            value: day.temperature_min_c,
-            threshold: 2,
-          },
         });
+        alerts.push({ type: 'frost', severity, message });
         break; // report first occurrence only
       }
     }
@@ -250,29 +228,24 @@ function computeCropImpact(plots: Plot[], daily: DailyForecast[]): CropImpact[] 
 
   // Check heat stress
   for (const day of daily) {
-    if (day.temperature_max_c > 35) {
+    if (day.high > 35) {
       const affectedPlots = plots.filter((p) => {
         const tol = getCropTolerance(p.crop_type);
-        return day.temperature_max_c > tol.maxTemp;
+        return day.high > tol.maxTemp;
       });
       if (affectedPlots.length > 0) {
+        const message = `High temperatures may stress crops. Expected high: ${day.high}°C on ${day.date}.`;
         impacts.push({
-          type: 'heat_stress',
           severity: 'warning',
           title: 'Heat Stress',
-          message: `High temperatures may stress crops. Expected high: ${day.temperature_max_c}°C on ${day.date}.`,
+          description: message,
           affected_plots: affectedPlots.map((p) => ({
-            plot_id: p.id,
+            id: p.id,
             label: p.label,
             crop_type: p.crop_type,
           })),
-          forecast_trigger: {
-            date: day.date,
-            metric: 'temperature_max_c',
-            value: day.temperature_max_c,
-            threshold: 35,
-          },
         });
+        alerts.push({ type: 'extreme_heat', severity: 'warning', message });
         break;
       }
     }
@@ -280,29 +253,24 @@ function computeCropImpact(plots: Plot[], daily: DailyForecast[]): CropImpact[] 
 
   // Check heavy rain
   for (const day of daily) {
-    if (day.precipitation_sum_mm > 30) {
+    if (day.rain_sum_mm > 30) {
+      const message = `Heavy rainfall expected: ${day.rain_sum_mm}mm on ${day.date}.`;
       impacts.push({
-        type: 'heavy_rain',
         severity: 'warning',
         title: 'Heavy Rain',
-        message: `Heavy rainfall expected: ${day.precipitation_sum_mm}mm on ${day.date}.`,
+        description: message,
         affected_plots: plots.map((p) => ({
-          plot_id: p.id,
+          id: p.id,
           label: p.label,
           crop_type: p.crop_type,
         })),
-        forecast_trigger: {
-          date: day.date,
-          metric: 'precipitation_sum_mm',
-          value: day.precipitation_sum_mm,
-          threshold: 30,
-        },
       });
+      alerts.push({ type: 'heavy_rain', severity: 'warning', message });
       break;
     }
   }
 
-  return impacts;
+  return { impacts, alerts };
 }
 
 // ── 5.10 GET /api/v1/farms/:farmId/weather ────────────────────────

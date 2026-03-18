@@ -7,6 +7,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
+import { useLocalFarmId } from '../lib/hooks';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
@@ -36,8 +37,7 @@ export default function WeatherView({ farmId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveFarmId =
-    (typeof window !== 'undefined' && localStorage.getItem('litcrop-farmId')) || farmId;
+  const effectiveFarmId = useLocalFarmId(farmId);
 
   useEffect(() => {
     let cancelled = false;
