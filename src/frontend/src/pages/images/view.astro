@@ -1,0 +1,19 @@
+---
+/**
+ * Image Viewer page — T-FE-09
+ * Full-size image viewer. imageId is read from ?id=<imageId> at runtime.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ImageViewer from '../../components/ImageViewer';
+import Toast from '../../components/Toast';
+---
+
+<BaseLayout title="LitCrop — Image Viewer" activeTab="farm">
+  <nav class="nav-header" aria-label="Page navigation">
+    <a href="javascript:history.back()" class="nav-header__back" aria-label="Back">←</a>
+    <span class="nav-header__title">Image Viewer</span>
+  </nav>
+
+  <ImageViewer client:load />
+  <Toast client:load />
+</BaseLayout>

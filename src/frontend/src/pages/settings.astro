@@ -1,9 +1,12 @@
 ---
 /**
- * Settings — Theme, locale, temperature unit preferences.
+ * Settings — T-FE-12
+ * Theme, locale, and temperature unit preferences.
+ * All settings persist via localStorage.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ThemeSwitcher from '../components/ThemeSwitcher';
+import SettingsPanel from '../components/SettingsPanel';
 import Toast from '../components/Toast';
 ---
 
@@ -18,22 +21,7 @@ import Toast from '../components/Toast';
 
   <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)">
     <ThemeSwitcher client:load />
-
-    <div class="form-group">
-      <label class="form-label" for="locale-select">Language</label>
-      <select id="locale-select" class="form-select" aria-label="Language selection">
-        <option value="en">English</option>
-        <option value="ja">日本語</option>
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label" for="temp-select">Temperature Unit</label>
-      <select id="temp-select" class="form-select" aria-label="Temperature unit">
-        <option value="C">Celsius (°C)</option>
-        <option value="F">Fahrenheit (°F)</option>
-      </select>
-    </div>
+    <SettingsPanel client:load />
   </div>
 
   <Toast client:load />

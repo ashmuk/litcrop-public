@@ -965,3 +965,127 @@
 .mb-2 { margin-bottom: var(--space-2); }
 .mb-4 { margin-bottom: var(--space-4); }
 .p-4  { padding: var(--space-4); }
+
+/* ----------------------------------------------------------
+   25. Image Viewer — T-FE-09
+   ---------------------------------------------------------- */
+.image-viewer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.image-viewer__frame {
+  position: relative;
+  background: var(--color-surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 240px;
+}
+
+.image-viewer__img {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  display: block;
+}
+
+.image-viewer__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  width: 44px;
+  height: 44px;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  touch-action: manipulation;
+}
+
+.image-viewer__nav--prev { left: var(--space-3); }
+.image-viewer__nav--next { right: var(--space-3); }
+
+.image-viewer__meta {
+  padding: var(--space-4);
+  border-bottom: var(--border-default);
+}
+
+.image-viewer__tags {
+  padding: var(--space-4);
+  border-bottom: var(--border-default);
+}
+
+.image-viewer__strip {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-default);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.image-viewer__strip::-webkit-scrollbar { display: none; }
+
+.image-viewer__thumb {
+  flex: 0 0 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.image-viewer__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-viewer__thumb--active {
+  border-color: var(--color-primary);
+  opacity: 1;
+}
+
+/* meta-list — key/value pairs */
+.meta-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.meta-list__row { display: flex; gap: var(--space-3); }
+.meta-list__label {
+  flex: 0 0 80px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.meta-list__value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+/* tag-chip — read-only tag display */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+.tag-chip--healthy        { background: var(--color-status-healthy-bg);    color: var(--color-status-healthy); }
+.tag-chip--slow-growth    { background: var(--color-status-slow-growth-bg); color: var(--color-status-slow-growth); }
+.tag-chip--issue          { background: var(--color-status-issue-bg);       color: var(--color-status-issue); }
+.tag-chip--animal-intrusion { background: var(--color-status-animal-bg);   color: var(--color-status-animal); }

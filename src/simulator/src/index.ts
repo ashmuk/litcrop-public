@@ -1,54 +1,162 @@
-// LitCrop Simulator — Simulated camera node
-// Uploads sample images to the LitCrop API on a schedule
+// LitCrop Simulator — T-SIM-02
+// CLI-configurable camera node simulator with scheduled and motion capture modes.
 
 import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
-import { DEFAULT_CONFIG, TRIGGER_TYPES } from '@litcrop/shared';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { DEFAULT_CONFIG } from '@litcrop/shared';
 import { uploadImage } from './upload';
 
-const API_BASE_URL = process.env.API_BASE_URL ?? DEFAULT_CONFIG.apiBaseUrl;
-const PLOT_ID = process.env.PLOT_ID ?? 'demo-plot-1';
-const NODE_ID = process.env.NODE_ID ?? 'node-001';
+// ── Resolve __dirname for ESM / CJS compatibility ─────────────────
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// ── CLI argument parsing ──────────────────────────────────────────
+
+interface CliArgs {
+  apiUrl: string;
+  farmId: string | null;
+  plotId: string | null;
+  allPlots: boolean;
+  mode: 'scheduled' | 'motion';
+  intervalSeconds: number;
+  once: boolean;
+  nodeId: string;
+}
+
+function parseArgs(argv: string[]): CliArgs {
+  const args = argv.slice(2); // skip 'node' and script path
+
+  const result: CliArgs = {
+    apiUrl: DEFAULT_CONFIG.apiBaseUrl,
+    farmId: null,
+    plotId: null,
+    allPlots: false,
+    mode: 'scheduled',
+    intervalSeconds: 300, // 5 minutes default (overrides config's 1h default)
+    once: false,
+    nodeId: process.env.NODE_ID ?? 'node-001',
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    switch (arg) {
+      case '--api-url':
+        result.apiUrl = args[++i] ?? result.apiUrl;
+        break;
+      case '--farm-id':
+        result.farmId = args[++i] ?? null;
+        break;
+      case '--plot':
+        result.plotId = args[++i] ?? null;
+        result.allPlots = false;
+        break;
+      case '--all':
+        result.allPlots = true;
+        result.plotId = null;
+        break;
+      case '--mode': {
+        const m = args[++i];
+        if (m === 'scheduled' || m === 'motion') result.mode = m;
+        else console.warn(`[simulator] Unknown mode "${m}", using "scheduled"`);
+        break;
+      }
+      case '--interval': {
+        const secs = parseInt(args[++i] ?? '', 10);
+        if (!isNaN(secs) && secs > 0) result.intervalSeconds = secs;
+        break;
+      }
+      case '--once':
+        result.once = true;
+        break;
+      case '--node-id':
+        result.nodeId = args[++i] ?? result.nodeId;
+        break;
+      case '--help':
+      case '-h':
+        printHelp();
+        process.exit(0);
+        break;
+      default:
+        console.warn(`[simulator] Unknown argument: ${arg}`);
+    }
+  }
+
+  return result;
+}
+
+function printHelp(): void {
+  console.log(`
+LitCrop Camera Simulator
+
+Usage:
+  npx tsx src/index.ts [options]
+
+Options:
+  --api-url <url>        API base URL (default: ${DEFAULT_CONFIG.apiBaseUrl})
+  --farm-id <id>         Farm ID (informational, logged only)
+  --plot <plotId>        Target plot ID
+  --all                  Target all plots (uses PLOT_IDS env var)
+  --mode <scheduled|motion>  Capture mode (default: scheduled)
+  --interval <seconds>   Upload interval for scheduled mode (default: 300)
+  --once                 Upload once then exit
+  --node-id <id>         Camera node identifier (default: node-001)
+  -h, --help             Show this help
+
+Examples:
+  npx tsx src/index.ts --once --plot plot-a1 --api-url http://localhost:3000
+  npx tsx src/index.ts --mode motion --plot plot-a1
+  npx tsx src/index.ts --mode scheduled --interval 60 --plot plot-a1
+`.trim());
+}
+
+// ── Sample image loading ──────────────────────────────────────────
+
 const SAMPLE_IMAGES_DIR =
   process.env.SAMPLE_IMAGES_DIR ??
-  join(__dirname, '../../..', 'assets/sample-images');
+  join(__dirname, '..', 'sample-images');
 
-console.log('LitCrop simulator starting…');
-console.log(`API base URL: ${API_BASE_URL}`);
-console.log(`Supported trigger types: ${TRIGGER_TYPES.join(', ')}`);
-console.log(`Upload interval: ${DEFAULT_CONFIG.simulatorIntervalMs / 1000}s`);
-console.log(`Plot ID: ${PLOT_ID} | Node ID: ${NODE_ID}`);
-
-async function runCycle(): Promise<void> {
-  // Pick a random sample image
-  let imageBuffer: Buffer;
+function pickRandomImage(): Buffer | null {
   try {
     const files = readdirSync(SAMPLE_IMAGES_DIR).filter(
       (f) => f.endsWith('.jpg') || f.endsWith('.jpeg'),
     );
     if (files.length === 0) {
       console.warn('[simulator] No sample images found in', SAMPLE_IMAGES_DIR);
-      return;
+      return null;
     }
     const picked = files[Math.floor(Math.random() * files.length)];
-    imageBuffer = readFileSync(join(SAMPLE_IMAGES_DIR, picked));
     console.log(`[simulator] Selected image: ${picked}`);
+    return readFileSync(join(SAMPLE_IMAGES_DIR, picked));
   } catch (err) {
     console.error('[simulator] Failed to read sample images:', err);
-    return;
+    return null;
   }
+}
 
-  const triggerType =
-    Math.random() < DEFAULT_CONFIG.simulatorMotionChance ? 'motion' : 'scheduled';
+// ── Upload cycle ──────────────────────────────────────────────────
 
-  console.log(`[simulator] Uploading to plot ${PLOT_ID} (trigger: ${triggerType})…`);
+async function runCycle(args: CliArgs): Promise<void> {
+  const timestamp = new Date().toISOString();
+  const plotId = args.plotId ?? 'demo-plot-1';
+
+  console.log(`[${timestamp}] mode=${args.mode} plot=${plotId}`);
+
+  const imageBuffer = pickRandomImage();
+  if (!imageBuffer) return;
+
+  // Mode determines trigger type; motion mode always uses 'motion' trigger,
+  // scheduled mode uses 'scheduled' trigger.
+  const triggerType = args.mode === 'motion' ? 'motion' : 'scheduled';
+
+  console.log(`[simulator] Uploading to plot ${plotId} (trigger: ${triggerType})…`);
 
   const result = await uploadImage({
-    apiBaseUrl: API_BASE_URL,
-    plotId: PLOT_ID,
+    apiBaseUrl: args.apiUrl,
+    plotId,
     imageBuffer,
     triggerType,
-    nodeId: NODE_ID,
+    nodeId: args.nodeId,
   });
 
   if (result.success) {
@@ -62,6 +170,84 @@ async function runCycle(): Promise<void> {
   }
 }
 
-// Run immediately, then on interval
-runCycle();
-setInterval(runCycle, DEFAULT_CONFIG.simulatorIntervalMs);
+// ── Random interval for motion mode ──────────────────────────────
+
+function randomMotionDelay(): number {
+  // 30–120 seconds simulating real motion detection gaps
+  return (30 + Math.floor(Math.random() * 90)) * 1000;
+}
+
+// ── Main ──────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const args = parseArgs(process.argv);
+
+  console.log('LitCrop simulator starting…');
+  console.log(`API base URL : ${args.apiUrl}`);
+  console.log(`Mode         : ${args.mode}`);
+  console.log(`Plot ID      : ${args.plotId ?? 'demo-plot-1'}`);
+  console.log(`Node ID      : ${args.nodeId}`);
+  if (!args.once) {
+    if (args.mode === 'scheduled') {
+      console.log(`Interval     : ${args.intervalSeconds}s`);
+    } else {
+      console.log(`Interval     : random 30–120s (motion)`);
+    }
+  }
+
+  // Run one cycle immediately
+  await runCycle(args);
+
+  if (args.once) {
+    process.exit(0);
+  }
+
+  // Scheduled mode: fixed interval
+  if (args.mode === 'scheduled') {
+    const intervalMs = args.intervalSeconds * 1000;
+    const timer = setInterval(() => runCycle(args), intervalMs);
+
+    process.on('SIGINT', () => {
+      console.log('\n[simulator] SIGINT received, shutting down…');
+      clearInterval(timer);
+      process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+      console.log('\n[simulator] SIGTERM received, shutting down…');
+      clearInterval(timer);
+      process.exit(0);
+    });
+  } else {
+    // Motion mode: random intervals via recursive setTimeout
+    let running = true;
+
+    process.on('SIGINT', () => {
+      console.log('\n[simulator] SIGINT received, shutting down…');
+      running = false;
+      process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+      console.log('\n[simulator] SIGTERM received, shutting down…');
+      running = false;
+      process.exit(0);
+    });
+
+    function scheduleNext(): void {
+      if (!running) return;
+      const delay = randomMotionDelay();
+      console.log(`[simulator] Next motion event in ${delay / 1000}s…`);
+      setTimeout(async () => {
+        if (!running) return;
+        await runCycle(args);
+        scheduleNext();
+      }, delay);
+    }
+
+    scheduleNext();
+  }
+}
+
+main().catch((err) => {
+  console.error('[simulator] Fatal error:', err);
+  process.exit(1);
+});
