@@ -1,0 +1,16 @@
+{
+  "name": "@litcrop/frontend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build"
+  },
+  "dependencies": {
+    "@litcrop/shared": "*"
+  },
+  "devDependencies": {
+    "astro": "^5.0.0"
+  }
+}
