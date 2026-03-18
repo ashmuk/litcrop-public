@@ -97,6 +97,7 @@ app.onError((err, c) => {
 // ── Routes ───────────────────────────────────────────────────────
 
 app.get('/health', (c) => c.json({ status: 'ok', service: 'litcrop-api' }));
+app.get('/api/v1/health', (c) => c.json({ status: 'ok', service: 'litcrop-api' }));
 app.get('/api/v1', (c) => c.json({ version: '1', status: 'ok' }));
 
 // GET|POST|PATCH /api/v1/farms/...  (includes /:farmId/plots)

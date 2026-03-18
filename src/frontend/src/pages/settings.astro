@@ -1,0 +1,40 @@
+---
+/**
+ * Settings — Theme, locale, temperature unit preferences.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ThemeSwitcher from '../components/ThemeSwitcher';
+import Toast from '../components/Toast';
+---
+
+<BaseLayout title="LitCrop — Settings" activeTab="settings">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      ⚙️ Settings
+    </h1>
+  </div>
+
+  <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)">
+    <ThemeSwitcher client:load />
+
+    <div class="form-group">
+      <label class="form-label" for="locale-select">Language</label>
+      <select id="locale-select" class="form-select" aria-label="Language selection">
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="temp-select">Temperature Unit</label>
+      <select id="temp-select" class="form-select" aria-label="Temperature unit">
+        <option value="C">Celsius (°C)</option>
+        <option value="F">Fahrenheit (°F)</option>
+      </select>
+    </div>
+  </div>
+
+  <Toast client:load />
+</BaseLayout>

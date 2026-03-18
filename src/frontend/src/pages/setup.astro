@@ -1,0 +1,38 @@
+---
+/**
+ * Farm Setup & AI Assistant — T-FE-11
+ * Farm name/location form, climate profile, AI chatbot.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SetupForm from '../components/SetupForm';
+import ChatAssistant from '../components/ChatAssistant';
+import Toast from '../components/Toast';
+
+const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
+---
+
+<BaseLayout title="LitCrop — Setup" activeTab="setup">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      🛠️ Farm Setup
+    </h1>
+  </div>
+
+  <div style="padding:var(--space-4)">
+    <SetupForm client:load />
+  </div>
+
+  <div class="section-heading" style="border-top:var(--border-default)">
+    🤖 AI Assistant
+  </div>
+  <div style="padding:0 var(--space-4) var(--space-4)">
+    <p style="font-size:var(--font-size-sm);color:var(--color-gray-700);margin-bottom:var(--space-3)">
+      Ask questions about your farm, crop health, or weather conditions.
+    </p>
+    <ChatAssistant farmId={farmId} client:load />
+  </div>
+
+  <Toast client:load />
+</BaseLayout>
