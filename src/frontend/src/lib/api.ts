@@ -116,7 +116,8 @@ export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promi
 
 /** GET /api/v1/farms/{farmId}/plots */
 export async function getPlots(farmId: string): Promise<FarmPlotItem[]> {
-  return request<FarmPlotItem[]>('GET', `/farms/${farmId}/plots`);
+  const res = await request<{ data: FarmPlotItem[] }>('GET', `/farms/${farmId}/plots`);
+  return res.data;
 }
 
 /** GET /api/v1/plots/{plotId} */

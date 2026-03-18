@@ -79,14 +79,14 @@ function getCropTolerance(cropType: string): CropTolerance {
 
 interface WeatherData {
   current: {
-    temperature_c: number;
-    apparent_temperature_c: number;
-    humidity_pct: number;
-    wind_speed_kmh: number;
-    wind_direction_deg: number;
+    temperature: number;
+    apparent_temperature: number;
+    humidity: number;
+    wind_speed: number;
+    wind_direction: string;
     weather_code: number;
-    weather_label: string;
-    weather_icon: string;
+    condition: string;
+    condition_icon: string;
   };
   hourly: HourlyForecast[];
   daily: DailyForecast[];
@@ -164,14 +164,14 @@ function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt:
   // Current conditions
   const weatherCode = current['weather_code'] as number;
   const currentWeather = {
-    temperature_c: current['temperature_2m'] as number,
-    apparent_temperature_c: current['apparent_temperature'] as number,
-    humidity_pct: current['relative_humidity_2m'] as number,
-    wind_speed_kmh: current['wind_speed_10m'] as number,
-    wind_direction_deg: current['wind_direction_10m'] as number,
+    temperature: current['temperature_2m'] as number,
+    apparent_temperature: current['apparent_temperature'] as number,
+    humidity: current['relative_humidity_2m'] as number,
+    wind_speed: current['wind_speed_10m'] as number,
+    wind_direction: String(current['wind_direction_10m'] as number),
     weather_code: weatherCode,
-    weather_label: wmoToLabel(weatherCode),
-    weather_icon: wmoToIcon(weatherCode),
+    condition: wmoToLabel(weatherCode),
+    condition_icon: wmoToIcon(weatherCode),
   };
 
   // Hourly (next 24 hours)

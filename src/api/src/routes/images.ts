@@ -36,7 +36,6 @@ router.get('/:imageId', async (c) => {
     captured_at: image.captured_at,
     uploaded_at: image.uploaded_at,
     url,
-    storage_key: image.storage_key,
     trigger: image.trigger,
     content_type: image.content_type,
     size_bytes: image.size_bytes,

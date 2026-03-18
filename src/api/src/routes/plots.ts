@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, uploadImage } from '../services/s3';
+import { getSignedImageUrl, uploadImage, deleteImage } from '../services/s3';
 import {
   NotFoundError,
   ValidationError,
@@ -30,8 +30,8 @@ function isJpegBytes(buf: Uint8Array): boolean {
 }
 
 async function makeLatestImage(image: Image) {
-  const url = await getSignedImageUrl(image.storage_key);
-  return { id: image.id, url, captured_at: image.captured_at, trigger: image.trigger };
+  const thumbnail_url = await getSignedImageUrl(image.storage_key);
+  return { id: image.id, thumbnail_url, captured_at: image.captured_at, trigger: image.trigger };
 }
 
 /**
@@ -128,22 +128,19 @@ router.get('/:plotId/images', async (c) => {
 
   const data = await Promise.all(
     result.items.map(async (image) => {
-      const [url, tags] = await Promise.all([
+      const [thumbnail_url, tags] = await Promise.all([
         getSignedImageUrl(image.storage_key),
         dynamoRepo.getTagsForImage(image.id),
       ]);
+      // Tags are sorted ascending by createdAt; last entry is the most recent
+      const latest_tag = tags.length > 0 ? tags[tags.length - 1].tag : null;
       return {
         id: image.id,
-        url,
+        thumbnail_url,
         captured_at: image.captured_at,
         trigger: image.trigger,
         size_bytes: image.size_bytes,
-        tags: tags.map((t) => ({
-          id: t.id,
-          tag: t.tag,
-          note: t.note ?? null,
-          created_at: t.created_at,
-        })),
+        latest_tag,
       };
     }),
   );
@@ -291,6 +288,8 @@ router.post('/:plotId/images', async (c) => {
     });
   } catch (err) {
     console.error('[dynamo createImage error]', err);
+    // Rollback: remove the S3 object that has no metadata record
+    try { await deleteImage(storageKey); } catch { /* best-effort */ }
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 

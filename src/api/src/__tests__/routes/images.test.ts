@@ -61,6 +61,7 @@ describe('GET /api/v1/images/:imageId', () => {
     expect(body['url']).toBe('https://example.com/signed');
     expect(body['trigger']).toBe('scheduled');
     expect(body['tags']).toEqual([]);
+    expect(body['storage_key']).toBeUndefined();
   });
 
   it('returns 404 when image not found', async () => {

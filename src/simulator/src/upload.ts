@@ -15,6 +15,7 @@ export interface UploadOptions {
   imageBuffer: Buffer;
   triggerType: 'scheduled' | 'motion';
   nodeId: string;
+  capturedAt?: string;
 }
 
 export interface UploadResult {
@@ -33,7 +34,7 @@ function sleep(ms: number): Promise<void> {
  * Makes up to 3 attempts with delays: 1 s, 2 s, 4 s between retries.
  */
 export async function uploadImage(options: UploadOptions): Promise<UploadResult> {
-  const { apiBaseUrl, plotId, imageBuffer, triggerType, nodeId } = options;
+  const { apiBaseUrl, plotId, imageBuffer, triggerType, nodeId, capturedAt } = options;
   const url = `${apiBaseUrl}/api/v1/plots/${plotId}/images`;
 
   let lastError: Error | undefined;
@@ -45,6 +46,7 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
       formData.append('image', blob, 'capture.jpg');
       formData.append('trigger', triggerType);
       formData.append('node_id', nodeId);
+      formData.append('captured_at', capturedAt ?? new Date().toISOString());
 
       const res = await fetch(url, { method: 'POST', body: formData });
 

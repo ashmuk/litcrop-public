@@ -112,6 +112,53 @@ describe('uploadImage retry logic', () => {
     expect(capturedFormData!.get('trigger_type')).toBeNull();
   });
 
+  it('appends captured_at field to FormData (defaults to current time)', async () => {
+    let capturedFormData: FormData | undefined;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      capturedFormData = init.body as FormData;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(successResponse) });
+    }));
+
+    const before = new Date().toISOString();
+    const promise = uploadImage({
+      apiBaseUrl: API_URL,
+      plotId: PLOT_ID,
+      imageBuffer: jpegBuffer,
+      triggerType: 'scheduled',
+      nodeId: 'cam-001',
+    });
+    await vi.runAllTimersAsync();
+    await promise;
+
+    expect(capturedFormData).toBeDefined();
+    const capturedAt = capturedFormData!.get('captured_at');
+    expect(typeof capturedAt).toBe('string');
+    // Should be a valid ISO 8601 date not before the test started
+    expect(new Date(capturedAt as string).getTime()).toBeGreaterThanOrEqual(new Date(before).getTime());
+  });
+
+  it('uses caller-supplied capturedAt when provided', async () => {
+    let capturedFormData: FormData | undefined;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      capturedFormData = init.body as FormData;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(successResponse) });
+    }));
+
+    const customTime = '2026-03-17T08:00:00.000Z';
+    const promise = uploadImage({
+      apiBaseUrl: API_URL,
+      plotId: PLOT_ID,
+      imageBuffer: jpegBuffer,
+      triggerType: 'scheduled',
+      nodeId: 'cam-001',
+      capturedAt: customTime,
+    });
+    await vi.runAllTimersAsync();
+    await promise;
+
+    expect(capturedFormData!.get('captured_at')).toBe(customTime);
+  });
+
   it('uses exponential delay: 1s then 2s between retries', async () => {
     // Three failures
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({

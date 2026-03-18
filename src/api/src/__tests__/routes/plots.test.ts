@@ -101,9 +101,32 @@ describe('GET /api/v1/plots/:plotId/images', () => {
 
     const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`);
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: unknown[]; meta: { count: number } };
+    const body = await res.json() as { data: Array<Record<string, unknown>>; meta: { count: number } };
     expect(body.data).toHaveLength(1);
     expect(body.meta.count).toBe(1);
+    // MF-4a: field must be thumbnail_url, not url
+    expect(body.data[0]['thumbnail_url']).toBe('https://example.com/signed');
+    expect(body.data[0]['url']).toBeUndefined();
+    // MF-4b: field must be latest_tag (null when no tags)
+    expect(body.data[0]['latest_tag']).toBeNull();
+    expect(body.data[0]['tags']).toBeUndefined();
+  });
+
+  it('returns latest_tag as most-recent tag value when tags exist', async () => {
+    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+    vi.mocked(dynamoRepo.getImagesForPlot).mockResolvedValue({
+      items: [imageFixture],
+      nextCursor: null,
+    });
+    vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([
+      { id: 't1', image_id: IMAGE_ID, tag: 'issue', created_at: '2026-03-17T09:00:00.000Z' },
+      { id: 't2', image_id: IMAGE_ID, tag: 'healthy', created_at: '2026-03-17T10:00:00.000Z' },
+    ]);
+
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`);
+    const body = await res.json() as { data: Array<Record<string, unknown>> };
+    // Most recent tag (last in ascending order) should be returned
+    expect(body.data[0]['latest_tag']).toBe('healthy');
   });
 
   it('returns 400 when limit < 1', async () => {

@@ -89,10 +89,10 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID_2}/weather`);
     expect(res.status).toBe(200);
     const body = await res.json() as {
-      current: { weather_label: string; weather_icon: string };
+      current: { condition: string; condition_icon: string };
     };
-    expect(body.current.weather_label).toBe('Clear sky');
-    expect(body.current.weather_icon).toBe('sunny');
+    expect(body.current.condition).toBe('Clear sky');
+    expect(body.current.condition_icon).toBe('sunny');
   });
 
   it('WMO code 95 → Thunderstorm / thunderstorm', async () => {
@@ -104,9 +104,9 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
     }));
 
     const res = await app.request(`/api/v1/farms/${FARM_ID_4}/weather`);
-    const body = await res.json() as { current: { weather_label: string; weather_icon: string } };
-    expect(body.current.weather_label).toBe('Thunderstorm');
-    expect(body.current.weather_icon).toBe('thunderstorm');
+    const body = await res.json() as { current: { condition: string; condition_icon: string } };
+    expect(body.current.condition).toBe('Thunderstorm');
+    expect(body.current.condition_icon).toBe('thunderstorm');
   });
 });
 

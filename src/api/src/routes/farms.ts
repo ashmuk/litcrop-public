@@ -103,10 +103,10 @@ function farmToResponse(farm: Farm) {
 }
 
 async function makeLatestImage(image: Image) {
-  const url = await getSignedImageUrl(image.storage_key);
+  const thumbnail_url = await getSignedImageUrl(image.storage_key);
   return {
     id: image.id,
-    url,
+    thumbnail_url,
     captured_at: image.captured_at,
     trigger: image.trigger,
   };

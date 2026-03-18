@@ -243,7 +243,14 @@ export class DynamoRepository {
     };
 
     if (cursor) {
-      queryInput.ExclusiveStartKey = decodeCursor(cursor);
+      try {
+        queryInput.ExclusiveStartKey = decodeCursor(cursor);
+      } catch {
+        // Malformed base64url or non-JSON payload: treat as a client error
+        const badCursor = new Error('Invalid cursor format');
+        badCursor.name = 'ValidationException';
+        throw badCursor;
+      }
     }
 
     const result = await ddb.send(new QueryCommand(queryInput));
@@ -331,7 +338,12 @@ export class DynamoRepository {
     );
 
     // 9. Update plot status (latest_status reflects the new tag)
-    // First get the plot to obtain the bed_id (needed for PK in base table)
+    // First get the plot to obtain the bed_id (needed for PK in base table).
+    // NOTE (PoC): This read-then-write is non-atomic. Two concurrent tag writes
+    // can both read the same plot and race on the UpdateItem, leaving latest_status
+    // reflecting whichever write landed last rather than the chronologically latest tag.
+    // Fix at MVP: denormalize bed_id onto the Image record at write time so this
+    // UpdateItem can be issued directly without the intermediate GSI1 read.
     const plot = await this.getPlotById(plotId);
     await ddb.send(
       new UpdateCommand({
