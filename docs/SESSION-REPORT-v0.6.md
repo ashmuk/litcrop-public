@@ -28,14 +28,15 @@
 | IAM role | `litcrop-poc-lambda` | ACTIVE | No cost |
 | Lambda function | `litcrop-poc-api` (84KB, Node.js 20, 256MB, 30s) | ACTIVE | Free tier |
 | API Gateway | `litcrop-poc-api` (HTTP API v2) | ACTIVE | Free tier |
-| CloudFront | Not created | — | — |
+| CloudFront | `EXXXXXXXXXXXXX` (`<distribution-id>.cloudfront.net`) | DEPLOYED | Free tier |
+| OAC | `litcrop-poc-oac` (created via Console) | ACTIVE | No cost |
 
 ### Live Endpoints
 
 | Endpoint | URL |
 |----------|-----|
+| **Frontend** | **`https://<distribution-id>.cloudfront.net`** |
 | **API** | `https://aew41rc5ob.execute-api.ap-northeast-1.amazonaws.com` |
-| **Frontend** | S3 `litcrop-poc-static` (needs CloudFront for browser access) |
 
 ### Seed Data
 
@@ -60,7 +61,14 @@
 | 5b | Lambda add-permission | Success | ~2s | API Gateway → Lambda invoke permission |
 | 6 | `scripts/deploy-frontend.sh` | Success | ~10s | 30 files synced (7 HTML + 22 JS + 1 CSS) |
 
-**Total deployment time**: ~3 minutes
+| 7 | CloudFront create-distribution | Success | ~1 min | Distribution ID: EXXXXXXXXXXXXX |
+| 7b | OAC setup (Console) | Success | ~2 min | Manual — `litcrop-poc-oac` created, bucket policy updated |
+| 7c | CloudFront propagation | Success | ~12 min | Status: Deployed |
+| 7d | Frontend rebuild with API URL | Success | ~1 min | `PUBLIC_API_BASE_URL` baked into build |
+| 7e | S3 re-sync + cache invalidation | Success | ~1 min | 30 files re-uploaded |
+| 7f | Lambda CORS env update | Success | ~5s | `CLOUDFRONT_ORIGIN` added |
+
+**Total deployment time**: ~30 minutes (including CloudFront propagation wait)
 
 ---
 
@@ -192,9 +200,26 @@ aws apigatewayv2 delete-api --api-id aew41rc5ob --profile litcrop --region ap-no
 
 ---
 
+## Frontend Verification
+
+| Page | URL Path | Status |
+|------|----------|--------|
+| Farm Overview | `/` | **PASS** — title "LitCrop — Farm", nav bar with 4 links |
+| Farm Layout | `/farm/layout` | **PASS** — serving HTML |
+| Weather | `/weather` | **PASS** — serving HTML with Preact island |
+| Settings | `/settings` | **PASS** — serving HTML with theme/language controls |
+| Plot Detail | `/plots/view?id=<plotId>` | Serves HTML (client-side hydration) |
+| Image Viewer | `/images/view?id=<imageId>` | Serves HTML (client-side hydration) |
+| Setup | `/setup` | Serves HTML (client-side hydration) |
+
+All 7 pages serve correctly via CloudFront HTTPS. Preact islands hydrate client-side for interactive content.
+
+---
+
 ## Next Steps
 
-1. **Set up CloudFront** — HTTPS frontend access for browser testing
-2. **Tag as v0.6** — Deployment milestone
+1. ~~**Set up CloudFront**~~ — Done (OAC via Console, distribution deployed)
+2. ~~**Tag as v0.6**~~ — Done
 3. **Merge develop → main** — Production release (requires explicit approval)
 4. **PoC retrospective** — Document learnings for MVP scoping
+5. **Browser UI testing** — Visual verification on mobile viewport
