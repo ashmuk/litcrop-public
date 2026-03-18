@@ -1,27 +1,93 @@
 ---
+/**
+ * BaseLayout — T-FE-01
+ * Mobile-first shell with theme support, i18n locale, and bottom tab navigation.
+ */
+import '../styles/global.css';
+import '../styles/components.css';
+
 export interface Props {
   title?: string;
-  lang?: string;
+  description?: string;
+  lang?: 'en' | 'ja';
+  locale?: 'en' | 'ja';
   theme?: 'light' | 'dark' | 'earthy' | 'system';
+  /** Marks the active tab bar item. Defaults to 'farm'. */
+  activeTab?: 'farm' | 'weather' | 'setup' | 'settings';
 }
 
 const {
   title = 'LitCrop',
+  description = 'LitCrop — smart crop monitoring for small-scale farms',
   lang = 'en',
+  locale = lang,
   theme = 'system',
+  activeTab = 'farm',
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang={lang} data-theme={theme}>
+<html lang={lang} data-theme={theme} data-locale={locale}>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#1B6B3A" />
     <meta name="generator" content={Astro.generator} />
+    <!-- Mobile web-app meta for fullscreen feel when added to home screen -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
-    <slot />
+    <!-- Page content (provided by each page via slot) -->
+    <main class="page-main" role="main">
+      <slot />
+    </main>
+
+    <!-- Bottom Tab Bar — mobile-first primary navigation (P2: thumb zone, 64px) -->
+    <nav class="tab-bar" role="navigation" aria-label="Main navigation">
+      <a
+        href="/"
+        class={`tab-bar__item${activeTab === 'farm' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Farm overview"
+        aria-current={activeTab === 'farm' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">🌾</span>
+        <span class="tab-bar__label" data-i18n="nav.farm">Farm</span>
+      </a>
+
+      <a
+        href="/weather"
+        class={`tab-bar__item${activeTab === 'weather' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Weather"
+        aria-current={activeTab === 'weather' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">⛅</span>
+        <span class="tab-bar__label" data-i18n="nav.weather">Weather</span>
+      </a>
+
+      <a
+        href="/setup"
+        class={`tab-bar__item${activeTab === 'setup' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Farm setup"
+        aria-current={activeTab === 'setup' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">🛠️</span>
+        <span class="tab-bar__label" data-i18n="nav.setup">Setup</span>
+      </a>
+
+      <a
+        href="/settings"
+        class={`tab-bar__item${activeTab === 'settings' ? ' tab-bar__item--active' : ''}`}
+        aria-label="App settings"
+        aria-current={activeTab === 'settings' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">⚙️</span>
+        <span class="tab-bar__label" data-i18n="nav.settings">Settings</span>
+      </a>
+    </nav>
   </body>
 </html>

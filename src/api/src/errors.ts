@@ -46,3 +46,31 @@ export class InternalError extends AppError {
     this.name = 'InternalError';
   }
 }
+
+export class PayloadTooLargeError extends AppError {
+  constructor(message = 'Payload too large', details?: Record<string, unknown>) {
+    super('PAYLOAD_TOO_LARGE', 413, message, details);
+    this.name = 'PayloadTooLargeError';
+  }
+}
+
+export class UpstreamError extends AppError {
+  constructor(message = 'Upstream service error', details?: Record<string, unknown>) {
+    super('UPSTREAM_ERROR', 502, message, details);
+    this.name = 'UpstreamError';
+  }
+}
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Service unavailable', details?: Record<string, unknown>) {
+    super('SERVICE_UNAVAILABLE', 503, message, details);
+    this.name = 'ServiceUnavailableError';
+  }
+}
+
+export class BadCursorError extends AppError {
+  constructor(message = 'Invalid pagination cursor', details?: Record<string, unknown>) {
+    super('BAD_CURSOR', 400, message, details);
+    this.name = 'BadCursorError';
+  }
+}

@@ -407,6 +407,47 @@ export class DynamoRepository {
     );
   }
 
+  // Get all plots for a specific bed
+  async getPlotsForBed(bedId: string): Promise<Plot[]> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': pk.bed(bedId),
+          ':prefix': 'PLOT#',
+        },
+      }),
+    );
+    return (result.Items ?? []).map((item) => {
+      const plotId = extractIdFromSk(item['SK'] as string, 'PLOT#');
+      return itemToPlot(item, plotId);
+    });
+  }
+
+  // Get the most recent image for a plot (null if none)
+  async getLatestImageForPlot(plotId: string): Promise<Image | null> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': pk.plot(plotId),
+          ':prefix': 'IMG#',
+        },
+        ScanIndexForward: false,
+        Limit: 1,
+      }),
+    );
+    const item = result.Items?.[0];
+    if (!item) return null;
+    const skValue = item['SK'] as string;
+    const withoutPrefix = skValue.slice('IMG#'.length);
+    const lastHash = withoutPrefix.lastIndexOf('#');
+    const imageId = withoutPrefix.slice(lastHash + 1);
+    return itemToImage(item, imageId);
+  }
+
   async createImage(
     plotId: string,
     imageId: string,

@@ -1,0 +1,180 @@
+/* ============================================================
+   LitCrop — Global Styles
+   T-FE-02: CSS reset, base typography, mobile-first breakpoints
+   Primary viewport: 320–480px (mobile)
+   ============================================================ */
+
+@import './tokens.css';
+
+/* ----------------------------------------------------------
+   1. CSS Reset
+   ---------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ----------------------------------------------------------
+   2. Base Document
+   ---------------------------------------------------------- */
+html {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent jarring reflow when scrollbar appears */
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  /* Mobile-first: constrain to phone width, center on wider screens */
+  max-width: 480px;
+  margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------------------------------------------------------
+   3. Typography Base
+   ---------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  line-height: var(--line-height-tight);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+/* Minimum body text 16px for outdoor readability (P2 design principle) */
+p, li, dd, dt, label, input, textarea, select {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ----------------------------------------------------------
+   4. Interactive Element Resets
+   ---------------------------------------------------------- */
+button {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, textarea, select {
+  font-family: var(--font-family);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+input:focus, textarea:focus, select:focus {
+  box-shadow: var(--focus-ring);
+}
+
+/* ----------------------------------------------------------
+   5. Media
+   ---------------------------------------------------------- */
+img, video {
+  display: block;
+  max-width: 100%;
+}
+
+/* ----------------------------------------------------------
+   6. Focus Styles (accessibility — outdoor use requires visible focus) */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ----------------------------------------------------------
+   7. Scrollbar Styling
+   ---------------------------------------------------------- */
+/* Hide scrollbars for horizontal scroll containers (status bar, etc.) */
+.scroll-hide {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ----------------------------------------------------------
+   8. Mobile-First Responsive Breakpoints
+   Primary: 320–480px (phone portrait)
+   Tablet: 481–768px
+   Desktop: 769px+ (rare — app is mobile-centric)
+   ---------------------------------------------------------- */
+
+/* Base styles target 320–480px — no media query needed */
+
+/* Tablet adjustments (481px+) */
+@media (min-width: 481px) {
+  body {
+    /* Already capped at 480px via max-width; these styles apply to
+       the centered column. More padding at larger sizes. */
+    padding: 0;
+  }
+}
+
+/* Desktop: the 480px column is centered, add visible border */
+@media (min-width: 769px) {
+  body {
+    border-left: 1px solid var(--color-gray-300);
+    border-right: 1px solid var(--color-gray-300);
+  }
+}
+
+/* ----------------------------------------------------------
+   9. Reduced Motion
+   ---------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ----------------------------------------------------------
+   10. Page Layout Shell
+   ---------------------------------------------------------- */
+
+/* Main content area — padded bottom to clear the tab bar */
+.page-main {
+  min-height: calc(100vh - 64px); /* 64px tab bar */
+  padding-bottom: 72px; /* extra clearance below tab bar */
+}
+
+/* Generic page padding matching design spec */
+.page-pad {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
