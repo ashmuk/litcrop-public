@@ -43,7 +43,7 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
       const formData = new FormData();
       const blob = new Blob([new Uint8Array(imageBuffer)], { type: 'image/jpeg' });
       formData.append('image', blob, 'capture.jpg');
-      formData.append('trigger_type', triggerType);
+      formData.append('trigger', triggerType);
       formData.append('node_id', nodeId);
 
       const res = await fetch(url, { method: 'POST', body: formData });
