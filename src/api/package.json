@@ -9,6 +9,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1011.0",
+    "@aws-sdk/client-s3": "^3.1011.0",
+    "@aws-sdk/lib-dynamodb": "^3.1011.0",
+    "@aws-sdk/s3-request-presigner": "^3.1011.0",
     "@hono/node-server": "^1.19.11",
     "@litcrop/shared": "*",
     "hono": "^4.0.0"
