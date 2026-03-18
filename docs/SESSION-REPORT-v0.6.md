@@ -139,20 +139,34 @@ This validates that the Open-Meteo integration and crop impact analysis work wit
 
 ## Resource Consumption
 
-### Time
+### Time (this session: v0.6 deploy)
 
 | Activity | Duration |
 |----------|----------|
-| AWS permission verification | ~10 min |
-| Infrastructure provisioning (Steps 1-2) | ~3 min |
-| Seed data (Step 3) | ~5 sec |
-| Lambda + API Gateway (Steps 4-5) | ~2 min |
-| Frontend deploy (Step 6) | ~1 min |
-| API endpoint testing (11 endpoints) | ~10 min |
-| Simulator upload testing | ~2 min |
-| **Total deployment session** | **~30 min** |
+| AWS permission verification + troubleshooting | ~15 min |
+| Infrastructure provisioning (Steps 1-3) | ~5 min |
+| Lambda + API Gateway (Steps 4-5) | ~3 min |
+| Frontend deploy to S3 (Step 6) | ~2 min |
+| API endpoint testing (11 endpoints + simulator) | ~12 min |
+| CloudFront creation + OAC setup (Step 7) | ~15 min |
+| CloudFront propagation wait | ~12 min |
+| Frontend rebuild with API URL + re-sync | ~3 min |
+| Frontend verification via CloudFront | ~3 min |
+| Session report + tagging | ~5 min |
+| **Total v0.6 session** | **~1h 15min** |
 
-### Token Usage (cumulative, entire conversation)
+### Token Usage (this session: v0.6 deploy)
+
+| Metric | Value |
+|--------|-------|
+| Tokens at session start (after v0.5) | ~262k |
+| Tokens at session end | ~310k |
+| **Tokens consumed this session** | **~48k** |
+| % of 1M context used this session | ~4.8% |
+
+*Note: This session used no subagents — all deployment work was done directly by the team lead (Opus). Token usage is lower than implementation sessions because deployment is command execution, not code generation.*
+
+### Cumulative Token Usage (entire conversation: v0.4 → v0.6)
 
 | Category | Tokens | % of 1M Context |
 |----------|--------|-----------------|
@@ -161,9 +175,18 @@ This validates that the Open-Meteo integration and crop impact analysis work wit
 | Custom agents | ~406 | 0.0% |
 | Memory files | ~2k | 0.2% |
 | Skills | ~2.7k | 0.3% |
-| Messages (conversation) | ~262k | 26.2% |
-| **Total consumed** | **~286k** | **~28.6%** |
-| Free space remaining | ~681k | 68.1% |
+| Messages (conversation) | ~310k | 31.0% |
+| **Total consumed** | **~334k** | **~33.4%** |
+| Free space remaining | ~633k | 63.3% |
+
+### Cost (this session: v0.6 deploy)
+
+| Item | Estimated Cost |
+|------|---------------|
+| Opus (team lead) — ~48k tokens | ~$3.00 |
+| Subagents (Sonnet) | $0 (none spawned) |
+| **Total v0.6 session cost** | **~$3.00** |
+| **Cumulative all sessions (v0.4-v0.6)** | **~$28.40** |
 
 ### Cumulative Project Metrics (v0.1 → v0.6)
 
@@ -176,11 +199,11 @@ This validates that the Open-Meteo integration and crop impact analysis work wit
 | Code simplifications | 12 |
 | Files in codebase | ~100 |
 | Lines of code | ~21,200 |
-| AWS resources provisioned | 6 |
+| AWS resources provisioned | 7 (DynamoDB, S3 x2, IAM, Lambda, API GW, CloudFront) |
 | Exit criteria passed | 6 / 6 |
 | Total agents spawned (all sessions) | ~22 |
-| Total wall-clock time (all sessions) | ~5h 15min |
-| Context utilization | 28.6% of 1M |
+| Total wall-clock time (all sessions) | ~6h 30min |
+| Context utilization | 33.4% of 1M |
 
 ---
 
