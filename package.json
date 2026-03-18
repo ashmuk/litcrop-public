@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "echo 'Use workspace-specific dev commands'",
     "build": "npm run build --workspaces",
-    "typecheck": "tsc --noEmit --workspaces"
+    "typecheck": "tsc --noEmit --workspaces",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -19,5 +21,8 @@
     "@astrojs/preact": {
       "@preact/preset-vite": "2.8.3"
     }
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
   }
 }
