@@ -7,6 +7,20 @@
     "context7": {
       "type": "http",
       "url": "https://context7.liam.sh/mcp"
+    },
+    "bedrock-agentcore-mcp-server": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["awslabs.amazon-bedrock-agentcore-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "strands": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["strands-agents-mcp-server"],
+      "env": {}
     }
   }
 }
