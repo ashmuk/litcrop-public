@@ -110,11 +110,22 @@ To be output by `/cc-deploy` and executed before deploy is considered complete:
 - [ ] Mobile (375px): no overflow, clipping, or layout shift
 - [ ] Desktop (1024px+): responsive layout renders correctly (MVP)
 
+### Pre-Deploy (learned from v0.7 incident)
+- [ ] `src/frontend/.env` exists with `PUBLIC_API_BASE_URL` set (deploy script enforces this)
+- [ ] `PUBLIC_FARM_ID` set to correct farm ID for the environment
+- [ ] API endpoint returns JSON (not HTML) when called through the frontend's base URL
+
 ### Cross-Cutting
 - [ ] Settings (theme/locale/temp-unit) persist across navigation
 - [ ] Farm name appears in page titles
 - [ ] Weather conditions display as human-readable text
 ```
+
+> **Incident note (v0.7):** On 2026-03-19, a deploy appeared to regress Crops/Weather/Layout pages.
+> Root cause: gitignored `.env` was lost between sessions. Without `PUBLIC_API_BASE_URL`, the
+> frontend called `/api/v1` on CloudFront, which the URL-rewrite function silently served as HTML.
+> Fix: added `.env.example`, pre-flight check in `deploy-frontend.sh`, and this checklist item.
+> For MVP CI/CD (ADR-008): inject env vars from pipeline secrets, not local files.
 
 ---
 

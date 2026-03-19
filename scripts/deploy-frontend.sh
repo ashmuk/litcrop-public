@@ -45,6 +45,24 @@ for arg in "$@"; do
   esac
 done
 
+# ── Pre-flight: verify .env exists ────────────────────────────────
+# PUBLIC_API_BASE_URL must be set at build time so the frontend calls
+# the API Gateway directly (not relative /api/v1 on CloudFront).
+# See: src/frontend/.env.example
+ENV_FILE="${FRONTEND_DIR}/.env"
+if [ ! -f "${ENV_FILE}" ]; then
+  echo "✗ ${ENV_FILE} not found" >&2
+  echo "  Copy .env.example → .env and set PUBLIC_API_BASE_URL" >&2
+  echo "  Without it, API calls will silently fail on CloudFront." >&2
+  exit 1
+fi
+if ! grep -q "PUBLIC_API_BASE_URL" "${ENV_FILE}"; then
+  echo "⚠  PUBLIC_API_BASE_URL not found in ${ENV_FILE}" >&2
+  echo "  API calls will fall back to /api/v1 (broken on CloudFront)." >&2
+  exit 1
+fi
+echo "✓ .env verified (PUBLIC_API_BASE_URL set)"
+
 # ── Build ─────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" = false ]; then
   echo "▶ Building frontend…"
