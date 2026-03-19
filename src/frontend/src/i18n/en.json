@@ -123,6 +123,21 @@
     "suggestion_2": "Any frost risk this week?",
     "suggestion_3": "How is my farm doing?"
   },
+  "weather_conditions": {
+    "clear_sky": "Clear Sky",
+    "mainly_clear": "Mainly Clear",
+    "partly_cloudy": "Partly Cloudy",
+    "overcast": "Overcast",
+    "fog": "Fog",
+    "drizzle": "Drizzle",
+    "rain": "Rain",
+    "freezing_rain": "Freezing Rain",
+    "snow": "Snow",
+    "snow_grains": "Snow Grains",
+    "rain_showers": "Rain Showers",
+    "snow_showers": "Snow Showers",
+    "thunderstorm": "Thunderstorm"
+  },
   "image_viewer": {
     "not_found": "Image not found",
     "load_error": "Failed to load image"

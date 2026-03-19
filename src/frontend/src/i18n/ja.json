@@ -123,6 +123,21 @@
     "suggestion_2": "今週の霜のリスクは？",
     "suggestion_3": "農場の状態はどうですか？"
   },
+  "weather_conditions": {
+    "clear_sky": "快晴",
+    "mainly_clear": "晴れ",
+    "partly_cloudy": "晴れ時々曇り",
+    "overcast": "曇り",
+    "fog": "霧",
+    "drizzle": "霧雨",
+    "rain": "雨",
+    "freezing_rain": "凍雨",
+    "snow": "雪",
+    "snow_grains": "雪あられ",
+    "rain_showers": "にわか雨",
+    "snow_showers": "にわか雪",
+    "thunderstorm": "雷雨"
+  },
   "image_viewer": {
     "not_found": "画像が見つかりません",
     "load_error": "画像の読み込みに失敗しました"

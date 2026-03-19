@@ -170,12 +170,12 @@ router.get('/:farmId/plots', async (c) => {
 
   // Build bed_id → { bed_name, field_name } map
   const fields = await dynamoRepo.getFieldsForFarm(farm.id);
-  const bedMeta = new Map<string, { bed_name: string; field_name: string }>();
+  const bedMeta = new Map<string, { bed_name: string; field_name: string; field_id: string }>();
   await Promise.all(
     fields.map(async (field: Field) => {
       const beds = await dynamoRepo.getBedsForField(field.id);
       for (const bed of beds) {
-        bedMeta.set(bed.id, { bed_name: bed.name, field_name: field.name });
+        bedMeta.set(bed.id, { bed_name: bed.name, field_name: field.name, field_id: field.id });
       }
     }),
   );
@@ -189,6 +189,8 @@ router.get('/:farmId/plots', async (c) => {
       return {
         id: plot.id,
         label: plot.label,
+        bed_id: plot.bed_id,
+        field_id: meta.field_id,
         crop_type: plot.crop_type,
         crop_variety: plot.crop_variety,
         latest_status: plot.latest_status,

@@ -27,6 +27,12 @@ const STATUS_ORDER: PlotStatus[] = [
   'no_data',
 ];
 
+function translateCondition(condition: string): string {
+  const key = `weather_conditions.${condition}`;
+  const translated = t(key);
+  return translated === key ? condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : translated;
+}
+
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -133,7 +139,7 @@ export default function FarmOverview({ farmId }: Props) {
           <span style="font-weight:var(--font-weight-semibold)">
             {formatTemp(weather.current.temperature)}
           </span>
-          <span>{weather.current.condition}</span>
+          <span>{translateCondition(weather.current.condition_icon)}</span>
           <span style="margin-left:auto;font-size:var(--font-size-xs)">
             💧{weather.current.humidity}% · 💨{Math.round(weather.current.wind_speed)} km/h
           </span>

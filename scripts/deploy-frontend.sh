@@ -7,8 +7,9 @@
 #   ./scripts/deploy-frontend.sh [--skip-build]
 #
 # Environment variables:
-#   CF_DIST_ID   CloudFront distribution ID (optional — skips invalidation if unset)
-#   AWS_PROFILE  Override the default 'litcrop' profile
+#   CF_DIST_ID       CloudFront distribution ID (optional — skips invalidation if unset)
+#   CF_FUNCTION_NAME CloudFront Function name (optional — updates URL-rewrite function if set)
+#   AWS_PROFILE      Override the default 'litcrop' profile
 
 set -euo pipefail
 
@@ -32,8 +33,9 @@ for arg in "$@"; do
       echo "  --skip-build   Skip npm run build (use existing dist/)"
       echo ""
       echo "Environment:"
-      echo "  CF_DIST_ID     CloudFront distribution ID for cache invalidation"
-      echo "  AWS_PROFILE    AWS profile name (default: litcrop)"
+      echo "  CF_DIST_ID         CloudFront distribution ID for cache invalidation"
+      echo "  CF_FUNCTION_NAME   CloudFront Function name to update after deploy"
+      echo "  AWS_PROFILE        AWS profile name (default: litcrop)"
       exit 0
       ;;
     *)
@@ -65,6 +67,48 @@ aws s3 sync "${DIST_DIR}/" "s3://${S3_BUCKET}/" \
   --delete \
   --profile "${AWS_PROFILE}"
 echo "✓ S3 sync complete"
+
+# ── CloudFront Function update (optional) ────────────────────────
+# If CF_FUNCTION_NAME is set, update the CloudFront Function code from
+# scripts/cloudfront-function-url-rewrite.js.
+# Requires cloudfront:DescribeFunction + cloudfront:UpdateFunction permissions.
+# If permissions are unavailable, skip gracefully and print a manual step.
+if [ -n "${CF_FUNCTION_NAME:-}" ]; then
+  CF_FUNCTION_JS="scripts/cloudfront-function-url-rewrite.js"
+  if [ ! -f "${CF_FUNCTION_JS}" ]; then
+    echo "⚠  ${CF_FUNCTION_JS} not found — skipping CloudFront Function update" >&2
+  else
+    echo "▶ Updating CloudFront Function '${CF_FUNCTION_NAME}'…"
+    # Get the current ETag (required for UpdateFunction)
+    CF_ETAG=$(aws cloudfront describe-function \
+      --name "${CF_FUNCTION_NAME}" \
+      --profile "${AWS_PROFILE}" \
+      --query 'ETag' \
+      --output text 2>/dev/null || echo "")
+    if [ -z "${CF_ETAG}" ]; then
+      echo "⚠  Could not retrieve ETag for CloudFront Function '${CF_FUNCTION_NAME}'"
+      echo "   Manual step: aws cloudfront update-function --name ${CF_FUNCTION_NAME} \\"
+      echo "     --if-match <etag> --function-config Comment=url-rewrite,Runtime=cloudfront-js-2.0 \\"
+      echo "     --function-code fileb://${CF_FUNCTION_JS}"
+    else
+      aws cloudfront update-function \
+        --name "${CF_FUNCTION_NAME}" \
+        --if-match "${CF_ETAG}" \
+        --function-config "Comment=url-rewrite,Runtime=cloudfront-js-2.0" \
+        --function-code "fileb://${CF_FUNCTION_JS}" \
+        --profile "${AWS_PROFILE}" 2>/dev/null \
+        && echo "✓ CloudFront Function updated" \
+        || {
+          echo "⚠  cloudfront:UpdateFunction permission denied."
+          echo "   Manual step: aws cloudfront update-function --name ${CF_FUNCTION_NAME} \\"
+          echo "     --if-match ${CF_ETAG} --function-config Comment=url-rewrite,Runtime=cloudfront-js-2.0 \\"
+          echo "     --function-code fileb://${CF_FUNCTION_JS} --profile ${AWS_PROFILE}"
+        }
+    fi
+  fi
+else
+  echo "ℹ  CF_FUNCTION_NAME not set — skipping CloudFront Function update"
+fi
 
 # ── CloudFront invalidation (optional) ───────────────────────────
 if [ -n "${CF_DIST_ID:-}" ]; then

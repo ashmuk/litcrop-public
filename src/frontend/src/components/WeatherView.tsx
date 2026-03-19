@@ -28,6 +28,12 @@ function formatWeekday(isoDate: string): string {
   });
 }
 
+function translateCondition(condition: string): string {
+  const key = `weather_conditions.${condition}`;
+  const translated = t(key);
+  return translated === key ? condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : translated;
+}
+
 export interface Props {
   farmId: string;
 }
@@ -108,7 +114,7 @@ export default function WeatherView({ farmId }: Props) {
               {formatTemp(current.temperature)}
             </div>
             <div style="font-size:var(--font-size-base);color:var(--color-gray-700)">
-              {current.condition}
+              {translateCondition(current.condition_icon)}
             </div>
           </div>
         </div>
@@ -191,7 +197,7 @@ export default function WeatherView({ farmId }: Props) {
             </div>
             <span style="font-size:24px" aria-hidden="true">{day.condition_icon}</span>
             <div style="flex:1;font-size:var(--font-size-sm);color:var(--color-gray-700)">
-              {day.condition}
+              {translateCondition(day.condition_icon)}
             </div>
             <div style="display:flex;gap:var(--space-2);font-size:var(--font-size-sm)">
               {day.rain_probability > 20 && (
