@@ -62,8 +62,11 @@ export default function FarmOverview({ farmId }: Props) {
         ]);
         if (cancelled) return;
         if (farmData) {
-          // Store farmId for other islands
-          try { localStorage.setItem('litcrop-farmId', farmData.id); } catch {}
+          // Store farmId + name for other islands and page headers
+          try {
+            localStorage.setItem('litcrop-farmId', farmData.id);
+            localStorage.setItem('litcrop-farmName', farmData.name);
+          } catch {}
         }
         setPlots(plotData);
         if (weatherData) setWeather(weatherData);

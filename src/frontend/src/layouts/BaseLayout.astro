@@ -62,8 +62,8 @@ const {
         try {
           // Inline translation map for nav + common static labels (ja only for PoC)
           var JA = {
-            'nav.farm': '農場', 'nav.weather': '天気',
-            'nav.setup': 'マイファーム', 'nav.settings': '設定'
+            'nav.farm': '作物', 'nav.weather': '天気',
+            'nav.setup': 'プロフィール', 'nav.settings': '設定'
           };
           if (locale === 'ja') XHR_TRANSLATIONS = JA;
         } catch(e) {}
@@ -89,11 +89,11 @@ const {
       <a
         href="/"
         class={`tab-bar__item${activeTab === 'farm' ? ' tab-bar__item--active' : ''}`}
-        aria-label="Farm overview"
+        aria-label="Crops overview"
         aria-current={activeTab === 'farm' ? 'page' : undefined}
       >
         <span class="tab-bar__icon" aria-hidden="true">🌾</span>
-        <span class="tab-bar__label" data-i18n="nav.farm">Farm</span>
+        <span class="tab-bar__label" data-i18n="nav.farm">Crops</span>
       </a>
 
       <a
@@ -109,11 +109,11 @@ const {
       <a
         href="/setup"
         class={`tab-bar__item${activeTab === 'setup' ? ' tab-bar__item--active' : ''}`}
-        aria-label="My Farm"
+        aria-label="Farm profile"
         aria-current={activeTab === 'setup' ? 'page' : undefined}
       >
         <span class="tab-bar__icon" aria-hidden="true">🌱</span>
-        <span class="tab-bar__label" data-i18n="nav.setup">My Farm</span>
+        <span class="tab-bar__label" data-i18n="nav.setup">Profile</span>
       </a>
 
       <a

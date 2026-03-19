@@ -1,8 +1,8 @@
 {
   "nav": {
-    "farm": "Farm",
+    "farm": "Crops",
     "weather": "Weather",
-    "setup": "My Farm",
+    "setup": "Profile",
     "settings": "Settings"
   },
   "status": {

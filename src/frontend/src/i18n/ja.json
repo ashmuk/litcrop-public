@@ -1,8 +1,8 @@
 {
   "nav": {
-    "farm": "農場",
+    "farm": "作物",
     "weather": "天気",
-    "setup": "マイファーム",
+    "setup": "プロフィール",
     "settings": "設定"
   },
   "status": {
