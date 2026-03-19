@@ -8,7 +8,7 @@ description: >-
   Do NOT use for architecture or design (use cc-design), test strategy (use
   cc-test), or code review (use cc-review).
 metadata:
-  version: 3.0.0
+  version: 4.0.0
   category: workflow-automation
 ---
 
@@ -36,11 +36,35 @@ Steps 8–9 form the **execution loop** — they repeat for each scope level (Po
 1. general-purpose agent(s) is co-working with my-builder agent and respect its policies
 2. Read PLANS.md (if exists) — identify the current scope level (PoC/MVP/Production)
 3. Analyze the context and start implementations (invoke general-purpose or relevant agents as needed)
-4. Implement using the appropriate model: **Sonnet** for multi-file or complex logic; **Haiku** for single-file, well-scoped tasks
+4. Implement using the appropriate model:
+   - **Opus** for architectural judgment, cross-package coordination, security-sensitive code
+   - **Sonnet** for multi-file or complex logic, size:M+ tasks
+   - **Haiku** for single-file, well-scoped tasks
+   - **Sonnet for size:S fixes** — when fixing mechanical issues (string renames, i18n keys, CSS tweaks, adding imports), delegate to Sonnet (my-builder) with clear acceptance criteria. Opus creates the issue + AC, Sonnet implements, Opus reviews. See ADR §5.
 5. Apply my-reviewer agent policy for validation of what was implemented
 6. Finalize outcome by this feedback loop
 7. Preserve notable points in docs/IMPLEMENTATIONS.md
-8. **STOP — Present implementation to user for local review.**
+
+### Per-Phase Gates (MVP+ pipeline — ADR-20260319)
+
+These gates apply at **MVP and Production** scope levels. At PoC scope, per-phase gates are optional.
+
+After completing each implementation phase boundary (not at the end of all phases):
+
+8. **Contract test gate** — run contract tests (`npm test` or the project's test command). If any contract test fails, fix immediately in this phase before proceeding. Do NOT move to the next phase with failing contract tests. See ADR §3.
+   - Skip if: no contract tests exist yet (Phase C of MVP-READINESS.md has not been completed)
+
+9. **Code simplification gate** — invoke the code-simplifier agent to review code written in this phase for duplication, dead code, and quality issues. Commit cleanup separately from feature code. See ADR §1.
+   - Skip if: phase produced fewer than 3 files or < 200 lines of new code
+   - Cost: ~$1-2 per run (Sonnet agent)
+
+10. **Commit** — stage and commit the phase's work (feature commit + cleanup commit if simplification produced changes)
+
+Then repeat steps 3–10 for the next phase.
+
+### After All Phases Complete
+
+11. **STOP — Present implementation to user for local review.**
     Inform the user: "Review the implementation locally. Verify it meets the plan for the current scope level."
 
     > **Decision options:**
@@ -51,7 +75,17 @@ Steps 8–9 form the **execution loop** — they repeat for each scope level (Po
     > - **Review first** → run `/cc-review` before proceeding to test
 
     Do NOT proceed to Step 9 until user explicitly resumes.
-9. Next: Invoke cc-test skill (Step 9) for test strategy
+12. Next: Invoke cc-test skill (Step 9) for test strategy
+
+## Issue-First Rule (MVP pipeline — ADR-20260319)
+
+When any feedback item, bug, or improvement is identified during implementation — whether from contract test failures, code review, user feedback, or agent discovery:
+
+1. **Create a GitHub Issue immediately** via `/cc-issue-create` — BEFORE deciding whether to fix now or defer
+2. Tag with appropriate milestone (MVP, Production) and severity labels
+3. THEN decide: fix now (branch from issue, PR references `Fixes #N`) or defer (issue stays open)
+
+The issue is the source of truth for work tracking. Feedback docs (if used) are narrative summaries with issue cross-references, not primary trackers. See ADR §2.
 
 ## Issue Creation (at scope transition) — Optional
 When `github_issues.enabled: true` in PROJECT.yaml:
