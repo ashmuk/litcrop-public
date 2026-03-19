@@ -75,10 +75,13 @@ Based on `REQUIREMENTS.md` (54 FRs, 24 NFRs, 8 constraints):
 | Real camera hardware | Pi 5 + PIR sensor | MVP |
 | Desktop optimization | 1024px+ breakpoints | MVP |
 | CI/CD + IaC | ADR-008 (CDK/SAM/SST) | MVP |
-| WMO weather i18n (F-07) | Human-readable condition labels | MVP |
-| Map picker for farm location (F-09) | Leaflet + OpenStreetMap | MVP |
-| Soil pH IoT sensor (F-13) | New device protocol + data model | Production |
-| Time-lapse playback (F-14) | Image history prerequisite | Production |
+| ~~WMO weather i18n (F-07)~~ | ~~Human-readable condition labels~~ | **FIXED** ([#52](https://github.com/ashmuk/litcrop/issues/52)) |
+| Map picker for farm location (F-09) | Leaflet + OpenStreetMap | MVP ([#55](https://github.com/ashmuk/litcrop/issues/55)) |
+| Weather layout overflow (F-08) | CSS fix for 375px mobile | MVP ([#54](https://github.com/ashmuk/litcrop/issues/54)) |
+| Elevation auto-fetch (F-10) | Open-Meteo Elevation API | MVP ([#56](https://github.com/ashmuk/litcrop/issues/56)) |
+| Desktop responsiveness (F-11) | 768px+ breakpoint | MVP ([#57](https://github.com/ashmuk/litcrop/issues/57)) |
+| Soil pH IoT sensor (F-13) | New device protocol + data model | Production ([#58](https://github.com/ashmuk/litcrop/issues/58)) |
+| Time-lapse playback (F-14) | Image history prerequisite | Production ([#59](https://github.com/ashmuk/litcrop/issues/59)) |
 | Live video streaming | WebRTC/HLS, Pi 4+ hardware | Production |
 
 ---
@@ -308,23 +311,28 @@ Tested on: iPhone (mobile) + Chrome desktop. Frontend at `https://<distribution-
 | F-05 | Nav: Farm → Crops, My Farm → Profile | UX clarity: "Farm" was ambiguous | Renamed in EN/JA i18n + nav labels + aria attributes |
 | F-06 | Generic page titles (no farm name) | Titles hardcoded during implementation | Headers read farm name from localStorage; e.g. "⛅ Weather — LitCrop Demo Farm" |
 
-### Deferred to MVP (6 items)
+### Fixed post-report (F-07, F-12)
 
-| # | Issue | Priority | Notes |
-|---|-------|----------|-------|
-| F-07 | WMO weather codes displayed as system strings (`partly_cloudy`, `drizzle`) | High | Most jarring UX gap. 20+ WMO codes × 2 locales mapping needed. |
-| F-08 | Weather layout overflow at 375px | Medium | Long condition text + temperature clipping on mobile. CSS fix + multi-state visual testing. |
-| F-09 | Map picker for farm location | Medium | Leaflet + OpenStreetMap (free, no API key). Explicitly deferred after discussion. |
-| F-10 | Elevation auto-fetch from coordinates | Low | Open-Meteo Elevation API (free, already in stack). Quick win. |
-| F-11 | Desktop responsiveness | Medium | Known PoC exclusion. Affects demo credibility on laptops. Minimal `@media (min-width: 768px)` pass recommended at MVP. |
-| F-12 | Farm Layout view "No plots" | **High** | Functional bug — spatial layout view doesn't show crops in beds. Must fix before MVP demo. Related to N+1 efficiency issue from `/simplify` review. |
+| # | Issue | Fix |
+|---|-------|-----|
+| F-07 | WMO weather codes displayed as system strings | **FIXED** ([#52](https://github.com/ashmuk/litcrop/issues/52)) — 13 weather condition translations (EN/JA), `translateCondition()` helper |
+| F-12 | Farm Layout view "No plots" | **FIXED** ([#51](https://github.com/ashmuk/litcrop/issues/51)) — added `bed_id`/`field_id` to plots route response |
 
-### Deferred to Production (2 items)
+### Deferred to MVP (4 items — issues [#54](https://github.com/ashmuk/litcrop/issues/54)–[#57](https://github.com/ashmuk/litcrop/issues/57))
 
-| # | Issue | Notes |
-|---|-------|-------|
-| F-13 | Soil pH monitoring via IoT sensor | New device protocol + data model + alert thresholds. Separate risk domain. Needs ADR for MQTT vs HTTPS, sensor schema, crop-specific pH thresholds. Similar scope to sprinkler control deferred in PLANS.md. |
-| F-14 | Time-lapse playback (sequential image playback) | Frontend-only once sufficient image history exists. Good late-MVP or Production candidate. |
+| # | GitHub | Issue | Priority | Notes |
+|---|--------|-------|----------|-------|
+| F-08 | [#54](https://github.com/ashmuk/litcrop/issues/54) | Weather layout overflow at 375px | Medium | Long condition text + temperature clipping on mobile. CSS fix + multi-state visual testing. |
+| F-09 | [#55](https://github.com/ashmuk/litcrop/issues/55) | Map picker for farm location | Medium | Leaflet + OpenStreetMap (free, no API key). Explicitly deferred after discussion. |
+| F-10 | [#56](https://github.com/ashmuk/litcrop/issues/56) | Elevation auto-fetch from coordinates | Low | Open-Meteo Elevation API (free, already in stack). Quick win. |
+| F-11 | [#57](https://github.com/ashmuk/litcrop/issues/57) | Desktop responsiveness | Medium | Known PoC exclusion. Affects demo credibility on laptops. Minimal `@media (min-width: 768px)` pass recommended at MVP. |
+
+### Deferred to Production (2 items — issues [#58](https://github.com/ashmuk/litcrop/issues/58)–[#59](https://github.com/ashmuk/litcrop/issues/59))
+
+| # | GitHub | Issue | Notes |
+|---|--------|-------|-------|
+| F-13 | [#58](https://github.com/ashmuk/litcrop/issues/58) | Soil pH monitoring via IoT sensor | New device protocol + data model + alert thresholds. Separate risk domain. Needs ADR for MQTT vs HTTPS, sensor schema, crop-specific pH thresholds. Similar scope to sprinkler control deferred in PLANS.md. |
+| F-14 | [#59](https://github.com/ashmuk/litcrop/issues/59) | Time-lapse playback (sequential image playback) | Frontend-only once sufficient image history exists. Good late-MVP or Production candidate. |
 
 ### Product Vision (7 categories, V-01–V-07)
 
@@ -455,17 +463,19 @@ Prioritized actions before starting MVP scope:
 
 | # | Action | Effort | Blocks |
 |---|--------|--------|--------|
-| 1 | **Fix F-12 (Layout "No plots")** | Small (< 2h) — query fix in FarmLayoutView | Spatial layout demo, MVP user testing |
+| 1 | ~~**Fix F-12 (Layout "No plots")**~~ | ~~Small~~ | **FIXED** ([#51](https://github.com/ashmuk/litcrop/issues/51)) |
 | 2 | **Configure LLM API key in Lambda** | Trivial (env var + redeploy) | Live AI chat for demos |
 | 3 | **Merge develop → main + tag v1.0** | Trivial (requires user approval) | Clean MVP baseline |
-| 4 | **Script CloudFront Function deployment** | Small (< 1h) — add to deploy-frontend.sh | Reproducible deployments for MVP |
-| 5 | **Fix WMO weather codes (F-07)** | Medium (< 4h) — 20+ codes × 2 locales | Weather page UX quality |
+| 4 | ~~**Script CloudFront Function deployment**~~ | ~~Small~~ | **FIXED** — added to `deploy-frontend.sh` |
+| 5 | ~~**Fix WMO weather codes (F-07)**~~ | ~~Medium~~ | **FIXED** ([#52](https://github.com/ashmuk/litcrop/issues/52)) |
 | 6 | **ADR-007: Authentication provider selection** | Small (doc only) | All MVP user-facing features |
 | 7 | **ADR-008: IaC tool selection (CDK vs SAM vs SST)** | Small (doc only) | Reproducible MVP infrastructure |
-| 8 | **Add contract tests (shared types ↔ route responses)** | Medium (< 4h) | Prevent field-name drift in MVP agent-parallel builds |
+| 8 | **Add contract tests (shared types ↔ route responses)** | Medium (< 4h) | Prevent field-name drift — see [ADR-20260319-pipeline-improvements](ADR-20260319-pipeline-improvements-mvp.md) §3 |
 | 9 | **ADR-009: AI/LLM framework for MVP chatbot** | Medium (doc + PoC) | Agentic chat features (FR-9.4 layout creation) |
 | 10 | **Desktop responsive pass (F-11)** | Medium (< 1 day) — `@media (min-width: 768px)` | Demo credibility on laptops |
 | 11 | **Elevation auto-fetch from coordinates (F-10)** | Small (< 2h) — Open-Meteo Elevation API | Profile UX polish |
 | 12 | **Add `bed_id` to Image record (SF-4 denormalization)** | Small (< 2h) — schema + seed + test updates | Tag race condition fix for multi-user MVP |
 
-**Immediate next session** (before `/cc-define` at MVP scope): Items 1–4 are code/config changes that can be done in a single focused session (~2 hours). Items 5–9 are design/planning work that should precede the MVP `/cc-define` run. Items 10–12 can be bundled into the first MVP implementation phase.
+**Immediate next session** (before `/cc-define` at MVP scope): Items 1, 4, 5 are now complete. Item 2 (LLM key) and 3 (merge to main) remain as pre-MVP blockers. Items 6–9 are design/planning work that should precede the MVP `/cc-define` run. Items 10–12 can be bundled into the first MVP implementation phase.
+
+**Pipeline process improvements**: See [ADR-20260319-pipeline-improvements-mvp](decisions/ADR-20260319-pipeline-improvements-mvp.md) for five structural changes to the 9-step pipeline: per-phase `/simplify`, issue-first rule, contract test gates, deploy verification checklist, and Sonnet delegation for small fixes.

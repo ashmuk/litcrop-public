@@ -27,21 +27,21 @@ All 8 issues created, closed with implementation comments, and deployed to Cloud
 
 ## Defer to MVP
 
-| # | Issue | Page | Description | Reason for Deferral |
-|---|-------|------|-------------|-------------------|
-| F-08 | Weather layout overflow on mobile | Weather | Today summary row — long condition text + temperature number overflows at 375px width, clipping or wrapping. | CSS fix but needs visual testing with multiple weather states. |
-| F-09 | Map picker for farm location | Profile | User wants visual map to pin farm location instead of GPS + manual lat/lng text fields. | New dependency (Leaflet + OpenStreetMap recommended over Google Maps). Scope creep for PoC. |
-| F-10 | Elevation auto-fetch from coordinates | Profile | When lat/lng is entered or GPS used, auto-populate elevation using Open-Meteo Elevation API (free, already in our stack). | Quick win but not in PoC exit criteria. |
-| F-11 | Desktop responsiveness | All | Frontend renders at mobile width (max ~480px) on desktop browsers. No responsive scaling or 2-column layout. | Explicitly excluded from PoC scope per PLANS.md ("Mobile-first single breakpoint only"). |
+| # | GitHub | Issue | Page | Description | Reason for Deferral |
+|---|--------|-------|------|-------------|-------------------|
+| F-08 | [#54](https://github.com/ashmuk/litcrop/issues/54) | Weather layout overflow on mobile | Weather | Today summary row — long condition text + temperature number overflows at 375px width, clipping or wrapping. | CSS fix but needs visual testing with multiple weather states. |
+| F-09 | [#55](https://github.com/ashmuk/litcrop/issues/55) | Map picker for farm location | Profile | User wants visual map to pin farm location instead of GPS + manual lat/lng text fields. | New dependency (Leaflet + OpenStreetMap recommended over Google Maps). Scope creep for PoC. |
+| F-10 | [#56](https://github.com/ashmuk/litcrop/issues/56) | Elevation auto-fetch from coordinates | Profile | When lat/lng is entered or GPS used, auto-populate elevation using Open-Meteo Elevation API (free, already in our stack). | Quick win but not in PoC exit criteria. |
+| F-11 | [#57](https://github.com/ashmuk/litcrop/issues/57) | Desktop responsiveness | All | Frontend renders at mobile width (max ~480px) on desktop browsers. No responsive scaling or 2-column layout. | Explicitly excluded from PoC scope per PLANS.md ("Mobile-first single breakpoint only"). |
 
 ---
 
 ## Defer to Production (or beyond)
 
-| # | Issue | Page | Description | Reason for Deferral |
-|---|-------|------|-------------|-------------------|
-| F-13 | Soil pH monitoring via IoT sensor | Crops, Profile | Add soil pH readings from a dedicated IoT sensor device (e.g., soil pH probe connected via ESP32/LoRa). Display per-plot pH history, alert when outside optimal range for crop type. Requires: new device protocol (MQTT or HTTPS), new DynamoDB entity (SoilReading), new API endpoints, new UI component. | New hardware device + protocol + data model. Separate risk domain from camera-based observation. Needs ADR for device communication (MQTT vs HTTPS), sensor data schema, and alert thresholds per crop. Similar scope to the sprinkler/actuator control deferred in PLANS.md. |
-| F-14 | Time-lapse playback for crop growth | Image Timeline | Auto-play sequential images for a plot to visualize crop growth over time. Slider control for speed. Export as GIF/video optional. | Needs sufficient image history first. UX design + frontend-only feature (images already stored). |
+| # | GitHub | Issue | Page | Description | Reason for Deferral |
+|---|--------|-------|------|-------------|-------------------|
+| F-13 | [#58](https://github.com/ashmuk/litcrop/issues/58) | Soil pH monitoring via IoT sensor | Crops, Profile | Add soil pH readings from a dedicated IoT sensor device (e.g., soil pH probe connected via ESP32/LoRa). Display per-plot pH history, alert when outside optimal range for crop type. Requires: new device protocol (MQTT or HTTPS), new DynamoDB entity (SoilReading), new API endpoints, new UI component. | New hardware device + protocol + data model. Separate risk domain from camera-based observation. Needs ADR for device communication (MQTT vs HTTPS), sensor data schema, and alert thresholds per crop. Similar scope to the sprinkler/actuator control deferred in PLANS.md. |
+| F-14 | [#59](https://github.com/ashmuk/litcrop/issues/59) | Time-lapse playback for crop growth | Image Timeline | Auto-play sequential images for a plot to visualize crop growth over time. Slider control for speed. Export as GIF/video optional. | Needs sufficient image history first. UX design + frontend-only feature (images already stored). |
 
 ---
 
@@ -122,8 +122,8 @@ As features grow, the admin/management UI (user settings, farm settings, device 
 ```
 Fixed:      F-01..F-07, F-12        (8 items — deployed, issues #45–#53)
 PoC Fix:    (none remaining)
-MVP:        F-08..F-11              (4 items — weather overflow, map, elevation, desktop)
-Production: F-13, F-14              (2 items — IoT sensor, time-lapse)
+MVP:        F-08..F-11              (4 items — issues #54–#57)
+Production: F-13, F-14              (2 items — issues #58–#59)
 Vision:     V-01 through V-07       (7 categories — product roadmap)
 ```
 
