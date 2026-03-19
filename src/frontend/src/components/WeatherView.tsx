@@ -7,7 +7,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
-import { useLocalFarmId } from '../lib/hooks';
+import { useLocalFarmId, formatTemp, useTempUnit } from '../lib/hooks';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
@@ -105,7 +105,7 @@ export default function WeatherView({ farmId }: Props) {
             <div
               style="font-size:48px;font-weight:var(--font-weight-bold);line-height:1;color:var(--color-text)"
             >
-              {Math.round(current.temperature)}°C
+              {formatTemp(current.temperature)}
             </div>
             <div style="font-size:var(--font-size-base);color:var(--color-gray-700)">
               {current.condition}
@@ -139,7 +139,7 @@ export default function WeatherView({ farmId }: Props) {
         <div
           style="display:flex;justify-content:space-between;margin-top:var(--space-3);font-size:var(--font-size-sm);color:var(--color-gray-700)"
         >
-          <span>↑ {Math.round(today.high)}°  ↓ {Math.round(today.low)}°</span>
+          <span>↑ {formatTemp(today.high)}  ↓ {formatTemp(today.low)}</span>
           <span>🌅 {today.sunrise} &nbsp; 🌇 {today.sunset}</span>
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function WeatherView({ farmId }: Props) {
                 {formatHour(h.time)}
               </div>
               <div style="font-size:24px" aria-hidden="true">{h.condition_icon}</div>
-              <div style="font-weight:var(--font-weight-semibold)">{Math.round(h.temperature)}°</div>
+              <div style="font-weight:var(--font-weight-semibold)">{formatTemp(h.temperature)}</div>
               {h.rain_probability > 20 && (
                 <div style="font-size:var(--font-size-xs);color:#1565C0">
                   💧{h.rain_probability}%
@@ -197,8 +197,8 @@ export default function WeatherView({ farmId }: Props) {
               {day.rain_probability > 20 && (
                 <span style="color:#1565C0">💧{day.rain_probability}%</span>
               )}
-              <span style="font-weight:var(--font-weight-semibold)">{Math.round(day.high)}°</span>
-              <span style="color:var(--color-gray-500)">{Math.round(day.low)}°</span>
+              <span style="font-weight:var(--font-weight-semibold)">{formatTemp(day.high)}</span>
+              <span style="color:var(--color-gray-500)">{formatTemp(day.low)}</span>
             </div>
           </div>
         ))}

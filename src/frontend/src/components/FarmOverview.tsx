@@ -8,7 +8,7 @@ import type { FarmPlotItem, WeatherResponse, PlotStatus } from '@litcrop/shared'
 import { getFarm, getPlots, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
-import { useLocalFarmId } from '../lib/hooks';
+import { useLocalFarmId, formatTemp } from '../lib/hooks';
 
 // Most critical first
 const STATUS_SEVERITY: Record<PlotStatus, number> = {
@@ -128,7 +128,7 @@ export default function FarmOverview({ farmId }: Props) {
         >
           <span aria-hidden="true">{weather.current.condition_icon}</span>
           <span style="font-weight:var(--font-weight-semibold)">
-            {Math.round(weather.current.temperature)}°C
+            {formatTemp(weather.current.temperature)}
           </span>
           <span>{weather.current.condition}</span>
           <span style="margin-left:auto;font-size:var(--font-size-xs)">
