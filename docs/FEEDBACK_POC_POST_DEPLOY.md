@@ -16,8 +16,12 @@
 | F-04 | Temperature unit preference (°C/°F) not reflected on Weather or Farm pages | [#48](https://github.com/ashmuk/litcrop/issues/48) | Added `formatTemp()` helper reading `litcrop-temp-unit` from localStorage, applied to all 5 temperature display locations | `384e4bf` |
 | F-05 | Nav rename: Farm → Crops, My Farm → Profile | [#49](https://github.com/ashmuk/litcrop/issues/49) | Clearer distinction — "Crops" (plot/crop status) vs "Profile" (farm identity/location). Updated EN/JA i18n + nav labels + aria | `db05dbc` |
 | F-06 | Farm name missing from page titles | [#50](https://github.com/ashmuk/litcrop/issues/50) | Headers now show farm name from localStorage (e.g., "🌾 LitCrop Demo Farm", "⛅ Weather — LitCrop Demo Farm") | `db05dbc` |
+| F-07 | WMO weather codes displayed as raw system strings | [#52](https://github.com/ashmuk/litcrop/issues/52) | 13 weather condition translations (EN/JA). `translateCondition()` helper applied to WeatherView + FarmOverview | `7e24b3c` |
+| F-12 | Farm Layout view "No plots" in beds | [#51](https://github.com/ashmuk/litcrop/issues/51) | Added `bed_id`/`field_id` to plots route response. FarmLayoutView now correctly maps plots to beds | `7e24b3c` |
 
-All 6 issues created, closed with implementation comments, and deployed to CloudFront.
+All 8 issues created, closed with implementation comments, and deployed to CloudFront.
+
+**Also added**: 13 contract tests ([#53](https://github.com/ashmuk/litcrop/issues/53)) validating route response shapes match shared TypeScript types. Total test count: 181.
 
 ---
 
@@ -25,12 +29,10 @@ All 6 issues created, closed with implementation comments, and deployed to Cloud
 
 | # | Issue | Page | Description | Reason for Deferral |
 |---|-------|------|-------------|-------------------|
-| F-07 | WMO weather codes displayed as raw system strings | Weather | `partly_cloudy`, `drizzle` etc. shown as-is instead of human-readable / translated labels. In Japanese mode, these remain English system codes. | Needs weather condition i18n mapping (20+ WMO codes × 2 locales). Medium effort. |
 | F-08 | Weather layout overflow on mobile | Weather | Today summary row — long condition text + temperature number overflows at 375px width, clipping or wrapping. | CSS fix but needs visual testing with multiple weather states. |
 | F-09 | Map picker for farm location | Profile | User wants visual map to pin farm location instead of GPS + manual lat/lng text fields. | New dependency (Leaflet + OpenStreetMap recommended over Google Maps). Scope creep for PoC. |
 | F-10 | Elevation auto-fetch from coordinates | Profile | When lat/lng is entered or GPS used, auto-populate elevation using Open-Meteo Elevation API (free, already in our stack). | Quick win but not in PoC exit criteria. |
 | F-11 | Desktop responsiveness | All | Frontend renders at mobile width (max ~480px) on desktop browsers. No responsive scaling or 2-column layout. | Explicitly excluded from PoC scope per PLANS.md ("Mobile-first single breakpoint only"). |
-| F-12 | Farm Layout view shows "No plots" | Layout | Layout view shows Field → Bed hierarchy correctly but "No plots" in each bed. Query may not be populating bed-plot association. | Likely the N+1 / denormalization issue flagged by efficiency reviewer. |
 
 ---
 
@@ -118,9 +120,9 @@ As features grow, the admin/management UI (user settings, farm settings, device 
 ## Severity Assessment
 
 ```
-Fixed:      F-01 through F-06       (6 items — deployed, issues #45–#50 closed)
+Fixed:      F-01..F-07, F-12        (8 items — deployed, issues #45–#53)
 PoC Fix:    (none remaining)
-MVP:        F-07 through F-12       (6 items — deferred)
+MVP:        F-08..F-11              (4 items — weather overflow, map, elevation, desktop)
 Production: F-13, F-14              (2 items — IoT sensor, time-lapse)
 Vision:     V-01 through V-07       (7 categories — product roadmap)
 ```

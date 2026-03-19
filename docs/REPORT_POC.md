@@ -119,12 +119,12 @@ Based on `REQUIREMENTS.md` (54 FRs, 24 NFRs, 8 constraints):
 
 | Item | Severity | MVP Fix |
 |------|----------|---------|
-| F-12: Layout view "No plots" query bug | **High** — blocks demo | Fix N+1 / add plot-to-bed denormalization |
+| ~~F-12: Layout view "No plots" query bug~~ | ~~**High**~~ | **FIXED** ([#51](https://github.com/ashmuk/litcrop/issues/51)) — added `bed_id`/`field_id` to plots route response |
 | SF-4: Non-atomic tag status update | Medium | Denormalize `bed_id` onto Image at write time |
 | SG-1: In-memory weather cache | Medium | DynamoDB TTL cache (already documented in ARCHITECTURE.md §3) |
 | SG-2: Chat Markdown rendering | Low | `marked` + sanitize for assistant messages |
 | SG-3: `updateFarm` ExpressionAttributeNames leak | Low | Build `names` inside the expression filter loop |
-| CloudFront Function | Low | Script the CF function deploy in `deploy-frontend.sh` |
+| ~~CloudFront Function~~ | ~~Low~~ | **FIXED** — CF function update added to `deploy-frontend.sh` |
 | Chat API key: no LLM key in prod | Medium | Configure `LLM_API_KEY` env var in Lambda for live responses |
 
 ---
@@ -403,10 +403,10 @@ These must be addressed before meaningful MVP work:
 
 | # | Item | File/Location | Priority |
 |---|------|--------------|----------|
-| 1 | **Fix F-12: Farm Layout "No plots" bug** | `src/frontend/src/components/FarmLayoutView.tsx` + related API query | **Critical** — spatial layout is a core PoC deliverable |
+| 1 | ~~**Fix F-12: Farm Layout "No plots" bug**~~ | ~~Critical~~ | **FIXED** ([#51](https://github.com/ashmuk/litcrop/issues/51)) |
 | 2 | **Wire LLM API key to Lambda** | `scripts/deploy-api.sh` + `LLM_API_KEY` env var | High — chat is currently stub-only in prod |
-| 3 | **Script CloudFront Function deployment** | `scripts/deploy-frontend.sh` + `cloudfront-function-url-rewrite.js` | High — required for SPA routing, manual today |
-| 4 | **Fix WMO weather codes (F-07)** | Weather route + i18n mapping | High — "partly_cloudy" is jarring UX in prod |
+| 3 | ~~**Script CloudFront Function deployment**~~ | ~~High~~ | **FIXED** — added to `deploy-frontend.sh` |
+| 4 | ~~**Fix WMO weather codes (F-07)**~~ | ~~High~~ | **FIXED** ([#52](https://github.com/ashmuk/litcrop/issues/52)) |
 | 5 | **Merge develop → main** | Git | Required for v1.0 tag; needs explicit user approval |
 
 ### Recommended MVP Scope
