@@ -14,17 +14,10 @@
 | F-02 | "Setup" and "Settings" menu labels confusing | [#46](https://github.com/ashmuk/litcrop/issues/46) | Renamed Setup → My Farm (🌱), updated EN/JA i18n | `485c39e` |
 | F-03 | Japanese translation incomplete — nav labels, chat suggestions, GPS messages, climate zones, image errors all hardcoded English | [#47](https://github.com/ashmuk/litcrop/issues/47) | Added `[data-i18n]` runtime translator + replaced hardcoded strings with `t()` calls + 11 new keys per locale | `d5a2ade` |
 | F-04 | Temperature unit preference (°C/°F) not reflected on Weather or Farm pages | [#48](https://github.com/ashmuk/litcrop/issues/48) | Added `formatTemp()` helper reading `litcrop-temp-unit` from localStorage, applied to all 5 temperature display locations | `384e4bf` |
+| F-05 | Nav rename: Farm → Crops, My Farm → Profile | [#49](https://github.com/ashmuk/litcrop/issues/49) | Clearer distinction — "Crops" (plot/crop status) vs "Profile" (farm identity/location). Updated EN/JA i18n + nav labels + aria | `db05dbc` |
+| F-06 | Farm name missing from page titles | [#50](https://github.com/ashmuk/litcrop/issues/50) | Headers now show farm name from localStorage (e.g., "🌾 LitCrop Demo Farm", "⛅ Weather — LitCrop Demo Farm") | `db05dbc` |
 
-All 4 issues created, closed with implementation comments, and deployed to CloudFront.
-
----
-
-## PoC Fix (apply now or next session)
-
-| # | Issue | Page | Description | Effort |
-|---|-------|------|-------------|--------|
-| F-05 | Nav rename round 2 | All | "Farm" → **"Crops"** (shows plot/crop status), "My Farm" → **"Profile"** (farm identity/location). Clearer distinction since the whole app is about "my farm". | ~5 min |
-| F-06 | Farm name missing from page titles | Crops, Weather | Headers show generic "LitCrop" or "Weather" — should show farm name (e.g., "LitCrop Demo Farm" or "Weather — Nagano") to confirm location context. | ~10 min |
+All 6 issues created, closed with implementation comments, and deployed to CloudFront.
 
 ---
 
@@ -52,8 +45,8 @@ All 4 issues created, closed with implementation comments, and deployed to Cloud
 ## Severity Assessment
 
 ```
-Fixed:      F-01, F-02, F-03, F-04  (4 items — deployed, issues #45–#48 closed)
-PoC Fix:    F-05, F-06              (2 items — quick, improves UX)
+Fixed:      F-01 through F-06       (6 items — deployed, issues #45–#50 closed)
+PoC Fix:    (none remaining)
 MVP:        F-07 through F-12       (6 items — deferred)
 Production: F-13                    (1 item — new IoT device, separate risk domain)
 ```
@@ -69,12 +62,13 @@ Production: F-13                    (1 item — new IoT device, separate risk do
 | `d5a2ade` | fix(frontend): complete i18n coverage — nav labels, suggestions, GPS, climate | [#47](https://github.com/ashmuk/litcrop/issues/47) |
 | `384e4bf` | fix(frontend): respect temperature unit preference across all pages | [#48](https://github.com/ashmuk/litcrop/issues/48) |
 | `0bb0048` | docs: add post-deploy user feedback with PoC fix / MVP defer classification | — |
+| `db05dbc` | fix(frontend): rename nav (Crops/Profile) and show farm name in page titles | [#49](https://github.com/ashmuk/litcrop/issues/49), [#50](https://github.com/ashmuk/litcrop/issues/50) |
 
 ---
 
 ## Notes
 
-- **F-05 + F-06** are recommended before merging `develop → main`. They're small changes that meaningfully improve the user experience.
+- ~~**F-05 + F-06**~~ Fixed. Nav is now Crops / Weather / Profile / Settings. Farm name shows in headers.
 - **F-07 (WMO codes)** is the most visible MVP item — weather conditions displaying as `partly_cloudy` is jarring, especially in Japanese mode.
 - **F-09 (map)** was explicitly deferred after discussion. Recommendation: Leaflet + OpenStreetMap (free, no API key) instead of Google Maps.
 - **F-11 (desktop)** was a known PoC exclusion but affects demo credibility. Consider a minimal `@media (min-width: 768px)` pass at MVP.
