@@ -53,6 +53,30 @@ const {
         }
       })();
     </script>
+    <!-- Translate [data-i18n] elements after DOM is ready (nav labels, static text) -->
+    <script is:inline>
+      document.addEventListener('DOMContentLoaded', function() {
+        var locale = document.documentElement.getAttribute('data-locale') || 'en';
+        if (locale === 'en') return; // English is already the default text content
+        var XHR_TRANSLATIONS = null;
+        try {
+          // Inline translation map for nav + common static labels (ja only for PoC)
+          var JA = {
+            'nav.farm': '農場', 'nav.weather': '天気',
+            'nav.setup': 'マイファーム', 'nav.settings': '設定'
+          };
+          if (locale === 'ja') XHR_TRANSLATIONS = JA;
+        } catch(e) {}
+        if (!XHR_TRANSLATIONS) return;
+        var els = document.querySelectorAll('[data-i18n]');
+        for (var i = 0; i < els.length; i++) {
+          var key = els[i].getAttribute('data-i18n');
+          if (key && XHR_TRANSLATIONS[key]) {
+            els[i].textContent = XHR_TRANSLATIONS[key];
+          }
+        }
+      });
+    </script>
   </head>
   <body>
     <!-- Page content (provided by each page via slot) -->

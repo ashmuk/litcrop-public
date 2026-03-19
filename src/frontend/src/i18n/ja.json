@@ -104,13 +104,28 @@
     "elevation": "標高（メートル）",
     "description": "説明",
     "climate_zone": "気候区分",
-    "save_success": "農場設定を保存しました"
+    "save_success": "農場設定を保存しました",
+    "gps_detected": "位置情報を取得しました",
+    "gps_failed": "位置情報を取得できませんでした",
+    "gps_unsupported": "位置情報に対応していません",
+    "name_required": "農場名を入力してください",
+    "climate_tropical": "熱帯",
+    "climate_subtropical": "亜熱帯",
+    "climate_temperate": "温帯",
+    "climate_boreal": "亜寒帯・極地"
   },
   "chat": {
     "placeholder": "農場について質問する…",
     "send": "送信",
     "thinking": "考え中…",
-    "error": "応答を取得できませんでした。もう一度お試しください。"
+    "error": "応答を取得できませんでした。もう一度お試しください。",
+    "suggestion_1": "今日確認すべきことは？",
+    "suggestion_2": "今週の霜のリスクは？",
+    "suggestion_3": "農場の状態はどうですか？"
+  },
+  "image_viewer": {
+    "not_found": "画像が見つかりません",
+    "load_error": "画像の読み込みに失敗しました"
   },
   "upload": {
     "select_image": "画像を選択",

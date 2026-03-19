@@ -41,7 +41,7 @@ export default function SetupForm() {
 
   function handleGPS() {
     if (!navigator.geolocation) {
-      showToast('Geolocation not supported', 'error');
+      showToast(t('setup.gps_unsupported'), 'error');
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -51,16 +51,16 @@ export default function SetupForm() {
           latitude: pos.coords.latitude.toFixed(6),
           longitude: pos.coords.longitude.toFixed(6),
         }));
-        showToast('Location detected', 'success');
+        showToast(t('setup.gps_detected'), 'success');
       },
-      () => showToast('Could not detect location', 'error'),
+      () => showToast(t('setup.gps_failed'), 'error'),
     );
   }
 
   async function handleSave(e: Event) {
     e.preventDefault();
     if (!form.name.trim()) {
-      showToast('Farm name is required', 'error');
+      showToast(t('setup.name_required'), 'error');
       return;
     }
     setSaving(true);
@@ -80,10 +80,10 @@ export default function SetupForm() {
     const lat = parseFloat(form.latitude);
     if (isNaN(lat)) return '—';
     const abs = Math.abs(lat);
-    if (abs < 23.5) return 'Tropical';
-    if (abs < 35) return 'Subtropical';
-    if (abs < 55) return 'Temperate';
-    return 'Boreal / Polar';
+    if (abs < 23.5) return t('setup.climate_tropical');
+    if (abs < 35) return t('setup.climate_subtropical');
+    if (abs < 55) return t('setup.climate_temperate');
+    return t('setup.climate_boreal');
   }
 
   return (

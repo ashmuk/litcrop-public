@@ -13,11 +13,13 @@ interface Message {
   text: string;
 }
 
-const INITIAL_SUGGESTIONS = [
-  'What should I check today?',
-  'Any frost risk this week?',
-  'How is my farm doing?',
-];
+function getInitialSuggestions() {
+  return [
+    t('chat.suggestion_1'),
+    t('chat.suggestion_2'),
+    t('chat.suggestion_3'),
+  ];
+}
 
 export interface Props {
   farmId: string;
@@ -27,7 +29,7 @@ export default function ChatAssistant({ farmId }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>(INITIAL_SUGGESTIONS);
+  const [suggestions, setSuggestions] = useState<string[]>(getInitialSuggestions);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);

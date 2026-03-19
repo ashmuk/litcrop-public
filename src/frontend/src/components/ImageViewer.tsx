@@ -49,7 +49,7 @@ export default function ImageViewer() {
         setSiblings(list.data);
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Failed to load image');
+        setError(err instanceof Error ? err.message : t('image_viewer.load_error'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -96,7 +96,7 @@ export default function ImageViewer() {
   if (error || !image) {
     return (
       <div class="empty-state" style="padding:var(--space-8);text-align:center">
-        <p style="color:var(--color-status-issue)">{error ?? 'Image not found'}</p>
+        <p style="color:var(--color-status-issue)">{error ?? t('image_viewer.not_found')}</p>
         <button class="btn btn--secondary" style="margin-top:var(--space-4)" onClick={() => window.history.back()}>
           {t('buttons.back')}
         </button>

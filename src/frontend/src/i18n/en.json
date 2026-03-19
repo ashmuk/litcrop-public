@@ -104,13 +104,28 @@
     "elevation": "Elevation (m)",
     "description": "Description",
     "climate_zone": "Climate Zone",
-    "save_success": "Farm settings saved"
+    "save_success": "Farm settings saved",
+    "gps_detected": "Location detected",
+    "gps_failed": "Could not detect location",
+    "gps_unsupported": "Geolocation not supported",
+    "name_required": "Farm name is required",
+    "climate_tropical": "Tropical",
+    "climate_subtropical": "Subtropical",
+    "climate_temperate": "Temperate",
+    "climate_boreal": "Boreal / Polar"
   },
   "chat": {
     "placeholder": "Ask about your farm…",
     "send": "Send",
     "thinking": "Thinking…",
-    "error": "Could not get a response. Please try again."
+    "error": "Could not get a response. Please try again.",
+    "suggestion_1": "What should I check today?",
+    "suggestion_2": "Any frost risk this week?",
+    "suggestion_3": "How is my farm doing?"
+  },
+  "image_viewer": {
+    "not_found": "Image not found",
+    "load_error": "Failed to load image"
   },
   "upload": {
     "select_image": "Select image",
