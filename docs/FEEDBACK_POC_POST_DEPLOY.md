@@ -41,12 +41,21 @@ All 4 issues created, closed with implementation comments, and deployed to Cloud
 
 ---
 
+## Defer to Production (or beyond)
+
+| # | Issue | Page | Description | Reason for Deferral |
+|---|-------|------|-------------|-------------------|
+| F-13 | Soil pH monitoring via IoT sensor | Crops, Profile | Add soil pH readings from a dedicated IoT sensor device (e.g., soil pH probe connected via ESP32/LoRa). Display per-plot pH history, alert when outside optimal range for crop type. Requires: new device protocol (MQTT or HTTPS), new DynamoDB entity (SoilReading), new API endpoints, new UI component. | New hardware device + protocol + data model. Separate risk domain from camera-based observation. Needs ADR for device communication (MQTT vs HTTPS), sensor data schema, and alert thresholds per crop. Similar scope to the sprinkler/actuator control deferred in PLANS.md. |
+
+---
+
 ## Severity Assessment
 
 ```
-Fixed:     F-01, F-02, F-03, F-04  (4 items — deployed, issues #45–#48 closed)
-PoC Fix:   F-05, F-06              (2 items — quick, improves UX)
-MVP:       F-07 through F-12       (6 items — deferred)
+Fixed:      F-01, F-02, F-03, F-04  (4 items — deployed, issues #45–#48 closed)
+PoC Fix:    F-05, F-06              (2 items — quick, improves UX)
+MVP:        F-07 through F-12       (6 items — deferred)
+Production: F-13                    (1 item — new IoT device, separate risk domain)
 ```
 
 ---
@@ -69,3 +78,5 @@ MVP:       F-07 through F-12       (6 items — deferred)
 - **F-07 (WMO codes)** is the most visible MVP item — weather conditions displaying as `partly_cloudy` is jarring, especially in Japanese mode.
 - **F-09 (map)** was explicitly deferred after discussion. Recommendation: Leaflet + OpenStreetMap (free, no API key) instead of Google Maps.
 - **F-11 (desktop)** was a known PoC exclusion but affects demo credibility. Consider a minimal `@media (min-width: 768px)` pass at MVP.
+- **F-12 (layout "No plots")** was flagged during UI verification screenshots. The spatial layout view loads fields and beds correctly but the plot-to-bed association query doesn't populate. Related to the N+1 efficiency findings from the /simplify review.
+- **F-13 (soil pH)** is a new IoT device category — similar in scope to the sprinkler/actuator control that was deferred in PLANS.md ("Separate risk domain"). Needs its own ADR for device protocol, sensor data schema, and crop-specific pH thresholds. Candidate for Production scope or a dedicated workstream.
