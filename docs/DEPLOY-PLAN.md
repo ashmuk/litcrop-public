@@ -90,7 +90,7 @@ cd src/api/dist && zip -r api.zip . && cd ../../..
 # Create function
 aws lambda create-function \
   --function-name litcrop-poc-api \
-  --runtime nodejs20.x \
+  --runtime nodejs22.x \
   --handler handler.handler \
   --role arn:aws:iam::<AWS_ACCOUNT_ID>:role/litcrop-poc-lambda \
   --zip-file fileb://src/api/dist/api.zip \

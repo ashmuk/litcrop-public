@@ -94,7 +94,7 @@ Based on `REQUIREMENTS.md` (54 FRs, 24 NFRs, 8 constraints):
 
 1. **DynamoDB single-table design** (`ADR-20260317-database-selection.md`) — The 9 access patterns all validated during Phase 2. The perpetual free tier removed all cost risk, and millisecond latency met EC-6 by a 15× margin. The GSI2 pattern for Farm Overview queries was the most complex design choice and executed cleanly.
 
-2. **Hono on Lambda** (`ADR-20260317-backend-platform.md`) — 84KB bundle, Node.js 20.x, 30s timeout. Lambda cold starts were not an issue for single-user PoC traffic. The middleware-first design (`app.ts`) made adding CORS, logging, request-ID propagation, and content-type validation simple additive layers.
+2. **Hono on Lambda** (`ADR-20260317-backend-platform.md`) — 84KB bundle, Node.js 22.x, 30s timeout. Lambda cold starts were not an issue for single-user PoC traffic. The middleware-first design (`app.ts`) made adding CORS, logging, request-ID propagation, and content-type validation simple additive layers.
 
 3. **Astro + Preact islands** (`ADR-20260317-frontend-framework.md`) — 7 pages built in 1.06s. Zero-JS default kept the CloudFront static payload at 30 files / 140.6KB. Preact islands hydrated only interactive sections (FarmOverview, PlotDetail, ChatAssistant, etc.), which aligns with the mobile-first, low-bandwidth target persona.
 
@@ -197,7 +197,7 @@ The test suite provides strong unit coverage of pure functions and adequate inte
 | S3 (images) | `litcrop-poc-images` | ACTIVE |
 | S3 (static) | `litcrop-poc-static` (30 files, 140.6 KB) | ACTIVE |
 | IAM Role | `litcrop-poc-lambda` | ACTIVE |
-| Lambda | `litcrop-poc-api` (84KB, Node.js 20, 256MB, 30s) | ACTIVE |
+| Lambda | `litcrop-poc-api` (84KB, Node.js 22, 256MB, 30s) | ACTIVE |
 | API Gateway | `litcrop-poc-api` (HTTP API v2) | ACTIVE |
 | CloudFront | `EXXXXXXXXXXXXX` (`<distribution-id>.cloudfront.net`) | DEPLOYED |
 | OAC | `litcrop-poc-oac` | ACTIVE |

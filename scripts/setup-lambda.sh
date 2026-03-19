@@ -69,7 +69,7 @@ echo "[setup] Package ready: $(du -sh "${ZIP_PATH}" | cut -f1)"
 echo "[setup] Creating Lambda function: ${FUNCTION_NAME}"
 ${AWS} lambda create-function \
   --function-name "${FUNCTION_NAME}" \
-  --runtime nodejs20.x \
+  --runtime nodejs22.x \
   --handler handler.handler \
   --role "${ROLE_ARN}" \
   --zip-file "fileb://${ZIP_PATH}" \

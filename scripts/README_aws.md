@@ -41,7 +41,7 @@
 │                 ▼                                             │          │
 │  ┌──────────────────────────────────────────────┐            │          │
 │  │          Lambda: litcrop-poc-api             │            │          │
-│  │  Runtime: Node.js 20  │  Memory: 256 MB     │            │          │
+│  │  Runtime: Node.js 22  │  Memory: 256 MB     │            │          │
 │  │  Handler: handler.handler  │  Timeout: 30s  │────────────┘          │
 │  │  Bundle: 84 KB (Hono router, 11 endpoints)  │                       │
 │  │  Role: litcrop-poc-lambda                    │  ┌────────────────┐  │

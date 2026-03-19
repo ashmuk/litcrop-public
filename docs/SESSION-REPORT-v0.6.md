@@ -26,7 +26,7 @@
 | S3 bucket | `litcrop-poc-images` | ACTIVE | Free tier |
 | S3 bucket | `litcrop-poc-static` (30 files, 140.6 KB) | ACTIVE | Free tier |
 | IAM role | `litcrop-poc-lambda` | ACTIVE | No cost |
-| Lambda function | `litcrop-poc-api` (84KB, Node.js 20, 256MB, 30s) | ACTIVE | Free tier |
+| Lambda function | `litcrop-poc-api` (84KB, Node.js 22, 256MB, 30s) | ACTIVE | Free tier |
 | API Gateway | `litcrop-poc-api` (HTTP API v2) | ACTIVE | Free tier |
 | CloudFront | `EXXXXXXXXXXXXX` (`<distribution-id>.cloudfront.net`) | DEPLOYED | Free tier |
 | OAC | `litcrop-poc-oac` (created via Console) | ACTIVE | No cost |
@@ -56,7 +56,7 @@
 | 1b | Manual S3 create | Success | ~5s | Static bucket created manually after script failure |
 | 2 | IAM role creation | Skipped | — | Created manually in AWS Console (security best practice) |
 | 3 | `npx tsx scripts/seed-data.ts` | Success | ~3s | 1 farm, 2 fields, 3 beds, 6 plots seeded |
-| 4 | Lambda create-function | Success | ~10s | 84KB zip, Node.js 20, 256MB, 30s timeout |
+| 4 | Lambda create-function | Success | ~10s | 84KB zip, Node.js 22, 256MB, 30s timeout |
 | 5 | API Gateway create-api | Success | ~5s | HTTP API v2 with Lambda integration |
 | 5b | Lambda add-permission | Success | ~2s | API Gateway → Lambda invoke permission |
 | 6 | `scripts/deploy-frontend.sh` | Success | ~10s | 30 files synced (7 HTML + 22 JS + 1 CSS) |

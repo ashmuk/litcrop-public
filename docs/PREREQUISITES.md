@@ -35,7 +35,7 @@ Review and confirm the following architectural decisions before proceeding to im
 - [ ] **i18n patterns** -- JSON locale files, locale-aware formatting (EN/JA)
 
 ### Development Tools Required
-- [ ] **Node.js 20+** installed locally
+- [ ] **Node.js 22+** installed locally
 - [ ] **npm** (or pnpm) for package management
 - [ ] **Git** for version control
 - [ ] **AWS CLI v2** installed and configured
@@ -91,7 +91,7 @@ Review and confirm the following architectural decisions before proceeding to im
 - [ ] S3 bucket: `litcrop-poc-images` (private, no public access; CORS configured for browser fetch of signed URLs)
 - [ ] CloudFront distribution: origin = `litcrop-poc-static`, HTTPS only
 - [ ] DynamoDB table: `litcrop-poc` (PK: `pk`, SK: `sk`, GSI1, GSI2)
-- [ ] Lambda function: `litcrop-poc-api` (Node.js 20.x runtime)
+- [ ] Lambda function: `litcrop-poc-api` (Node.js 22.x runtime)
 - [ ] API Gateway HTTP API: `litcrop-poc-api`
 - [ ] IAM role: `litcrop-poc-lambda-role` (S3 + DynamoDB access)
 
