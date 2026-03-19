@@ -6,14 +6,16 @@
 
 ---
 
-## Fixed During This Session
+## Fixed During This Session (post v0.6)
 
-| # | Issue | Fix | Commit |
-|---|-------|-----|--------|
-| F-01 | Settings (theme/locale) not persisting across page navigation | Inline `<script>` in BaseLayout reads localStorage before render | `0c5a602` |
-| F-02 | "Setup" and "Settings" menu labels confusing | Renamed Setup → My Farm (🌱), updated EN/JA i18n | `485c39e` |
-| F-03 | Japanese translation incomplete — nav labels, chat suggestions, GPS messages, climate zones, image errors all hardcoded English | Added `[data-i18n]` runtime translator + replaced hardcoded strings with `t()` calls + 11 new keys per locale | `d5a2ade` |
-| F-04 | Temperature unit preference (°C/°F) not reflected on Weather or Farm pages | Added `formatTemp()` helper reading `litcrop-temp-unit` from localStorage, applied to all 5 temperature display locations | `384e4bf` |
+| # | Issue | GitHub | Fix | Commit |
+|---|-------|--------|-----|--------|
+| F-01 | Settings (theme/locale) not persisting across page navigation | [#45](https://github.com/ashmuk/litcrop/issues/45) | Inline `<script>` in BaseLayout reads localStorage before render | `0c5a602` |
+| F-02 | "Setup" and "Settings" menu labels confusing | [#46](https://github.com/ashmuk/litcrop/issues/46) | Renamed Setup → My Farm (🌱), updated EN/JA i18n | `485c39e` |
+| F-03 | Japanese translation incomplete — nav labels, chat suggestions, GPS messages, climate zones, image errors all hardcoded English | [#47](https://github.com/ashmuk/litcrop/issues/47) | Added `[data-i18n]` runtime translator + replaced hardcoded strings with `t()` calls + 11 new keys per locale | `d5a2ade` |
+| F-04 | Temperature unit preference (°C/°F) not reflected on Weather or Farm pages | [#48](https://github.com/ashmuk/litcrop/issues/48) | Added `formatTemp()` helper reading `litcrop-temp-unit` from localStorage, applied to all 5 temperature display locations | `384e4bf` |
+
+All 4 issues created, closed with implementation comments, and deployed to CloudFront.
 
 ---
 
@@ -42,10 +44,22 @@
 ## Severity Assessment
 
 ```
-Fixed:     F-01, F-02, F-03, F-04  (4 items — deployed)
+Fixed:     F-01, F-02, F-03, F-04  (4 items — deployed, issues #45–#48 closed)
 PoC Fix:   F-05, F-06              (2 items — quick, improves UX)
 MVP:       F-07 through F-12       (6 items — deferred)
 ```
+
+---
+
+## Post-v0.6 Commit Log
+
+| Commit | Description | Issue |
+|--------|-------------|-------|
+| `0c5a602` | fix(frontend): persist theme and locale across page navigation | [#45](https://github.com/ashmuk/litcrop/issues/45) |
+| `485c39e` | refactor(frontend): rename Setup tab to My Farm for clearer navigation | [#46](https://github.com/ashmuk/litcrop/issues/46) |
+| `d5a2ade` | fix(frontend): complete i18n coverage — nav labels, suggestions, GPS, climate | [#47](https://github.com/ashmuk/litcrop/issues/47) |
+| `384e4bf` | fix(frontend): respect temperature unit preference across all pages | [#48](https://github.com/ashmuk/litcrop/issues/48) |
+| `0bb0048` | docs: add post-deploy user feedback with PoC fix / MVP defer classification | — |
 
 ---
 
