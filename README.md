@@ -66,7 +66,7 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Docker (for DevContainer)
 - Git
 - AWS CLI (configured with `litcrop` profile)

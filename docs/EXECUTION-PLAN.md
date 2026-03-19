@@ -273,7 +273,7 @@ Step 3: S3 Buckets
 
 Step 4: Lambda Function
   └── litcrop-poc-api
-        Runtime: Node.js 20.x
+        Runtime: Node.js 22.x
         Memory: 256 MB (sufficient for image processing)
         Timeout: 30 seconds
         Role: litcrop-poc-lambda-role

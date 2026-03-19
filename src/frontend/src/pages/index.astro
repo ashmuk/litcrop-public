@@ -1,0 +1,30 @@
+---
+/**
+ * Farm Overview — T-FE-06
+ * Fetches plots + weather via FarmOverview Preact island.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FarmOverview from '../components/FarmOverview';
+import Toast from '../components/Toast';
+
+const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
+---
+
+<BaseLayout title="LitCrop — Farm" activeTab="farm" farmNameTitleId="page-title" farmNamePrefix="🌾 ">
+  <div
+    style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 id="page-title" style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">🌾 LitCrop</h1>
+    <a
+      href="/farm/layout"
+      class="btn-secondary"
+      style="height:36px;font-size:var(--font-size-xs);padding:0 var(--space-3);min-width:auto"
+      aria-label="Switch to layout view"
+    >
+      ⊞ Layout
+    </a>
+  </div>
+
+  <FarmOverview farmId={farmId} client:load />
+  <Toast client:load />
+</BaseLayout>

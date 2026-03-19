@@ -1,0 +1,147 @@
+---
+/**
+ * BaseLayout — T-FE-01
+ * Mobile-first shell with theme support, i18n locale, and bottom tab navigation.
+ */
+import '../styles/global.css';
+import '../styles/components.css';
+
+export interface Props {
+  title?: string;
+  description?: string;
+  lang?: 'en' | 'ja';
+  locale?: 'en' | 'ja';
+  theme?: 'light' | 'dark' | 'earthy' | 'system';
+  /** Marks the active tab bar item. Defaults to 'farm'. */
+  activeTab?: 'farm' | 'weather' | 'setup' | 'settings';
+  /** If set, the element with this ID gets its textContent patched with the farm name from localStorage. */
+  farmNameTitleId?: string;
+  /** Prefix before the farm name (e.g. '🌾 ' or '⛅ Weather — '). */
+  farmNamePrefix?: string;
+}
+
+const {
+  title = 'LitCrop',
+  description = 'LitCrop — smart crop monitoring for small-scale farms',
+  lang = 'en',
+  locale = lang,
+  theme = 'system',
+  activeTab = 'farm',
+  farmNameTitleId,
+  farmNamePrefix,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang={lang} data-theme={theme} data-locale={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#1B6B3A" />
+    <meta name="generator" content={Astro.generator} />
+    <!-- Mobile web-app meta for fullscreen feel when added to home screen -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Restore persisted settings before first paint (avoids flash of wrong theme/locale) -->
+    <script is:inline>
+      (function() {
+        var theme = localStorage.getItem('litcrop-theme');
+        var locale = localStorage.getItem('litcrop-locale');
+        var lang = locale === 'ja' ? 'ja' : 'en';
+        if (theme) document.documentElement.setAttribute('data-theme', theme);
+        if (locale) {
+          document.documentElement.setAttribute('data-locale', locale);
+          document.documentElement.setAttribute('lang', lang);
+        }
+      })();
+    </script>
+    <!-- Translate [data-i18n] elements after DOM is ready (nav labels, static text) -->
+    <script is:inline>
+      document.addEventListener('DOMContentLoaded', function() {
+        var locale = document.documentElement.getAttribute('data-locale') || 'en';
+        if (locale === 'en') return; // English is already the default text content
+        var XHR_TRANSLATIONS = null;
+        try {
+          // Inline translation map for nav + common static labels (ja only for PoC)
+          var JA = {
+            'nav.farm': '作物', 'nav.weather': '天気',
+            'nav.setup': 'プロフィール', 'nav.settings': '設定'
+          };
+          if (locale === 'ja') XHR_TRANSLATIONS = JA;
+        } catch(e) {}
+        if (!XHR_TRANSLATIONS) return;
+        var els = document.querySelectorAll('[data-i18n]');
+        for (var i = 0; i < els.length; i++) {
+          var key = els[i].getAttribute('data-i18n');
+          if (key && XHR_TRANSLATIONS[key]) {
+            els[i].textContent = XHR_TRANSLATIONS[key];
+          }
+        }
+      });
+    </script>
+    {farmNameTitleId && (
+      <script is:inline define:vars={{ farmNameTitleId, farmNamePrefix: farmNamePrefix ?? '' }}>
+        (function() {
+          var name = localStorage.getItem('litcrop-farmName');
+          if (name) {
+            var el = document.getElementById(farmNameTitleId);
+            if (el) el.textContent = farmNamePrefix + name;
+          }
+        })();
+      </script>
+    )}
+  </head>
+  <body>
+    <!-- Page content (provided by each page via slot) -->
+    <main class="page-main" role="main">
+      <slot />
+    </main>
+
+    <!-- Bottom Tab Bar — mobile-first primary navigation (P2: thumb zone, 64px) -->
+    <nav class="tab-bar" role="navigation" aria-label="Main navigation">
+      <a
+        href="/"
+        class={`tab-bar__item${activeTab === 'farm' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Crops overview"
+        aria-current={activeTab === 'farm' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">🌾</span>
+        <span class="tab-bar__label" data-i18n="nav.farm">Crops</span>
+      </a>
+
+      <a
+        href="/weather"
+        class={`tab-bar__item${activeTab === 'weather' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Weather"
+        aria-current={activeTab === 'weather' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">⛅</span>
+        <span class="tab-bar__label" data-i18n="nav.weather">Weather</span>
+      </a>
+
+      <a
+        href="/setup"
+        class={`tab-bar__item${activeTab === 'setup' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Farm profile"
+        aria-current={activeTab === 'setup' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">🌱</span>
+        <span class="tab-bar__label" data-i18n="nav.setup">Profile</span>
+      </a>
+
+      <a
+        href="/settings"
+        class={`tab-bar__item${activeTab === 'settings' ? ' tab-bar__item--active' : ''}`}
+        aria-label="App settings"
+        aria-current={activeTab === 'settings' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">⚙️</span>
+        <span class="tab-bar__label" data-i18n="nav.settings">Settings</span>
+      </a>
+    </nav>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+---
+/**
+ * Weather & Environment — T-FE-10
+ * Current conditions, hourly, 7-day forecast, crop impact, alerts.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WeatherView from '../components/WeatherView';
+
+const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
+---
+
+<BaseLayout title="LitCrop — Weather" activeTab="weather" farmNameTitleId="weather-title" farmNamePrefix="⛅ Weather — ">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 id="weather-title" style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      ⛅ Weather
+    </h1>
+  </div>
+
+  <WeatherView farmId={farmId} client:load />
+</BaseLayout>

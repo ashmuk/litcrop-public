@@ -1,0 +1,270 @@
+/* ============================================================
+   LitCrop — Design Tokens (CSS Custom Properties)
+   T-FE-02: All 4 themes: light (default), dark, earthy, system
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   1. Light Theme (default)
+   ---------------------------------------------------------- */
+:root {
+  /* Primary Palette */
+  --color-primary:          #1B6B3A;
+  --color-primary-dark:     #0E4D28;
+  --color-primary-light:    #E8F5EC;
+
+  /* Neutral Palette */
+  --color-gray-900:         #1A1A1A;
+  --color-gray-700:         #4A4A4A;
+  --color-gray-500:         #595959; /* Darkened from #767676 to meet 7:1 outdoor readability */
+  --color-gray-300:         #C4C4C4;
+  --color-gray-100:         #F2F2F2;
+  --color-white:            #FFFFFF;
+
+  /* Status Colors */
+  --color-status-healthy:     #1B7D3C;
+  --color-status-slow-growth: #B8860B;
+  --color-status-issue:       #C62828;
+  --color-status-animal:      #D84315;
+  --color-status-no-data:     #616161;
+
+  /* Status Background Tints */
+  --color-status-healthy-bg:     #E8F5EC;
+  --color-status-slow-growth-bg: #FFF8E1;
+  --color-status-issue-bg:       #FFEBEE;
+  --color-status-animal-bg:      #FFF3E0;
+  --color-status-no-data-bg:     #F5F5F5;
+
+  /* Motion Alert */
+  --color-motion:           #E65100;
+  --color-motion-bg:        #FFF3E0;
+
+  /* Semantic */
+  --color-error:            #C62828;
+  --color-success:          #1B7D3C;
+  --color-info:             #1565C0;
+
+  /* Surface */
+  --color-surface:          #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-background:       #F5F5F5;
+  --color-overlay:          rgba(0, 0, 0, 0.5);
+
+  /* Semantic aliases (as specified in T-FE-02) */
+  --color-bg:               var(--color-background);
+  --color-text:             var(--color-gray-900);
+  --color-accent:           var(--color-motion);
+  --color-border:           var(--color-gray-300);
+
+  /* Status aliases (as specified in T-FE-02) */
+  --color-status-slow:      var(--color-status-slow-growth);
+  --color-status-intrusion: var(--color-status-animal);
+  --color-status-nodata:    var(--color-status-no-data);
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, "Hiragino Sans", "Noto Sans JP",
+                 system-ui, sans-serif;
+
+  --font-size-xs:     12px;
+  --font-size-sm:     14px;
+  --font-size-base:   16px;
+  --font-size-lg:     18px;
+  --font-size-xl:     22px;
+  --font-size-2xl:    28px;
+
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --line-height-tight:    1.2;
+  --line-height-normal:   1.5;
+  --line-height-relaxed:  1.75;
+
+  /* Spacing (8px base unit) */
+  --space-0:   0px;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+
+  /* Border Radius */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.12);
+  --shadow-lg:  0 4px 16px rgba(0, 0, 0, 0.16);
+
+  /* Borders */
+  --border-default: 1px solid var(--color-gray-300);
+
+  /* Touch Targets */
+  --touch-target-min:        48px;
+  --touch-target-preferred:  56px;
+  --touch-gap-min:           12px;
+
+  /* Transitions */
+  --transition-fast:    120ms ease-out;
+  --transition-normal:  200ms ease-out;
+  --transition-slow:    300ms ease-out;
+
+  /* Focus Ring */
+  --focus-ring: 0 0 0 3px rgba(27, 107, 58, 0.5);
+}
+
+/* ----------------------------------------------------------
+   2. Dark Theme (explicit: data-theme="dark")
+   ---------------------------------------------------------- */
+[data-theme="dark"] {
+  --color-primary:          #4CAF50;
+  --color-primary-dark:     #388E3C;
+  --color-primary-light:    #1A3A25;
+
+  --color-gray-900:  #F0F0F0;
+  --color-gray-700:  #C0C0C0;
+  --color-gray-500:  #909090;
+  --color-gray-300:  #444444;
+  --color-gray-100:  #2A2A2A;
+  --color-white:     #1E1E1E;
+
+  --color-surface:          #1E1E1E;
+  --color-surface-elevated: #2A2A2A;
+  --color-background:       #121212;
+  --color-overlay:          rgba(0, 0, 0, 0.7);
+
+  --color-status-healthy:     #4CAF50;
+  --color-status-slow-growth: #FFB300;
+  --color-status-issue:       #EF5350;
+  --color-status-animal:      #FF7043;
+  --color-status-no-data:     #9E9E9E;
+
+  --color-status-healthy-bg:     #1A3A25;
+  --color-status-slow-growth-bg: #3A3520;
+  --color-status-issue-bg:       #3A1E1E;
+  --color-status-animal-bg:      #3A2A1A;
+  --color-status-no-data-bg:     #2A2A2A;
+
+  --color-motion:    #FF8A65;
+  --color-motion-bg: #3A2A1A;
+
+  --color-error:   #EF5350;
+  --color-success: #4CAF50;
+  --color-info:    #64B5F6;
+
+  --border-default: 1px solid #444444;
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg:  0 4px 16px rgba(0, 0, 0, 0.5);
+
+  --focus-ring: 0 0 0 3px rgba(76, 175, 80, 0.4);
+}
+
+/* ----------------------------------------------------------
+   3. Earthy Theme (explicit: data-theme="earthy")
+      Warm browns, terracotta, olive
+   ---------------------------------------------------------- */
+[data-theme="earthy"] {
+  --color-primary:          #6B7F5E; /* sage green */
+  --color-primary-dark:     #4A5A3F;
+  --color-primary-light:    #F0EDE4;
+
+  --color-gray-900:         #3B3530;
+  --color-gray-700:         #5E5549;
+  --color-gray-500:         #857A6E;
+  --color-gray-300:         #C9BFB3;
+  --color-gray-100:         #F5F0EA;
+  --color-white:            #FDFBF7;
+
+  --color-surface:          #FDFBF7;
+  --color-surface-elevated: #FFFFFF;
+  --color-background:       #F0EDE4;
+
+  --color-status-healthy:     #6B8F5E; /* sage green */
+  --color-status-slow-growth: #B89B5E; /* warm amber / wheat */
+  --color-status-issue:       #B85C4A; /* terracotta red */
+  --color-status-animal:      #C07842; /* burnt sienna */
+  --color-status-no-data:     #8A7F73; /* warm gray */
+
+  --color-status-healthy-bg:     #ECF0E8;
+  --color-status-slow-growth-bg: #F5F0E0;
+  --color-status-issue-bg:       #F5E8E4;
+  --color-status-animal-bg:      #F5EDE4;
+  --color-status-no-data-bg:     #EDEBE8;
+
+  --color-motion:    #C07842;
+  --color-motion-bg: #F5EDE4;
+
+  --color-error:   #B85C4A;
+  --color-success: #6B8F5E;
+  --color-info:    #5E7F9B;
+
+  --border-default: 1px solid #C9BFB3;
+  --shadow-sm:  0 1px 2px rgba(59, 53, 48, 0.08);
+  --shadow-md:  0 2px 8px rgba(59, 53, 48, 0.10);
+  --shadow-lg:  0 4px 16px rgba(59, 53, 48, 0.14);
+
+  --focus-ring: 0 0 0 3px rgba(107, 127, 94, 0.4);
+}
+
+/* ----------------------------------------------------------
+   4. System Theme — follows OS prefers-color-scheme
+      Applies when data-theme="system" or no theme is set.
+      Explicit light/dark/earthy themes are NOT affected.
+   ---------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]):not([data-theme="earthy"]),
+  [data-theme="system"] {
+    --color-primary:          #4CAF50;
+    --color-primary-dark:     #388E3C;
+    --color-primary-light:    #1A3A25;
+
+    --color-gray-900:  #F0F0F0;
+    --color-gray-700:  #C0C0C0;
+    --color-gray-500:  #909090;
+    --color-gray-300:  #444444;
+    --color-gray-100:  #2A2A2A;
+    --color-white:     #1E1E1E;
+
+    --color-surface:          #1E1E1E;
+    --color-surface-elevated: #2A2A2A;
+    --color-background:       #121212;
+    --color-overlay:          rgba(0, 0, 0, 0.7);
+
+    --color-status-healthy:     #4CAF50;
+    --color-status-slow-growth: #FFB300;
+    --color-status-issue:       #EF5350;
+    --color-status-animal:      #FF7043;
+    --color-status-no-data:     #9E9E9E;
+
+    --color-status-healthy-bg:     #1A3A25;
+    --color-status-slow-growth-bg: #3A3520;
+    --color-status-issue-bg:       #3A1E1E;
+    --color-status-animal-bg:      #3A2A1A;
+    --color-status-no-data-bg:     #2A2A2A;
+
+    --color-motion:    #FF8A65;
+    --color-motion-bg: #3A2A1A;
+
+    --color-error:   #EF5350;
+    --color-success: #4CAF50;
+    --color-info:    #64B5F6;
+
+    --border-default: 1px solid #444444;
+    --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg:  0 4px 16px rgba(0, 0, 0, 0.5);
+
+    --focus-ring: 0 0 0 3px rgba(76, 175, 80, 0.4);
+  }
+}
