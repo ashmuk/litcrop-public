@@ -9,19 +9,13 @@ import WeatherView from '../components/WeatherView';
 const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
 ---
 
-<BaseLayout title="LitCrop — Weather" activeTab="weather">
+<BaseLayout title="LitCrop — Weather" activeTab="weather" farmNameTitleId="weather-title" farmNamePrefix="⛅ Weather — ">
   <div
     style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
   >
     <h1 id="weather-title" style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
       ⛅ Weather
     </h1>
-    <script is:inline>
-      (function() {
-        var name = localStorage.getItem('litcrop-farmName');
-        if (name) document.getElementById('weather-title').textContent = '⛅ Weather — ' + name;
-      })();
-    </script>
   </div>
 
   <WeatherView farmId={farmId} client:load />

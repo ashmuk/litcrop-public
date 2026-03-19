@@ -10,17 +10,11 @@ import Toast from '../components/Toast';
 const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
 ---
 
-<BaseLayout title="LitCrop — Farm" activeTab="farm">
+<BaseLayout title="LitCrop — Farm" activeTab="farm" farmNameTitleId="page-title" farmNamePrefix="🌾 ">
   <div
     style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
   >
     <h1 id="page-title" style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">🌾 LitCrop</h1>
-    <script is:inline>
-      (function() {
-        var name = localStorage.getItem('litcrop-farmName');
-        if (name) document.getElementById('page-title').textContent = '🌾 ' + name;
-      })();
-    </script>
     <a
       href="/farm/layout"
       class="btn-secondary"

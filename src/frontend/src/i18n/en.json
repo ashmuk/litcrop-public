@@ -136,7 +136,10 @@
     "snow_grains": "Snow Grains",
     "rain_showers": "Rain Showers",
     "snow_showers": "Snow Showers",
-    "thunderstorm": "Thunderstorm"
+    "thunderstorm": "Thunderstorm",
+    "freezing_drizzle": "Freezing Drizzle",
+    "thunderstorm_hail": "Thunderstorm with Hail",
+    "unknown": "Unknown"
   },
   "image_viewer": {
     "not_found": "Image not found",

@@ -8,6 +8,7 @@ import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp, useTempUnit } from '../lib/hooks';
+import { translateCondition } from '../lib/format';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
@@ -26,12 +27,6 @@ function formatWeekday(isoDate: string): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-function translateCondition(condition: string): string {
-  const key = `weather_conditions.${condition}`;
-  const translated = t(key);
-  return translated === key ? condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : translated;
 }
 
 export interface Props {

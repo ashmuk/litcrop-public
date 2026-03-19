@@ -9,6 +9,7 @@ import { getFarm, getPlots, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
+import { translateCondition, formatRelativeTime } from '../lib/format';
 
 // Most critical first
 const STATUS_SEVERITY: Record<PlotStatus, number> = {
@@ -26,21 +27,6 @@ const STATUS_ORDER: PlotStatus[] = [
   'healthy',
   'no_data',
 ];
-
-function translateCondition(condition: string): string {
-  const key = `weather_conditions.${condition}`;
-  const translated = t(key);
-  return translated === key ? condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : translated;
-}
-
-function formatRelativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
 
 export interface Props {
   farmId: string;

@@ -34,14 +34,17 @@ function wmoToLabel(code: number): string {
 }
 
 function wmoToIcon(code: number): string {
-  if (code === 0) return 'sunny';
-  if (code <= 3) return 'partly_cloudy';
-  if (code === 45 || code === 48) return 'foggy';
+  if (code === 0) return 'clear_sky';
+  if (code === 1) return 'mainly_clear';
+  if (code === 2) return 'partly_cloudy';
+  if (code === 3) return 'overcast';
+  if (code === 45 || code === 48) return 'fog';
   if (code >= 51 && code <= 55) return 'drizzle';
   if (code >= 56 && code <= 57) return 'freezing_drizzle';
   if (code >= 61 && code <= 65) return 'rain';
   if (code >= 66 && code <= 67) return 'freezing_rain';
-  if (code >= 71 && code <= 77) return 'snow';
+  if (code >= 71 && code <= 75) return 'snow';
+  if (code === 77) return 'snow_grains';
   if (code >= 80 && code <= 82) return 'rain_showers';
   if (code >= 85 && code <= 86) return 'snow_showers';
   if (code === 95) return 'thunderstorm';

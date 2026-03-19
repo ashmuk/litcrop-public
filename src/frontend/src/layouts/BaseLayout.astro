@@ -14,6 +14,10 @@ export interface Props {
   theme?: 'light' | 'dark' | 'earthy' | 'system';
   /** Marks the active tab bar item. Defaults to 'farm'. */
   activeTab?: 'farm' | 'weather' | 'setup' | 'settings';
+  /** If set, the element with this ID gets its textContent patched with the farm name from localStorage. */
+  farmNameTitleId?: string;
+  /** Prefix before the farm name (e.g. '🌾 ' or '⛅ Weather — '). */
+  farmNamePrefix?: string;
 }
 
 const {
@@ -23,6 +27,8 @@ const {
   locale = lang,
   theme = 'system',
   activeTab = 'farm',
+  farmNameTitleId,
+  farmNamePrefix,
 } = Astro.props;
 ---
 
@@ -77,6 +83,17 @@ const {
         }
       });
     </script>
+    {farmNameTitleId && (
+      <script is:inline define:vars={{ farmNameTitleId, farmNamePrefix: farmNamePrefix ?? '' }}>
+        (function() {
+          var name = localStorage.getItem('litcrop-farmName');
+          if (name) {
+            var el = document.getElementById(farmNameTitleId);
+            if (el) el.textContent = farmNamePrefix + name;
+          }
+        })();
+      </script>
+    )}
   </head>
   <body>
     <!-- Page content (provided by each page via slot) -->

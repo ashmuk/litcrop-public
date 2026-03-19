@@ -78,7 +78,7 @@ beforeEach(() => {
 // ── Happy path ────────────────────────────────────────────────────
 
 describe('GET /api/v1/farms/:farmId/weather happy path', () => {
-  it('returns 200 with weather data (WMO code 0 → Clear sky / sunny)', async () => {
+  it('returns 200 with weather data (WMO code 0 → Clear sky / clear_sky)', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: FARM_ID_2 });
     vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -92,7 +92,7 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
       current: { condition: string; condition_icon: string };
     };
     expect(body.current.condition).toBe('Clear sky');
-    expect(body.current.condition_icon).toBe('sunny');
+    expect(body.current.condition_icon).toBe('clear_sky');
   });
 
   it('WMO code 95 → Thunderstorm / thunderstorm', async () => {

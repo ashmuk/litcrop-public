@@ -168,19 +168,21 @@ router.get('/:farmId/plots', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  // Build bed_id → { bed_name, field_name } map
+  // Build bed_id → { bed_name, field_name, field_id } map in parallel with plots fetch
   const fields = await dynamoRepo.getFieldsForFarm(farm.id);
   const bedMeta = new Map<string, { bed_name: string; field_name: string; field_id: string }>();
-  await Promise.all(
-    fields.map(async (field: Field) => {
-      const beds = await dynamoRepo.getBedsForField(field.id);
-      for (const bed of beds) {
-        bedMeta.set(bed.id, { bed_name: bed.name, field_name: field.name, field_id: field.id });
-      }
-    }),
-  );
 
-  const plots = await dynamoRepo.getPlotsForFarm(farmId);
+  const [, plots] = await Promise.all([
+    Promise.all(
+      fields.map(async (field: Field) => {
+        const beds = await dynamoRepo.getBedsForField(field.id);
+        for (const bed of beds) {
+          bedMeta.set(bed.id, { bed_name: bed.name, field_name: field.name, field_id: field.id });
+        }
+      }),
+    ),
+    dynamoRepo.getPlotsForFarm(farmId),
+  ]);
 
   const data = await Promise.all(
     plots.map(async (plot: Plot) => {

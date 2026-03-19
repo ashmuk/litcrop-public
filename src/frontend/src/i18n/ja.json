@@ -136,7 +136,10 @@
     "snow_grains": "雪あられ",
     "rain_showers": "にわか雨",
     "snow_showers": "にわか雪",
-    "thunderstorm": "雷雨"
+    "thunderstorm": "雷雨",
+    "freezing_drizzle": "凍霧雨",
+    "thunderstorm_hail": "雹を伴う雷雨",
+    "unknown": "不明"
   },
   "image_viewer": {
     "not_found": "画像が見つかりません",
