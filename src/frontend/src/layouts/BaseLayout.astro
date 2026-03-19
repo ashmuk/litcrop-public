@@ -40,6 +40,19 @@ const {
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Restore persisted settings before first paint (avoids flash of wrong theme/locale) -->
+    <script is:inline>
+      (function() {
+        var theme = localStorage.getItem('litcrop-theme');
+        var locale = localStorage.getItem('litcrop-locale');
+        var lang = locale === 'ja' ? 'ja' : 'en';
+        if (theme) document.documentElement.setAttribute('data-theme', theme);
+        if (locale) {
+          document.documentElement.setAttribute('data-locale', locale);
+          document.documentElement.setAttribute('lang', lang);
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- Page content (provided by each page via slot) -->
