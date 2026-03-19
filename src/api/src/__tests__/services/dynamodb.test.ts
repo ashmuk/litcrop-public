@@ -286,12 +286,11 @@ describe('getTagsForImage', () => {
 
 describe('createTag', () => {
   it('puts tag and calls UpdateCommand on BED# pk (not PLOT# pk)', async () => {
-    // getPlotById (GSI1 query)
-    ddbMock.on(QueryCommand).resolvesOnce({ Items: [plotItem] });
+    // SF-4: bed_id is now passed directly — no intermediate getPlotById GSI1 query needed
     ddbMock.on(PutCommand).resolves({});
     ddbMock.on(UpdateCommand).resolves({});
 
-    const tag = await repo.createTag(IMAGE_ID, PLOT_ID, 'healthy', 'Looks good');
+    const tag = await repo.createTag(IMAGE_ID, PLOT_ID, BED_ID, 'healthy', 'Looks good');
 
     expect(tag.tag).toBe('healthy');
     expect(tag.note).toBe('Looks good');
@@ -343,6 +342,7 @@ describe('createImage', () => {
   it('stores GSI1 keys for direct image lookup', async () => {
     ddbMock.on(PutCommand).resolves({});
     await repo.createImage(PLOT_ID, IMAGE_ID, {
+      bed_id: BED_ID,  // SF-4: denormalized
       node_id: 'cam-001',
       captured_at: '2026-03-17T10:00:00.000Z',
       uploaded_at: '2026-03-17T10:00:05.000Z',

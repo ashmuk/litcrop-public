@@ -274,6 +274,7 @@ router.post('/:plotId/images', async (c) => {
   let image: Image;
   try {
     image = await dynamoRepo.createImage(plotId, imageId, {
+      bed_id: plot.bed_id,  // SF-4: denormalize bed_id to enable direct plot-status update
       node_id,
       captured_at: capturedAtIso,
       uploaded_at: uploadedAt,

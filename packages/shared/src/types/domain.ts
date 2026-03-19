@@ -68,6 +68,7 @@ export interface Plot {
 export interface Image {
   id: string;
   plot_id: string;
+  bed_id: string;    // SF-4: denormalized at write time to avoid GSI lookup in createTag
   node_id: string;
   captured_at: string;  // ISO 8601
   uploaded_at: string;  // ISO 8601

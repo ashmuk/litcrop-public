@@ -84,6 +84,7 @@ router.post('/:imageId/tags', async (c) => {
   const tag = await dynamoRepo.createTag(
     imageId,
     image.plot_id,
+    image.bed_id,  // SF-4: use denormalized bed_id from image record
     tagValue as import('@litcrop/shared').TagValue,
     typeof note === 'string' ? note : undefined,
   );

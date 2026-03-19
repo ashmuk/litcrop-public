@@ -109,6 +109,7 @@ function itemToImage(item: Record<string, unknown>, imageId: string): Image {
   return {
     id: imageId,
     plot_id: item['plot_id'] as string,
+    bed_id: item['bed_id'] as string,
     node_id: item['node_id'] as string,
     captured_at: item['captured_at'] as string,
     uploaded_at: item['uploaded_at'] as string,
@@ -305,9 +306,14 @@ export class DynamoRepository {
   }
 
   // 8. Write tag + 9. Update plot status
+  //
+  // SF-4: accepts bed_id directly from the caller (read from the Image record,
+  // which stores it at upload time). This removes the PoC-era race condition where
+  // two concurrent tag writes would both do a GSI1 read, then race on the UpdateItem.
   async createTag(
     imageId: string,
     plotId: string,
+    bedId: string,
     tagValue: TagValue,
     note?: string,
   ): Promise<Tag> {
@@ -334,19 +340,14 @@ export class DynamoRepository {
       }),
     );
 
-    // 9. Update plot status (latest_status reflects the new tag)
-    // First get the plot to obtain the bed_id (needed for PK in base table).
-    // NOTE (PoC): This read-then-write is non-atomic. Two concurrent tag writes
-    // can both read the same plot and race on the UpdateItem, leaving latest_status
-    // reflecting whichever write landed last rather than the chronologically latest tag.
-    // Fix at MVP: denormalize bed_id onto the Image record at write time so this
-    // UpdateItem can be issued directly without the intermediate GSI1 read.
-    const plot = await this.getPlotById(plotId);
+    // 9. Update plot status using bed_id from the Image record (SF-4).
+    // No intermediate getPlotById call needed — bed_id was denormalized at image
+    // upload time, eliminating the non-atomic read-then-write race condition.
     await ddb.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: {
-          PK: pk.bed(plot.bed_id),
+          PK: pk.bed(bedId),
           SK: sk.plot(plotId),
         },
         UpdateExpression: 'SET latest_status = :status',
@@ -460,6 +461,7 @@ export class DynamoRepository {
     data: Omit<Image, 'id' | 'plot_id'>,
   ): Promise<Image> {
     const image: Image = { id: imageId, plot_id: plotId, ...data };
+    // bed_id is included in `data` (SF-4) and spread into the DDB item below.
 
     await ddb.send(
       new PutCommand({

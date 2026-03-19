@@ -23,9 +23,12 @@ const PLOT_ID = 'a0000000-0000-0000-0000-000000000001';
 const IMAGE_ID = 'e0000000-0000-0000-0000-000000000001';
 const TAG_ID = 't0000000-0000-0000-0000-000000000001';
 
+const BED_ID = 'b0000000-0000-0000-0000-000000000001';
+
 const imageFixture: Image = {
   id: IMAGE_ID,
   plot_id: PLOT_ID,
+  bed_id: BED_ID,  // SF-4: denormalized at write time
   node_id: 'cam-001',
   captured_at: '2026-03-17T10:00:00.000Z',
   uploaded_at: '2026-03-17T10:00:05.000Z',

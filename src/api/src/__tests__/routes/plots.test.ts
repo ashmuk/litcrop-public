@@ -42,6 +42,7 @@ const plotFixture = {
 const imageFixture: Image = {
   id: IMAGE_ID,
   plot_id: PLOT_ID,
+  bed_id: BED_ID,  // SF-4: denormalized at write time
   node_id: 'cam-001',
   captured_at: '2026-03-17T10:00:00.000Z',
   uploaded_at: '2026-03-17T10:00:05.000Z',
