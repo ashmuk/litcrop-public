@@ -198,7 +198,7 @@ router.get('/:farmId/plots', async (c) => {
 
   const data = await Promise.all(
     plots.map(async (plot: Plot) => {
-      const meta = bedMeta.get(plot.bed_id) ?? { bed_name: '', field_name: '' };
+      const meta = bedMeta.get(plot.bed_id) ?? { bed_name: '', field_name: '', field_id: '' };
       const latestImage = await dynamoRepo.getLatestImageForPlot(plot.id);
       return {
         id: plot.id,
