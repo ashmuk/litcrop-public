@@ -177,6 +177,15 @@ export class LitCropStack extends cdk.Stack {
       enableLogging: false, // MVP: deferred to Production
     });
 
+    // ── SSM Parameters ────────────────────────────────────────────────────────
+    // LLM API key stored as SecureString; reference resolved at deploy time
+
+    const llmApiKeyParam = ssm.StringParameter.fromSecureStringParameterAttributes(
+      this,
+      'LlmApiKeyParam',
+      { parameterName: '/litcrop/llm-api-key' },
+    );
+
     // ── T-CDK-04: Lambda Functions ────────────────────────────────────────────
     // NodejsFunction: esbuild bundling from src/api/src/handler.ts
     // Matches existing esbuild.config.mjs: CJS format, node22 target, @aws-sdk external
@@ -209,7 +218,7 @@ export class LitCropStack extends cdk.Stack {
         COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
         NODE_OPTIONS: '--enable-source-maps',
         // LLM / Chat configuration
-        LLM_API_KEY: ssm.StringParameter.valueForSecureStringParameter(this, '/litcrop/llm-api-key'),
+        LLM_API_KEY: llmApiKeyParam.stringValue,
         LLM_API_PROVIDER: 'anthropic',
         CHAT_MODEL: 'claude-haiku-4-5-20251001',
         CHAT_DAILY_INPUT_LIMIT: '50000',
@@ -226,11 +235,6 @@ export class LitCropStack extends cdk.Stack {
     thumbnailsBucket.grantRead(apiLambda); // Read-only: signed URL generation
 
     // Grant API Lambda permission to read the LLM API key from SSM
-    const llmApiKeyParam = ssm.StringParameter.fromSecureStringParameterAttributes(
-      this,
-      'LlmApiKeyParam',
-      { parameterName: '/litcrop/llm-api-key' },
-    );
     llmApiKeyParam.grantRead(apiLambda);
 
     // Thumbnail Lambda — Phase 4: full sharp-based thumbnail generation
