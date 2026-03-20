@@ -84,7 +84,7 @@ export const FarmWriteResponseSchema = FarmBaseSchema;
 
 const LatestImageThumbnailSchema = z.object({
   id: z.string(),
-  thumbnail_url: z.string(),
+  thumbnail_url: z.string().nullable(),
   captured_at: z.string(),
   trigger: TriggerTypeSchema,
 });
@@ -130,7 +130,7 @@ export const PlotDetailResponseSchema = z.object({
 
 const ImageListItemSchema = z.object({
   id: z.string(),
-  thumbnail_url: z.string(),
+  thumbnail_url: z.string().nullable(),
   captured_at: z.string(),
   trigger: TriggerTypeSchema,
   size_bytes: z.number(),

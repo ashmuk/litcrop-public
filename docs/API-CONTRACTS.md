@@ -140,6 +140,7 @@ type ErrorCode =
   | "SERVICE_UNAVAILABLE"
   | "BAD_CURSOR"
   | "RATE_LIMITED"            // [MVP] Too many requests (per-user/per-farm throttle)
+  | "BUDGET_EXCEEDED"         // [MVP] Daily token budget exhausted (per-user or global)
   | "UPSTREAM_ERROR";
 ```
 
