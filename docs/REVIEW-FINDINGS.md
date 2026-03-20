@@ -4,6 +4,7 @@
 > Date: 2026-03-20
 > Scope: 3 commits on `develop` (57 files), Phases 0-5 implementation
 > Verdict: **CONDITIONAL PASS**
+> Remediation status (2026-03-20): 4 of 5 MUST-FIX groups resolved — **C1+T1+T2 (chat SDK migration) remains**
 
 ---
 
@@ -198,19 +199,21 @@ The implementation is well-structured with consistent patterns, thorough ownersh
 
 ### MUST-FIX Summary (blockers for deploy gate)
 
-1. **S1+S2**: Auth middleware Path 2 has no signature/issuer/audience verification -- gate behind `NODE_ENV` or add resource policy
-2. **C1+T1+T2**: Chat route uses raw `fetch()` not Anthropic SDK per ADR-009 -- no multi-turn, no tool use, no conversation history. Tests mock fetch instead of SDK.
-3. **Q1**: TypeScript error in farms.ts:201 -- missing `field_id` in fallback object
-4. **Q2**: CDK stack missing LLM env vars -- chat will always return stubs when deployed
-5. **Q3**: Weather route crashes on empty Open-Meteo response -- unguarded array access
+| # | Items | Status | Commit |
+|---|-------|--------|--------|
+| 1 | **S1+S2**: Auth middleware Path 2 — no signature/issuer/audience verification | ✅ FIXED | (builder-quick, Task #2) |
+| 2 | **Q1**: TypeScript error in farms.ts:201 — missing `field_id` in fallback object | ✅ FIXED | `1003abc` |
+| 3 | **Q2 / X1**: CDK stack missing LLM env vars — chat always returns stubs in production | ✅ FIXED | `0d12c24` (builder-infra, Task #4) |
+| 4 | **Q3**: Weather route crashes on empty Open-Meteo response — unguarded array access | ✅ FIXED | (builder-quick, Task #3) |
+| 5 | **C1+T1+T2**: Chat route uses raw `fetch()` not Anthropic SDK — no multi-turn, no tool use, no conversation history. Tests mock fetch instead of SDK. | ⏳ PENDING | — |
 
 ### Recommended Fix Order
 
-1. **Q1** (5 min) -- Add `field_id: ''` to fallback. Trivial fix.
-2. **Q3** (5 min) -- Add empty-array guard in weather transform. Trivial fix.
-3. **S1+S2** (15 min) -- Gate Path 2 behind NODE_ENV check, add iss/aud validation.
-4. **Q2** (15 min) -- Add LLM env vars to CDK stack (API key via SSM SecureString).
-5. **C1+T1+T2** (2-4 hours) -- Migrate chat route to Anthropic SDK, add multi-turn + tool use. Update tests.
+1. ~~**Q1** (5 min) -- Add `field_id: ''` to fallback. Trivial fix.~~ ✅ DONE
+2. ~~**Q3** (5 min) -- Add empty-array guard in weather transform. Trivial fix.~~ ✅ DONE
+3. ~~**S1+S2** (15 min) -- Gate Path 2 behind NODE_ENV check, add iss/aud validation.~~ ✅ DONE
+4. ~~**Q2** (15 min) -- Add LLM env vars to CDK stack (API key via SSM SecureString).~~ ✅ DONE
+5. **C1+T1+T2** (2-4 hours) -- Migrate chat route to Anthropic SDK, add multi-turn + tool use. Update tests. ⏳ REMAINING
 
 Items 1-4 are quick fixes. Item 5 is the largest gap and may warrant a separate phase if time-constrained -- document the SDK migration as a known deviation with a tracking issue.
 
