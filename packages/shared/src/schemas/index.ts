@@ -37,6 +37,7 @@ export const ThemeSchema = z.enum(['light', 'dark', 'earthy', 'system']);
 /** farmToResponse() shape — base farm fields without nested relations */
 export const FarmBaseSchema = z.object({
   id: z.string(),
+  user_id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   latitude: z.number(),
@@ -176,6 +177,7 @@ export const ImageDetailResponseSchema = z.object({
   captured_at: z.string(),
   uploaded_at: z.string(),
   url: z.string(),
+  thumbnail_url: z.string().nullable(),
   trigger: TriggerTypeSchema,
   content_type: z.string(),
   size_bytes: z.number(),
@@ -278,4 +280,8 @@ export const ChatResponseSchema = z.object({
   reply: z.string(),
   suggestions: z.array(z.string()),
   conversation_id: z.string(),
+  tool_calls: z.array(z.object({
+    name: z.string(),
+    input: z.record(z.unknown()),
+  })).optional(),
 });
