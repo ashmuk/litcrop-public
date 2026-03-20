@@ -1,0 +1,14 @@
+---
+/**
+ * Login Page — T-FE-AUTH-03
+ * /login — public route (no auth guard)
+ */
+import AuthLayout from '../layouts/AuthLayout.astro';
+import LoginForm from '../components/LoginForm';
+import Toast from '../components/Toast';
+---
+
+<AuthLayout title="Log in" cardTitle="Log in">
+  <LoginForm client:load />
+  <Toast client:load />
+</AuthLayout>

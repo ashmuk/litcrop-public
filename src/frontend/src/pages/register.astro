@@ -1,0 +1,14 @@
+---
+/**
+ * Registration Page — T-FE-AUTH-04
+ * /register — public route (no auth guard)
+ */
+import AuthLayout from '../layouts/AuthLayout.astro';
+import RegisterForm from '../components/RegisterForm';
+import Toast from '../components/Toast';
+---
+
+<AuthLayout title="Create your account" cardTitle="Create your account">
+  <RegisterForm client:load />
+  <Toast client:load />
+</AuthLayout>

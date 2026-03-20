@@ -152,5 +152,88 @@
     "error": "アップロードに失敗しました",
     "too_large": "画像サイズが2MBを超えています",
     "wrong_type": "JPEGファイルのみ対応しています"
+  },
+  "auth": {
+    "login": {
+      "title": "ログイン",
+      "button": "ログイン",
+      "loading": "ログイン中…"
+    },
+    "register": {
+      "title": "アカウントを作成",
+      "button": "アカウントを作成",
+      "loading": "作成中…",
+      "step1": "アカウント情報",
+      "step2": "メール確認",
+      "step3": "完了"
+    },
+    "reset": {
+      "title": "パスワードをリセット",
+      "step1_title": "パスワードをお忘れですか？",
+      "step2_title": "新しいパスワードを設定",
+      "send_code": "リセットコードを送信",
+      "sending": "送信中…",
+      "confirm_button": "パスワードをリセット",
+      "confirming": "リセット中…"
+    },
+    "verify": {
+      "title": "メールを確認してください",
+      "body": "{email} に6桁のコードを送信しました。以下に入力してください。",
+      "code_label": "確認コード",
+      "code_placeholder": "000000",
+      "button": "メールを確認",
+      "loading": "確認中…",
+      "resend": "コードを再送信",
+      "resend_in": "{s}秒後に再送信"
+    },
+    "email": {
+      "label": "メールアドレス",
+      "placeholder": "you@example.com"
+    },
+    "password": {
+      "label": "パスワード",
+      "placeholder": "8文字以上",
+      "confirm": "パスワードの確認",
+      "confirm_placeholder": "パスワードを再入力",
+      "new": "新しいパスワード",
+      "show": "パスワードを表示",
+      "hide": "パスワードを非表示"
+    },
+    "password_strength": {
+      "weak": "弱い",
+      "fair": "普通",
+      "strong": "強い"
+    },
+    "password_requirements": {
+      "length": "8文字以上",
+      "uppercase": "大文字を含む",
+      "lowercase": "小文字を含む",
+      "number": "数字を含む"
+    },
+    "forgot_password": "パスワードをお忘れですか？",
+    "no_account": "アカウントをお持ちでない方",
+    "have_account": "すでにアカウントをお持ちの方",
+    "signup_link": "新規登録",
+    "login_link": "ログイン",
+    "logout": "ログアウト",
+    "logout_confirm": "ログアウトしました。",
+    "session_expired": "セッションが期限切れです。再度ログインしてください。",
+    "errors": {
+      "wrong_password": "メールアドレスまたはパスワードが正しくありません。",
+      "not_confirmed": "ログインする前にメールアドレスを確認してください。",
+      "too_many_requests": "試行回数が多すぎます。しばらく待ってから再試行してください。",
+      "email_exists": "このメールアドレスはすでに使用されています。",
+      "weak_password": "パスワードが要件を満たしていません。",
+      "invalid_code": "確認コードが無効です。再試行してください。",
+      "expired_code": "コードの有効期限が切れました。新しいコードをリクエストしてください。",
+      "network": "サーバーに接続できませんでした。接続を確認して再試行してください。",
+      "generic": "エラーが発生しました。再試行してください。",
+      "passwords_mismatch": "パスワードが一致しません。",
+      "email_required": "メールアドレスを入力してください。",
+      "email_invalid": "有効なメールアドレスを入力してください。",
+      "password_required": "パスワードを入力してください。",
+      "code_required": "確認コードを入力してください。",
+      "code_length": "6桁のコードを全て入力してください。"
+    }
   }
 }

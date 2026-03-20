@@ -1,0 +1,345 @@
+/* ============================================================
+   LitCrop — Auth Screen Styles
+   T-FE-AUTH-03 through T-FE-AUTH-05: Login, Register, Reset
+   UX-DESIGNS.md §5.7 (Form Input), §5.8 (Auth Form Card),
+   §5.9 (Primary Button), §12 (Auth Screens)
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   Auth Page Shell
+   ---------------------------------------------------------- */
+.auth-page {
+  min-height: 100vh;
+  background-color: var(--color-background);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-8) var(--space-4) var(--space-8);
+}
+
+/* ----------------------------------------------------------
+   Auth Logo / Brand Block
+   ---------------------------------------------------------- */
+.auth-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  padding-top: var(--space-4);
+}
+
+.auth-logo__icon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.auth-logo__name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+/* ----------------------------------------------------------
+   Auth Form Card (§5.8)
+   Max-width: 440px; mobile: top of viewport; desktop: centered (Phase 5)
+   ---------------------------------------------------------- */
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 32px 24px;
+}
+
+.auth-card__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+/* ----------------------------------------------------------
+   Form Input — Error State (§5.7)
+   ---------------------------------------------------------- */
+.form-input--error {
+  border-color: var(--color-error, #B91C1C);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
+.form-input--error:focus {
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.25);
+}
+
+.form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-error, #B91C1C);
+  margin-top: 2px;
+  line-height: var(--line-height-normal);
+}
+
+/* ----------------------------------------------------------
+   Password Input Wrapper (for show/hide toggle)
+   ---------------------------------------------------------- */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper .form-input {
+  padding-right: 52px; /* room for toggle button */
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-gray-500);
+  font-size: 18px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  transition: color var(--transition-fast);
+}
+
+.password-toggle:hover {
+  color: var(--color-gray-700);
+}
+
+.password-toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* ----------------------------------------------------------
+   Password Strength Indicator
+   ---------------------------------------------------------- */
+.password-strength {
+  margin-top: var(--space-2);
+}
+
+.password-strength__bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-2);
+}
+
+.password-strength__segment {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--color-gray-200);
+  transition: background-color 0.2s;
+}
+
+.password-strength__segment--active-0 { background-color: #B91C1C; }
+.password-strength__segment--active-1 { background-color: #D97706; }
+.password-strength__segment--active-2 { background-color: #059669; }
+
+.password-strength__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.password-requirements {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-2);
+}
+
+.password-req {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  transition: color 0.2s;
+}
+
+.password-req--met {
+  color: #059669;
+}
+
+.password-req__icon {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------------------------
+   Server Error Alert (role="alert")
+   ---------------------------------------------------------- */
+.auth-server-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius-md);
+  color: #991B1B;
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+  line-height: var(--line-height-normal);
+}
+
+.auth-server-error__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ----------------------------------------------------------
+   Step Indicator (multi-step forms)
+   ---------------------------------------------------------- */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-gray-300);
+  transition: background-color 0.2s;
+}
+
+.step-dot--active {
+  background-color: var(--color-primary);
+  width: 24px;
+  border-radius: 4px;
+}
+
+.step-dot--done {
+  background-color: var(--color-primary);
+  opacity: 0.5;
+}
+
+/* ----------------------------------------------------------
+   Auth Links (below form)
+   ---------------------------------------------------------- */
+.auth-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  text-align: center;
+}
+
+.auth-links a,
+.auth-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.auth-links a:hover,
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-links a:focus-visible,
+.auth-link:focus-visible {
+  outline: var(--focus-ring);
+  border-radius: 2px;
+}
+
+/* ----------------------------------------------------------
+   Success State
+   ---------------------------------------------------------- */
+.auth-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.auth-success__icon {
+  font-size: 56px;
+  line-height: 1;
+  color: #059669;
+}
+
+.auth-success__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.auth-success__body {
+  font-size: var(--font-size-base);
+  color: var(--color-gray-700);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ----------------------------------------------------------
+   Auth Guard Loading Overlay
+   ---------------------------------------------------------- */
+.auth-guard-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-background, #F5F5F0);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-guard-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: auth-spin 0.7s linear infinite;
+}
+
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-guard-spinner {
+    animation: none;
+    border-top-color: var(--color-primary);
+  }
+}
+
+/* ----------------------------------------------------------
+   Resend Code Countdown
+   ---------------------------------------------------------- */
+.resend-info {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--space-2);
+  text-align: center;
+}

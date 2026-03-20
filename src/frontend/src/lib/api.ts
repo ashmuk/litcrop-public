@@ -1,12 +1,16 @@
 /**
- * LitCrop API Client — T-FE-05
+ * LitCrop API Client — T-FE-05, T-FE-AUTH-07
  *
  * Typed client for all 11 endpoints.
  * Base URL: import.meta.env.PUBLIC_API_BASE_URL (Vite public env var)
  *           Falls back to '/api/v1' for same-origin SSR dev.
  *
  * All functions throw ApiError on non-2xx responses.
+ * Authorization: Bearer token is injected automatically via getAccessToken().
+ * On 401 the token is refreshed once; if refresh fails the user is redirected to /login.
  */
+
+import { getAccessToken } from './auth';
 
 import type {
   FarmResponse,
@@ -48,15 +52,25 @@ export class ApiError extends Error {
 
 // ── Internal fetch wrapper ────────────────────────────────────────
 
+/**
+ * Core fetch helper. Automatically injects the Authorization header from the
+ * auth service. On 401, refreshes the token once and retries; if the refresh
+ * fails the user is redirected to /login.
+ */
 async function request<T>(
   method: 'GET' | 'POST' | 'PATCH',
   path: string,
   body?: unknown,
   isFormData = false,
+  _retry = true,
 ): Promise<T> {
   const url = `${getBaseUrl()}${path}`;
 
+  const token = await getAccessToken();
   const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   if (!isFormData && body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }
@@ -70,6 +84,25 @@ async function request<T>(
         ? JSON.stringify(body)
         : undefined,
   });
+
+  // On 401: attempt token refresh and retry once
+  if (res.status === 401 && _retry) {
+    // Re-call getAccessToken() — it will attempt a refresh internally
+    const newToken = await getAccessToken();
+    if (newToken && newToken !== token) {
+      return request<T>(method, path, body, isFormData, false);
+    }
+    // Refresh failed — redirect to login
+    try {
+      sessionStorage.setItem('litcrop_return_url', window.location.pathname + window.location.search);
+    } catch {
+      // ignore
+    }
+    window.location.replace('/login');
+    throw new ApiError(401, {
+      error: { code: 'UNAUTHORIZED', message: 'Session expired. Please log in again.' },
+    });
+  }
 
   if (!res.ok) {
     let errorBody: ApiErrorBody;

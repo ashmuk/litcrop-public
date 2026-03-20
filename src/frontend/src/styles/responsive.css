@@ -1,0 +1,365 @@
+/* ============================================================
+   LitCrop — Desktop Responsive Layout
+   T-DESK-01 through T-DESK-06
+   Breakpoints:
+     Mobile:  320–767px   (base styles, no query)
+     Tablet:  768–1023px  (@media min-width 768px)
+     Desktop: 1024px+     (@media min-width 1024px)
+   All rules here are additive overrides; mobile styles
+   in global.css/components.css remain unchanged.
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   T-DESK-01: Breakpoint system
+   ---------------------------------------------------------- */
+
+/* Tablet (768px+): slightly wider layout, still single-column */
+@media (min-width: 768px) {
+  body {
+    max-width: 768px;
+  }
+
+  .page-main {
+    min-height: calc(100vh - 64px);
+  }
+}
+
+/* Desktop (1024px+): full layout transformation */
+@media (min-width: 1024px) {
+  /* Expand body to full width */
+  body {
+    max-width: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* Page content wrapper: constrain and center */
+  .page-main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-top: 56px; /* height of desktop nav */
+    padding-bottom: 0; /* no tab bar at desktop */
+    min-height: calc(100vh - 56px);
+  }
+
+  /* Hide bottom tab bar */
+  .tab-bar {
+    display: none !important;
+  }
+
+  /* Show desktop nav bar */
+  .desktop-nav {
+    display: flex !important;
+  }
+
+  /* Toast position: above bottom of page (not above tab bar) */
+  .toast {
+    bottom: var(--space-4);
+  }
+}
+
+/* ----------------------------------------------------------
+   T-DESK-06: Desktop Navigation Bar
+   Hidden on mobile (display:none), shown at 1024px+ via above rule
+   ---------------------------------------------------------- */
+.desktop-nav {
+  display: none; /* hidden until 1024px */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-color: var(--color-surface);
+  border-bottom: var(--border-default);
+  z-index: 500;
+  align-items: center;
+  padding: 0 var(--space-6);
+  gap: var(--space-4);
+}
+
+.desktop-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+
+.desktop-nav__brand:hover {
+  text-decoration: none;
+}
+
+.desktop-nav__brand-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.desktop-nav__links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  justify-content: center;
+}
+
+.desktop-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-700);
+  text-decoration: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  border-bottom: 2px solid transparent;
+}
+
+.desktop-nav__link:hover {
+  background-color: var(--color-gray-100);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.desktop-nav__link--active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--color-primary);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.desktop-nav__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.desktop-nav__user {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-nav__logout {
+  height: 36px;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family);
+  color: var(--color-text);
+  background: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.desktop-nav__logout:hover {
+  background-color: var(--color-gray-100);
+}
+
+/* ----------------------------------------------------------
+   T-DESK-02: Farm Overview — 2-column layout
+   ---------------------------------------------------------- */
+
+/* Mobile: single-column stacked layout (default in component) */
+.farm-layout {
+  display: block;
+}
+
+.farm-sidebar {
+  display: none; /* hidden on mobile */
+}
+
+/* Desktop: 2-column grid */
+@media (min-width: 1024px) {
+  .farm-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    min-height: calc(100vh - 56px);
+  }
+
+  .farm-main {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    border-right: var(--border-default);
+  }
+
+  .farm-sidebar {
+    display: block; /* shown at desktop */
+    grid-column: 2;
+    grid-row: 1 / -1;
+    padding: var(--space-4);
+    border-left: none;
+    overflow-y: auto;
+    max-height: calc(100vh - 56px);
+    position: sticky;
+    top: 56px;
+    align-self: start;
+  }
+
+  /* Plot list: auto-fill grid */
+  .plot-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-3) !important;
+    flex-direction: unset !important;
+  }
+
+  /* Hide the mobile weather strip inside farm overview (sidebar shows instead) */
+  .farm-weather-strip {
+    display: none;
+  }
+}
+
+/* Weather sidebar card in farm overview */
+.farm-sidebar-card {
+  background-color: var(--color-surface);
+  border: var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.farm-sidebar-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-3);
+}
+
+.farm-sidebar-current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-default);
+}
+
+.farm-sidebar-current__icon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.farm-sidebar-current__temp {
+  font-size: 32px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.farm-sidebar-current__cond {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+}
+
+.farm-sidebar-day-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) 0;
+  font-size: var(--font-size-sm);
+}
+
+.farm-sidebar-day-row__date {
+  min-width: 48px;
+  color: var(--color-gray-700);
+}
+
+.farm-sidebar-day-row__icon {
+  font-size: 20px;
+}
+
+.farm-sidebar-day-row__temps {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.farm-sidebar-day-row__high {
+  font-weight: var(--font-weight-semibold);
+}
+
+.farm-sidebar-day-row__low {
+  color: var(--color-gray-500);
+}
+
+/* ----------------------------------------------------------
+   T-DESK-03: Plot Detail — 2-column layout
+   ---------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .plot-desktop-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    min-height: calc(100vh - 56px);
+    align-items: start;
+  }
+
+  .plot-desktop-main {
+    border-right: var(--border-default);
+  }
+
+  .plot-desktop-aside {
+    padding: var(--space-4);
+    overflow-y: auto;
+    max-height: calc(100vh - 56px);
+    position: sticky;
+    top: 56px;
+  }
+}
+
+/* ----------------------------------------------------------
+   T-DESK-04: Weather — 2-column layout
+   ---------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .weather-desktop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 56px);
+    align-items: start;
+  }
+
+  .weather-col-left {
+    border-right: var(--border-default);
+  }
+
+  .weather-col-right {
+    overflow-y: auto;
+  }
+}
+
+/* ----------------------------------------------------------
+   T-DESK-05: Settings — centered card layout
+   ---------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .settings-desktop-wrapper {
+    max-width: 600px;
+    margin: var(--space-8) auto;
+    padding: 0 var(--space-4);
+  }
+}
+
+/* ----------------------------------------------------------
+   Auth screens: vertically centered at desktop
+   ---------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .auth-page {
+    justify-content: center;
+    min-height: 100vh;
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+  }
+}

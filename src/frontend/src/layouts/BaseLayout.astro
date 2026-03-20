@@ -1,10 +1,15 @@
 ---
 /**
- * BaseLayout — T-FE-01
+ * BaseLayout — T-FE-01, T-FE-AUTH-06
  * Mobile-first shell with theme support, i18n locale, and bottom tab navigation.
+ * Includes AuthGuard island (protects all pages using this layout).
  */
 import '../styles/global.css';
 import '../styles/components.css';
+import '../styles/auth.css';
+import '../styles/responsive.css';
+import AuthGuard from '../components/AuthGuard';
+import DesktopNav from '../components/DesktopNav';
 
 export interface Props {
   title?: string;
@@ -96,6 +101,12 @@ const {
     )}
   </head>
   <body>
+    <!-- Desktop navigation bar (visible at 1024px+ via CSS) -->
+    <DesktopNav activeTab={activeTab} client:load />
+
+    <!-- Auth guard: checks token on mount, redirects to /login if unauthenticated -->
+    <AuthGuard client:load />
+
     <!-- Page content (provided by each page via slot) -->
     <main class="page-main" role="main">
       <slot />
