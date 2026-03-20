@@ -10,6 +10,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as apigwv2 from '@aws-cdk/aws-apigatewayv2-alpha';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { HttpJwtAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
@@ -207,6 +208,14 @@ export class LitCropStack extends cdk.Stack {
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
         NODE_OPTIONS: '--enable-source-maps',
+        // LLM / Chat configuration
+        LLM_API_KEY: ssm.StringParameter.valueForSecureStringParameter(this, '/litcrop/llm-api-key'),
+        LLM_API_PROVIDER: 'anthropic',
+        CHAT_MODEL: 'claude-haiku-4-5-20251001',
+        CHAT_DAILY_INPUT_LIMIT: '50000',
+        CHAT_DAILY_OUTPUT_LIMIT: '10000',
+        CHAT_DAILY_GLOBAL_INPUT_LIMIT: '500000',
+        CHAT_DAILY_GLOBAL_OUTPUT_LIMIT: '100000',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
@@ -215,6 +224,14 @@ export class LitCropStack extends cdk.Stack {
     table.grantReadWriteData(apiLambda);
     imagesBucket.grantReadWrite(apiLambda);
     thumbnailsBucket.grantRead(apiLambda); // Read-only: signed URL generation
+
+    // Grant API Lambda permission to read the LLM API key from SSM
+    const llmApiKeyParam = ssm.StringParameter.fromSecureStringParameterAttributes(
+      this,
+      'LlmApiKeyParam',
+      { parameterName: '/litcrop/llm-api-key' },
+    );
+    llmApiKeyParam.grantRead(apiLambda);
 
     // Thumbnail Lambda — Phase 4: full sharp-based thumbnail generation
     const thumbnailLambda = new NodejsFunction(this, 'ThumbnailLambda', {

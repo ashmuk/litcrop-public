@@ -63,6 +63,14 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
   }
 
   // Path 2: Decode Bearer token payload (test / local dev — no sig verification)
+  // S1: Disallowed in production — Path 1 must have succeeded above.
+  if (process.env['NODE_ENV'] === 'production') {
+    return c.json(
+      { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+      401,
+    );
+  }
+
   const authHeader = c.req.header('Authorization') ?? '';
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
@@ -72,8 +80,12 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
         // base64url → base64 → JSON
         const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
         const payload = JSON.parse(atob(b64)) as Record<string, unknown>;
-        if (typeof payload['sub'] === 'string') {
-          c.set('userId' as never, payload['sub']);
+        // S2: Basic issuer + subject validation
+        const iss = typeof payload['iss'] === 'string' ? payload['iss'] : '';
+        const sub = typeof payload['sub'] === 'string' ? payload['sub'] : '';
+        if (iss.toLowerCase().includes('cognito') && sub.length > 0) {
+          console.warn('[auth] WARNING: Using unverified JWT decode (Path 2) — development only');
+          c.set('userId' as never, sub);
           c.set('userEmail' as never, (payload['email'] as string | undefined) ?? '');
           await next();
           return;

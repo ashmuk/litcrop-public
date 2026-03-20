@@ -172,6 +172,9 @@ function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt:
   }));
 
   // Today summary from first daily entry + raw sunrise/sunset
+  if (dailyForecasts.length === 0) {
+    throw new UpstreamError('No forecast data available from weather service');
+  }
   const today = {
     high: dailyForecasts[0].high,
     low: dailyForecasts[0].low,
