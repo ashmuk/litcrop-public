@@ -2,11 +2,13 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { AppError, InternalError } from './errors';
+import { authMiddleware } from './middleware/auth';
 import farmsRouter from './routes/farms';
 import plotsRouter from './routes/plots';
 import imagesRouter from './routes/images';
 import weatherRouter from './routes/weather';
 import chatRouter from './routes/chat';
+import usageRouter from './routes/usage';
 
 const CLOUDFRONT_ORIGIN = process.env.CLOUDFRONT_ORIGIN;
 
@@ -25,7 +27,7 @@ app.use(
   cors({
     origin: corsOrigins,
     allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Accept', 'Accept-Language', 'X-Request-Id'],
+    allowHeaders: ['Content-Type', 'Accept', 'Accept-Language', 'X-Request-Id', 'Authorization'],
     exposeHeaders: ['X-Request-Id'],
     maxAge: 86400,
     credentials: false,
@@ -82,7 +84,7 @@ app.onError((err, c) => {
         ...(err.details ? { details: err.details } : {}),
       },
     };
-    return c.json(body, err.statusCode as 400 | 404 | 409 | 413 | 415 | 500 | 502 | 503);
+    return c.json(body, err.statusCode as 400 | 401 | 404 | 409 | 413 | 415 | 429 | 500 | 502 | 503);
   }
 
   // Unknown error — log and return generic 500
@@ -93,6 +95,17 @@ app.onError((err, c) => {
     500,
   );
 });
+
+// ── Auth middleware (T-AUTH-01) ───────────────────────────────────
+// Applied per-resource so /api/v1/health and /api/v1 stay public.
+// Each resource needs both the root path and /* to cover POST /farms and GET /farms/:id.
+
+app.use('/api/v1/farms', authMiddleware);
+app.use('/api/v1/farms/*', authMiddleware);
+app.use('/api/v1/plots/*', authMiddleware);
+app.use('/api/v1/images/*', authMiddleware);
+app.use('/api/v1/chat', authMiddleware);
+app.use('/api/v1/usage', authMiddleware);
 
 // ── Routes ───────────────────────────────────────────────────────
 
@@ -116,5 +129,8 @@ app.route('/api/v1/images', imagesRouter);
 
 // POST /api/v1/chat
 app.route('/api/v1/chat', chatRouter);
+
+// GET /api/v1/usage
+app.route('/api/v1/usage', usageRouter);
 
 export default app;

@@ -1,13 +1,37 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl } from '../services/s3';
+import { getSignedImageUrl, getSignedThumbnailUrl } from '../services/s3';
 import {
   NotFoundError,
   ValidationError,
   ServiceUnavailableError,
 } from '../errors';
+import { getAuthContext } from '../middleware/auth';
 import { TAG_VALUES, isValidTagValue } from '@litcrop/shared';
 import type { Image } from '@litcrop/shared';
+
+/** Verify caller owns the farm that contains this image (plot → farm chain). */
+async function assertImageOwnership(image: Image, userId: string): Promise<void> {
+  // Image → Plot (has farm_id denormalized)
+  let farmId: string;
+  try {
+    const plot = await dynamoRepo.getPlotById(image.plot_id);
+    farmId = plot.farm_id;
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  // Farm → check user_id
+  let farm;
+  try {
+    farm = await dynamoRepo.getFarm(farmId);
+  } catch (err) {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (farm.user_id !== userId) {
+    throw new NotFoundError(`Image not found: ${image.id}`);
+  }
+}
 
 const router = new Hono();
 
@@ -15,6 +39,7 @@ const router = new Hono();
 
 router.get('/:imageId', async (c) => {
   const { imageId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
   let image: Image;
   try {
@@ -24,8 +49,11 @@ router.get('/:imageId', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  const [url, tags] = await Promise.all([
+  await assertImageOwnership(image, userId);
+
+  const [url, thumbnail_url, tags] = await Promise.all([
     getSignedImageUrl(image.storage_key),
+    image.thumbnail_key ? getSignedThumbnailUrl(image.thumbnail_key) : Promise.resolve(null),
     dynamoRepo.getTagsForImage(image.id),
   ]);
 
@@ -36,6 +64,7 @@ router.get('/:imageId', async (c) => {
     captured_at: image.captured_at,
     uploaded_at: image.uploaded_at,
     url,
+    thumbnail_url,
     trigger: image.trigger,
     content_type: image.content_type,
     size_bytes: image.size_bytes,
@@ -53,6 +82,7 @@ router.get('/:imageId', async (c) => {
 
 router.post('/:imageId/tags', async (c) => {
   const { imageId } = c.req.param();
+  const { userId } = getAuthContext(c);
   const body = await c.req.json<Record<string, unknown>>();
 
   const tagValue = body['tag'];
@@ -80,6 +110,8 @@ router.post('/:imageId/tags', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
+
+  await assertImageOwnership(image, userId);
 
   const tag = await dynamoRepo.createTag(
     imageId,

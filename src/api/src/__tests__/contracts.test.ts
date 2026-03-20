@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import app from '../app';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, uploadImage } from '../services/s3';
+import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage } from '../services/s3';
 import { NotFoundError } from '../errors';
 import {
   FarmResponseSchema,
@@ -22,6 +22,7 @@ import {
   TagCreateResponseSchema,
   WeatherResponseSchema,
   ChatResponseSchema,
+  UsageResponseSchema,
 } from '@litcrop/shared';
 
 vi.mock('../services/dynamodb', () => ({
@@ -40,14 +41,37 @@ vi.mock('../services/dynamodb', () => ({
     createImage: vi.fn(),
     getImageById: vi.fn(),
     createTag: vi.fn(),
+    getFarmForUser: vi.fn(),
   },
 }));
 
 vi.mock('../services/s3', () => ({
   getSignedImageUrl: vi.fn(),
+  getSignedThumbnailUrl: vi.fn(),
   uploadImage: vi.fn(),
   deleteImage: vi.fn(),
 }));
+
+vi.mock('../services/budget', () => ({
+  checkBudget: vi.fn().mockResolvedValue({ allowed: true }),
+  recordUsage: vi.fn().mockResolvedValue(undefined),
+  getUsage: vi.fn(),
+  MESSAGES_PER_HOUR_LIMIT: 20,
+  CHAT_MODEL: 'claude-haiku-4-5-20251001',
+  todayUtc: vi.fn().mockReturnValue('2026-03-20'),
+  nextMidnightUtc: vi.fn().mockReturnValue('2026-03-21T00:00:00.000Z'),
+  todayStartUtc: vi.fn().mockReturnValue('2026-03-20T00:00:00.000Z'),
+  checkRateLimit: vi.fn(),
+}));
+
+// ── Auth helpers ─────────────────────────────────────────────────
+
+const TEST_USER_ID = 'test-cognito-sub-001';
+function authHeaders(): Record<string, string> {
+  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { Authorization: `Bearer aaa.${payload}.sig` };
+}
 
 // ── Seed fixtures ────────────────────────────────────────────────
 
@@ -59,6 +83,7 @@ const IMAGE_ID  = 'cf000000-0000-0000-0000-000000000005';
 
 const farmSeed = {
   id: FARM_ID,
+  user_id: TEST_USER_ID,
   name: 'Contract Test Farm',
   description: 'A test farm',
   latitude: 35.6762,
@@ -107,7 +132,12 @@ const tagSeed = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://cdn.example.com/signed-url');
+  vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://cdn.example.com/thumb-signed-url');
   vi.mocked(uploadImage).mockResolvedValue(`images/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`);
+  // Ownership chain defaults (farm.user_id matches TEST_USER_ID from auth token)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed as any);
+  vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
 });
 
 // ── GET /api/v1/farms/:farmId ─────────────────────────────────────
@@ -119,7 +149,7 @@ describe('contract: GET /api/v1/farms/:farmId → FarmResponse', () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
     vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
 
@@ -142,7 +172,7 @@ describe('contract: GET /api/v1/farms/:farmId → FarmResponse', () => {
     vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
     vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([plotSeed]);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as {
       fields: Array<{
@@ -185,7 +215,7 @@ describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
     vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as { data: Array<Record<string, unknown>> };
 
@@ -204,28 +234,45 @@ describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
     expect(item['latest_image']).toBeNull();
   });
 
-  it('latest_image has thumbnail_url (not url) and no storage_key', async () => {
+  it('latest_image has thumbnail_url: null when no thumbnail generated yet', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
     vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
     vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
     vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(imageSeed);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     const body = await res.json() as { data: Array<Record<string, unknown>> };
     const img = body.data[0]['latest_image'] as Record<string, unknown>;
 
     expect(img).not.toBeNull();
-    expect(img['thumbnail_url']).toBe('https://cdn.example.com/signed-url');
+    expect(img['thumbnail_url']).toBeNull();  // null when thumbnail_key absent
     expect(img['storage_key']).toBeUndefined();   // must not leak internal path
     expect(img['id']).toBe(IMAGE_ID);
     expect(img['captured_at']).toBe('2026-03-17T10:00:00.000Z');
     expect(img['trigger']).toBe('scheduled');
   });
 
+  it('latest_image has thumbnail_url when thumbnail_key present', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
+    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
+    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
+    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
+    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue({
+      ...imageSeed,
+      thumbnail_key: `thumbnails/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`,
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
+    const body = await res.json() as { data: Array<Record<string, unknown>> };
+    const img = body.data[0]['latest_image'] as Record<string, unknown>;
+
+    expect(img['thumbnail_url']).toBe('https://cdn.example.com/thumb-signed-url');
+  });
+
   it('returns 404 when farm does not exist', async () => {
     vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     expect(res.status).toBe(404);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('NOT_FOUND');
@@ -243,7 +290,7 @@ describe('contract: GET /api/v1/plots/:plotId → PlotDetailResponse', () => {
     vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
 
@@ -258,29 +305,44 @@ describe('contract: GET /api/v1/plots/:plotId → PlotDetailResponse', () => {
     expect(body['latest_image']).toBeNull();
   });
 
-  it('latest_image has thumbnail_url and no storage_key', async () => {
+  it('latest_image has thumbnail_url: null when no thumbnail generated yet', async () => {
     vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
     vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
     vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(imageSeed);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     const img = body['latest_image'] as Record<string, unknown>;
 
     expect(img).not.toBeNull();
     expect(img['id']).toBe(IMAGE_ID);
-    // makeLatestImage returns thumbnail_url for all latest_image fields
-    expect(img['thumbnail_url']).toBe('https://cdn.example.com/signed-url');
+    expect(img['thumbnail_url']).toBeNull();  // null until Lambda generates thumbnail
     expect(img['storage_key']).toBeUndefined();   // must not leak internal path
     expect(img['captured_at']).toBe('2026-03-17T10:00:00.000Z');
     expect(img['trigger']).toBe('scheduled');
   });
 
+  it('latest_image has thumbnail_url when thumbnail_key present', async () => {
+    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
+    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
+    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
+    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue({
+      ...imageSeed,
+      thumbnail_key: `thumbnails/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`,
+    });
+
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
+    const body = await res.json() as Record<string, unknown>;
+    const img = body['latest_image'] as Record<string, unknown>;
+
+    expect(img['thumbnail_url']).toBe('https://cdn.example.com/thumb-signed-url');
+  });
+
   it('returns 404 when plot does not exist', async () => {
     vi.mocked(dynamoRepo.getPlotById).mockRejectedValue(new NotFoundError('Plot not found'));
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(404);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('NOT_FOUND');
@@ -335,7 +397,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
   });
 
   it('has all top-level WeatherResponse fields', async () => {
-    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
 
@@ -349,7 +411,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
   });
 
   it('current has all required fields', async () => {
-    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`, { headers: authHeaders() });
     const body = await res.json() as { current: Record<string, unknown> };
     const current = body.current;
 
@@ -362,7 +424,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
   });
 
   it('today has high, low, rain_probability, rain_sum_mm, sunrise, sunset', async () => {
-    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`, { headers: authHeaders() });
     const body = await res.json() as { today: Record<string, unknown> };
     const today = body.today;
 
@@ -375,7 +437,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
   });
 
   it('hourly items have time, temperature, rain_probability, condition_icon', async () => {
-    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`, { headers: authHeaders() });
     const body = await res.json() as { hourly: Array<Record<string, unknown>> };
 
     expect(body.hourly.length).toBeGreaterThan(0);
@@ -387,7 +449,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
   });
 
   it('daily items have date, high, low, rain_probability, rain_sum_mm, condition, condition_icon', async () => {
-    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${WEATHER_FARM_ID}/weather`, { headers: authHeaders() });
     const body = await res.json() as { daily: Array<Record<string, unknown>> };
 
     expect(body.daily).toHaveLength(7);
@@ -451,7 +513,7 @@ describe('zod contract: GET /api/v1/farms/:farmId', () => {
     vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
     vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([plotSeed]);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => FarmResponseSchema.parse(body)).not.toThrow();
@@ -465,7 +527,7 @@ describe('zod contract: POST /api/v1/farms', () => {
 
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'New Farm', latitude: 35.68, longitude: 139.69 }),
     });
     expect(res.status).toBe(201);
@@ -482,7 +544,7 @@ describe('zod contract: PATCH /api/v1/farms/:farmId', () => {
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'Updated Farm' }),
     });
     expect(res.status).toBe(200);
@@ -500,7 +562,7 @@ describe('zod contract: GET /api/v1/farms/:farmId/plots', () => {
     vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => FarmPlotsResponseSchema.parse(body)).not.toThrow();
@@ -515,7 +577,7 @@ describe('zod contract: GET /api/v1/plots/:plotId', () => {
     vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => PlotDetailResponseSchema.parse(body)).not.toThrow();
@@ -529,7 +591,7 @@ describe('zod contract: GET /api/v1/plots/:plotId/images', () => {
     vi.mocked(dynamoRepo.getImagesForPlot).mockResolvedValue({ items: [imageSeed], nextCursor: null });
     vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([tagSeed]);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => ImageListResponseSchema.parse(body)).not.toThrow();
@@ -552,6 +614,7 @@ describe('zod contract: POST /api/v1/plots/:plotId/images', () => {
 
     const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, {
       method: 'POST',
+      headers: authHeaders(),
       body: formData,
     });
     expect(res.status).toBe(201);
@@ -566,7 +629,7 @@ describe('zod contract: GET /api/v1/images/:imageId', () => {
     vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageSeed);
     vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([tagSeed]);
 
-    const res = await app.request(`/api/v1/images/${IMAGE_ID}`);
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => ImageDetailResponseSchema.parse(body)).not.toThrow();
@@ -581,7 +644,7 @@ describe('zod contract: POST /api/v1/images/:imageId/tags', () => {
 
     const res = await app.request(`/api/v1/images/${IMAGE_ID}/tags`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ tag: 'healthy' }),
     });
     expect(res.status).toBe(201);
@@ -604,7 +667,7 @@ describe('zod contract: GET /api/v1/farms/:farmId/weather', () => {
   });
 
   it('response parses against WeatherResponseSchema', async () => {
-    const res = await app.request(`/api/v1/farms/${ZSCHEMA_FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${ZSCHEMA_FARM_ID}/weather`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => WeatherResponseSchema.parse(body)).not.toThrow();
@@ -631,11 +694,46 @@ describe('zod contract: POST /api/v1/chat', () => {
   it('response parses against ChatResponseSchema', async () => {
     const res = await app.request('/api/v1/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ message: 'What should I plant?' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => ChatResponseSchema.parse(body)).not.toThrow();
+  });
+});
+
+// 12 ── GET /api/v1/usage
+import { getUsage } from '../services/budget';
+
+describe('zod contract: GET /api/v1/usage', () => {
+  it('response parses against UsageResponseSchema', async () => {
+    vi.mocked(getUsage).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      period: 'daily',
+      period_start: '2026-03-20T00:00:00.000Z',
+      reset_at: '2026-03-21T00:00:00.000Z',
+      user_budget: {
+        input_tokens_used: 1200,
+        input_tokens_limit: 50000,
+        output_tokens_used: 300,
+        output_tokens_limit: 10000,
+        messages_sent: 4,
+        messages_limit: 20,
+      },
+      global_budget: {
+        input_tokens_used: 12000,
+        input_tokens_limit: 500000,
+        output_tokens_used: 3000,
+        output_tokens_limit: 100000,
+        utilization_pct: 2,
+      },
+      model: 'claude-haiku-4-5-20251001',
+    });
+
+    const res = await app.request('/api/v1/usage', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(() => UsageResponseSchema.parse(body)).not.toThrow();
   });
 });

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
 import { NotFoundError, UpstreamError, ServiceUnavailableError } from '../errors';
+import { getAuthContext } from '../middleware/auth';
 import { WEATHER_CACHE_TTL_SECONDS } from '@litcrop/shared';
 import type { Farm, Plot, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
 
@@ -280,14 +281,18 @@ function computeCropImpact(
 
 router.get('/:farmId/weather', async (c) => {
   const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
-  // Verify farm exists
+  // Verify farm exists and belongs to caller
   let farm: Farm;
   try {
     farm = await dynamoRepo.getFarm(farmId);
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (farm.user_id !== userId) {
+    throw new NotFoundError(`Farm not found: ${farmId}`);
   }
 
   // Check cache

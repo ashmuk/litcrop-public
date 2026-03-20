@@ -12,13 +12,21 @@ vi.mock('../../services/dynamodb', () => ({
 
 // ── WMO code tests (via route + mocked fetch) ─────────────────────
 
+const TEST_USER_ID = 'test-cognito-sub-001';
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
 const FARM_ID_2 = 'f0000000-0000-0000-0000-000000000002'; // for cache scenarios
 const FARM_ID_3 = 'f0000000-0000-0000-0000-000000000003'; // for stale cache
 const FARM_ID_4 = 'f0000000-0000-0000-0000-000000000004'; // for WMO 95
 
+function authHeaders(): Record<string, string> {
+  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { Authorization: `Bearer aaa.${payload}.sig` };
+}
+
 const farmFixture = {
   id: FARM_ID,
+  user_id: TEST_USER_ID,
   name: 'Test Farm',
   latitude: 36.0,
   longitude: 138.3,
@@ -86,7 +94,7 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
       json: () => Promise.resolve(makeOpenMeteoResponse({ weatherCode: 0 })),
     }));
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID_2}/weather`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID_2}/weather`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as {
       current: { condition: string; condition_icon: string };
@@ -103,7 +111,7 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
       json: () => Promise.resolve(makeOpenMeteoResponse({ weatherCode: 95 })),
     }));
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID_4}/weather`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID_4}/weather`, { headers: authHeaders() });
     const body = await res.json() as { current: { condition: string; condition_icon: string } };
     expect(body.current.condition).toBe('Thunderstorm');
     expect(body.current.condition_icon).toBe('thunderstorm');
@@ -136,7 +144,7 @@ describe('crop_impact: frost risk', () => {
       })),
     }));
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/weather`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/weather`, { headers: authHeaders() });
     const body = await res.json() as { crop_impact: Array<{ title: string }> };
     const frostAlerts = body.crop_impact.filter((c) => c.title === 'Frost Risk');
     expect(frostAlerts.length).toBeGreaterThan(0);
@@ -167,7 +175,7 @@ describe('crop_impact: frost risk', () => {
       })),
     }));
 
-    const res = await app.request(`/api/v1/farms/${farmId5}/weather`);
+    const res = await app.request(`/api/v1/farms/${farmId5}/weather`, { headers: authHeaders() });
     const body = await res.json() as { crop_impact: Array<{ title: string }> };
     const frostAlerts = body.crop_impact.filter((c) => c.title === 'Frost Risk');
     expect(frostAlerts).toHaveLength(1); // break ensures only first day
@@ -196,7 +204,7 @@ describe('crop_impact: frost risk', () => {
       })),
     }));
 
-    const res = await app.request(`/api/v1/farms/${farmId6}/weather`);
+    const res = await app.request(`/api/v1/farms/${farmId6}/weather`, { headers: authHeaders() });
     const body = await res.json() as { crop_impact: Array<{ title: string }> };
     const frostAlerts = body.crop_impact.filter((c) => c.title === 'Frost Risk');
     expect(frostAlerts).toHaveLength(0);
@@ -217,9 +225,9 @@ describe('cache behavior', () => {
     vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
 
     // First request populates cache
-    await app.request(`/api/v1/farms/${farmId7}/weather`);
+    await app.request(`/api/v1/farms/${farmId7}/weather`, { headers: authHeaders() });
     // Second request — fetch should not be called again
-    const res2 = await app.request(`/api/v1/farms/${farmId7}/weather`);
+    const res2 = await app.request(`/api/v1/farms/${farmId7}/weather`, { headers: authHeaders() });
     expect(res2.status).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
@@ -234,7 +242,7 @@ describe('cache behavior', () => {
       ok: true,
       json: () => Promise.resolve(makeOpenMeteoResponse()),
     }));
-    await app.request(`/api/v1/farms/${farmId8}/weather`);
+    await app.request(`/api/v1/farms/${farmId8}/weather`, { headers: authHeaders() });
 
     // Simulate cache expiry by creating a fresh fetch failure
     // We can't control the TTL, but we can test that stale cache is served
@@ -243,7 +251,7 @@ describe('cache behavior', () => {
     // Instead test: cached response served when called again (TTL not expired)
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     // Since TTL is 15 min and it hasn't expired, we'll get cached data
-    const res = await app.request(`/api/v1/farms/${farmId8}/weather`);
+    const res = await app.request(`/api/v1/farms/${farmId8}/weather`, { headers: authHeaders() });
     // Either from cache (200) or stale cache (200) — either way 200
     expect(res.status).toBe(200);
   });
@@ -254,7 +262,7 @@ describe('cache behavior', () => {
 describe('error handling', () => {
   it('returns 404 when farm not found', async () => {
     vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/nonexistent/weather`);
+    const res = await app.request(`/api/v1/farms/nonexistent/weather`, { headers: authHeaders() });
     expect(res.status).toBe(404);
   });
 
@@ -267,7 +275,7 @@ describe('error handling', () => {
       status: 503,
     }));
 
-    const res = await app.request(`/api/v1/farms/${farmId9}/weather`);
+    const res = await app.request(`/api/v1/farms/${farmId9}/weather`, { headers: authHeaders() });
     expect(res.status).toBe(502);
   });
 });

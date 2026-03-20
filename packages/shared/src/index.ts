@@ -39,6 +39,7 @@ export type {
   CropImpactCard,
   ChatRequest,
   ChatResponse,
+  UsageResponse,
 } from './types/api';
 
 // API request types
@@ -92,6 +93,7 @@ export {
   TagCreateResponseSchema,
   WeatherResponseSchema,
   ChatResponseSchema,
+  UsageResponseSchema,
 } from './schemas/index';
 
 // Validation utilities

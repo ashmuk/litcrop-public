@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, uploadImage, deleteImage } from '../services/s3';
+import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage, deleteImage } from '../services/s3';
 import {
   NotFoundError,
   ValidationError,
@@ -9,6 +9,7 @@ import {
   AppError,
   ServiceUnavailableError,
 } from '../errors';
+import { getAuthContext } from '../middleware/auth';
 import {
   DEFAULT_PAGE_LIMIT,
   MAX_PAGE_LIMIT,
@@ -20,6 +21,20 @@ import {
 } from '@litcrop/shared';
 import type { Farm, Field, Bed, Plot, Image } from '@litcrop/shared';
 import { makeLatestImage } from './_helpers';
+
+/** Verify caller owns the farm that contains this plot (plot.farm_id → farm.user_id). */
+async function assertPlotOwnership(plot: Plot, userId: string): Promise<void> {
+  let farm: Farm;
+  try {
+    farm = await dynamoRepo.getFarm(plot.farm_id);
+  } catch (err) {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (farm.user_id !== userId) {
+    throw new NotFoundError(`Plot not found: ${plot.id}`);
+  }
+}
 
 const router = new Hono();
 
@@ -54,6 +69,7 @@ async function buildBedLookup(
 
 router.get('/:plotId', async (c) => {
   const { plotId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
   let plot: Plot;
   try {
@@ -62,6 +78,8 @@ router.get('/:plotId', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
+
+  await assertPlotOwnership(plot, userId);
 
   const [bedLookup, latestImage] = await Promise.all([
     buildBedLookup(plot.farm_id),
@@ -90,6 +108,7 @@ router.get('/:plotId', async (c) => {
 
 router.get('/:plotId/images', async (c) => {
   const { plotId } = c.req.param();
+  const { userId } = getAuthContext(c);
   const rawLimit = c.req.query('limit');
   const cursor = c.req.query('cursor');
 
@@ -102,13 +121,15 @@ router.get('/:plotId/images', async (c) => {
     });
   }
 
-  // Verify plot exists
+  // Verify plot exists and caller owns it
+  let plot: Plot;
   try {
-    await dynamoRepo.getPlotById(plotId);
+    plot = await dynamoRepo.getPlotById(plotId);
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
+  await assertPlotOwnership(plot, userId);
 
   let result: { items: Image[]; nextCursor: string | null };
   try {
@@ -126,7 +147,7 @@ router.get('/:plotId/images', async (c) => {
   const data = await Promise.all(
     result.items.map(async (image) => {
       const [thumbnail_url, tags] = await Promise.all([
-        getSignedImageUrl(image.storage_key),
+        image.thumbnail_key ? getSignedThumbnailUrl(image.thumbnail_key) : Promise.resolve(null),
         dynamoRepo.getTagsForImage(image.id),
       ]);
       // Tags are sorted ascending by createdAt; last entry is the most recent
@@ -152,8 +173,9 @@ router.get('/:plotId/images', async (c) => {
 
 router.post('/:plotId/images', async (c) => {
   const { plotId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
-  // 2. Verify plot exists
+  // 2. Verify plot exists and caller owns it
   let plot: Plot;
   try {
     plot = await dynamoRepo.getPlotById(plotId);
@@ -161,6 +183,7 @@ router.post('/:plotId/images', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
+  await assertPlotOwnership(plot, userId);
 
   // 1/3. Parse multipart form data
   const formData = await c.req.parseBody();

@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { ValidationError, UpstreamError } from '../errors';
+import { ValidationError, UpstreamError, RateLimitError, BudgetExceededError } from '../errors';
+import { getAuthContext } from '../middleware/auth';
+import {
+  checkBudget,
+  recordUsage,
+  MESSAGES_PER_HOUR_LIMIT,
+  CHAT_MODEL,
+} from '../services/budget';
 import type { Farm, Plot } from '@litcrop/shared';
 
 const router = new Hono();
@@ -8,9 +15,29 @@ const router = new Hono();
 // ── Config ───────────────────────────────────────────────────────
 
 const LLM_PROVIDER = (process.env['LLM_API_PROVIDER'] ?? 'anthropic').toLowerCase();
-const LLM_API_KEY = process.env['LLM_API_KEY'];
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const ANTHROPIC_MODEL = CHAT_MODEL;
 const OPENAI_MODEL = 'gpt-4o-mini';
+
+// ── In-memory rate limiter (20 messages/hour per user) ────────────
+// Stores timestamps of recent requests; entries older than 1h are evicted.
+
+const rateLimitStore = new Map<string, number[]>();
+
+export function checkRateLimit(userId: string): void {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000; // 1 hour
+  const existing = rateLimitStore.get(userId) ?? [];
+  const recent = existing.filter((ts) => now - ts < windowMs);
+  if (recent.length >= MESSAGES_PER_HOUR_LIMIT) {
+    const oldestInWindow = recent[0];
+    const retryAfterMs = windowMs - (now - oldestInWindow);
+    throw new RateLimitError('Chat rate limit exceeded. Try again later.', {
+      retry_after_seconds: Math.ceil(retryAfterMs / 1000),
+    });
+  }
+  recent.push(now);
+  rateLimitStore.set(userId, recent);
+}
 
 // ── Default suggestions (fallback) ───────────────────────────────
 
@@ -89,12 +116,18 @@ function parseSuggestions(text: string): { reply: string; suggestions: string[] 
 
 // ── LLM API callers ───────────────────────────────────────────────
 
-async function callAnthropic(systemPrompt: string, userMessage: string): Promise<string> {
+interface LLMResult {
+  text: string;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+async function callAnthropic(systemPrompt: string, userMessage: string): Promise<LLMResult> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': LLM_API_KEY!,
+      'x-api-key': process.env['LLM_API_KEY']!,
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
@@ -114,15 +147,20 @@ async function callAnthropic(systemPrompt: string, userMessage: string): Promise
 
   const data = (await response.json()) as Record<string, unknown>;
   const content = data['content'] as Array<{ type: string; text: string }>;
-  return content[0]?.text ?? '';
+  const usage = data['usage'] as { input_tokens?: number; output_tokens?: number } | undefined;
+  return {
+    text: content[0]?.text ?? '',
+    input_tokens: usage?.input_tokens ?? 0,
+    output_tokens: usage?.output_tokens ?? 0,
+  };
 }
 
-async function callOpenAI(systemPrompt: string, userMessage: string): Promise<string> {
+async function callOpenAI(systemPrompt: string, userMessage: string): Promise<LLMResult> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${LLM_API_KEY}`,
+      Authorization: `Bearer ${process.env['LLM_API_KEY']}`,
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
@@ -143,7 +181,12 @@ async function callOpenAI(systemPrompt: string, userMessage: string): Promise<st
 
   const data = (await response.json()) as Record<string, unknown>;
   const choices = data['choices'] as Array<{ message: { content: string } }>;
-  return choices[0]?.message?.content ?? '';
+  const usage = data['usage'] as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+  return {
+    text: choices[0]?.message?.content ?? '',
+    input_tokens: usage?.prompt_tokens ?? 0,
+    output_tokens: usage?.completion_tokens ?? 0,
+  };
 }
 
 function stubResponse(message: string): { reply: string; suggestions: string[] } {
@@ -165,6 +208,7 @@ I'm a crop planning assistant for LitCrop. To get real AI-powered advice, config
 // ── 5.11 POST /api/v1/chat ───────────────────────────────────────
 
 router.post('/', async (c) => {
+  const { userId } = getAuthContext(c);
   const body = await c.req.json<Record<string, unknown>>();
 
   // Validate message
@@ -186,14 +230,17 @@ router.post('/', async (c) => {
     });
   }
 
-  // Load farm context if farm_id provided
+  // Load farm context — only the caller's own farm (T-AUTH-05)
   let farm: Farm | null = null;
   let plots: Plot[] = [];
 
   const farmId = body['farm_id'];
   if (farmId && typeof farmId === 'string') {
     try {
-      [farm, plots] = await Promise.all([dynamoRepo.getFarm(farmId), dynamoRepo.getPlotsForFarm(farmId)]);
+      const candidate = await dynamoRepo.getFarm(farmId);
+      if (candidate.user_id === userId) {
+        [farm, plots] = [candidate, await dynamoRepo.getPlotsForFarm(farmId)];
+      }
     } catch {
       // Non-fatal: proceed without farm context
     }
@@ -202,26 +249,58 @@ router.post('/', async (c) => {
   const systemPrompt = buildSystemPrompt(farm, plots);
   const conversationId = `conv-${crypto.randomUUID()}`;
 
-  // If no API key, return stub
-  if (!LLM_API_KEY) {
+  // If no API key, return stub (no rate limit or budget check needed)
+  if (!process.env['LLM_API_KEY']) {
     const stub = stubResponse(message);
     return c.json({ ...stub, conversation_id: conversationId });
   }
 
+  // Rate limit check (in-memory, per-user, 20 msgs/hour)
+  checkRateLimit(userId);
+
+  // Token budget check (DynamoDB, pre-flight)
+  const budgetResult = await checkBudget(userId);
+  if (!budgetResult.allowed) {
+    const userRec = budgetResult.user_record!;
+    const globalRec = budgetResult.global_record!;
+    const isUser = budgetResult.scope === 'user';
+    throw new BudgetExceededError(
+      `Daily token budget exceeded. Resets at ${budgetResult.reset_at}`,
+      {
+        scope: budgetResult.scope!,
+        reset_at: budgetResult.reset_at!,
+        input_tokens_used: isUser ? userRec.input_tokens_used : globalRec.input_tokens_used,
+        output_tokens_used: isUser ? userRec.output_tokens_used : globalRec.output_tokens_used,
+        input_tokens_limit: isUser
+          ? parseInt(process.env['CHAT_DAILY_USER_INPUT_LIMIT'] ?? '50000', 10)
+          : parseInt(process.env['CHAT_DAILY_GLOBAL_INPUT_LIMIT'] ?? '500000', 10),
+        output_tokens_limit: isUser
+          ? parseInt(process.env['CHAT_DAILY_USER_OUTPUT_LIMIT'] ?? '10000', 10)
+          : parseInt(process.env['CHAT_DAILY_GLOBAL_OUTPUT_LIMIT'] ?? '100000', 10),
+      },
+    );
+  }
+
   // Call LLM
-  let rawReply: string;
+  let result: LLMResult;
   try {
     if (LLM_PROVIDER === 'openai') {
-      rawReply = await callOpenAI(systemPrompt, message);
+      result = await callOpenAI(systemPrompt, message);
     } else {
-      rawReply = await callAnthropic(systemPrompt, message);
+      result = await callAnthropic(systemPrompt, message);
     }
   } catch (err) {
     if (err instanceof UpstreamError) throw err;
     throw new UpstreamError('AI service temporarily unavailable');
   }
 
-  const { reply, suggestions } = parseSuggestions(rawReply);
+  // Record token usage asynchronously (non-blocking — don't delay response)
+  recordUsage(userId, {
+    input_tokens: result.input_tokens,
+    output_tokens: result.output_tokens,
+  }).catch((err) => console.error('[budget] recordUsage failed', err));
+
+  const { reply, suggestions } = parseSuggestions(result.text);
 
   return c.json({ reply, suggestions, conversation_id: conversationId });
 });

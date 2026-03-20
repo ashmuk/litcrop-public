@@ -6,6 +6,7 @@ import {
   NotFoundError,
   ServiceUnavailableError,
 } from '../errors';
+import { getAuthContext } from '../middleware/auth';
 import {
   THEME_OPTIONS,
   LOCALE_OPTIONS,
@@ -22,6 +23,26 @@ const router = new Hono();
 
 function isConditionalCheckFailed(err: unknown): boolean {
   return err instanceof Error && err.name === 'ConditionalCheckFailedException';
+}
+
+function isTransactionCanceled(err: unknown): boolean {
+  return err instanceof Error && err.name === 'TransactionCanceledException';
+}
+
+/** Assert userId owns the farm; throws 404 if not (prevents resource enumeration). */
+async function assertFarmOwnership(farmId: string, userId: string): Promise<Farm> {
+  let farm: Farm;
+  try {
+    farm = await dynamoRepo.getFarm(farmId);
+  } catch (err) {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (farm.user_id !== userId) {
+    // Return 404 (not 403) to avoid leaking existence of other users' farms
+    throw new NotFoundError(`Farm not found: ${farmId}`);
+  }
+  return farm;
 }
 
 /** Validate farm create/update fields. Throws ValidationError on failure. */
@@ -91,6 +112,7 @@ function validateFarmFields(body: Record<string, unknown>, required?: string[]) 
 function farmToResponse(farm: Farm) {
   return {
     id: farm.id,
+    user_id: farm.user_id,
     name: farm.name,
     description: farm.description ?? null,
     latitude: farm.latitude,
@@ -107,14 +129,9 @@ function farmToResponse(farm: Farm) {
 
 router.get('/:farmId', async (c) => {
   const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
-  let farm: Farm;
-  try {
-    farm = await dynamoRepo.getFarm(farmId);
-  } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  const farm = await assertFarmOwnership(farmId, userId);
 
   const fields = await dynamoRepo.getFieldsForFarm(farmId);
 
@@ -159,14 +176,9 @@ router.get('/:farmId', async (c) => {
 
 router.get('/:farmId/plots', async (c) => {
   const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
-  let farm: Farm;
-  try {
-    farm = await dynamoRepo.getFarm(farmId);
-  } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  const farm = await assertFarmOwnership(farmId, userId);
 
   // Build bed_id → { bed_name, field_name, field_id } map in parallel with plots fetch
   const fields = await dynamoRepo.getFieldsForFarm(farm.id);
@@ -209,6 +221,7 @@ router.get('/:farmId/plots', async (c) => {
 // ── 5.2 POST /api/v1/farms ───────────────────────────────────────
 
 router.post('/', async (c) => {
+  const { userId } = getAuthContext(c);
   const body = await c.req.json<Record<string, unknown>>();
 
   validateFarmFields(body, ['name', 'latitude', 'longitude']);
@@ -217,7 +230,7 @@ router.post('/', async (c) => {
 
   let farm: Farm;
   try {
-    farm = await dynamoRepo.createFarm(farmId, {
+    farm = await dynamoRepo.createFarm(farmId, userId, {
       name: (body['name'] as string).trim(),
       description: body['description'] as string | undefined,
       latitude: body['latitude'] as number,
@@ -228,8 +241,8 @@ router.post('/', async (c) => {
       theme: (body['theme'] as Farm['theme']) ?? DEFAULT_THEME,
     });
   } catch (err) {
-    if (isConditionalCheckFailed(err)) {
-      throw new ConflictError('Farm already exists');
+    if (isTransactionCanceled(err) || isConditionalCheckFailed(err)) {
+      throw new ConflictError('You already have a farm');
     }
     throw new ServiceUnavailableError('Storage service unavailable');
   }
@@ -241,6 +254,10 @@ router.post('/', async (c) => {
 
 router.patch('/:farmId', async (c) => {
   const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  await assertFarmOwnership(farmId, userId);
+
   const body = await c.req.json<Record<string, unknown>>();
 
   validateFarmFields(body);

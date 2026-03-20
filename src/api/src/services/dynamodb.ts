@@ -5,6 +5,7 @@ import {
   PutCommand,
   QueryCommand,
   UpdateCommand,
+  TransactWriteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import type { Farm, Field, Bed, Plot, Image, Tag, TagValue, PlotStatus } from '@litcrop/shared';
@@ -60,6 +61,7 @@ function decodeCursor(cursor: string): Record<string, unknown> {
 function itemToFarm(item: Record<string, unknown>, farmId: string): Farm {
   return {
     id: farmId,
+    user_id: (item['user_id'] as string) ?? '',
     name: item['name'] as string,
     description: item['description'] as string | undefined,
     latitude: item['latitude'] as number,
@@ -114,6 +116,7 @@ function itemToImage(item: Record<string, unknown>, imageId: string): Image {
     captured_at: item['captured_at'] as string,
     uploaded_at: item['uploaded_at'] as string,
     storage_key: item['storage_key'] as string,
+    thumbnail_key: item['thumbnail_key'] as string | undefined,
     trigger: item['trigger'] as Image['trigger'],
     content_type: item['content_type'] as string,
     size_bytes: item['size_bytes'] as number,
@@ -364,24 +367,56 @@ export class DynamoRepository {
 
   async createFarm(
     farmId: string,
-    data: Omit<Farm, 'id' | 'created_at'>,
+    userId: string,
+    data: Omit<Farm, 'id' | 'user_id' | 'created_at'>,
   ): Promise<Farm> {
     const createdAt = new Date().toISOString();
-    const farm: Farm = { id: farmId, ...data, created_at: createdAt };
+    const farm: Farm = { id: farmId, user_id: userId, ...data, created_at: createdAt };
 
+    // Atomic write: farm item + user→farm index (one farm per user constraint)
     await ddb.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: pk.farm(farmId),
-          SK: sk.meta(),
-          ...farm,
-        },
-        ConditionExpression: 'attribute_not_exists(PK)',
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: TABLE_NAME,
+              Item: {
+                PK: pk.farm(farmId),
+                SK: sk.meta(),
+                ...farm,
+              },
+              ConditionExpression: 'attribute_not_exists(PK)',
+            },
+          },
+          {
+            Put: {
+              TableName: TABLE_NAME,
+              Item: {
+                PK: `USER#${userId}`,
+                SK: '#FARM',
+                farm_id: farmId,
+              },
+              // Ensures only one farm per Cognito user
+              ConditionExpression: 'attribute_not_exists(PK)',
+            },
+          },
+        ],
       }),
     );
 
     return farm;
+  }
+
+  /** Look up the farm owned by a Cognito user. Returns null if none. */
+  async getFarmForUser(userId: string): Promise<Farm | null> {
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `USER#${userId}`, SK: '#FARM' },
+      }),
+    );
+    if (!result.Item) return null;
+    return this.getFarm(result.Item['farm_id'] as string);
   }
 
   async updateFarm(
@@ -478,6 +513,41 @@ export class DynamoRepository {
     );
 
     return image;
+  }
+
+  /**
+   * Set thumbnail_key on an image item after async thumbnail generation.
+   * Called by the thumbnail Lambda via GSI1 query (PK + SK unknown at call site).
+   */
+  async updateImageThumbnailKey(imageId: string, thumbnailKey: string): Promise<void> {
+    // First resolve the actual PK/SK via GSI1 (thumbnail Lambda only knows imageId)
+    const queryResult = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: GSI1_INDEX,
+        KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK = :sk',
+        ExpressionAttributeValues: {
+          ':pk': pk.image(imageId),
+          ':sk': sk.meta(),
+        },
+        Limit: 1,
+      }),
+    );
+
+    const item = queryResult.Items?.[0];
+    if (!item) throw new NotFoundError(`Image not found: ${imageId}`);
+
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: item['PK'] as string, SK: item['SK'] as string },
+        UpdateExpression: 'SET thumbnail_key = :key',
+        ExpressionAttributeValues: {
+          ':key': thumbnailKey,
+        },
+        ConditionExpression: 'attribute_exists(PK)',
+      }),
+    );
   }
 }
 

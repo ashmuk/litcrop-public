@@ -33,7 +33,10 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'PAYLOAD_TOO_LARGE'
   | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'UNAUTHORIZED'
   | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'BUDGET_EXCEEDED'
   | 'INTERNAL_ERROR'
   | 'SERVICE_UNAVAILABLE'
   | 'BAD_CURSOR'
@@ -175,4 +178,30 @@ export interface ChatRequest {
 export interface ChatResponse {
   reply: string;
   suggestions: string[];
+}
+
+// ── Usage Types ───────────────────────────────────────────────────
+
+/** GET /api/v1/usage */
+export interface UsageResponse {
+  user_id: string;
+  period: 'daily';
+  period_start: string;
+  reset_at: string;
+  user_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    messages_sent: number;
+    messages_limit: number;
+  };
+  global_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    utilization_pct: number;
+  };
+  model: string;
 }

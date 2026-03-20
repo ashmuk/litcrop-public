@@ -22,11 +22,19 @@ vi.mock('../../services/s3', () => ({
   uploadImage: vi.fn(),
 }));
 
+const TEST_USER_ID = 'test-cognito-sub-001';
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
 const PLOT_ID = 'a0000000-0000-0000-0000-000000000001';
 
+function authHeaders(): Record<string, string> {
+  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { Authorization: `Bearer aaa.${payload}.sig` };
+}
+
 const farmFixture = {
   id: FARM_ID,
+  user_id: TEST_USER_ID,
   name: 'Test Farm',
   description: undefined,
   latitude: 36.0,
@@ -48,7 +56,7 @@ describe('GET /api/v1/farms/:farmId', () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
     vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['id']).toBe(FARM_ID);
@@ -58,7 +66,7 @@ describe('GET /api/v1/farms/:farmId', () => {
 
   it('returns 404 when farm not found', async () => {
     vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(404);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('NOT_FOUND');
@@ -86,7 +94,7 @@ describe('GET /api/v1/farms/:farmId', () => {
       },
     ]);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as {
       fields: Array<{ beds: Array<{ plots: unknown[] }> }>;
@@ -104,7 +112,7 @@ describe('GET /api/v1/farms/:farmId', () => {
     ]);
     vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([]);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     const body = await res.json() as { fields: Array<{ beds: Array<{ plots: unknown[] }> }> };
     expect(body.fields[0].beds[0].plots).toEqual([]);
   });
@@ -121,7 +129,7 @@ describe('POST /api/v1/farms', () => {
 
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'New Farm', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(201);
@@ -132,7 +140,7 @@ describe('POST /api/v1/farms', () => {
   it('returns 400 when name is missing', async () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
@@ -143,7 +151,7 @@ describe('POST /api/v1/farms', () => {
   it('returns 400 when latitude out of range', async () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'Farm', latitude: 95, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
@@ -152,7 +160,7 @@ describe('POST /api/v1/farms', () => {
   it('returns 400 when longitude out of range', async () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'Farm', latitude: 36.0, longitude: 200 }),
     });
     expect(res.status).toBe(400);
@@ -164,11 +172,12 @@ describe('POST /api/v1/farms', () => {
 describe('PATCH /api/v1/farms/:farmId', () => {
   it('updates farm with valid body → 200', async () => {
     vi.mocked(dynamoRepo.updateFarm).mockResolvedValue(undefined);
+    // First call: ownership check; second call: re-fetch after update
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, name: 'Renamed' });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'Renamed' }),
     });
     expect(res.status).toBe(200);
@@ -177,22 +186,25 @@ describe('PATCH /api/v1/farms/:farmId', () => {
   });
 
   it('returns 400 when locale is invalid', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ locale: 'zz' }),
     });
     expect(res.status).toBe(400);
   });
 
-  it('returns 404 when farm not found', async () => {
+  it('returns 404 when farm not found (updateFarm fails)', async () => {
+    // Ownership check passes (farm exists with matching user_id)
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValueOnce(farmFixture);
     const err = new Error('ConditionalCheckFailedException');
     err.name = 'ConditionalCheckFailedException';
     vi.mocked(dynamoRepo.updateFarm).mockRejectedValue(err);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'New Name' }),
     });
     expect(res.status).toBe(404);
@@ -220,7 +232,7 @@ describe('GET /api/v1/farms/:farmId/plots', () => {
     ]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as { data: unknown[] };
     expect(body.data).toHaveLength(1);
@@ -228,7 +240,7 @@ describe('GET /api/v1/farms/:farmId/plots', () => {
 
   it('returns 404 when farm not found', async () => {
     vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     expect(res.status).toBe(404);
   });
 
@@ -250,7 +262,7 @@ describe('GET /api/v1/farms/:farmId/plots', () => {
     ]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`);
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
     const body = await res.json() as { data: Array<{ latest_image: null }> };
     expect(body.data[0].latest_image).toBeNull();
   });
