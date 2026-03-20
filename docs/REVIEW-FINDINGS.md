@@ -1,99 +1,146 @@
-# REVIEW-FINDINGS.md — LitCrop MVP Phase E
+# REVIEW-FINDINGS.md
 
-> Reviewed by: my-reviewer
-> Date: 2026-03-20
-> Branch: develop
-> Scope: Design document cross-consistency (ARCHITECTURE.md, SYSTEM-DESIGN.md, UX-DESIGNS.md, API-CONTRACTS.md, schemas/index.ts)
-
----
-
-## Summary
-
-- **MUST-FIX**: 6
-- **SHOULD-FIX**: 7
-- **SUGGESTION**: 3
-- **Overall assessment**: conditional-pass (no design flaws; alignment issues only)
-
-Both STOP Gates (Architecture+System Design, UX+API Contracts) passed conditionally. All 6 MUST-FIX items are cross-document consistency mismatches — no fundamental design flaws. The documents are individually excellent; the fixes are targeted field/value alignments.
+> **Reviewer**: my-reviewer | **Date**: 2026-03-20
+> **Scope**: Design document amendments -- MVP Token Budget Controls + [Production] BYOK
+> **Branch**: `develop` (unstaged changes)
+> **Verdict**: **CONDITIONAL PASS** -- 1 MUST-FIX, 3 SHOULD-FIX, 4 SUGGESTIONS
 
 ---
 
-## MUST-FIX
+## Findings
 
-### MF-1: 403 vs 404 for ownership failures
-- **Files**: `docs/ARCHITECTURE.md:274`, `docs/API-CONTRACTS.md:383-389`, `docs/UX-DESIGNS.md:578`
-- **Issue**: ARCHITECTURE.md §5 says ownership failures return `404 Not Found` (to avoid leaking resource existence). API-CONTRACTS.md §4b documents `403 FORBIDDEN` with message "Access denied: you do not own this resource." UX-DESIGNS.md §4.5 has a `403 Forbidden` error state.
-- **Decision**: Use `404 NOT_FOUND` (ARCHITECTURE.md approach — more secure, prevents resource enumeration).
-- **Fix**: Update API-CONTRACTS.md to remove `403 FORBIDDEN` from ownership failures in all endpoint error tables and §4b. Update UX-DESIGNS.md §4.5 to remove 403 error row and make 404 message generic ("Farm not found").
-
-### MF-2: Pagination envelope mismatch
-- **Files**: `docs/SYSTEM-DESIGN.md:818-824`, `docs/API-CONTRACTS.md:103-110`, `packages/shared/src/schemas/index.ts:142-146`
-- **Issue**: SYSTEM-DESIGN.md §2.2 uses `pagination: { count, next_cursor, has_more }`. API-CONTRACTS.md and Zod use `meta: { count, limit, next_cursor }`.
-- **Decision**: Standardize on `meta: { count, limit, next_cursor }` (matches API-CONTRACTS.md + Zod). Remove `has_more` (derivable from `next_cursor === null`).
-- **Fix**: Update SYSTEM-DESIGN.md §2.2 `PaginatedResponse` to use `meta` key with `count`, `limit`, `next_cursor`.
-
-### MF-3: Weather response field naming conflict
-- **Files**: `docs/API-CONTRACTS.md:1344-1377`, `docs/SYSTEM-DESIGN.md:919-939`, `packages/shared/src/schemas/index.ts:244-254`
-- **Issue**: SYSTEM-DESIGN.md + Zod use short names (`temperature`, `humidity`, `wind_speed`). API-CONTRACTS.md §8 uses qualified names (`temperature_c`, `humidity_pct`, `wind_speed_kmh`).
-- **Decision**: Standardize on short names (matches Zod + SYSTEM-DESIGN.md). Units documented separately.
-- **Fix**: Update API-CONTRACTS.md §8 `CurrentWeather` to use `temperature`, `humidity`, `wind_speed`.
-
-### MF-4: Zod FarmBaseSchema missing user_id
-- **Files**: `packages/shared/src/schemas/index.ts:38-49`, `docs/ARCHITECTURE.md`, `docs/API-CONTRACTS.md`
-- **Issue**: Both ARCHITECTURE.md and API-CONTRACTS.md document `user_id: UserId` on farm response objects. Zod `FarmBaseSchema` does not include it. Blocks auth contract tests.
-- **Fix**: Add `user_id: z.string()` to `FarmBaseSchema`.
-
-### MF-5: Zod ImageDetailResponseSchema missing thumbnail_url
-- **Files**: `packages/shared/src/schemas/index.ts:172-184`, `docs/API-CONTRACTS.md:§5.8`
-- **Issue**: API-CONTRACTS.md documents `thumbnail_url: string | null` on `GetImageResponse`. Zod schema omits it.
-- **Fix**: Add `thumbnail_url: z.string().nullable()` to `ImageDetailResponseSchema`.
-
-### MF-6: S3 bucket name inconsistency
-- **Files**: `docs/API-CONTRACTS.md:1270,1279`, `docs/ARCHITECTURE.md:435`
-- **Issue**: API-CONTRACTS.md §7 references `litcrop-poc-images` (PoC bucket). ARCHITECTURE.md §6 uses `litcrop-mvp-images`.
-- **Fix**: Replace all `litcrop-poc-images` with `litcrop-mvp-images` in API-CONTRACTS.md.
+| # | File:Line | Issue | Severity |
+|---|-----------|-------|----------|
+| 1 | `docs/ARCHITECTURE.md:532` vs `:548` | Haiku pricing inconsistency: External API Costs says ~$0.25/1M input, $1.25/1M output; Budget Controls says ~$0.80/MTok input, ~$4.00/MTok output. 3-4x discrepancy. | **MUST-FIX** |
+| 2 | `docs/ARCHITECTURE.md:550` | `retry_after` field referenced but API-CONTRACTS.md error shape uses `reset_at` inside `details`. Field name mismatch. | **SHOULD-FIX** |
+| 3 | `docs/API-CONTRACTS.md:1192-1196` | BUDGET_EXCEEDED detail fields use `daily_input_used` / `daily_output_used` naming, but UsageResponse uses `input_tokens_used` / `output_tokens_used`. Inconsistent naming convention. | **SHOULD-FIX** |
+| 4 | `docs/UX-DESIGNS.md:1069` | Usage bar only shows input tokens (`input_tokens_used / input_tokens_limit`). Output budget (10K) is 5x tighter than input (50K) and could exhaust first, surprising the user. | **SHOULD-FIX** |
+| 5 | `docs/SYSTEM-DESIGN.md:599-602` | Budget check uses two sequential GetItem calls (user + global). BatchGetItem would halve latency. | SUGGESTION |
+| 6 | `docs/SYSTEM-DESIGN.md:812` | UsageBudget TTL comment "48h from date start" could be clearer about the buffer purpose. | SUGGESTION |
+| 7 | `packages/shared/src/schemas/index.ts:311-313` | `period_start` and `reset_at` are `z.string()` but represent ISO 8601. Consider `z.string().datetime()`. | SUGGESTION |
+| 8 | `docs/API-CONTRACTS.md:1282` | BYOK key regex `/^sk-ant-[a-zA-Z0-9_-]{80,120}$/` may be too rigid if Anthropic changes key format. Server-side validation is the real check. | SUGGESTION |
 
 ---
 
-## SHOULD-FIX
+## Cross-Document Consistency Check
 
-### SF-1: FarmPlotItem / PlotSummary field mismatches
-- **Files**: `docs/SYSTEM-DESIGN.md:858-872`, `docs/API-CONTRACTS.md:688-706`
-- **Issue**: SYSTEM-DESIGN.md includes `bed_id`, `field_id`; API-CONTRACTS.md includes `field_name`, `bed_name` but no `bed_id`/`field_id`. Zod includes all four. Also: API-CONTRACTS.md adds `url` to `LatestImage` but Zod and SYSTEM-DESIGN.md do not.
+| Check | Status | Notes |
+|-------|--------|-------|
+| Budget limits (50K/10K user, 500K/100K global) | PASS | Consistent across ARCHITECTURE, API-CONTRACTS, SYSTEM-DESIGN |
+| 20-turn conversation limit | PASS | ARCHITECTURE.md and API-CONTRACTS.md agree |
+| Model ID `claude-haiku-4-5-20251001` | PASS | All docs use same model string |
+| Error codes (BUDGET_EXCEEDED, RATE_LIMITED) | PASS | All docs use same codes |
+| UsageResponse shape (API-CONTRACTS / SYSTEM-DESIGN / Zod) | PASS | All three aligned (8 fields, same nesting) |
+| Haiku pricing figures | **FAIL** | See Finding #1 |
+| BYOK items all tagged [Production] | PASS | Section 5.13, 9.4b, scope table, deferred table all tagged |
+| `retry_after` vs `reset_at` naming | **FAIL** | See Finding #2 |
 
-### SF-2: ImageListItem vs ImageSummary structure divergence
-- **Files**: `docs/SYSTEM-DESIGN.md:885-893`, `docs/API-CONTRACTS.md:834-852`
-- **Issue**: SYSTEM-DESIGN.md uses `{ id, thumbnail_url, latest_tag }`. API-CONTRACTS.md uses `{ id, url, thumbnail_url, tags[] }`. Zod uses `{ id, thumbnail_url, latest_tag }`. Decide: flat `latest_tag` or full `tags[]`.
+## Budget Math Verification
 
-### SF-3: ChatResponse.tool_calls undocumented in API-CONTRACTS.md
-- **Files**: `docs/SYSTEM-DESIGN.md:971-986`, `docs/API-CONTRACTS.md:1174-1179`
-- **Issue**: SYSTEM-DESIGN.md and Zod include optional `tool_calls` array. API-CONTRACTS.md §5.11 omits it.
+Using the **higher** Haiku 4.5 pricing ($0.80/MTok input, $4.00/MTok output) from the Budget Controls section:
 
-### SF-4: CropImpact severity enum mismatch
-- **Files**: `docs/SYSTEM-DESIGN.md:964`, `docs/API-CONTRACTS.md:1384-1396`
-- **Issue**: SYSTEM-DESIGN.md + Zod use `'danger' | 'warning' | 'good' | 'info'`. API-CONTRACTS.md uses `'info' | 'warning' | 'critical'`.
+- 15 users x ~6.7 messages/user/day = 100 messages/day
+- 100 messages x 1,500 input tokens = 150,000 input tokens/day = $0.12/day
+- 100 messages x 300 output tokens = 30,000 output tokens/day = $0.12/day
+- Daily total: ~$0.24/day, ~$7.20/month
 
-### SF-5: UX 403 error state conflicts with architecture
-- **Files**: `docs/UX-DESIGNS.md:578`
-- **Issue**: If 404 approach chosen (MF-1), the UX 403 error state is unreachable. (Addressed as part of MF-1.)
+The doc states $0.27/day ($8/month) -- close enough (rounding). The math is reasonable.
 
-### SF-6: Single-farm-per-user constraint undocumented outside API-CONTRACTS.md
-- **Files**: `docs/API-CONTRACTS.md:163`
-- **Issue**: `409 CONFLICT` for single-farm constraint is only in API-CONTRACTS.md. Should be documented in ARCHITECTURE.md §4 or §5.
+**Worst-case (all budgets maxed daily):**
+- Global: 500K input + 100K output = $0.40 + $0.40 = $0.80/day = $24/month
 
-### SF-7: UX-DESIGNS.md duplicate section numbering
-- **Files**: `docs/UX-DESIGNS.md:816`
-- **Issue**: Section 5.8 used for both "Auth Form Card" (line 750) and "Toast Notification" (line 816). Toast should be 5.11.
+The doc claims "budget controls cap worst-case at ~$15/month" -- this underestimates. At the higher pricing, maxing global limits daily would cost ~$24/month. At the lower pricing ($0.25/$1.25), it would be ~$0.25/day = $7.50/month. This discrepancy stems from Finding #1. Once pricing is reconciled, the worst-case claim must be recalculated.
+
+## Security Review (BYOK)
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| Key encrypted at rest (KMS) | PASS | Documented in API-CONTRACTS.md storage section |
+| Key never returned in full | PASS | Only `key_hint` (last 4 chars) returned |
+| Key validated before storage | PASS | Server calls Anthropic `/v1/models` |
+| Key stored with clear PK/SK | PASS | `PK=USER#{userId} SK=SETTINGS#API_KEY` |
+| `resolveApiKey` optional (Production) | PASS | Marked with `?` in IBudgetService |
+| No key material in logs | Not documented | Recommend adding explicit note that API keys must never appear in logs |
+
+## Scope Tagging Verification
+
+| Item | Expected | Actual | Status |
+|------|----------|--------|--------|
+| PUT /api/v1/settings/api-key | [Production] | [Production] | PASS |
+| DELETE /api/v1/settings/api-key | [Production] | [Production] | PASS |
+| UX 9.4b API Key Settings | [Production] | [Production] | PASS |
+| resolveApiKey in IBudgetService | [Production] | [Production] (comment) | PASS |
+| BYOK in scope progression table | Production column | Production column | PASS |
+| GET /api/v1/usage | [MVP] | [MVP] | PASS |
+| Budget controls (all) | [MVP] | [MVP] | PASS |
+| No MVP scope creep from BYOK | -- | -- | PASS |
+
+## DynamoDB Design Review
+
+| Aspect | Assessment |
+|--------|-----------|
+| PK/SK pattern (`USAGE#{userId}`, `DAY#{date}`) | Sensible, follows single-table design. `USAGE#GLOBAL` for aggregate is clean. |
+| TTL (48h) | Appropriate -- full buffer day after budget day ends. Auto-cleanup by DynamoDB. |
+| Atomic ADD operations | Correct for concurrent counter updates. Avoids read-modify-write races. |
+| Hot partition risk | Low at 15 users. `USAGE#GLOBAL` is a single item updated on every chat -- acceptable at MVP scale but would need sharding at Production. |
+
+## API Contract Completeness
+
+| Aspect | Status |
+|--------|--------|
+| Error codes documented | PASS |
+| Response shapes with types | PASS |
+| Budget error response shape | PASS |
+| HTTP `Retry-After` header on 429 | Not documented -- standard practice, consider adding |
+| UsageResponse for GET /api/v1/usage | PASS |
+| Endpoint added to summary table | PASS |
+| BYOK endpoints (PUT/DELETE) | PASS |
+
+## Doc Integration Quality
+
+All amendments integrate naturally into existing section structures:
+- ARCHITECTURE.md: Budget controls table placed after cost analysis (logical flow)
+- API-CONTRACTS.md: Section numbering (5.12, 5.13) follows established pattern
+- SYSTEM-DESIGN.md: UsageBudget entity near ConversationMessage; IBudgetService near IChatService
+- UX-DESIGNS.md: 9.4a/9.4b sub-sections under existing Settings (9.4)
+- Zod schema appended after ChatResponseSchema, following same comment style
 
 ---
 
-## SUGGESTION
+## Recommendations
 
-### SG-1: GET /farms/{farmId} nested plot comment
-- Note that `FarmPlot` interface is a subset of `Plot` fields — add a brief comment for builders.
+### MUST-FIX
 
-### SG-2: Weather heading farm name source
-- Specify whether farm name in "Weather — LitCrop Demo Farm" comes from API call or cached auth session.
+**Finding #1 -- Reconcile Haiku pricing**: Determine the correct Haiku 4.5 pricing and update both sections of ARCHITECTURE.md to use the same figures. Recalculate the worst-case budget cap. The External API Costs section (line 532) says $0.25/$1.25; the Budget Controls section (line 548) says $0.80/$4.00. One set is wrong. After reconciliation, verify the "$15/month worst case" claim.
 
-### SG-3: GET /farms/{farmId} plot subset fields
-- The nested structure omits `bed_id`, `field_id`, `planted_at` — intentional for lightweight overview but could confuse builders.
+### SHOULD-FIX
+
+**Finding #2 -- Align retry_after vs reset_at**: In ARCHITECTURE.md line 550, change `retry_after` to `reset_at` to match the API-CONTRACTS.md error response shape. Optionally, also document an HTTP `Retry-After` header (seconds until midnight UTC) on 429 responses.
+
+**Finding #3 -- Align error detail field names with UsageResponse**: In the BUDGET_EXCEEDED error details (API-CONTRACTS.md lines 1192-1196), rename `daily_input_used` to `input_tokens_used`, `daily_output_used` to `output_tokens_used`, `daily_input_limit` to `input_tokens_limit`, `daily_output_limit` to `output_tokens_limit`. This aligns with the UsageResponse field names used everywhere else.
+
+**Finding #4 -- Usage bar should reflect both token types**: Update UX-DESIGNS.md 9.4a to show whichever budget is closer to exhaustion: "Usage bar shows `max(input_pct, output_pct)` where `pct = tokens_used / tokens_limit * 100`." Alternatively, show two separate bars for input and output.
+
+### SUGGESTIONS
+
+**Finding #5**: Note BatchGetItem as an implementation optimization in the sequence diagram comment.
+
+**Finding #6**: Clarify TTL buffer: "TTL: 48h from date start (keeps counters readable for one day after budget period ends)."
+
+**Finding #7**: Consider `z.string().datetime()` for ISO 8601 fields. Consistent with existing patterns (other schemas use `z.string()`), so this is optional.
+
+**Finding #8**: Relax BYOK regex to `/^sk-ant-.{20,200}$/` since server-side Anthropic API validation is the authoritative check.
+
+---
+
+## Verdict
+
+**CONDITIONAL PASS**
+
+The design amendments are well-structured, internally consistent on scope tagging and budget limits, and integrate cleanly into existing documents. The Zod schema aligns with the API contract. BYOK is properly scoped to [Production] with no MVP scope creep. DynamoDB design is appropriate for MVP scale. The sequence diagram correctly shows budget check before LLM call and counter update after.
+
+**Blocking issue**: The Haiku pricing inconsistency (Finding #1) undermines the cost analysis that justifies the $5/month budget constraint. The worst-case cap claim ($15/month) cannot be verified until pricing is reconciled.
+
+**Non-blocking issues**: Three SHOULD-FIX items are naming/UX consistency issues that should be resolved before implementation to avoid confusion during coding.
+
+Once Finding #1 is resolved with reconciled pricing figures, this review can be upgraded to **PASS**.

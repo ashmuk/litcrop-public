@@ -66,6 +66,7 @@
 | **Camera Simulator** | Node.js CLI script | Uploads sample images on schedule (periodic) and at random intervals (motion-triggered) |
 | **Weather Proxy** | Hono route → Open-Meteo API | Fetches weather data using farm lat/lon; caches responses (15-min TTL) |
 | **AI Chatbot** | Hono route → Anthropic SDK | Multi-turn crop advisor with tool use (query farm data, check weather). `@anthropic-ai/sdk` for typed API calls, streaming, and automatic retries. [ADR-009] |
+| **AI Budget Controls** | DynamoDB counters + Hono middleware | Per-user daily token budget, global spending cap, conversation turn limits. Model locked to `claude-haiku-4-5-20251001` for cost efficiency. Usage tracked via DynamoDB atomic counters with daily TTL. |
 | **Shared Schemas** | Zod (`@litcrop/shared`) | 17 Zod schemas validating API responses at boundaries. Used by contract tests to detect field-name drift between API and frontend. |
 | **i18n** | Astro + JSON locale files | English (en.json) and Japanese (ja.json); locale-aware date/number formatting |
 | **Theme System** | CSS custom properties | Light / Dark / Earthy / System; `data-theme` attribute on `<html>`, ~20 lines JS |
@@ -528,9 +529,25 @@ cdk destroy
 | Service | Usage | Cost | Notes |
 |---------|-------|------|-------|
 | **Open-Meteo** | ~200 requests/day | **$0.00** | Free, no API key |
-| **Anthropic API** (Claude Haiku) | ~100 messages/day, multi-turn + tool use | **$0.50-2.00/month** | Haiku ~$0.25/1M input, $1.25/1M output. Tool use adds ~2x tokens per exchange. |
+| **Anthropic API** (Claude Haiku) | ~100 messages/day, multi-turn + tool use | **$1.00-4.00/month** | Haiku 4.5: $1.00/1M input, $5.00/1M output. Tool use adds ~2x tokens per exchange. |
 
-**Total Verdict**: Well under the $5/month constraint. AWS costs ~$0-1.70/month + Anthropic ~$0.50-2.00/month = **~$2.20-3.70/month worst case**.
+**Total Verdict**: Well under the $5/month constraint for realistic usage. AWS costs ~$0-1.70/month + Anthropic ~$1.00-4.00/month = **~$2.70-5.70/month** (budget controls keep Anthropic costs in check).
+
+### AI Token Budget Controls (MVP)
+
+With 15 testers sharing the project owner's Anthropic API key, cost controls prevent runaway spending:
+
+| Control | Scope | Default | Configurable | Enforcement |
+|---------|-------|---------|-------------|-------------|
+| **Daily per-user token budget** | Per user (Cognito sub) | 50,000 input + 10,000 output tokens/day | Environment variable `CHAT_DAILY_USER_TOKEN_LIMIT` | DynamoDB atomic counter, resets daily (TTL) |
+| **Global daily spending cap** | All users combined | 500,000 input + 100,000 output tokens/day | Environment variable `CHAT_DAILY_GLOBAL_TOKEN_LIMIT` | DynamoDB atomic counter, resets daily (TTL) |
+| **Conversation turn limit** | Per conversation | 20 turns (10 user + 10 assistant) | Environment variable `CHAT_MAX_TURNS` | Checked before sending to Anthropic SDK |
+| **Rate limit** | Per user | 20 messages/hour | Existing (already documented) | In-memory sliding window |
+| **Model lock** | Global | `claude-haiku-4-5-20251001` | Environment variable `CHAT_MODEL` | Server-side only; not user-selectable in MVP |
+
+**Why Haiku?** At $1.00/MTok input and $5.00/MTok output (Haiku 4.5), a 15-user cohort with 100 messages/day averaging 1,500 input + 300 output tokens per exchange costs ~$0.15 + $0.15 = **~$0.30/day ($9/month)**. Budget controls cap worst-case at ~$0.50 + $0.50 = $1.00/day (**$30/month**) if all global limits are maxed daily — unlikely with 15 testers.
+
+**Budget exceeded behavior**: Returns 429 with `BUDGET_EXCEEDED` error code and `reset_at` field indicating the daily reset timestamp (midnight UTC). The frontend displays a friendly "daily limit reached" message with countdown.
 
 ---
 
@@ -576,7 +593,8 @@ MVP uses CloudWatch console and alarms. A dedicated CloudWatch Dashboard with La
 | **Image processing** | None | Server-side thumbnails (S3 → Lambda → S3) | WebP conversion, multiple sizes |
 | **Layout view** | Read-only spatial + list toggle | Same (read-only) | Interactive 2D editor |
 | **Weather** | Open-Meteo API + crop impact | Same | + on-site sensor data |
-| **AI chatbot** | Single-turn, direct fetch | Multi-turn + tool use via Anthropic SDK (ADR-009) | + streaming, conversation summarization, usage tracking |
+| **AI chatbot** | Single-turn, direct fetch | Multi-turn + tool use via Anthropic SDK (ADR-009) | + streaming, conversation summarization |
+| **AI cost controls** | None (LLM rate limits only) | Per-user daily budget, global cap, turn limits, model lock (Haiku) | + BYOK (user-provided API keys), per-user model selection, usage analytics dashboard |
 | **Shared types** | TypeScript interfaces only | + Zod schemas (17), contract tests (11+) | + generated OpenAPI spec |
 | **i18n** | EN / JA | Same | + locale-specific content |
 | **Themes** | Light / Dark / Earthy / System | Same | + custom brand themes |
@@ -610,6 +628,7 @@ MVP uses CloudWatch console and alarms. A dedicated CloudWatch Dashboard with La
 | CI/CD pipeline | `cdk deploy` from CLI sufficient for MVP | GitHub Actions with OIDC for Production |
 | Layout editor | Read-only spatial view carries forward from PoC | Interactive editor is Production scope |
 | Streaming responses | Buffered responses acceptable at MVP | SSE via Hono streaming + SDK `messages.stream()` |
+| BYOK (Bring Your Own Key) | Shared Anthropic key sufficient for 15 testers with budget controls | Users provide their own Anthropic API key for unlimited usage; encrypted at rest (KMS) |
 
 ---
 

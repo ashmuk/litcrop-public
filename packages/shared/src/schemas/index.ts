@@ -285,3 +285,33 @@ export const ChatResponseSchema = z.object({
     input: z.record(z.unknown()),
   })).optional(),
 });
+
+// ── Usage schema (MVP: AI budget status) ─────────────────────────
+
+const UserBudgetSchema = z.object({
+  input_tokens_used: z.number(),
+  input_tokens_limit: z.number(),
+  output_tokens_used: z.number(),
+  output_tokens_limit: z.number(),
+  messages_sent: z.number(),
+  messages_limit: z.number(),
+});
+
+const GlobalBudgetSchema = z.object({
+  input_tokens_used: z.number(),
+  input_tokens_limit: z.number(),
+  output_tokens_used: z.number(),
+  output_tokens_limit: z.number(),
+  utilization_pct: z.number(),
+});
+
+/** GET /api/v1/usage */
+export const UsageResponseSchema = z.object({
+  user_id: z.string(),
+  period: z.literal('daily'),
+  period_start: z.string(),
+  reset_at: z.string(),
+  user_budget: UserBudgetSchema,
+  global_budget: GlobalBudgetSchema,
+  model: z.string(),
+});

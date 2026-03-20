@@ -166,7 +166,8 @@ type ErrorCode =
 | **500** | `INTERNAL_ERROR` | `"An unexpected error occurred"` | Unhandled server error |
 | **502** | `UPSTREAM_ERROR` | `"Weather service temporarily unavailable"` | Open-Meteo API returns error or times out |
 | **502** | `UPSTREAM_ERROR` | `"AI service temporarily unavailable"` | LLM API returns error or times out |
-| **429** | `RATE_LIMITED` | `"Rate limit exceeded. Try again in {retry_after} seconds"` | `[MVP]` Per-user or per-farm rate limit exceeded (e.g., chat: 20 messages/hour) |
+| **429** | `RATE_LIMITED` | `"Rate limit exceeded. Try again in {retry_after} seconds"` | `[MVP]` Per-user rate limit exceeded (chat: 20 messages/hour) |
+| **429** | `BUDGET_EXCEEDED` | `"Daily token budget exceeded. Resets at {reset_at}"` | `[MVP]` Per-user or global daily token budget exhausted |
 | **503** | `SERVICE_UNAVAILABLE` | `"Storage service unavailable"` | S3 or DynamoDB returns error |
 
 ### Error Response Examples
@@ -1175,7 +1176,143 @@ interface ChatResponse {
 | 401 | `UNAUTHORIZED` | `[MVP]` Missing or invalid JWT token |
 | 404 | `NOT_FOUND` | `[MVP]` Farm not found or caller does not own it |
 | 429 | `RATE_LIMITED` | `[MVP]` Per-user chat rate limit exceeded (20 messages/hour) |
+| 429 | `BUDGET_EXCEEDED` | `[MVP]` Per-user or global daily token budget exhausted. Response includes `reset_at` (ISO 8601) |
 | 502 | `UPSTREAM_ERROR` | LLM API unavailable or returns error |
+
+#### Budget Error Response Shape
+
+```typescript
+// 429 BUDGET_EXCEEDED response body
+{
+  error: {
+    code: "BUDGET_EXCEEDED";
+    message: "Daily token budget exceeded. Resets at 2026-03-21T00:00:00Z";
+    details: {
+      scope: "user" | "global";           // which budget was hit
+      reset_at: ISO8601;                   // next midnight UTC
+      input_tokens_used: number;            // input tokens consumed today
+      output_tokens_used: number;           // output tokens consumed today
+      input_tokens_limit: number;           // per-user or global input limit
+      output_tokens_limit: number;          // per-user or global output limit
+    };
+  };
+}
+```
+
+---
+
+### 5.12 GET /api/v1/usage `[MVP]`
+
+**Purpose**: Returns the authenticated user's current AI chat usage and budget status for today.
+
+**Handler**: `getUsage`
+
+**Auth**: Required `[MVP]` — JWT Bearer token.
+
+#### Request
+
+```
+GET /api/v1/usage
+Authorization: Bearer {accessToken}
+```
+
+No query parameters.
+
+#### Response: 200 OK
+
+```typescript
+interface UsageResponse {
+  user_id: string;                        // Cognito sub
+  period: "daily";                        // always "daily" for MVP
+  period_start: ISO8601;                  // start of current UTC day
+  reset_at: ISO8601;                      // next midnight UTC
+  user_budget: {
+    input_tokens_used: number;            // tokens consumed today
+    input_tokens_limit: number;           // daily per-user limit
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    messages_sent: number;                // chat messages sent today
+    messages_limit: number;               // messages/hour rate limit
+  };
+  global_budget: {
+    input_tokens_used: number;            // all users combined today
+    input_tokens_limit: number;           // global daily limit
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    utilization_pct: number;              // 0-100, global budget utilization
+  };
+  model: string;                          // currently active model ID
+}
+```
+
+#### Errors
+
+| Status | Code | When |
+|--------|------|------|
+| 401 | `UNAUTHORIZED` | `[MVP]` Missing or invalid JWT token |
+
+---
+
+### 5.13 PUT /api/v1/settings/api-key `[Production]`
+
+**Purpose**: Store the user's own Anthropic API key (BYOK — Bring Your Own Key). When set, the user's chat requests use their personal key instead of the shared project key, bypassing shared budget limits.
+
+**Handler**: `setApiKey`
+
+**Auth**: Required — JWT Bearer token.
+
+#### Request
+
+```
+PUT /api/v1/settings/api-key
+Content-Type: application/json
+Authorization: Bearer {accessToken}
+```
+
+```typescript
+interface SetApiKeyRequest {
+  api_key: string;                        // Anthropic API key (starts with "sk-ant-")
+}
+```
+
+#### Validation Rules
+
+| Field | Rule |
+|-------|------|
+| `api_key` | Required. Must match pattern `/^sk-ant-[a-zA-Z0-9_-]{80,120}$/`. Server validates the key by calling the Anthropic API `/v1/models` endpoint before storing. |
+
+#### Response: 200 OK
+
+```typescript
+interface SetApiKeyResponse {
+  status: "active";                       // key validated and stored
+  key_hint: string;                       // masked key, e.g. "sk-ant-...a1b2"
+  validated_at: ISO8601;                  // when the key was verified
+}
+```
+
+#### Storage
+
+- API key encrypted at rest using AWS KMS (customer-managed key).
+- Stored in DynamoDB: `PK=USER#{userId} SK=SETTINGS#API_KEY`.
+- Never returned in full — only the last 4 characters as `key_hint`.
+
+#### Delete Key
+
+```
+DELETE /api/v1/settings/api-key
+Authorization: Bearer {accessToken}
+```
+
+Returns `204 No Content`. User reverts to the shared project key with budget limits.
+
+#### Errors
+
+| Status | Code | When |
+|--------|------|------|
+| 400 | `VALIDATION_ERROR` | Invalid key format |
+| 401 | `UNAUTHORIZED` | Missing or invalid JWT token |
+| 422 | `API_KEY_INVALID` | Key failed validation against Anthropic API |
 
 ---
 
@@ -1501,9 +1638,21 @@ If the user's locale is "ja", respond in Japanese.`;
 }
 ```
 
-### Rate Limiting (PoC)
+### Rate Limiting & Budget Controls (MVP)
 
-No formal rate limiting in PoC. The LLM API's own rate limits are the effective constraint. For MVP, implement per-IP or per-farm throttling (e.g., 20 messages/hour).
+The PoC relied solely on the LLM API's own rate limits. MVP implements three layers of cost control:
+
+| Layer | Scope | Limit | Reset | Error Code |
+|-------|-------|-------|-------|------------|
+| **Rate limit** | Per-user | 20 messages/hour | Sliding window | `RATE_LIMITED` |
+| **Daily user budget** | Per-user (Cognito sub) | 50K input + 10K output tokens/day | Midnight UTC | `BUDGET_EXCEEDED` |
+| **Daily global budget** | All users combined | 500K input + 100K output tokens/day | Midnight UTC | `BUDGET_EXCEEDED` |
+| **Conversation turns** | Per conversation | 20 turns max | New conversation | `VALIDATION_ERROR` |
+| **Model lock** | Global | `claude-haiku-4-5-20251001` | N/A | N/A |
+
+**Token counting**: After each Anthropic SDK call, the server reads `response.usage.input_tokens` and `response.usage.output_tokens` and atomically increments both user-level and global-level DynamoDB counters. Budget is checked *before* the SDK call using the current counter values; if the remaining budget is less than an estimated minimum exchange (500 input + 100 output tokens), the request is rejected.
+
+**Usage endpoint**: `GET /api/v1/usage` returns current budget status (see [Section 5.12](#512-get-apiv1usage-mvp)).
 
 ### Suggestions Generation
 
@@ -1542,6 +1691,9 @@ const DEFAULT_SUGGESTIONS = [
 | 9 | POST | `/api/v1/images/{imageId}/tags` | `AddTagRequest` (JSON) | `[MVP]` JWT Bearer + ownership |
 | 10 | GET | `/api/v1/farms/{farmId}/weather` | — | `GetWeatherResponse` | `[MVP]` JWT Bearer + ownership |
 | 11 | POST | `/api/v1/chat` | `ChatRequest` (JSON) | `ChatResponse` | `[MVP]` JWT Bearer |
+| 12 | GET | `/api/v1/usage` | — | `UsageResponse` | `[MVP]` JWT Bearer |
+| 13 | PUT | `/api/v1/settings/api-key` | `SetApiKeyRequest` (JSON) | `SetApiKeyResponse` | `[Production]` JWT Bearer |
+| 14 | DELETE | `/api/v1/settings/api-key` | — | `204 No Content` | `[Production]` JWT Bearer |
 | — | GET | `/health` | — | `{ "status": "ok" }` | None |
 | — | GET | `/api/v1/health` | — | `{ "status": "ok" }` | None |
 

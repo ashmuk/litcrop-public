@@ -1066,6 +1066,50 @@ src/frontend/src/styles/
 
 **Mockup**: `docs/mockups/settings.html`
 
+#### 9.4a AI Assistant — Usage Budget Display (MVP)
+
+Within the Settings > AI Assistant section, display the user's current daily budget status:
+
+| Element | Spec |
+|---------|------|
+| **Section header** | "AI Assistant" with robot icon (`🤖`) |
+| **Usage bar** | Horizontal progress bar showing `max(input_pct, output_pct)` where `pct = tokens_used / tokens_limit * 100`. This ensures the tighter budget (output at 10K is 5x tighter than input at 50K) is visible. Color: `var(--color-primary)` at 0-79%, `var(--color-warning)` at 80-99%, `var(--color-error)` at 100%. Height: 8px, border-radius: 4px. Tooltip shows both: "Input: X/50K · Output: Y/10K". |
+| **Usage label** | "Today's usage: {used} / {limit} tokens" — `var(--font-size-sm)`, `var(--color-gray-700)` |
+| **Reset countdown** | "Resets in {hours}h {minutes}m" — `var(--font-size-xs)`, `var(--color-gray-500)` |
+| **Model badge** | Pill showing current model: "Haiku 4.5" — `var(--font-size-xs)`, `background: var(--color-primary-light)`, `color: var(--color-primary)` |
+
+**Data source**: `GET /api/v1/usage` — polled on Settings page load, not auto-refreshed.
+
+#### 9.4b API Key Settings `[Production]`
+
+**Purpose**: BYOK (Bring Your Own Key) — allows users to provide their own Anthropic API key for unlimited AI chat usage without shared budget constraints.
+
+**Location**: Settings > AI Assistant section, below the usage budget display.
+
+**Key Components**:
+
+| State | UI |
+|-------|----|
+| **No key set** | Card with dashed border: "Use your own API key for unlimited chat" + "Add API Key" button (`var(--color-primary)`, full-width). Informational text: "Your key is encrypted and never shared." `var(--font-size-xs)`, `var(--color-gray-500)`. |
+| **Key active** | Card with solid green border (`var(--color-success)`): status badge "Active ✓" + masked key hint "sk-ant-...a1b2" in monospace. "Remove Key" destructive button (`var(--color-error)`, text style). |
+| **Adding key** | Modal overlay: text input (type `password`) with label "Anthropic API Key", placeholder "sk-ant-...", "Validate & Save" primary button + "Cancel" secondary. Validation spinner during API check. |
+| **Validation failed** | Input border turns `var(--color-error)`, inline error: "Invalid API key. Please check and try again." |
+
+**Interaction flow**:
+1. User taps "Add API Key" → modal opens
+2. User pastes key → taps "Validate & Save"
+3. Spinner shows "Validating..." (server calls Anthropic `/v1/models`)
+4. Success: modal closes, card shows active state with key hint
+5. Failure: inline error, user can retry or cancel
+
+**Accessibility**:
+- Input uses `type="password"` with show/hide toggle (eye icon)
+- Modal has focus trap, Escape to close
+- "Remove Key" requires confirmation dialog: "Remove your API key? You'll return to the shared budget."
+- All interactive elements meet 48px minimum touch target
+
+**Mockup**: `docs/mockups/settings.html` (section added below AI Assistant)
+
 ---
 
 ## 10. Earthy Theme Tokens

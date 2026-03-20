@@ -595,6 +595,15 @@ sequenceDiagram
     alt Validation fails
         RH-->>MW: 400 VALIDATION_ERROR
     else Valid
+        Note over RH,DB: Budget check (before calling LLM)
+        RH->>DB: GetItem PK=USAGE#{userId} SK=DAY#{yyyy-mm-dd}
+        DB-->>RH: { input_tokens_used, output_tokens_used } or null
+        RH->>DB: GetItem PK=USAGE#GLOBAL SK=DAY#{yyyy-mm-dd}
+        DB-->>RH: { input_tokens_used, output_tokens_used } or null
+
+        alt User or global budget exceeded
+            RH-->>MW: 429 BUDGET_EXCEEDED { reset_at, scope }
+        else Budget available
         RH->>SVC: chat(userId, message, farmId, conversationId)
 
         Note over SVC,DB: Load conversation history (multi-turn)
@@ -636,7 +645,12 @@ sequenceDiagram
         Note over SVC,DB: Save conversation history
         SVC->>DB: PutItem PK=CONV#{convId} SK=MSG#{ts}#user<br/>(+ assistant response, TTL: 24h)
 
+        Note over SVC,DB: Update usage counters (after LLM response)
+        SVC->>DB: UpdateItem PK=USAGE#{userId} SK=DAY#{date}<br/>ADD input_tokens_used +N, output_tokens_used +M (TTL: 48h)
+        SVC->>DB: UpdateItem PK=USAGE#GLOBAL SK=DAY#{date}<br/>ADD input_tokens_used +N, output_tokens_used +M (TTL: 48h)
+
         SVC-->>RH: { reply, suggestions[], conversation_id }
+        end
         RH-->>MW: 200 OK { data: { reply, suggestions, conversation_id } }
     end
 
@@ -791,6 +805,19 @@ export interface ConversationMessage {
   created_at: string;    // ISO 8601
   ttl: number;           // DynamoDB TTL (epoch seconds, 24h from creation)
 }
+
+/** MVP: Daily token usage counter for AI budget controls */
+export interface UsageBudget {
+  user_id: string;        // Cognito sub, or "GLOBAL" for global counter
+  date: string;           // ISO 8601 date (UTC), e.g. "2026-03-20"
+  input_tokens_used: number;   // cumulative input tokens consumed today
+  output_tokens_used: number;  // cumulative output tokens consumed today
+  messages_sent: number;       // number of chat messages sent today
+  updated_at: string;     // ISO 8601 timestamp of last update
+  ttl: number;            // DynamoDB TTL (epoch seconds, 48h from date start)
+}
+// DynamoDB key: PK=USAGE#{userId|GLOBAL}, SK=DAY#{yyyy-mm-dd}
+// Updated via atomic ADD operations after each Anthropic SDK call
 
 export interface Tag {
   id: string;
@@ -984,6 +1011,30 @@ export interface ChatResponse {
     input: Record<string, unknown>;
   }[];
 }
+
+/** GET /api/v1/usage — MVP: AI chat budget status */
+export interface UsageResponse {
+  user_id: string;
+  period: 'daily';
+  period_start: string;   // ISO 8601 (start of UTC day)
+  reset_at: string;        // ISO 8601 (next midnight UTC)
+  user_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    messages_sent: number;
+    messages_limit: number;
+  };
+  global_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    utilization_pct: number;  // 0-100
+  };
+  model: string;            // e.g. 'claude-haiku-4-5-20251001'
+}
 ```
 
 ### 2.3 API Request Validation Types
@@ -1035,7 +1086,7 @@ import type {
   Farm, Plot, Image, Tag,
   FarmResponse, FarmPlotItem, PlotDetailResponse,
   ImageListItem, ImageUploadResponse, ImageDetailResponse,
-  TagCreateResponse, WeatherResponse, ChatResponse,
+  TagCreateResponse, WeatherResponse, ChatResponse, UsageResponse,
   CreateFarmRequest, UpdateFarmRequest, CreateTagRequest,
   TagValue
 } from '@litcrop/shared';
@@ -1108,6 +1159,32 @@ export interface IChatService {
     farmId?: string,
     conversationId?: string  // Continue existing conversation
   ): Promise<ChatResponse>;
+}
+
+// --- BudgetService (MVP: AI token budget controls) ---
+
+export interface IBudgetService {
+  /** Check if user/global budget allows another exchange */
+  checkBudget(userId: string): Promise<{
+    allowed: boolean;
+    scope?: 'user' | 'global';   // which budget would be exceeded
+    reset_at?: string;            // ISO 8601 (next midnight UTC)
+  }>;
+
+  /** Record token usage after an Anthropic SDK call */
+  recordUsage(userId: string, usage: {
+    input_tokens: number;
+    output_tokens: number;
+  }): Promise<void>;
+
+  /** Get current usage stats for the usage endpoint */
+  getUsage(userId: string): Promise<UsageResponse>;
+
+  /** [Production] BYOK: resolve which Anthropic API key to use for this user */
+  resolveApiKey?(userId: string): Promise<{
+    key: string;           // decrypted Anthropic API key
+    source: 'shared' | 'byok';
+  }>;
 }
 
 // --- S3 Operations ---
@@ -1195,6 +1272,9 @@ export interface IApiClient {
 
   // Chat (MVP: multi-turn)
   chat(input: ChatRequest): Promise<ApiResponse<ChatResponse>>;
+
+  // Usage (MVP: budget status)
+  getUsage(): Promise<ApiResponse<UsageResponse>>;
 }
 
 /**
