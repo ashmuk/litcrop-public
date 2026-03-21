@@ -109,6 +109,7 @@
     "gps_failed": "位置情報を取得できませんでした",
     "gps_unsupported": "位置情報に対応していません",
     "name_required": "農場名を入力してください",
+    "location_required": "緯度と経度を入力してください",
     "climate_tropical": "熱帯",
     "climate_subtropical": "亜熱帯",
     "climate_temperate": "温帯",
@@ -119,6 +120,9 @@
     "send": "送信",
     "thinking": "考え中…",
     "error": "応答を取得できませんでした。もう一度お試しください。",
+    "rate_limited": "メッセージが多すぎます。少々お待ちください。",
+    "unauthorized": "セッションが切れました。再度ログインしてください。",
+    "network_error": "ネットワークエラー。接続を確認してください。",
     "suggestion_1": "今日確認すべきことは？",
     "suggestion_2": "今週の霜のリスクは？",
     "suggestion_3": "農場の状態はどうですか？"

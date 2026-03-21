@@ -109,6 +109,7 @@
     "gps_failed": "Could not detect location",
     "gps_unsupported": "Geolocation not supported",
     "name_required": "Farm name is required",
+    "location_required": "Latitude and longitude are required",
     "climate_tropical": "Tropical",
     "climate_subtropical": "Subtropical",
     "climate_temperate": "Temperate",
@@ -119,6 +120,9 @@
     "send": "Send",
     "thinking": "Thinking…",
     "error": "Could not get a response. Please try again.",
+    "rate_limited": "Too many messages. Please wait a moment.",
+    "unauthorized": "Session expired. Please log in again.",
+    "network_error": "Network error. Check your connection.",
     "suggestion_1": "What should I check today?",
     "suggestion_2": "Any frost risk this week?",
     "suggestion_3": "How is my farm doing?"
