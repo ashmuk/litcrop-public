@@ -114,14 +114,15 @@ async function tryRefresh(): Promise<string | null> {
       ClientId: CLIENT_ID,
       AuthParameters: { REFRESH_TOKEN: refreshToken },
     })) as {
-      AuthenticationResult?: { AccessToken: string; ExpiresIn: number };
+      AuthenticationResult?: { AccessToken: string; IdToken: string; ExpiresIn: number };
     };
 
     const result = data.AuthenticationResult;
     if (!result) return null;
 
-    setTokens(result.AccessToken, result.ExpiresIn);
-    return result.AccessToken;
+    // Use IdToken for API calls (see signIn comment for rationale)
+    setTokens(result.IdToken, result.ExpiresIn);
+    return result.IdToken;
   } catch {
     clearTokens();
     return null;
@@ -206,7 +207,9 @@ export async function signIn(email: string, password: string): Promise<SignInRes
     // ignore — sub won't be cached
   }
 
-  setTokens(result.AccessToken, result.ExpiresIn, result.RefreshToken);
+  // Use IdToken (not AccessToken) for API calls — API Gateway JWT authorizer
+  // checks the `aud` claim, which only exists in Cognito ID tokens.
+  setTokens(result.IdToken, result.ExpiresIn, result.RefreshToken);
 
   try {
     localStorage.setItem(USER_EMAIL_KEY, email);
