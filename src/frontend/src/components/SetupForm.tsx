@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import { showToast } from './Toast';
-import { createFarm, updateFarm } from '../lib/api';
+import { createFarm, updateFarm, ApiError } from '../lib/api';
 import { t } from '../i18n/i18n';
 
 interface FarmConfig {
@@ -87,15 +87,22 @@ export default function SetupForm() {
       } else {
         // Create new farm
         const farm = await createFarm(payload);
-        localStorage.setItem('litcrop-farmId', farm.farm_id);
+        localStorage.setItem('litcrop-farmId', farm.id);
         localStorage.setItem('litcrop-farmName', farm.name);
       }
       localStorage.setItem('litcrop-setup', JSON.stringify(form));
       showToast(t('setup.save_success'), 'success');
       // Redirect to dashboard after short delay so user sees the toast
       setTimeout(() => { window.location.replace('/'); }, 800);
-    } catch {
-      showToast(t('farm.error_loading'), 'error');
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 409) {
+        // User already has a farm — redirect to dashboard
+        showToast(t('setup.save_success'), 'success');
+        setTimeout(() => { window.location.replace('/'); }, 800);
+        return;
+      }
+      const msg = err instanceof Error ? err.message : t('farm.error_loading');
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
