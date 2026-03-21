@@ -88,6 +88,11 @@ app.onError((err, c) => {
     return c.json(body, err.statusCode as 400 | 401 | 404 | 409 | 413 | 415 | 429 | 500 | 502 | 503);
   }
 
+  // Malformed JSON body — return 400 instead of 500
+  if (err instanceof SyntaxError) {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON in request body' } }, 400);
+  }
+
   // Unknown error — log and return generic 500
   const internal = new InternalError();
   console.error('[unhandled]', err);

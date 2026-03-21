@@ -6,9 +6,8 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
-import { t } from '../i18n/i18n';
+import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
-import { translateCondition } from '../lib/format';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
@@ -29,6 +28,14 @@ function formatWeekday(isoDate: string): string {
   });
 }
 
+function getInitialLocale(): 'en' | 'ja' {
+  try {
+    const stored = localStorage.getItem('litcrop-locale');
+    if (stored === 'en' || stored === 'ja') return stored;
+  } catch {}
+  return 'en';
+}
+
 export interface Props {
   farmId: string;
 }
@@ -37,17 +44,25 @@ export default function WeatherView({ farmId }: Props) {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locale] = useState<'en' | 'ja'>(getInitialLocale);
 
   const effectiveFarmId = useLocalFarmId(farmId);
+  const tl = createTranslator(locale);
 
   useEffect(() => {
     let cancelled = false;
     getWeather(effectiveFarmId)
       .then((data) => { if (!cancelled) setWeather(data); })
-      .catch(() => { if (!cancelled) setError(t('farm.error_loading')); })
+      .catch(() => { if (!cancelled) setError(tl('farm.error_loading')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [effectiveFarmId]);
+
+  const xlat = (cond: string) => {
+    const key = `weather_conditions.${cond}`;
+    const s = tl(key);
+    return s === key ? cond.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : s;
+  };
 
   if (loading) {
     return (
@@ -63,10 +78,10 @@ export default function WeatherView({ farmId }: Props) {
     return (
       <div class="empty-state">
         <span class="empty-state__icon">⛅</span>
-        <p class="empty-state__heading">{t('farm.error_loading')}</p>
-        <p class="empty-state__body">{t('farm.error_body')}</p>
+        <p class="empty-state__heading">{tl('farm.error_loading')}</p>
+        <p class="empty-state__body">{tl('farm.error_body')}</p>
         <button class="btn-primary mt-4" onClick={() => location.reload()}>
-          {t('buttons.retry')}
+          {tl('buttons.retry')}
         </button>
       </div>
     );
@@ -113,7 +128,7 @@ export default function WeatherView({ farmId }: Props) {
                   {formatTemp(current.temperature)}
                 </div>
                 <div style="font-size:var(--font-size-base);color:var(--color-gray-700)">
-                  {translateCondition(current.condition_icon)}
+                  {xlat(current.condition_icon)}
                 </div>
               </div>
             </div>
@@ -122,13 +137,13 @@ export default function WeatherView({ farmId }: Props) {
             >
               <div style="text-align:center">
                 <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
-                  {t('weather.humidity')}
+                  {tl('weather.humidity')}
                 </div>
                 <div style="font-weight:var(--font-weight-semibold)">{current.humidity}%</div>
               </div>
               <div style="text-align:center">
                 <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
-                  {t('weather.wind')}
+                  {tl('weather.wind')}
                 </div>
                 <div style="font-weight:var(--font-weight-semibold)">
                   {Math.round(current.wind_speed)} km/h {current.wind_direction}
@@ -136,7 +151,7 @@ export default function WeatherView({ farmId }: Props) {
               </div>
               <div style="text-align:center">
                 <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
-                  {t('weather.rain_probability')}
+                  {tl('weather.rain_probability')}
                 </div>
                 <div style="font-weight:var(--font-weight-semibold)">{today.rain_probability}%</div>
               </div>
@@ -150,7 +165,7 @@ export default function WeatherView({ farmId }: Props) {
           </div>
 
           {/* Hourly forecast */}
-          <div class="section-heading">{t('weather.hourly')}</div>
+          <div class="section-heading">{tl('weather.hourly')}</div>
           <div
             style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:var(--space-3) var(--space-4)"
           >
@@ -180,7 +195,7 @@ export default function WeatherView({ farmId }: Props) {
         {/* Right column: 7-day + crop impact */}
         <div class="weather-col-right">
           {/* 7-day forecast */}
-          <div class="section-heading">{t('weather.weekly')}</div>
+          <div class="section-heading">{tl('weather.weekly')}</div>
           <div
             style="padding:0 var(--space-4);display:flex;flex-direction:column;gap:var(--space-2)"
             role="list"
@@ -195,11 +210,11 @@ export default function WeatherView({ farmId }: Props) {
                 <div
                   style="min-width:80px;font-size:var(--font-size-sm);font-weight:var(--font-weight-medium)"
                 >
-                  {i === 0 ? t('weather.today') : formatWeekday(day.date)}
+                  {i === 0 ? tl('weather.today') : formatWeekday(day.date)}
                 </div>
                 <span style="font-size:24px" aria-hidden="true">{day.condition_icon}</span>
                 <div style="flex:1;font-size:var(--font-size-sm);color:var(--color-gray-700)">
-                  {translateCondition(day.condition_icon)}
+                  {xlat(day.condition_icon)}
                 </div>
                 <div style="display:flex;gap:var(--space-2);font-size:var(--font-size-sm)">
                   {day.rain_probability > 20 && (
@@ -215,7 +230,7 @@ export default function WeatherView({ farmId }: Props) {
           {/* Crop impact */}
           {crop_impact.length > 0 && (
             <>
-              <div class="section-heading">{t('weather.crop_impact')}</div>
+              <div class="section-heading">{tl('weather.crop_impact')}</div>
               <div
                 style="padding:0 var(--space-4) var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"
               >

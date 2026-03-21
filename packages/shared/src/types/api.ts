@@ -29,6 +29,7 @@ export interface ApiError {
 }
 
 export type ErrorCode =
+  | 'BAD_REQUEST'
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
   | 'PAYLOAD_TOO_LARGE'

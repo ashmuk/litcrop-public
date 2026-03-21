@@ -1,4 +1,4 @@
-import { TEST_USER_ID, authHeaders } from './helpers/auth';
+import { authHeaders } from './helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../app';
 import { dynamoRepo } from '../services/dynamodb';
@@ -118,6 +118,17 @@ describe('error handler', () => {
     const body = await res.json() as { error: { code: string; message: string } };
     expect(body.error.code).toBeDefined();
     expect(body.error.message).toBeDefined();
+  });
+
+  it('malformed JSON body → 400 with BAD_REQUEST code', async () => {
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: '{invalid json',
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('BAD_REQUEST');
   });
 
   it('unknown error → 503 with SERVICE_UNAVAILABLE code', async () => {
