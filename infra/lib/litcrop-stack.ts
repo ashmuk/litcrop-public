@@ -372,10 +372,18 @@ function handler(event) {
     });
 
     // Protected catch-all — JWT required for all other routes
-    // HTTP API routes more specific paths first, so /health routes above take precedence
+    // Use explicit methods (not ANY) so that OPTIONS requests are handled by
+    // API Gateway's built-in CORS preflight auto-response, not the JWT authorizer.
+    // ANY would intercept OPTIONS → JWT rejects (no token on preflight) → 401 → CORS fail.
     httpApi.addRoutes({
       path: '/{proxy+}',
-      methods: [apigwv2.HttpMethod.ANY],
+      methods: [
+        apigwv2.HttpMethod.GET,
+        apigwv2.HttpMethod.POST,
+        apigwv2.HttpMethod.PATCH,
+        apigwv2.HttpMethod.DELETE,
+        apigwv2.HttpMethod.PUT,
+      ],
       integration: lambdaIntegration,
       authorizer: jwtAuthorizer,
     });
