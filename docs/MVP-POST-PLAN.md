@@ -1,10 +1,10 @@
-# MVP-POST-PLAN.md — MVP Refinement Plan (v0.9)
+# MVP-POST-PLAN.md — MVP Refinement Plan (v0.9 - v1.0)
 
-> Date: 2026-03-21
-> Scope: Post-deploy fixes + UX improvements
-> Target: Tag v0.9 after completion
+> Date: 2026-03-21 (updated)
+> Scope: Post-deploy fixes, tech debt, architecture evolution, new features
+> Target: Tag v0.9 after Phase 1, v1.0 after Phase 5
 > Branch: `develop` (merge to `main` for deploy)
-> Total estimated effort: ~4 hours
+> Total estimated effort: ~11-12 hours across 5 phases
 
 ---
 
@@ -23,7 +23,9 @@ The data model uses a 3-tier hierarchy: Farm > Field > Bed > Plot. Plot creation
 
 ---
 
-## Work Items
+## Phase 1: Core UX Fixes (COMPLETE)
+
+> Status: COMPLETE | Effort: ~4 hours | Tag: v0.9
 
 ### A1: Add GET /api/v1/farms endpoint + auto-fetch on login
 
@@ -394,7 +396,7 @@ The data model uses a 3-tier hierarchy: Farm > Field > Bed > Plot. Plot creation
 
 ---
 
-## Execution Sequence
+## Phase 1 Execution Sequence (COMPLETE)
 
 ```
 A1 (GET /farms + login auto-fetch)  ──┐
@@ -408,56 +410,562 @@ A2 (plot creation wizard)  ────────────┼── A7 (pho
 A8 (admin stats page)     ────────────┘
 ```
 
-**Recommended order** (optimized for unblocking):
+**Execution order** (completed):
 
-| Phase | Items | Rationale |
-|-------|-------|-----------|
-| 1 | A1, A6, A3 | Quick wins: A1 unblocks A5 + A7 testing. A6/A3 are text-only, zero risk. |
-| 2 | A4, A2 | A4 is quick. A2 is the largest item — the core plot creation feature. |
-| 3 | A5, A7 | A5 verifies A1 resolved the timing. A7 needs a plot to test against. |
-| 4 | A8 | Admin page is lowest priority, fully independent. |
+| Batch | Items | Status |
+|-------|-------|--------|
+| 1 | A1, A6, A3 | DONE |
+| 2 | A4, A2 | DONE |
+| 3 | A5, A7 | DONE |
+| 4 | A8 | DONE |
 
-**Parallelism**: A1+A6+A3 can be done simultaneously by different agents. A4 can overlap with A2 start. A7 and A8 can run in parallel in Phase 3/4.
+---
+
+## Phase 2: Quick Fixes + Deploy Bugs (~1 hr)
+
+> Status: PLANNED | Effort: ~1 hour
+> Dependencies: Phase 1 complete
+> Branch: `feature/phase2-quick-fixes` from `develop`
+
+### N3: Weather i18n hydration timing fix
+
+**Priority**: P1
+**Effort**: 20 min
+
+**Description**: Astro SSG builds HTML with `data-locale="en"` baked in. Preact islands hydrate before the `localStorage` locale patch script runs, causing a flash of English weather conditions on Japanese-locale devices.
+
+**Fix approach**: Move locale detection into the island component's `useEffect()` / initialization rather than relying on a top-level `<script>` in the Astro layout. Each weather-displaying island should read `localStorage` directly on mount.
+
+**Files to modify**:
+- `src/frontend/src/components/WeatherWidget.tsx` — read locale from localStorage on mount, not from SSG-injected data attribute
+- `src/frontend/src/components/WeatherForecast.tsx` — same pattern if applicable
+
+**Success criteria**: Weather conditions render in the correct locale on first paint without a flash of English text.
+
+---
+
+### N5: Verify upload works on PlotDetail
+
+**Priority**: P2
+**Effort**: 10 min
+
+**Description**: Upload code in PlotDetail is correct per code review, but a user reported it not working. Likely browser cache or stale service worker. Verify with a hard refresh and document the finding.
+
+**Files to modify**:
+- None expected (verification only)
+- If needed: `src/frontend/src/components/PlotDetail.tsx`
+
+**Success criteria**: Image upload from PlotDetail works after hard refresh. If a bug is found, fix it; otherwise document as browser-cache issue.
+
+---
+
+### Q4: Unbounded weather cache Map
+
+**Priority**: P1
+**Effort**: 10 min
+
+**Description**: The in-memory weather cache uses a `Map` with no eviction policy. Over time in a long-running process (or Lambda with provisioned concurrency), this grows unbounded. Add a periodic cleanup or simple LRU cap.
+
+**Files to modify**:
+- `src/api/src/services/weather.ts` — add max-size check (e.g., 100 entries) with oldest-first eviction, or TTL-based cleanup
+
+**Success criteria**: Weather cache does not grow beyond a configurable limit. Existing cache behavior unchanged for normal use.
+
+---
+
+### Q10: Default TABLE_NAME for local dev
+
+**Priority**: P2
+**Effort**: 5 min
+
+**Description**: `dynamodb.ts` reads `TABLE_NAME` from env with no fallback, causing cryptic errors in local development when `.env` is missing the variable.
+
+**Files to modify**:
+- `src/api/src/services/dynamodb.ts` — add fallback: `const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-dev';`
+
+**Success criteria**: API starts locally without `TABLE_NAME` set, using a sensible default. Logged warning when falling back.
+
+---
+
+### C6: Hide chat model name from /usage response
+
+**Priority**: P1
+**Effort**: 5 min
+
+**Description**: The `/api/v1/chat/usage` endpoint returns the internal LLM model identifier (e.g., `anthropic.claude-3-haiku-20240307-v1:0`). End users should not see this.
+
+**Files to modify**:
+- `src/api/src/routes/chat.ts` — remove or redact the `model` field from the usage response JSON
+
+**Success criteria**: `/usage` response does not contain the model name. Frontend usage display unaffected (it does not render the model field).
+
+---
+
+### S11: Strip storage_key from image API responses
+
+**Priority**: P1
+**Effort**: 10 min
+
+**Description**: The image API responses include `storage_key` (the S3 object key), which is an internal implementation detail. Strip it from all responses to avoid leaking internal paths.
+
+**Files to modify**:
+- `src/api/src/routes/images.ts` — add a response mapper that omits `storage_key` before returning
+- Alternatively: `src/api/src/services/dynamodb.ts` — strip in the data access layer's `imageToResponse()` function
+
+**Success criteria**: No `storage_key` field in any image-related API response. Frontend image display still works (uses `image_url`, not `storage_key`).
+
+---
+
+## Phase 3: Tech Debt Sweep (~2 hrs)
+
+> Status: PLANNED | Effort: ~2 hours
+> Dependencies: None (can run in parallel with Phase 2)
+> Branch: `feature/phase3-tech-debt` from `develop`
+
+### Q5: Non-null assertions on budget records
+
+**Priority**: P2
+**Effort**: 10 min
+
+**Description**: Budget-related code uses TypeScript non-null assertions (`!`) on DynamoDB query results without checking for undefined. Add proper null guards or narrow the types.
+
+**Files to modify**:
+- `src/api/src/services/dynamodb.ts` — replace `!` assertions on budget record fields with null checks or early returns
+
+**Success criteria**: No non-null assertions on budget record access paths. Graceful handling when budget record does not exist.
+
+---
+
+### Q7: JSON parse errors return 500 not 400
+
+**Priority**: P1
+**Effort**: 15 min
+
+**Description**: When a client sends malformed JSON, `c.req.json()` throws a `SyntaxError` that propagates as a 500 Internal Server Error. Should return 400 Bad Request.
+
+**Files to modify**:
+- `src/api/src/app.ts` — add global error handler for `SyntaxError` returning 400, or wrap in middleware
+- Alternatively: wrap `c.req.json()` calls in individual route handlers with try/catch
+
+**Success criteria**: Malformed JSON requests return `400 Bad Request` with a clear error message, not 500.
+
+---
+
+### Q8: Wind direction degrees not cardinal
+
+**Priority**: P2
+**Effort**: 15 min
+
+**Description**: Weather API returns wind direction as degrees (e.g., `225`), but users expect cardinal directions (e.g., `SW`). Add a `degreeToCardinal()` helper.
+
+**Files to modify**:
+- `src/frontend/src/lib/format.ts` — add `degreeToCardinal(degrees: number): string` function
+- `src/frontend/src/components/WeatherWidget.tsx` — use the helper when displaying wind direction
+- `src/frontend/src/i18n/en.json` / `ja.json` — add cardinal direction abbreviation keys if needed
+
+**Success criteria**: Wind direction displays as cardinal directions (N, NE, E, SE, S, SW, W, NW) in the weather widget.
+
+---
+
+### Q9: JPEG magic bytes check fragile for < 3 bytes
+
+**Priority**: P2
+**Effort**: 10 min
+
+**Description**: The image upload validation checks JPEG magic bytes but does not guard against files smaller than 3 bytes, which would cause an out-of-bounds read.
+
+**Files to modify**:
+- `src/api/src/routes/images.ts` — add `if (buffer.length < 3) return false;` before magic byte comparison
+
+**Success criteria**: Uploading a file < 3 bytes returns a clear validation error, not an unhandled exception.
+
+---
+
+### S5: In-memory rate limiter ineffective in Lambda
+
+**Priority**: P2
+**Effort**: 20 min
+
+**Description**: The in-memory rate limiter resets on every Lambda cold start and is not shared across concurrent instances. Document this limitation. Optionally, add a TODO for a DynamoDB-backed rate limiter.
+
+**Files to modify**:
+- `src/api/src/middleware/rateLimit.ts` — add code comment documenting the Lambda limitation
+- `docs/ARCHITECTURE.md` — note the rate limiting caveat under the API section
+
+**Success criteria**: Limitation is documented. If time permits, add a `TODO` marker for DynamoDB-backed alternative.
+
+---
+
+### S7: LLM error body logged to CloudWatch
+
+**Priority**: P1
+**Effort**: 10 min
+
+**Description**: When the LLM API returns an error, the full response body (which may contain sensitive content) is logged to CloudWatch. Sanitize before logging.
+
+**Files to modify**:
+- `src/api/src/routes/chat.ts` — truncate/redact error body before `console.error()`, log only status code and a generic message
+
+**Success criteria**: LLM error logs contain status code and error type but not the full response body.
+
+---
+
+### S8: Thumbnail Lambda over-permissioned
+
+**Priority**: P1
+**Effort**: 15 min
+
+**Description**: The thumbnail generation Lambda has broader S3 permissions than necessary. Scope the IAM policy to only the specific bucket and prefixes it needs.
+
+**Files to modify**:
+- `infra/lib/storage-stack.ts` (or equivalent CDK construct) — narrow the S3 policy to `images/*` and `thumbnails/*` prefixes only
+
+**Success criteria**: Thumbnail Lambda IAM policy uses least-privilege: `s3:GetObject` on `images/*`, `s3:PutObject` on `thumbnails/*`. No `s3:*` wildcards.
+
+---
+
+### T3-T6: Missing auth/ownership/budget edge-case tests
+
+**Priority**: P2
+**Effort**: 1 hr
+
+**Description**: Code review identified missing test coverage for:
+- **T3**: Auth middleware rejects expired/malformed tokens
+- **T4**: Farm ownership check prevents cross-user access
+- **T5**: Budget enforcement blocks requests when limit exceeded
+- **T6**: Edge cases in plot creation (duplicate names, max plots per bed)
+
+**Files to create/modify**:
+- `src/api/src/__tests__/auth.test.ts` — T3 tests
+- `src/api/src/__tests__/ownership.test.ts` — T4 tests
+- `src/api/src/__tests__/budget.test.ts` — T5 tests
+- `src/api/src/__tests__/plots.test.ts` — T6 tests
+
+**Success criteria**: All four test categories have at least 2 test cases each. Tests pass.
+
+---
+
+## Phase 4: Multi-Farm Architecture Change (~3-4 hrs)
+
+> Status: PLANNED | Effort: ~3-4 hours
+> Dependencies: Phase 1 complete (needs working farm CRUD as baseline)
+> Branch: `feature/phase4-multi-farm` from `develop`
+> Pre-work: Create ADR-YYYYMMDD-multi-farm-support.md before implementation
+
+This is the most significant change in the plan. It moves from a one-farm-per-user constraint to supporting multiple farms per user. An ADR is required before implementation begins.
+
+### N1: Multi-farm support
+
+**Priority**: P0 (architectural change — unblocks future growth)
+**Effort**: 3-4 hrs
+
+**Description**: Currently, each user can own exactly one farm, enforced by a `ConditionExpression` in `createFarm()` and a `USER#<userId> SK=#FARM` record in DynamoDB. This phase removes that constraint and updates all layers accordingly.
+
+**Pre-work**: Create ADR documenting the decision, migration strategy, and rollback plan.
+
+**Backend changes** (`src/api/`):
+
+| Change | File | Details |
+|--------|------|---------|
+| DynamoDB schema | `src/api/src/services/dynamodb.ts` | Change `USER#<userId> SK=#FARM` to `SK=FARM#<farmId>` to support multiple farm associations |
+| Remove constraint | `src/api/src/services/dynamodb.ts` | Remove `ConditionExpression` in `createFarm()` that enforces one-farm-per-user |
+| Query change | `src/api/src/services/dynamodb.ts` | `getFarmForUser()` becomes `getFarmsForUser()` returning `Farm[]` (query with `begins_with(SK, 'FARM#')`) |
+| API response | `src/api/src/routes/farms.ts` | `GET /api/v1/farms` returns `{ farms: Farm[] }` array instead of single farm |
+| Backward compat | `src/api/src/routes/farms.ts` | Handle both old `SK=#FARM` and new `SK=FARM#<farmId>` records during migration window |
+
+**Frontend changes** (`src/frontend/`):
+
+| Change | File | Details |
+|--------|------|---------|
+| Farm selector | `src/frontend/src/components/LoginForm.tsx` | If user has multiple farms, show a farm picker instead of auto-redirect |
+| Farm context | `src/frontend/src/lib/farmContext.ts` (new) | `useLocalFarmId()` consumers need farm context awareness |
+| Profile page | `src/frontend/src/components/ProfileForm.tsx` | Fields become read-only once farm created; add "+" button to create additional farm |
+| API client | `src/frontend/src/lib/api.ts` | `getMyFarm()` becomes `getMyFarms()` returning `Farm[]` |
+| All farm consumers | Multiple components | Update all `useLocalFarmId()` call sites to handle farm selection |
+
+**Data migration**: No migration needed for existing single-farm users. The old `SK=#FARM` record continues to work. New farms use `SK=FARM#<farmId>`. The query layer handles both formats.
+
+**Success criteria**:
+- Existing single-farm users continue to work without changes
+- A user can create a second farm via the profile page
+- `GET /api/v1/farms` returns an array of all user's farms
+- Login flow shows farm picker when user has multiple farms
+- All pages respect the currently-selected farm context
+- ADR is created and accepted before implementation starts
+
+---
+
+## Phase 5: New Features + Optimization (~4.5 hrs)
+
+> Status: PLANNED | Effort: ~4.5 hours
+> Dependencies: Phase 1 complete; N2 is independent; #90 benefits from Phase 4
+> Branch: `feature/phase5-features` from `develop` (may split into sub-branches)
+
+### N2: IoT service/guide page
+
+**Priority**: P2
+**Effort**: 1 hr
+
+**Description**: Add a static informational page at `/services/` that describes the IoT integration capabilities (camera, sensors) and provides setup guides. This is a content page — no backend work required.
+
+**Content sections**:
+- Camera installation guide
+- Sensor configuration guide
+- Device pairing instructions
+- "Coming soon: Device management dashboard" teaser
+
+**Files to create**:
+- `src/frontend/src/pages/services/index.astro` — static page with guide content
+
+**Files to modify**:
+- `src/frontend/src/components/BottomNav.tsx` — add Services nav item (or link from settings)
+- `src/frontend/src/i18n/en.json` — add services page i18n keys
+- `src/frontend/src/i18n/ja.json` — add services page i18n keys (Japanese)
+
+**Dependencies**: None (fully independent)
+
+**Success criteria**: `/services/` page renders with guide content in both languages. No backend calls required.
+
+---
+
+### #90: Settings cross-device sync
+
+**Priority**: P1
+**Effort**: 1-2 hrs
+
+**Description**: Currently, user settings (theme, locale, temperature unit) are stored in `localStorage` only. Add `PATCH/GET /api/v1/settings` endpoints to persist settings to DynamoDB and sync across devices.
+
+**Files to create**:
+- `src/api/src/routes/settings.ts` — settings CRUD routes
+
+**Files to modify**:
+- `src/api/src/services/dynamodb.ts` — add `getUserSettings()` and `updateUserSettings()` methods (store as `PK=USER#<userId>, SK=#SETTINGS`)
+- `src/api/src/app.ts` — register settings router
+- `src/frontend/src/lib/api.ts` — add `getSettings()` and `updateSettings()` functions
+- `src/frontend/src/components/SettingsPage.tsx` — sync to backend on change, fetch on mount
+
+**Dependencies**: Phase 1 (needs auth flow working)
+
+**Success criteria**:
+- Settings persist to DynamoDB when changed
+- Settings load from backend on login (with localStorage as fallback/cache)
+- Changing locale on one device reflects on another after login
+
+---
+
+### S9: httpOnly cookies for refresh token
+
+**Priority**: P1 (security improvement)
+**Effort**: 30 min
+
+**Description**: Move the Cognito refresh token from localStorage to an httpOnly cookie to reduce XSS attack surface.
+
+**Files to modify**:
+- `src/api/src/routes/auth.ts` (or auth middleware) — set refresh token as httpOnly cookie in login response
+- `src/frontend/src/lib/auth.ts` — stop storing refresh token in localStorage; rely on cookie
+
+**Dependencies**: None
+
+**Success criteria**: Refresh token is no longer accessible via `document.cookie` or `localStorage`. Token refresh flow still works.
+
+---
+
+### Q11: Batch DynamoDB for farm detail N+1
+
+**Priority**: P2
+**Effort**: 30 min
+
+**Description**: Farm detail pages make N+1 DynamoDB queries (one for the farm, one per field, one per bed, etc.). Use `BatchGetItem` or a single query with `begins_with` to fetch all related entities in one call.
+
+**Files to modify**:
+- `src/api/src/services/dynamodb.ts` — add `getFarmWithDetails(farmId)` method using a single query on `PK=FARM#<farmId>` with all SK prefixes
+
+**Dependencies**: None
+
+**Success criteria**: Farm detail endpoint makes 1-2 DynamoDB calls instead of N+1. Response time improves measurably.
+
+---
+
+### Q12: Dynamic timezone from farm location
+
+**Priority**: P2
+**Effort**: 15 min
+
+**Description**: Timezone is currently hardcoded or inferred from the browser. Use the farm's latitude/longitude to determine the timezone for weather data display and scheduled operations.
+
+**Files to modify**:
+- `src/api/src/services/weather.ts` — derive timezone from farm coordinates (use a lightweight lookup or Open-Meteo's timezone response field)
+- `src/frontend/src/lib/format.ts` — accept timezone parameter in date formatting functions
+
+**Dependencies**: None
+
+**Success criteria**: Weather times display in the farm's local timezone, not the browser's timezone.
+
+---
+
+### Q13: Atomic tag + plot status update
+
+**Priority**: P2
+**Effort**: 30 min
+
+**Description**: Tagging a plot and updating its status are currently two separate DynamoDB operations. Make them atomic using a DynamoDB transaction to prevent inconsistent states.
+
+**Files to modify**:
+- `src/api/src/services/dynamodb.ts` — wrap tag creation + plot status update in `TransactWriteItems`
+- `src/api/src/routes/plots.ts` — update the tag endpoint to use the transactional method
+
+**Dependencies**: None
+
+**Success criteria**: Tag + status update either both succeed or both fail. No partial states possible.
+
+---
+
+### S10: RemovalPolicy RETAIN for prod data stores
+
+**Priority**: P1 (data safety)
+**Effort**: 10 min
+
+**Description**: DynamoDB tables and S3 buckets currently use the default `RemovalPolicy.DESTROY` in CDK, meaning a `cdk destroy` would delete all production data. Set to `RETAIN` for production.
+
+**Files to modify**:
+- `infra/lib/storage-stack.ts` — add `removalPolicy: cdk.RemovalPolicy.RETAIN` to DynamoDB table and S3 bucket constructs
+
+**Dependencies**: None
+
+**Success criteria**: `cdk destroy` leaves DynamoDB tables and S3 buckets intact. Dev environments can override to `DESTROY` via context variable.
+
+---
+
+### T8-T9: Standalone Zod schema tests
+
+**Priority**: P2
+**Effort**: 30 min
+
+**Description**: The shared Zod schemas (`packages/shared/src/types/`) lack dedicated unit tests. Add tests that validate both positive and negative cases for the request/response schemas.
+
+**Files to create**:
+- `packages/shared/src/__tests__/schemas.test.ts` — test all exported Zod schemas
+
+**Success criteria**: Each Zod schema has at least one valid-input and one invalid-input test. Tests pass.
+
+---
+
+## Execution Roadmap (All Phases)
+
+```
+Phase 1 (COMPLETE) ─────────────────────────────────────────────
+  A1-A8: Core UX fixes, plot wizard, admin stats       ~4 hrs
+
+Phase 2 ─────────── Phase 3 ────────────────────────────────────
+  N3, N5, Q4, Q10,    Q5, Q7, Q8, Q9, S5, S7, S8,     ~3 hrs
+  C6, S11 (~1 hr)     T3-T6 (~2 hrs)                   (parallel)
+
+Phase 4 ────────────────────────────────────────────────────────
+  N1: Multi-farm architecture                           ~3-4 hrs
+  (requires ADR first)
+
+Phase 5 ────────────────────────────────────────────────────────
+  N2, #90, S9, Q11, Q12, Q13, S10, T8-T9               ~4.5 hrs
+  (can split into sub-branches)
+```
+
+**Phase dependencies**:
+- Phase 2 and Phase 3 can run in parallel (no shared files)
+- Phase 4 depends on Phase 1 only (needs stable farm CRUD)
+- Phase 5 items are mostly independent; #90 benefits from Phase 4 but does not require it
 
 ---
 
 ## Post-MVP Backlog
 
-Items explicitly deferred from this refinement pass:
+Items deferred beyond this plan (v1.0+):
 
 | Item | Description | Target |
 |------|-------------|--------|
 | F7 IoT management | Camera node pairing, device status, firmware OTA | Production |
 | F9 Full admin dashboard | User management, farm browsing, audit logs | Production |
-| Settings sync (#90) | Sync theme/locale/temp_unit to backend (currently localStorage only) | v1.0 |
-| CI/CD pipeline | GitHub Actions for PR checks + auto-deploy to AWS | v1.0 |
-| Custom domain + TLS | ACM certificate, Route53, CloudFront custom domain | v1.0 |
-| Runtime SSM fetch for LLM key | Enable real AI chat by fetching API key from SSM at runtime | v1.0 |
-| Scoped IAM for deploy user | Replace AdministratorAccess with least-privilege CDK deploy role | v1.0 |
-| Map view | Interactive farm map with plot locations (user feedback request) | v1.0 |
-| Desktop responsive polish | Full desktop layout optimization (feedback: desktop gaps) | v1.0 |
+| CI/CD pipeline | GitHub Actions for PR checks + auto-deploy to AWS | v1.0+ |
+| Custom domain + TLS | ACM certificate, Route53, CloudFront custom domain | v1.0+ |
+| Runtime SSM fetch for LLM key | Enable real AI chat by fetching API key from SSM at runtime | v1.0+ |
+| Scoped IAM for deploy user | Replace AdministratorAccess with least-privilege CDK deploy role | v1.0+ |
+| Map view | Interactive farm map with plot locations (user feedback request) | v1.0+ |
+| Desktop responsive polish | Full desktop layout optimization (feedback: desktop gaps) | v1.0+ |
+
+**Moved into scope** (from previous backlog):
+- ~~Settings sync (#90)~~ — now Phase 5
+- IoT service/guide page (N2) — now Phase 5 (static guide, not full F7 management)
 
 ---
 
 ## Success Criteria
 
-**v0.9 is ready to tag when all of the following are true:**
+### Phase 1 (v0.9) — COMPLETE
 
-- [ ] `GET /api/v1/farms` returns the user's farm for authenticated requests
-- [ ] Login flow populates localStorage with farmId + farmName on all devices
-- [ ] Users can create a plot through the guided wizard (no DB manipulation required)
-- [ ] New plots appear on the crops page immediately after creation
-- [ ] Weather conditions display correctly in both English and Japanese
-- [ ] Chat stub returns user-friendly text (no developer jargon) in both languages
-- [ ] Farm name appears in page titles on first load
-- [ ] Empty state messages reference manual actions, not camera nodes
-- [ ] Users can upload a crop photo from their phone camera
-- [ ] Admin stats page shows entity counts (admin-only access)
-- [ ] No regressions: existing auth, farm CRUD, weather, tagging flows still work
+- [x] `GET /api/v1/farms` returns the user's farm for authenticated requests
+- [x] Login flow populates localStorage with farmId + farmName on all devices
+- [x] Users can create a plot through the guided wizard (no DB manipulation required)
+- [x] New plots appear on the crops page immediately after creation
+- [x] Weather conditions display correctly in both English and Japanese
+- [x] Chat stub returns user-friendly text (no developer jargon) in both languages
+- [x] Farm name appears in page titles on first load
+- [x] Empty state messages reference manual actions, not camera nodes
+- [x] Users can upload a crop photo from their phone camera
+- [x] Admin stats page shows entity counts (admin-only access)
+- [x] No regressions: existing auth, farm CRUD, weather, tagging flows still work
+- [x] Frontend builds clean (`npm run build` in `src/frontend/`)
+- [x] API type-checks clean (`npx tsc --noEmit` in `src/api/`)
+- [x] Deploy succeeds: `npx cdk deploy` + S3 sync + CloudFront invalidation
+
+### Phase 2 — Quick Fixes + Deploy Bugs
+
+- [ ] Weather i18n renders correctly on first hydration (no English flash)
+- [ ] Image upload verified working on PlotDetail
+- [ ] Weather cache bounded to max size
+- [ ] API starts locally without `TABLE_NAME` env var (uses default)
+- [ ] Chat model name not exposed in `/usage` response
+- [ ] No `storage_key` in image API responses
+
+### Phase 3 — Tech Debt Sweep
+
+- [ ] No non-null assertions on budget record access
+- [ ] Malformed JSON returns 400, not 500
+- [ ] Wind direction shows cardinal directions (N, NE, E, etc.)
+- [ ] JPEG validation handles files < 3 bytes gracefully
+- [ ] Rate limiter limitation documented
+- [ ] LLM error bodies not logged to CloudWatch
+- [ ] Thumbnail Lambda IAM policy uses least-privilege
+- [ ] Auth, ownership, budget, and plot edge-case tests pass
+
+### Phase 4 — Multi-Farm Architecture
+
+- [ ] ADR created and accepted for multi-farm support
+- [ ] `GET /api/v1/farms` returns array of all user's farms
+- [ ] Users can create multiple farms
+- [ ] Farm picker shown on login when user has multiple farms
+- [ ] All pages respect selected farm context
+- [ ] Existing single-farm users unaffected (backward compatible)
+- [ ] Data migration not required (dual SK format supported)
+
+### Phase 5 — New Features + Optimization
+
+- [ ] IoT services/guide page renders at `/services/`
+- [ ] Settings sync to backend via `PATCH/GET /api/v1/settings`
+- [ ] Refresh token stored in httpOnly cookie (not localStorage)
+- [ ] Farm detail loads in 1-2 DynamoDB calls (not N+1)
+- [ ] Weather times use farm's local timezone
+- [ ] Tag + plot status update is atomic (transactional)
+- [ ] Prod data stores have `RemovalPolicy.RETAIN`
+- [ ] Zod schema unit tests pass
+
+### Overall (v1.0 ready to tag)
+
+- [ ] All Phase 1-5 success criteria met
 - [ ] Frontend builds clean (`npm run build` in `src/frontend/`)
 - [ ] API type-checks clean (`npx tsc --noEmit` in `src/api/`)
+- [ ] All tests pass
 - [ ] Deploy succeeds: `npx cdk deploy` + S3 sync + CloudFront invalidation
+- [ ] No P0/P1 items remaining in any phase
 
 ---
 
-> Generated by Claude Opus 4.6 | MVP Post-Deploy Refinement Plan | 2026-03-21
+> Generated by Claude Opus 4.6 | MVP Refinement Plan (Phases 1-5) | 2026-03-21
