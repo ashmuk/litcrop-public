@@ -6,7 +6,17 @@
  *   2. No unexpected internal fields leak into responses (e.g., storage_key).
  */
 
+import { TEST_USER_ID, authHeaders } from './helpers/auth';
+import { createSdkMock } from './helpers/anthropic';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// ── SDK mock (replaces vi.stubGlobal('fetch') for chat route) ─────
+
+const { mockCreate: contractsMockCreate } = vi.hoisted(() => ({
+  mockCreate: vi.fn(),
+}));
+
+vi.mock('@anthropic-ai/sdk', () => createSdkMock(contractsMockCreate));
 import app from '../app';
 import { dynamoRepo } from '../services/dynamodb';
 import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage } from '../services/s3';
@@ -42,6 +52,8 @@ vi.mock('../services/dynamodb', () => ({
     getImageById: vi.fn(),
     createTag: vi.fn(),
     getFarmForUser: vi.fn(),
+    getConversationHistory: vi.fn().mockResolvedValue([]),
+    saveConversationHistory: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -64,14 +76,6 @@ vi.mock('../services/budget', () => ({
   checkRateLimit: vi.fn(),
 }));
 
-// ── Auth helpers ─────────────────────────────────────────────────
-
-const TEST_USER_ID = 'test-cognito-sub-001';
-function authHeaders(): Record<string, string> {
-  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return { Authorization: `Bearer aaa.${payload}.sig` };
-}
 
 // ── Seed fixtures ────────────────────────────────────────────────
 
@@ -354,38 +358,6 @@ describe('contract: GET /api/v1/plots/:plotId → PlotDetailResponse', () => {
 
 describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () => {
   const WEATHER_FARM_ID = 'cf000000-0000-0000-0000-000000000099';
-
-  function makeOpenMeteoResponse() {
-    return {
-      current: {
-        temperature_2m: 22.5,
-        apparent_temperature: 21.0,
-        relative_humidity_2m: 65,
-        wind_speed_10m: 10.2,
-        wind_direction_10m: 180,
-        weather_code: 2,
-      },
-      hourly: {
-        time: Array.from({ length: 24 }, (_, i) => `2026-03-17T${String(i).padStart(2, '0')}:00`),
-        temperature_2m: Array(24).fill(20),
-        relative_humidity_2m: Array(24).fill(60),
-        precipitation_probability: Array(24).fill(5),
-        precipitation: Array(24).fill(0),
-        weather_code: Array(24).fill(2),
-        wind_speed_10m: Array(24).fill(8),
-      },
-      daily: {
-        time: ['2026-03-17', '2026-03-18', '2026-03-19', '2026-03-20', '2026-03-21', '2026-03-22', '2026-03-23'],
-        temperature_2m_max: [25, 24, 23, 22, 21, 20, 19],
-        temperature_2m_min: [15, 14, 13, 12, 11, 10, 9],
-        precipitation_sum: [0, 0, 0, 0, 0, 0, 0],
-        precipitation_probability_max: Array(7).fill(10),
-        weather_code: Array(7).fill(2),
-        sunrise: Array(7).fill('2026-03-17T05:45'),
-        sunset:  Array(7).fill('2026-03-17T18:15'),
-      },
-    };
-  }
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -677,18 +649,18 @@ describe('zod contract: GET /api/v1/farms/:farmId/weather', () => {
 // 11 ── POST /api/v1/chat
 describe('zod contract: POST /api/v1/chat', () => {
   beforeEach(() => {
-    // Mock fetch so the chat route doesn't hit the real LLM API in any environment.
-    // The mock returns a valid Anthropic response that includes a SUGGESTIONS block.
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        content: [{ type: 'text', text: 'Plant tomatoes!\nSUGGESTIONS: ["When to water?", "Best fertiliser?"]' }],
-      }),
-    }));
+    // Use SDK mock so the chat route doesn't hit the real Anthropic API.
+    process.env['LLM_API_KEY'] = 'test-key';
+    contractsMockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: 'Plant tomatoes!\nSUGGESTIONS: ["When to water?", "Best fertiliser?"]' }],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 100, output_tokens: 40 },
+    });
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    delete process.env['LLM_API_KEY'];
+    contractsMockCreate.mockReset();
   });
 
   it('response parses against ChatResponseSchema', async () => {

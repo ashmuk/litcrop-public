@@ -1,3 +1,4 @@
+import { TEST_USER_ID, authHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
@@ -12,17 +13,10 @@ vi.mock('../../services/dynamodb', () => ({
 
 // ── WMO code tests (via route + mocked fetch) ─────────────────────
 
-const TEST_USER_ID = 'test-cognito-sub-001';
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
 const FARM_ID_2 = 'f0000000-0000-0000-0000-000000000002'; // for cache scenarios
 const FARM_ID_3 = 'f0000000-0000-0000-0000-000000000003'; // for stale cache
 const FARM_ID_4 = 'f0000000-0000-0000-0000-000000000004'; // for WMO 95
-
-function authHeaders(): Record<string, string> {
-  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return { Authorization: `Bearer aaa.${payload}.sig` };
-}
 
 const farmFixture = {
   id: FARM_ID,

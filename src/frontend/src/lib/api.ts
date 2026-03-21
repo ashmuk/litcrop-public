@@ -13,6 +13,7 @@
 import { getAccessToken } from './auth';
 
 import type {
+  Farm,
   FarmResponse,
   FarmPlotItem,
   PlotDetailResponse,
@@ -23,6 +24,7 @@ import type {
   TagCreateResponse,
   WeatherResponse,
   ChatResponse,
+  UsageResponse,
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
@@ -138,14 +140,14 @@ export async function getFarm(farmId: string): Promise<FarmResponse> {
   return request<FarmResponse>('GET', `/farms/${farmId}`);
 }
 
-/** POST /api/v1/farms */
-export async function createFarm(data: CreateFarmRequest): Promise<FarmResponse> {
-  return request<FarmResponse>('POST', '/farms', data);
+/** POST /api/v1/farms — returns flat Farm (no fields array) */
+export async function createFarm(data: CreateFarmRequest): Promise<Farm> {
+  return request<Farm>('POST', '/farms', data);
 }
 
-/** PATCH /api/v1/farms/{farmId} */
-export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<FarmResponse> {
-  return request<FarmResponse>('PATCH', `/farms/${farmId}`, data);
+/** PATCH /api/v1/farms/{farmId} — returns flat Farm (no fields array) */
+export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<Farm> {
+  return request<Farm>('PATCH', `/farms/${farmId}`, data);
 }
 
 // ── Plot Endpoints ────────────────────────────────────────────────
@@ -208,4 +210,11 @@ export async function getWeather(farmId: string): Promise<WeatherResponse> {
 /** POST /api/v1/chat */
 export async function sendChat(data: ChatMessageRequest): Promise<ChatResponse> {
   return request<ChatResponse>('POST', '/chat', data);
+}
+
+// ── Usage Endpoint ────────────────────────────────────────────────
+
+/** GET /api/v1/usage */
+export async function getUsage(): Promise<UsageResponse> {
+  return request<UsageResponse>('GET', '/usage');
 }

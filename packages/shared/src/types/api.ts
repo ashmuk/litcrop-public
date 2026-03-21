@@ -117,6 +117,8 @@ export interface TagCreateResponse extends Tag {
 export interface WeatherResponse {
   current: {
     temperature: number;
+    apparent_temperature: number;
+    weather_code: number;
     condition: string;
     condition_icon: string;
     humidity: number;
@@ -135,6 +137,7 @@ export interface WeatherResponse {
   daily: DailyForecast[];
   alerts: WeatherAlert[];
   crop_impact: CropImpactCard[];
+  cached_at: string;
 }
 
 export interface HourlyForecast {
@@ -173,11 +176,13 @@ export interface CropImpactCard {
 export interface ChatRequest {
   message: string;
   farm_id?: string;
+  conversation_id?: string;
 }
 
 export interface ChatResponse {
   reply: string;
   suggestions: string[];
+  conversation_id: string;
 }
 
 // ── Usage Types ───────────────────────────────────────────────────

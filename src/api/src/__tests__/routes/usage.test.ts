@@ -1,3 +1,4 @@
+import { TEST_USER_ID, authHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../../app';
 
@@ -21,14 +22,6 @@ vi.mock('../../services/dynamodb', () => ({
 }));
 
 import { getUsage } from '../../services/budget';
-
-const TEST_USER_ID = 'test-cognito-sub-001';
-
-function authHeaders(): Record<string, string> {
-  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return { Authorization: `Bearer aaa.${payload}.sig` };
-}
 
 const usageFixture = {
   user_id: TEST_USER_ID,

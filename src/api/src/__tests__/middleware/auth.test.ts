@@ -37,7 +37,7 @@ function buildApp() {
 describe('authMiddleware — Bearer token path', () => {
   it('extracts sub and email from a valid JWT', async () => {
     const app = buildApp();
-    const token = mockJwt({ sub: 'user-abc', email: 'alice@example.com' });
+    const token = mockJwt({ sub: 'user-abc', email: 'alice@example.com', iss: 'https://cognito-idp.ap-northeast-1.amazonaws.com/test-pool' });
 
     const res = await app.request('/whoami', {
       headers: { Authorization: `Bearer ${token}` },
@@ -51,7 +51,7 @@ describe('authMiddleware — Bearer token path', () => {
 
   it('extracts sub when email is missing (email defaults to empty string)', async () => {
     const app = buildApp();
-    const token = mockJwt({ sub: 'user-no-email' });
+    const token = mockJwt({ sub: 'user-no-email', iss: 'https://cognito-idp.ap-northeast-1.amazonaws.com/test-pool' });
 
     const res = await app.request('/whoami', {
       headers: { Authorization: `Bearer ${token}` },
@@ -143,7 +143,7 @@ describe('authMiddleware — Lambda event claims path', () => {
 
   it('falls back to Bearer token when Lambda claims are absent', async () => {
     const app = buildApp();
-    const token = mockJwt({ sub: 'fallback-user', email: 'fallback@example.com' });
+    const token = mockJwt({ sub: 'fallback-user', email: 'fallback@example.com', iss: 'https://cognito-idp.ap-northeast-1.amazonaws.com/test-pool' });
     const req = new Request('http://localhost/whoami', {
       headers: { Authorization: `Bearer ${token}` },
     });

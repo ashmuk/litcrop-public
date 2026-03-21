@@ -76,5 +76,6 @@ export const DDB_KEY_PREFIXES = {
   PLOT: 'PLOT#',
   IMG: 'IMG#',
   TAG: 'TAG#',
+  CONV: 'CONV#',
   META: '#META',
 } as const;

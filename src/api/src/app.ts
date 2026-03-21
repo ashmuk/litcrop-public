@@ -102,7 +102,9 @@ app.onError((err, c) => {
 
 app.use('/api/v1/farms', authMiddleware);
 app.use('/api/v1/farms/*', authMiddleware);
+app.use('/api/v1/plots', authMiddleware);
 app.use('/api/v1/plots/*', authMiddleware);
+app.use('/api/v1/images', authMiddleware);
 app.use('/api/v1/images/*', authMiddleware);
 app.use('/api/v1/chat', authMiddleware);
 app.use('/api/v1/usage', authMiddleware);

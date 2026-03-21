@@ -12,6 +12,14 @@ import type { Farm, Field, Bed, Plot, Image, Tag, TagValue, PlotStatus } from '@
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
+// ── Conversation history type ─────────────────────────────────────
+
+/** Serializable message record for DynamoDB storage. Matches MessageParam shape. */
+export interface StoredMessage {
+  role: 'user' | 'assistant';
+  content: unknown; // string | content block array (MessageParam['content'])
+}
+
 // ── Configuration ────────────────────────────────────────────────
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-poc';
@@ -52,8 +60,17 @@ function encodeCursor(lastKey: Record<string, unknown>): string {
   return Buffer.from(JSON.stringify(lastKey)).toString('base64url');
 }
 
-function decodeCursor(cursor: string): Record<string, unknown> {
-  return JSON.parse(Buffer.from(cursor, 'base64url').toString('utf-8'));
+function decodeCursor(cursor: string, expectedPkPrefix: string): Record<string, unknown> {
+  const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf-8'));
+  // S4: Validate decoded PK matches the caller's expected prefix to prevent
+  // cross-user data access via crafted cursors.
+  const pk = decoded['PK'];
+  if (typeof pk !== 'string' || !pk.startsWith(expectedPkPrefix)) {
+    const err = new Error('Invalid cursor: PK mismatch');
+    err.name = 'ValidationException';
+    throw err;
+  }
+  return decoded;
 }
 
 // ── Item mappers ─────────────────────────────────────────────────
@@ -249,9 +266,9 @@ export class DynamoRepository {
 
     if (cursor) {
       try {
-        queryInput.ExclusiveStartKey = decodeCursor(cursor);
+        queryInput.ExclusiveStartKey = decodeCursor(cursor, pk.plot(plotId));
       } catch {
-        // Malformed base64url or non-JSON payload: treat as a client error
+        // Malformed base64url, non-JSON, or PK mismatch: treat as a client error
         const badCursor = new Error('Invalid cursor format');
         badCursor.name = 'ValidationException';
         throw badCursor;
@@ -546,6 +563,44 @@ export class DynamoRepository {
           ':key': thumbnailKey,
         },
         ConditionExpression: 'attribute_exists(PK)',
+      }),
+    );
+  }
+
+  // ── Conversation history (chat multi-turn) ───────────────────────
+  // Key pattern: PK = CONV#<conversationId>, SK = #HISTORY
+  // TTL: 24 hours from last write.
+
+  async getConversationHistory(conversationId: string, userId: string): Promise<StoredMessage[]> {
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: `${DDB_KEY_PREFIXES.CONV}${conversationId}`, SK: '#HISTORY' },
+      }),
+    );
+    if (!result.Item) return [];
+    // Ownership check: reject history belonging to another user
+    if (result.Item['user_id'] !== userId) return [];
+    return (result.Item['messages'] as StoredMessage[]) ?? [];
+  }
+
+  async saveConversationHistory(
+    conversationId: string,
+    messages: StoredMessage[],
+    userId: string,
+  ): Promise<void> {
+    const ttl = Math.floor(Date.now() / 1000) + 24 * 3600;
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: `${DDB_KEY_PREFIXES.CONV}${conversationId}`,
+          SK: '#HISTORY',
+          messages,
+          user_id: userId,
+          ttl,
+          updated_at: new Date().toISOString(),
+        },
       }),
     );
   }

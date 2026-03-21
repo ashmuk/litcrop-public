@@ -1,3 +1,4 @@
+import { TEST_USER_ID, authHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
@@ -22,18 +23,11 @@ vi.mock('../../services/s3', () => ({
   uploadImage: vi.fn(),
 }));
 
-const TEST_USER_ID = 'test-cognito-sub-001';
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
 const PLOT_ID = 'a0000000-0000-0000-0000-000000000001';
 const IMAGE_ID = 'e0000000-0000-0000-0000-000000000001';
 const TAG_ID = 't0000000-0000-0000-0000-000000000001';
 const BED_ID = 'b0000000-0000-0000-0000-000000000001';
-
-function authHeaders(): Record<string, string> {
-  const payload = btoa(JSON.stringify({ sub: TEST_USER_ID, email: 'test@example.com' }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return { Authorization: `Bearer aaa.${payload}.sig` };
-}
 
 // Ownership chain fixtures
 const plotForOwnership = {

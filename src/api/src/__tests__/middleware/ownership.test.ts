@@ -83,11 +83,11 @@ const imageFixture: Image = {
   size_bytes: 100000,
 };
 
-/** Build a mock JWT header for the given userId. */
+import { makeAuthToken } from '../helpers/auth';
+
+/** Build a mock Authorization header value for the given userId. */
 function authHeader(userId: string): string {
-  const payload = btoa(JSON.stringify({ sub: userId, email: `${userId}@example.com` }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return `Bearer aaa.${payload}.fakesig`;
+  return `Bearer ${makeAuthToken(userId, `${userId}@example.com`)}`;
 }
 
 beforeEach(() => {
