@@ -248,11 +248,13 @@ CDK creates the S3 bucket and CloudFront, but doesn't upload the frontend files.
 ```bash
 # 1. Create the frontend .env file with CDK outputs
 cat > src/frontend/.env << EOF
-PUBLIC_API_URL=<ApiUrl from Step 4>
-PUBLIC_COGNITO_USER_POOL_ID=<UserPoolId from Step 4>
+PUBLIC_API_BASE_URL=<ApiUrl from Step 4>/api/v1
 PUBLIC_COGNITO_CLIENT_ID=<UserPoolClientId from Step 4>
 PUBLIC_COGNITO_REGION=ap-northeast-1
 EOF
+# NOTE: The var name MUST be PUBLIC_API_BASE_URL (not PUBLIC_API_URL)
+# and MUST include the /api/v1 suffix. The frontend code reads this
+# exact name in src/frontend/src/lib/api.ts:37.
 
 # 2. Build the Astro frontend (SSG — static files)
 cd src/frontend
@@ -312,12 +314,11 @@ curl -s -o /dev/null -w "%{http_code}" "$CF_URL"
 
 The frontend needs these values from CDK outputs in its `.env` file:
 
-| Variable | Source |
-|----------|--------|
-| `PUBLIC_API_URL` | `LitCropStack.ApiUrl` |
-| `PUBLIC_COGNITO_USER_POOL_ID` | `LitCropStack.UserPoolId` |
-| `PUBLIC_COGNITO_CLIENT_ID` | `LitCropStack.UserPoolClientId` |
-| `PUBLIC_COGNITO_REGION` | `ap-northeast-1` (hardcoded) |
+| Variable | Source | Notes |
+|----------|--------|-------|
+| `PUBLIC_API_BASE_URL` | `LitCropStack.ApiUrl` + `/api/v1` | Must include `/api/v1` suffix |
+| `PUBLIC_COGNITO_CLIENT_ID` | `LitCropStack.UserPoolClientId` | Cognito app client (no secret) |
+| `PUBLIC_COGNITO_REGION` | `ap-northeast-1` | Hardcoded for Tokyo region |
 
 ### CORS
 
