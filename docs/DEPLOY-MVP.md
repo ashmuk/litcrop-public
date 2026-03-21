@@ -1,10 +1,12 @@
 # DEPLOY-MVP.md — LitCrop MVP Deployment Guide
 
 > Created: 2026-03-21
+> Last updated: 2026-03-21 (post-deploy)
 > Scope: MVP (replaces PoC DEPLOY-PLAN.md approach)
 > Target: AWS ap-northeast-1 (Tokyo)
 > Account: <AWS_ACCOUNT_ID> (litcrop-poc-admin)
 > Strategy: AWS CDK (Infrastructure as Code)
+> Status: **DEPLOYED** — 46 resources, verified 20/21 PASS
 
 ---
 
@@ -103,13 +105,32 @@ The PoC used **manual AWS CLI commands** and shell scripts to create resources o
 | Node.js 22+ | `node --version` | [nodejs.org](https://nodejs.org) |
 | npm dependencies | `ls node_modules` | `npm ci` from repo root |
 | Region set | `echo $AWS_DEFAULT_REGION` | `export AWS_DEFAULT_REGION=ap-northeast-1` |
+| **IAM: AdministratorAccess** | `aws iam list-attached-user-policies --user-name litcrop-poc-admin` | See IAM section below |
+
+### IAM Permissions (learned during first deploy)
+
+CDK bootstrap and deploy require broad permissions: CloudFormation, IAM role creation, S3, Lambda, DynamoDB, Cognito, CloudFront, API Gateway, SSM, ECR, CloudWatch Logs.
+
+**For MVP:** Attach `AdministratorAccess` to the deploy user. Scope down after deployment is stable.
+
+```bash
+# Attach (one-time, from a privileged user or AWS Console)
+aws iam attach-user-policy \
+  --user-name litcrop-poc-admin \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+
+# Verify
+aws iam list-attached-user-policies --user-name litcrop-poc-admin
+```
+
+**Post-deploy hardening (Production):** Replace with a scoped CDK deploy policy or use `sts:AssumeRole` on the CDK execution roles created by bootstrap.
 
 ### Optional (for full chat functionality)
 
 | Prerequisite | Purpose | Without It |
 |-------------|---------|-----------|
 | Anthropic API key | Real AI chat responses | Chat returns stub responses (fully functional otherwise) |
-| SSM permissions | Store API key securely | Set `LLM_API_KEY` directly in Lambda env vars (less secure) |
+| SSM permissions | Store API key securely | Lambda has IAM grant to read SSM; add runtime fetch code |
 
 ---
 
@@ -374,28 +395,44 @@ Error: This stack uses assets, so the toolkit stack must be deployed
 ```
 Error: SSM parameter /litcrop/llm-api-key not found
 ```
-**Fix:** Either create the parameter (Step 2) or remove the SSM reference from the CDK stack. Chat works in stub mode without it.
-
-**Quick workaround** (if you want to deploy without SSM):
-The CDK stack references the SSM parameter at synth time. If the parameter doesn't exist, synth will fail. To skip it temporarily, you can set a dummy value:
+**Fix:** The SSM parameter must exist before `cdk synth` runs (it resolves at synth time). Set a dummy value:
 ```bash
 aws ssm put-parameter --name "/litcrop/llm-api-key" --type "SecureString" --value "not-set" --region ap-northeast-1
 ```
+Chat works in stub mode when the key is `"not-set"` or unset. The `LLM_API_KEY` env var was removed from the Lambda environment (see Known Issues below) — the Lambda would need runtime SSM fetch code to use a real key.
+
+### SSM SecureString in Lambda Environment (CDK deploy fails)
+
+```
+Error: SSM Secure reference is not supported in: [AWS::Lambda::Function/Properties/Environment/Variables/LLM_API_KEY]
+```
+**Root cause:** CloudFormation blocks `{{resolve:ssm-secure:...}}` dynamic references in `AWS::Lambda::Function` properties. This is an AWS limitation.
+**Fix (already applied):** The `LLM_API_KEY: llmApiKeyParam.stringValue` line was removed from `litcrop-stack.ts`. The Lambda's IAM role still has `ssm:GetParameter` permission via `llmApiKeyParam.grantRead(apiLambda)`. For Production, add runtime SSM fetch code to the chat route.
+
+### Thumbnail Lambda Bundling Fails (sharp / lock file)
+
+```
+Error: npm error Missing: sharp@0.33.5 from lock file
+```
+**Root cause:** CDK's `nodeModules: ['sharp']` looks for sharp in the nearest `package-lock.json` (infra's), which doesn't include it.
+**Fix (already applied):** Added `depsLockFilePath` pointing to `src/thumbnail/package-lock.json` in the ThumbnailLambda config, and generated the lock file via `cd src/thumbnail && npm install`.
 
 ### CloudFront Takes Too Long
 
 CloudFront distribution creation takes 5-15 minutes on first deploy. This is normal — AWS provisions edge locations globally. Subsequent deploys that don't change CloudFront settings are faster.
 
-### Lambda Bundling Fails (sharp)
+### Lambda Bundling Fails (Docker)
 
-The thumbnail Lambda uses `sharp` (native image processing). If bundling fails:
+CDK uses Docker to install native modules (like `sharp`) for Lambda's Linux ARM64 runtime. If bundling fails with Docker errors:
 ```bash
-# Ensure you're on a compatible platform (Linux ARM64 or Docker available)
-cd infra
-npx cdk deploy --context sharp-platform=linux-arm64
+# Ensure Docker is running
+docker info
+
+# Retry deploy
+cd infra && npx cdk deploy
 ```
 
-CDK uses Docker to build native modules for Lambda's Linux ARM64 runtime. Make sure Docker is running.
+If Docker is unavailable, CDK falls back to local `npm install` — this only works on Linux ARM64 hosts.
 
 ### CORS Errors in Browser
 
@@ -443,6 +480,92 @@ If you see CORS errors after deploy:
 
 ---
 
+## Deployment Record (2026-03-21)
+
+First successful MVP deployment.
+
+### Live Endpoints
+
+| Endpoint | URL |
+|----------|-----|
+| **Frontend** | https://dpj8a3mk3tzkq.cloudfront.net |
+| **API** | https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/ |
+
+### CDK Outputs
+
+| Output | Value |
+|--------|-------|
+| `ApiUrl` | `https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/` |
+| `CloudFrontUrl` | `https://dpj8a3mk3tzkq.cloudfront.net` |
+| `UserPoolId` | `ap-northeast-1_XXXXXXXXX` |
+| `UserPoolClientId` | `5bm4tnbd4kuhjcour2p0n4aldq` |
+| `DynamoTableName` | `litcrop-mvp` |
+| `ImagesBucketName` | `litcrop-mvp-images` |
+| `ThumbnailsBucketName` | `litcrop-mvp-thumbnails` |
+| CloudFront Distribution ID | `EYYYYYYYYYYYYY` |
+
+### Verification Results (20/21 PASS)
+
+| Check | Result |
+|-------|--------|
+| CDK Outputs (7/7 present) | PASS |
+| API health endpoints (3 routes) | PASS |
+| CloudFront frontend (200, HTML) | PASS |
+| CORS headers (origin, methods, Authorization) | PASS |
+| JWT Authorizer (401 without token) | PASS |
+| DynamoDB table + GSIs | PASS |
+| S3 buckets (3, BlockPublicAccess) | PASS |
+| CloudWatch (0 errors) | PASS |
+| Cognito User Pool matches | PASS |
+| CloudFront TLS version | SUGGESTION (see below) |
+
+### Issues Fixed During Deploy
+
+| Issue | Fix | Commit |
+|-------|-----|--------|
+| IAM `litcrop-poc-admin` lacked CloudFormation perms | Attached `AdministratorAccess` | Manual (AWS Console) |
+| SSM SecureString blocked in Lambda env vars | Removed `LLM_API_KEY` env var from CDK stack | `1837834` |
+| Thumbnail Lambda couldn't find `sharp` in lock file | Added `depsLockFilePath` + generated `src/thumbnail/package-lock.json` | `1837834` |
+
+---
+
+## Known Issues and Suggestions
+
+### CloudFront TLS MinimumProtocolVersion (SUGGESTION)
+
+CDK sets `minimumProtocolVersion: TLS_V1_2_2021`, but AWS reports `TLSv1` because the distribution uses the default CloudFront certificate (`*.cloudfront.net`). The `minimumProtocolVersion` setting only takes effect with a custom domain + ACM certificate.
+
+**Real-world risk:** LOW — CloudFront's default cert negotiates TLS 1.2+ with all modern browsers regardless.
+
+**Fix (Production):** Attach an ACM certificate with a custom domain, and the TLS 1.2 policy will take effect.
+
+### LLM API Key Not Injected (Chat Stub Mode)
+
+The `LLM_API_KEY` environment variable is not set on the API Lambda. Chat returns stub responses. This is intentional for MVP — the SSM parameter contains `"not-set"`.
+
+**To enable real AI chat (Production):**
+1. Store a real Anthropic API key in SSM:
+   ```bash
+   aws ssm put-parameter --name "/litcrop/llm-api-key" --type "SecureString" \
+     --value "sk-ant-your-real-key" --overwrite --region ap-northeast-1
+   ```
+2. Add runtime SSM fetch to the chat route (the Lambda already has IAM `ssm:GetParameter` permission).
+3. Re-deploy: `cd infra && npx cdk deploy`
+
+### AdministratorAccess on Deploy User
+
+`litcrop-poc-admin` currently has `AdministratorAccess`. This should be scoped down after deployment stabilizes.
+
+**Post-MVP hardening:**
+```bash
+aws iam detach-user-policy \
+  --user-name litcrop-poc-admin \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+```
+Replace with a scoped CDK deploy policy or use `sts:AssumeRole` on CDK execution roles.
+
+---
+
 ## Next: CI/CD Automation
 
 After validating a successful manual deploy, the next step is to automate via GitHub Actions:
@@ -456,3 +579,4 @@ This is documented separately in a future CI/CD setup guide.
 ---
 
 > **Generated by Claude Opus 4.6** | MVP Deploy Guide | 2026-03-21
+> **Updated**: 2026-03-21 — added deploy record, known issues, IAM prereqs, CDK fix documentation
