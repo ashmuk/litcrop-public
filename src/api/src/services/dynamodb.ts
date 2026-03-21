@@ -4,6 +4,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   UpdateCommand,
   TransactWriteCommand,
   type QueryCommandInput,
@@ -436,6 +437,83 @@ export class DynamoRepository {
     return this.getFarm(result.Item['farm_id'] as string);
   }
 
+  async createField(farmId: string, name: string, position: number): Promise<Field> {
+    const fieldId = crypto.randomUUID();
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.farm(farmId),
+          SK: sk.field(position, fieldId),
+          id: fieldId,
+          farm_id: farmId,
+          name,
+          position,
+        },
+      }),
+    );
+    return { id: fieldId, farm_id: farmId, name, position };
+  }
+
+  async createBed(fieldId: string, name: string, position: number): Promise<Bed> {
+    const bedId = crypto.randomUUID();
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.field(fieldId),
+          SK: sk.bed(position, bedId),
+          id: bedId,
+          field_id: fieldId,
+          name,
+          position,
+        },
+      }),
+    );
+    return { id: bedId, field_id: fieldId, name, position };
+  }
+
+  async createPlot(
+    bedId: string,
+    farmId: string,
+    data: {
+      label: string;
+      crop_type: string;
+      crop_variety: string;
+      planted_at: string;
+      expected_harvest: string;
+      notes?: string;
+    },
+  ): Promise<Plot> {
+    const plotId = crypto.randomUUID();
+    const plot: Plot = {
+      id: plotId,
+      bed_id: bedId,
+      farm_id: farmId,
+      label: data.label,
+      crop_type: data.crop_type,
+      crop_variety: data.crop_variety,
+      planted_at: data.planted_at,
+      expected_harvest: data.expected_harvest,
+      notes: data.notes,
+      latest_status: 'no_data',
+    };
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.bed(bedId),
+          SK: sk.plot(plotId),
+          // GSI2: farm-level plot queries (getPlotsForFarm)
+          GSI2PK: pk.farm(farmId),
+          GSI2SK: sk.plot(plotId),
+          ...plot,
+        },
+      }),
+    );
+    return plot;
+  }
+
   async updateFarm(
     farmId: string,
     updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme'>>,
@@ -603,6 +681,42 @@ export class DynamoRepository {
         },
       }),
     );
+  }
+
+  /**
+   * Count entity types across the table for admin observability.
+   * Uses paginated scans with Select:COUNT — acceptable at MVP scale.
+   */
+  async getStats(): Promise<{ farms: number; users: number; plots: number }> {
+    const countScan = async (
+      filterExpr: string,
+      exprValues: Record<string, string>,
+    ): Promise<number> => {
+      let count = 0;
+      let lastKey: Record<string, unknown> | undefined;
+      do {
+        const result = await ddb.send(
+          new ScanCommand({
+            TableName: TABLE_NAME,
+            FilterExpression: filterExpr,
+            ExpressionAttributeValues: exprValues,
+            Select: 'COUNT',
+            ExclusiveStartKey: lastKey,
+          }),
+        );
+        count += result.Count ?? 0;
+        lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+      } while (lastKey);
+      return count;
+    };
+
+    const [farms, users, plots] = await Promise.all([
+      countScan('begins_with(PK, :p) AND SK = :s', { ':p': 'FARM#', ':s': '#META' }),
+      countScan('begins_with(PK, :p)', { ':p': 'USER#' }),
+      countScan('begins_with(SK, :s)', { ':s': 'PLOT#' }),
+    ]);
+
+    return { farms, users, plots };
   }
 }
 

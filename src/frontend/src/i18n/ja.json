@@ -41,7 +41,7 @@
   },
   "farm": {
     "no_plots": "区画がありません",
-    "no_plots_body": "農場を設定してカメラノードを接続すると、区画が表示されます。",
+    "no_plots_body": "最初の作物区画を追加して、農場のモニタリングを始めましょう。",
     "error_loading": "農場データを読み込めませんでした",
     "error_body": "接続を確認して、もう一度お試しください。",
     "loading": "農場データを読み込み中…",
@@ -57,7 +57,7 @@
     "harvest": "収穫予定",
     "notes": "メモ",
     "no_images": "まだ画像がありません",
-    "no_images_body": "カメラノードが撮影を開始すると、画像が表示されます。"
+    "no_images_body": "作物の写真を撮って成長を記録しましょう。"
   },
   "weather": {
     "temperature": "気温",
@@ -156,6 +156,35 @@
     "error": "アップロードに失敗しました",
     "too_large": "画像サイズが2MBを超えています",
     "wrong_type": "JPEGファイルのみ対応しています"
+  },
+  "add_plot": {
+    "title": "作物区画を追加",
+    "step1_title": "作物を選択",
+    "step2_title": "区画の詳細",
+    "step3_title": "確認",
+    "crop_type_label": "作物の種類",
+    "crop_variety_label": "品種",
+    "label_label": "区画名",
+    "planted_at_label": "定植日",
+    "next": "次へ",
+    "back": "戻る",
+    "create": "区画を作成",
+    "creating": "作成中…",
+    "success": "区画を作成しました",
+    "error": "区画の作成に失敗しました。もう一度お試しください。",
+    "climate_hint": "気候に合った作物の提案：",
+    "add_first_plot": "最初の区画を追加",
+    "add_plot": "区画を追加",
+    "crop_types": {
+      "rice": "稲",
+      "tomato": "トマト",
+      "cucumber": "きゅうり",
+      "eggplant": "なす",
+      "lettuce": "レタス",
+      "daikon": "大根",
+      "cabbage": "白菜",
+      "other": "その他"
+    }
   },
   "auth": {
     "login": {

@@ -59,6 +59,11 @@ export default function FarmOverview({ farmId }: Props) {
             localStorage.setItem('litcrop-farmId', farmData.id);
             localStorage.setItem('litcrop-farmName', farmData.name);
           } catch {}
+          // Patch page title in case localStorage was empty on first load
+          const titleEl = document.getElementById('page-title');
+          if (titleEl && farmData.name) {
+            titleEl.textContent = (titleEl.dataset.prefix ?? '') + farmData.name;
+          }
         }
         setPlots(plotData);
         if (weatherData) setWeather(weatherData);
@@ -113,6 +118,7 @@ export default function FarmOverview({ farmId }: Props) {
   }, {} as Partial<Record<PlotStatus, number>>);
 
   return (
+    <>
     <div class="farm-layout">
       {/* ── Main column: filter bar + plot grid ────────────────── */}
       <div class="farm-main">
@@ -163,6 +169,15 @@ export default function FarmOverview({ farmId }: Props) {
             <span class="empty-state__icon">🌱</span>
             <p class="empty-state__heading">{t('farm.no_plots')}</p>
             <p class="empty-state__body">{t('farm.no_plots_body')}</p>
+            {plots.length === 0 && (
+              <a
+                href="/plots/add/"
+                class="btn-primary"
+                style="margin-top:var(--space-4);text-decoration:none"
+              >
+                {t('add_plot.add_first_plot')}
+              </a>
+            )}
           </div>
         ) : (
           <div
@@ -214,7 +229,7 @@ export default function FarmOverview({ farmId }: Props) {
 
       {/* ── Desktop weather sidebar (hidden on mobile via CSS) ──── */}
       {weather && (
-        <aside class="farm-sidebar" aria-label="Weather overview">
+        <aside class="farm-sidebar" aria-label="Weather overview" style="position:relative">
           {/* Current conditions */}
           <div class="farm-sidebar-card">
             <div class="farm-sidebar-card__title">{t('weather.temperature')}</div>
@@ -292,5 +307,16 @@ export default function FarmOverview({ farmId }: Props) {
         </aside>
       )}
     </div>
+    {plots.length > 0 && (
+      <a
+        href="/plots/add/"
+        class="btn-primary"
+        aria-label={t('add_plot.add_plot')}
+        style="position:fixed;bottom:calc(64px + var(--space-4));right:var(--space-4);z-index:50;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);text-decoration:none;padding:0"
+      >
+        +
+      </a>
+    )}
+    </>
   );
 }

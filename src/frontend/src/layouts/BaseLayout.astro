@@ -90,13 +90,13 @@ const {
     </script>
     {farmNameTitleId && (
       <script is:inline define:vars={{ farmNameTitleId, farmNamePrefix: farmNamePrefix ?? '' }}>
-        (function() {
+        document.addEventListener('DOMContentLoaded', function() {
           var name = localStorage.getItem('litcrop-farmName');
           if (name) {
             var el = document.getElementById(farmNameTitleId);
             if (el) el.textContent = farmNamePrefix + name;
           }
-        })();
+        });
       </script>
     )}
   </head>

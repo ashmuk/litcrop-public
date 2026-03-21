@@ -125,6 +125,21 @@ function farmToResponse(farm: Farm) {
   };
 }
 
+// ── GET /api/v1/farms — list caller's own farm ────────────────────
+
+router.get('/', async (c) => {
+  const { userId } = getAuthContext(c);
+
+  let farm;
+  try {
+    farm = await dynamoRepo.getFarmForUser(userId);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  return c.json({ data: farm ? [farmToResponse(farm)] : [] });
+});
+
 // ── 5.1 GET /api/v1/farms/:farmId ────────────────────────────────
 
 router.get('/:farmId', async (c) => {
@@ -216,6 +231,81 @@ router.get('/:farmId/plots', async (c) => {
   );
 
   return c.json({ data });
+});
+
+// ── POST /api/v1/farms/:farmId/plots ─────────────────────────────
+
+router.post('/:farmId/plots', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  await assertFarmOwnership(farmId, userId);
+
+  const body = await c.req.json<Record<string, unknown>>();
+
+  const cropType = body['crop_type'];
+  if (typeof cropType !== 'string' || cropType.trim().length === 0 || cropType.trim().length > 100) {
+    throw new ValidationError("Invalid value for 'crop_type': must be 1-100 characters");
+  }
+
+  const cropVariety = body['crop_variety'];
+  if (typeof cropVariety !== 'string' || cropVariety.trim().length === 0 || cropVariety.trim().length > 100) {
+    throw new ValidationError("Invalid value for 'crop_variety': must be 1-100 characters");
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const plantedAt = typeof body['planted_at'] === 'string' && body['planted_at'].trim()
+    ? body['planted_at'].trim()
+    : today;
+
+  const autoLabel = `${cropType.trim()} Plot`;
+  const label = typeof body['label'] === 'string' && body['label'].trim()
+    ? body['label'].trim()
+    : autoLabel;
+
+  // Compute expected harvest: 90 days from planted_at
+  const harvestDate = new Date(plantedAt);
+  harvestDate.setDate(harvestDate.getDate() + 90);
+  const expectedHarvest = harvestDate.toISOString().slice(0, 10);
+
+  // Auto-create default Field + Bed when none exist (keeps UX simple for small farms)
+  let bedId: string;
+  try {
+    const fields = await dynamoRepo.getFieldsForFarm(farmId);
+    if (fields.length === 0) {
+      const field = await dynamoRepo.createField(farmId, 'Main Field', 1);
+      const bed = await dynamoRepo.createBed(field.id, 'Bed 1', 1);
+      bedId = bed.id;
+    } else {
+      const field = fields[0];
+      const beds = await dynamoRepo.getBedsForField(field.id);
+      if (beds.length === 0) {
+        const bed = await dynamoRepo.createBed(field.id, 'Bed 1', 1);
+        bedId = bed.id;
+      } else {
+        bedId = beds[0].id;
+      }
+    }
+  } catch (err) {
+    if (err instanceof ValidationError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  let plot: Plot;
+  try {
+    plot = await dynamoRepo.createPlot(bedId, farmId, {
+      label,
+      crop_type: cropType.trim(),
+      crop_variety: cropVariety.trim(),
+      planted_at: plantedAt,
+      expected_harvest: expectedHarvest,
+      notes: typeof body['notes'] === 'string' ? body['notes'] : undefined,
+    });
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  return c.json(plot, 201);
 });
 
 // ── 5.2 POST /api/v1/farms ───────────────────────────────────────

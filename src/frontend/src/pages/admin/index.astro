@@ -1,0 +1,17 @@
+---
+/**
+ * Admin Stats — operator dashboard for entity counts and global budget.
+ * Accessible at /admin/ — no nav tab link, admin-only.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AdminStats from '../../components/AdminStats';
+---
+
+<BaseLayout title="LitCrop — Admin" activeTab="">
+  <nav class="nav-header" aria-label="Page navigation">
+    <a href="/" class="nav-header__back" aria-label="Back to Home">←</a>
+    <span class="nav-header__title">Admin</span>
+  </nav>
+
+  <AdminStats client:load />
+</BaseLayout>

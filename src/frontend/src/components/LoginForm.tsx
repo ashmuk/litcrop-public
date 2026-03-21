@@ -13,6 +13,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import { signIn, getAccessToken, CognitoError } from '../lib/auth';
+import { getMyFarm } from '../lib/api';
 import { t } from '../i18n/i18n';
 
 function mapError(err: unknown): string {
@@ -76,12 +77,17 @@ export default function LoginForm() {
 
     setLoading(true);
     try {
-      const result = await signIn(email, password);
-      // Redirect: new user → /setup, returning user → saved URL or /
-      if (result.isNewUser) {
+      await signIn(email, password);
+      // Fetch farm from API — reliable cross-device check (replaces localStorage isNewUser)
+      const farm = await getMyFarm();
+      if (!farm) {
         window.location.replace('/setup/');
         return;
       }
+      try {
+        localStorage.setItem('litcrop-farmId', farm.id);
+        localStorage.setItem('litcrop-farmName', farm.name);
+      } catch { /* ignore */ }
       let returnUrl = '/';
       try {
         const saved = sessionStorage.getItem('litcrop_return_url');

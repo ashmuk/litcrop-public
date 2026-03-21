@@ -46,6 +46,7 @@ export type {
 export type {
   CreateFarmRequest,
   UpdateFarmRequest,
+  CreatePlotRequest,
   CreateTagRequest,
   ChatMessageRequest,
 } from './types/requests';

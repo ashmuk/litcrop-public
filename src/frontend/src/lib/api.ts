@@ -14,6 +14,7 @@ import { getAccessToken } from './auth';
 
 import type {
   Farm,
+  Plot,
   FarmResponse,
   FarmPlotItem,
   PlotDetailResponse,
@@ -28,7 +29,7 @@ import type {
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
-import type { CreateFarmRequest, UpdateFarmRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
+import type { CreateFarmRequest, UpdateFarmRequest, CreatePlotRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
 
 // ── Base URL ──────────────────────────────────────────────────────
 
@@ -135,6 +136,12 @@ async function request<T>(
 
 // ── Farm Endpoints ────────────────────────────────────────────────
 
+/** GET /api/v1/farms — returns the caller's own farm, or null if not set up yet */
+export async function getMyFarm(): Promise<Farm | null> {
+  const res = await request<{ data: Farm[] }>('GET', '/farms');
+  return res.data[0] ?? null;
+}
+
 /** GET /api/v1/farms/{farmId} */
 export async function getFarm(farmId: string): Promise<FarmResponse> {
   return request<FarmResponse>('GET', `/farms/${farmId}`);
@@ -151,6 +158,11 @@ export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promi
 }
 
 // ── Plot Endpoints ────────────────────────────────────────────────
+
+/** POST /api/v1/farms/{farmId}/plots — create a plot (auto-creates Field+Bed if needed) */
+export async function createPlot(farmId: string, data: CreatePlotRequest): Promise<Plot> {
+  return request<Plot>('POST', `/farms/${farmId}/plots`, data);
+}
 
 /** GET /api/v1/farms/{farmId}/plots */
 export async function getPlots(farmId: string): Promise<FarmPlotItem[]> {
@@ -217,4 +229,24 @@ export async function sendChat(data: ChatMessageRequest): Promise<ChatResponse> 
 /** GET /api/v1/usage */
 export async function getUsage(): Promise<UsageResponse> {
   return request<UsageResponse>('GET', '/usage');
+}
+
+// ── Admin Endpoint ────────────────────────────────────────────────
+
+export interface AdminStatsResponse {
+  entity_counts: { farms: number; users: number; plots: number };
+  global_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    utilization_pct: number;
+  };
+  period_start: string;
+  reset_at: string;
+}
+
+/** GET /api/v1/admin/stats — admin only, returns 403 for non-admins */
+export async function getAdminStats(): Promise<AdminStatsResponse> {
+  return request<AdminStatsResponse>('GET', '/admin/stats');
 }

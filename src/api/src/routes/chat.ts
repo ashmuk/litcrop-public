@@ -133,20 +133,25 @@ function parseSuggestions(text: string): { reply: string; suggestions: string[] 
 
 // ── Stub response (no API key) ────────────────────────────────────
 
-function stubResponse(message: string): { reply: string; suggestions: string[] } {
+const DEFAULT_SUGGESTIONS_JA = [
+  '今の季節に何を植えればいいですか？',
+  '輪作の計画を立てるのを手伝ってください',
+  '地域でよく見られる害虫は何ですか？',
+];
+
+function stubResponse(message: string, locale = 'en'): { reply: string; suggestions: string[] } {
   // Escape Markdown special characters to prevent XSS when rendered as HTML (S6)
   const escaped = message.replace(/[*_`[\]()~>#+=|{}!\\]/g, '\\$&');
+
+  if (locale === 'ja') {
+    return {
+      reply: `現在、AIアシスタントをご利用いただけません。しばらくしてから再度お試しください。\n\nご質問：*"${escaped}"*`,
+      suggestions: DEFAULT_SUGGESTIONS_JA,
+    };
+  }
+
   return {
-    reply: `> ⚠️ **No LLM API key configured.** Responding with a stub.
-
-Your question: *"${escaped}"*
-
-I'm a crop planning assistant for LitCrop. To get real AI-powered advice, configure \`LLM_API_KEY\` environment variable.
-
-**Quick tips for Nagano, Japan:**
-- Spring: Plant cold-tolerant crops (lettuce, spinach) after the last frost (~mid-April)
-- Summer: Tomatoes, cucumbers, and eggplant thrive in your climate
-- Fall: Daikon radish and napa cabbage are excellent choices`,
+    reply: `The AI assistant is not available right now. Please try again later.\n\nYour question: *"${escaped}"*`,
     suggestions: DEFAULT_SUGGESTIONS,
   };
 }
@@ -412,7 +417,7 @@ router.post('/', async (c) => {
 
   // If no API key, return stub (no rate limit or budget check needed)
   if (!process.env['LLM_API_KEY']) {
-    const stub = stubResponse(message);
+    const stub = stubResponse(message, farm?.locale ?? 'en');
     return c.json({ ...stub, conversation_id: conversationId });
   }
 

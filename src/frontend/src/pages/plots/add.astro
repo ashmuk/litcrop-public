@@ -1,0 +1,18 @@
+---
+/**
+ * Add Plot — guided 3-step wizard for creating a crop plot.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import AddPlotForm from '../../components/AddPlotForm';
+
+const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
+---
+
+<BaseLayout title="LitCrop — Add Crop" activeTab="farm">
+  <nav class="nav-header" aria-label="Page navigation">
+    <a href="/" class="nav-header__back" aria-label="Back to Farm Overview">←</a>
+    <span class="nav-header__title">Add Crop</span>
+  </nav>
+
+  <AddPlotForm defaultFarmId={farmId} client:load />
+</BaseLayout>

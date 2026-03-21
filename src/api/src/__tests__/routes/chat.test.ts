@@ -127,14 +127,15 @@ describe('POST /api/v1/chat stub mode', () => {
     expect(body.conversation_id).toMatch(/^conv-/);
   });
 
-  it('stub reply mentions no API key configured', async () => {
+  it('stub reply does not contain developer text', async () => {
     const res = await app.request('/api/v1/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ message: 'Help me plan crops' }),
     });
     const body = await res.json() as { reply: string };
-    expect(body.reply).toContain('LLM_API_KEY');
+    expect(body.reply).not.toContain('LLM_API_KEY');
+    expect(body.reply.length).toBeGreaterThan(0);
   });
 });
 

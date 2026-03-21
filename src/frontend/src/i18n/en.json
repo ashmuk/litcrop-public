@@ -41,7 +41,7 @@
   },
   "farm": {
     "no_plots": "No plots yet",
-    "no_plots_body": "Plots will appear here once your farm is set up and a camera node is connected.",
+    "no_plots_body": "Add your first crop plot to start monitoring your farm.",
     "error_loading": "Could not load farm data",
     "error_body": "Check your connection and try again.",
     "loading": "Loading farm data…",
@@ -57,7 +57,7 @@
     "harvest": "Harvest",
     "notes": "Notes",
     "no_images": "No images yet",
-    "no_images_body": "Images will appear here once the camera node starts capturing."
+    "no_images_body": "Take a photo of your crops to track their progress."
   },
   "weather": {
     "temperature": "Temperature",
@@ -156,6 +156,35 @@
     "error": "Upload failed",
     "too_large": "Image exceeds 2 MB limit",
     "wrong_type": "Only JPEG images are accepted"
+  },
+  "add_plot": {
+    "title": "Add Crop Plot",
+    "step1_title": "Choose a crop",
+    "step2_title": "Plot details",
+    "step3_title": "Confirm",
+    "crop_type_label": "Crop type",
+    "crop_variety_label": "Variety",
+    "label_label": "Plot name",
+    "planted_at_label": "Planting date",
+    "next": "Next",
+    "back": "Back",
+    "create": "Create Plot",
+    "creating": "Creating…",
+    "success": "Plot created!",
+    "error": "Could not create plot. Please try again.",
+    "climate_hint": "Suggested crops for your climate:",
+    "add_first_plot": "Add your first crop",
+    "add_plot": "Add plot",
+    "crop_types": {
+      "rice": "Rice",
+      "tomato": "Tomato",
+      "cucumber": "Cucumber",
+      "eggplant": "Eggplant",
+      "lettuce": "Lettuce",
+      "daikon": "Daikon Radish",
+      "cabbage": "Cabbage",
+      "other": "Other"
+    }
   },
   "auth": {
     "login": {
