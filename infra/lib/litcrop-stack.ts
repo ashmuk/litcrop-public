@@ -147,6 +147,30 @@ export class LitCropStack extends cdk.Stack {
     // Note: Upgrade to OAC (S3BucketOrigin) when CDK ≥ 2.130 is adopted.
     // SPA fallback: 403/404 → /index.html (Astro SSG)
 
+    // CloudFront Function: rewrite directory paths to index.html
+    // S3 OAI doesn't support directory index resolution — /login/ must become /login/index.html.
+    // Without this, S3 returns 403 for directory paths and CloudFront's error fallback
+    // serves /index.html (the root page) instead of the intended sub-page.
+    const rewriteFunction = new cloudfront.Function(this, 'UrlRewriteFunction', {
+      functionName: 'litcrop-url-rewrite',
+      comment: 'Append index.html to directory paths for Astro SSG',
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+  // If URI ends with / → append index.html
+  if (uri.endsWith('/')) {
+    request.uri = uri + 'index.html';
+  }
+  // If URI has no file extension → append /index.html (e.g. /login → /login/index.html)
+  else if (!uri.includes('.')) {
+    request.uri = uri + '/index.html';
+  }
+  return request;
+}
+      `),
+    });
+
     const distribution = new cloudfront.Distribution(this, 'StaticDistribution', {
       defaultBehavior: {
         origin: new origins.S3Origin(staticBucket),
@@ -155,6 +179,10 @@ export class LitCropStack extends cdk.Stack {
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         compress: true,
+        functionAssociations: [{
+          function: rewriteFunction,
+          eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+        }],
       },
       defaultRootObject: 'index.html',
       errorResponses: [
