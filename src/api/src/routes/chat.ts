@@ -32,8 +32,15 @@ const MAX_CONVERSATION_TURNS = 20; // user turns per conversation
 const MAX_TOOL_ITERATIONS = 5;     // max LLM↔tool rounds per request
 
 // ── In-memory rate limiter (20 messages/hour per user) ────────────
-// Best-effort in Lambda: resets on cold start, independent per container.
-// The DynamoDB budget is the authoritative hard cap.
+// CAVEAT: This store is in-memory and has two important Lambda limitations:
+//   1. Cold starts — every new Lambda container initialises an empty store, so a
+//      user can exceed 20 messages/hour by landing on a freshly-started instance.
+//   2. Concurrency — concurrent Lambda instances each hold independent stores,
+//      meaning a user hitting multiple instances in parallel faces no shared cap.
+// This is intentionally best-effort; the DynamoDB-backed daily budget is the
+// authoritative hard cap that cannot be bypassed regardless of instance count.
+// TODO: Replace with a DynamoDB-backed sliding-window counter if stricter
+// per-hour enforcement is required at production scale.
 
 export const rateLimitStore = new Map<string, number[]>();
 

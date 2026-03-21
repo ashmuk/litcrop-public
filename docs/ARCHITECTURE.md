@@ -542,8 +542,11 @@ With 15 testers sharing the project owner's Anthropic API key, cost controls pre
 | **Daily per-user token budget** | Per user (Cognito sub) | 50,000 input + 10,000 output tokens/day | Environment variable `CHAT_DAILY_USER_TOKEN_LIMIT` | DynamoDB atomic counter, resets daily (TTL) |
 | **Global daily spending cap** | All users combined | 500,000 input + 100,000 output tokens/day | Environment variable `CHAT_DAILY_GLOBAL_TOKEN_LIMIT` | DynamoDB atomic counter, resets daily (TTL) |
 | **Conversation turn limit** | Per conversation | 20 turns (10 user + 10 assistant) | Environment variable `CHAT_MAX_TURNS` | Checked before sending to Anthropic SDK |
-| **Rate limit** | Per user | 20 messages/hour | Existing (already documented) | In-memory sliding window |
+| **Rate limit** | Per user | 20 messages/hour | Existing (already documented) | In-memory sliding window — see caveat below |
 | **Model lock** | Global | `claude-haiku-4-5-20251001` | Environment variable `CHAT_MODEL` | Server-side only; not user-selectable in MVP |
+
+> **Rate limiter caveat (MVP):** The per-hour message counter is stored in-memory inside the Lambda process (`rateLimitStore` in `routes/chat.ts`). It resets on every Lambda cold start and is not shared across concurrent Lambda instances — a user landing on a freshly-started instance or hitting multiple warm instances in parallel can exceed the 20 msg/hour soft cap. The DynamoDB-backed daily budget is the authoritative hard cap and is not affected by this limitation.
+> **TODO:** Replace `rateLimitStore` with a DynamoDB atomic counter for strict per-hour enforcement at production scale.
 
 **Why Haiku?** At $1.00/MTok input and $5.00/MTok output (Haiku 4.5), a 15-user cohort with 100 messages/day averaging 1,500 input + 300 output tokens per exchange costs ~$0.15 + $0.15 = **~$0.30/day ($9/month)**. Budget controls cap worst-case at ~$0.50 + $0.50 = $1.00/day (**$30/month**) if all global limits are maxed daily — unlikely with 15 testers.
 

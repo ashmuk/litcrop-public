@@ -8,6 +8,7 @@ import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
+import { degreeToCardinal } from '../lib/format';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
@@ -146,7 +147,7 @@ export default function WeatherView({ farmId }: Props) {
                   {tl('weather.wind')}
                 </div>
                 <div style="font-weight:var(--font-weight-semibold)">
-                  {Math.round(current.wind_speed)} km/h {current.wind_direction}
+                  {Math.round(current.wind_speed)} km/h {degreeToCardinal(parseFloat(current.wind_direction))}
                 </div>
               </div>
               <div style="text-align:center">
