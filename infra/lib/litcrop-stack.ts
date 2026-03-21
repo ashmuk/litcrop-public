@@ -218,7 +218,6 @@ export class LitCropStack extends cdk.Stack {
         COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
         NODE_OPTIONS: '--enable-source-maps',
         // LLM / Chat configuration
-        LLM_API_KEY: llmApiKeyParam.stringValue,
         LLM_API_PROVIDER: 'anthropic',
         CHAT_MODEL: 'claude-haiku-4-5-20251001',
         CHAT_DAILY_INPUT_LIMIT: '50000',
@@ -242,6 +241,7 @@ export class LitCropStack extends cdk.Stack {
       functionName: 'litcrop-thumb',
       description: 'LitCrop MVP — thumbnail generator (300x300 center-crop)',
       entry: path.join(__dirname, '../../src/thumbnail/handler.ts'),
+      depsLockFilePath: path.join(__dirname, '../../src/thumbnail/package-lock.json'),
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
       architecture: lambda.Architecture.ARM_64,
