@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { sendChat } from '../lib/api';
+import { sendChat, ApiError } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { useLocalFarmId } from '../lib/hooks';
 
@@ -49,8 +49,15 @@ export default function ChatAssistant({ farmId }: Props) {
       const res = await sendChat({ message: trimmed, farm_id: effectiveFarmId });
       setMessages((prev) => [...prev, { role: 'assistant', text: res.reply }]);
       if (res.suggestions.length > 0) setSuggestions(res.suggestions);
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', text: t('chat.error') }]);
+    } catch (err) {
+      let errorMsg = t('chat.error');
+      if (err instanceof ApiError) {
+        if (err.statusCode === 429) errorMsg = t('chat.rate_limited');
+        else if (err.statusCode === 401) errorMsg = t('chat.unauthorized');
+      } else if (err instanceof TypeError) {
+        errorMsg = t('chat.network_error');
+      }
+      setMessages((prev) => [...prev, { role: 'assistant', text: errorMsg }]);
     } finally {
       setLoading(false);
     }

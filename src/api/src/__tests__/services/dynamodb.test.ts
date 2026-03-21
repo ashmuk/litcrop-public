@@ -6,6 +6,7 @@ import {
   QueryCommand,
   PutCommand,
   UpdateCommand,
+  TransactWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { DynamoRepository } from '../../services/dynamodb';
 import { NotFoundError } from '../../errors';
@@ -286,12 +287,11 @@ describe('getTagsForImage', () => {
 
 describe('createTag', () => {
   it('puts tag and calls UpdateCommand on BED# pk (not PLOT# pk)', async () => {
-    // getPlotById (GSI1 query)
-    ddbMock.on(QueryCommand).resolvesOnce({ Items: [plotItem] });
+    // SF-4: bed_id is now passed directly — no intermediate getPlotById GSI1 query needed
     ddbMock.on(PutCommand).resolves({});
     ddbMock.on(UpdateCommand).resolves({});
 
-    const tag = await repo.createTag(IMAGE_ID, PLOT_ID, 'healthy', 'Looks good');
+    const tag = await repo.createTag(IMAGE_ID, PLOT_ID, BED_ID, 'healthy', 'Looks good');
 
     expect(tag.tag).toBe('healthy');
     expect(tag.note).toBe('Looks good');
@@ -308,10 +308,12 @@ describe('createTag', () => {
 
 // ── Write: createFarm ─────────────────────────────────────────────
 
+const USER_ID = 'user-cognito-sub-001';
+
 describe('createFarm', () => {
   it('creates farm and returns it', async () => {
-    ddbMock.on(PutCommand).resolves({});
-    const farm = await repo.createFarm(FARM_ID, {
+    ddbMock.on(TransactWriteCommand).resolves({});
+    const farm = await repo.createFarm(FARM_ID, USER_ID, {
       name: 'Test Farm',
       latitude: 36.03,
       longitude: 138.26,
@@ -320,20 +322,27 @@ describe('createFarm', () => {
     });
     expect(farm.id).toBe(FARM_ID);
     expect(farm.name).toBe('Test Farm');
+    expect(farm.user_id).toBe(USER_ID);
     expect(typeof farm.created_at).toBe('string');
   });
 
-  it('PutCommand includes ConditionExpression', async () => {
-    ddbMock.on(PutCommand).resolves({});
-    await repo.createFarm(FARM_ID, {
+  it('TransactWriteCommand includes farm Put and user-index Put', async () => {
+    ddbMock.on(TransactWriteCommand).resolves({});
+    await repo.createFarm(FARM_ID, USER_ID, {
       name: 'Farm',
       latitude: 0,
       longitude: 0,
       locale: 'en',
       theme: 'system',
     });
-    const input = ddbMock.commandCalls(PutCommand)[0].args[0].input;
-    expect(input.ConditionExpression).toBe('attribute_not_exists(PK)');
+    const calls = ddbMock.commandCalls(TransactWriteCommand);
+    expect(calls).toHaveLength(1);
+    const items = calls[0].args[0].input.TransactItems as Array<Record<string, unknown>>;
+    expect(items).toHaveLength(2);
+    const farmPut = items[0]['Put'] as Record<string, unknown>;
+    expect(farmPut['ConditionExpression']).toBe('attribute_not_exists(PK)');
+    const userPut = items[1]['Put'] as Record<string, unknown>;
+    expect((userPut['Item'] as Record<string, unknown>)['PK']).toBe(`USER#${USER_ID}`);
   });
 });
 
@@ -343,6 +352,7 @@ describe('createImage', () => {
   it('stores GSI1 keys for direct image lookup', async () => {
     ddbMock.on(PutCommand).resolves({});
     await repo.createImage(PLOT_ID, IMAGE_ID, {
+      bed_id: BED_ID,  // SF-4: denormalized
       node_id: 'cam-001',
       captured_at: '2026-03-17T10:00:00.000Z',
       uploaded_at: '2026-03-17T10:00:05.000Z',
@@ -356,5 +366,36 @@ describe('createImage', () => {
     expect(item['GSI1PK']).toBe(`IMG#${IMAGE_ID}`);
     expect(item['GSI1SK']).toBe('#META');
     expect(item['PK']).toBe(`PLOT#${PLOT_ID}`);
+  });
+});
+
+// ── updateImageThumbnailKey ───────────────────────────────────────
+
+describe('updateImageThumbnailKey', () => {
+  const thumbnailKey = `thumbnails/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`;
+
+  it('resolves PK/SK via GSI1 then updates thumbnail_key', async () => {
+    ddbMock.on(QueryCommand).resolves({
+      Items: [imageItem],
+    });
+    ddbMock.on(UpdateCommand).resolves({});
+
+    await repo.updateImageThumbnailKey(IMAGE_ID, thumbnailKey);
+
+    const updateCalls = ddbMock.commandCalls(UpdateCommand);
+    expect(updateCalls).toHaveLength(1);
+    const input = updateCalls[0].args[0].input;
+    expect(input.Key).toEqual({
+      PK: `PLOT#${PLOT_ID}`,
+      SK: `IMG#2026-03-17T10:00:00.000Z#${IMAGE_ID}`,
+    });
+    expect(input.ExpressionAttributeValues![':key']).toBe(thumbnailKey);
+  });
+
+  it('throws NotFoundError when image not found in GSI1', async () => {
+    ddbMock.on(QueryCommand).resolves({ Items: [] });
+
+    await expect(repo.updateImageThumbnailKey(IMAGE_ID, thumbnailKey))
+      .rejects.toThrow(NotFoundError);
   });
 });

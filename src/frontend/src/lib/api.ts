@@ -1,14 +1,20 @@
 /**
- * LitCrop API Client — T-FE-05
+ * LitCrop API Client — T-FE-05, T-FE-AUTH-07
  *
  * Typed client for all 11 endpoints.
  * Base URL: import.meta.env.PUBLIC_API_BASE_URL (Vite public env var)
  *           Falls back to '/api/v1' for same-origin SSR dev.
  *
  * All functions throw ApiError on non-2xx responses.
+ * Authorization: Bearer token is injected automatically via getAccessToken().
+ * On 401 the token is refreshed once; if refresh fails the user is redirected to /login.
  */
 
+import { getAccessToken } from './auth';
+
 import type {
+  Farm,
+  Plot,
   FarmResponse,
   FarmPlotItem,
   PlotDetailResponse,
@@ -19,10 +25,11 @@ import type {
   TagCreateResponse,
   WeatherResponse,
   ChatResponse,
+  UsageResponse,
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
-import type { CreateFarmRequest, UpdateFarmRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
+import type { CreateFarmRequest, UpdateFarmRequest, CreatePlotRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
 
 // ── Base URL ──────────────────────────────────────────────────────
 
@@ -48,28 +55,60 @@ export class ApiError extends Error {
 
 // ── Internal fetch wrapper ────────────────────────────────────────
 
+/**
+ * Core fetch helper. Automatically injects the Authorization header from the
+ * auth service. On 401, refreshes the token once and retries; if the refresh
+ * fails the user is redirected to /login.
+ */
 async function request<T>(
   method: 'GET' | 'POST' | 'PATCH',
   path: string,
   body?: unknown,
   isFormData = false,
+  _retry = true,
 ): Promise<T> {
   const url = `${getBaseUrl()}${path}`;
 
+  const token = await getAccessToken();
   const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   if (!isFormData && body !== undefined) {
     headers['Content-Type'] = 'application/json';
+  }
+
+  let requestBody: BodyInit | undefined;
+  if (isFormData) {
+    requestBody = body as FormData;
+  } else if (body !== undefined) {
+    requestBody = JSON.stringify(body);
   }
 
   const res = await fetch(url, {
     method,
     headers,
-    body: isFormData
-      ? (body as FormData)
-      : body !== undefined
-        ? JSON.stringify(body)
-        : undefined,
+    body: requestBody,
   });
+
+  // On 401: attempt token refresh and retry once
+  if (res.status === 401 && _retry) {
+    // Re-call getAccessToken() — it will attempt a refresh internally
+    const newToken = await getAccessToken();
+    if (newToken && newToken !== token) {
+      return request<T>(method, path, body, isFormData, false);
+    }
+    // Refresh failed — redirect to login
+    try {
+      sessionStorage.setItem('litcrop_return_url', window.location.pathname + window.location.search);
+    } catch {
+      // ignore
+    }
+    window.location.replace('/login/');
+    throw new ApiError(401, {
+      error: { code: 'UNAUTHORIZED', message: 'Session expired. Please log in again.' },
+    });
+  }
 
   if (!res.ok) {
     let errorBody: ApiErrorBody;
@@ -97,22 +136,33 @@ async function request<T>(
 
 // ── Farm Endpoints ────────────────────────────────────────────────
 
+/** GET /api/v1/farms — returns the caller's own farm, or null if not set up yet */
+export async function getMyFarm(): Promise<Farm | null> {
+  const res = await request<{ data: Farm[] }>('GET', '/farms');
+  return res.data[0] ?? null;
+}
+
 /** GET /api/v1/farms/{farmId} */
 export async function getFarm(farmId: string): Promise<FarmResponse> {
   return request<FarmResponse>('GET', `/farms/${farmId}`);
 }
 
-/** POST /api/v1/farms */
-export async function createFarm(data: CreateFarmRequest): Promise<FarmResponse> {
-  return request<FarmResponse>('POST', '/farms', data);
+/** POST /api/v1/farms — returns flat Farm (no fields array) */
+export async function createFarm(data: CreateFarmRequest): Promise<Farm> {
+  return request<Farm>('POST', '/farms', data);
 }
 
-/** PATCH /api/v1/farms/{farmId} */
-export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<FarmResponse> {
-  return request<FarmResponse>('PATCH', `/farms/${farmId}`, data);
+/** PATCH /api/v1/farms/{farmId} — returns flat Farm (no fields array) */
+export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<Farm> {
+  return request<Farm>('PATCH', `/farms/${farmId}`, data);
 }
 
 // ── Plot Endpoints ────────────────────────────────────────────────
+
+/** POST /api/v1/farms/{farmId}/plots — create a plot (auto-creates Field+Bed if needed) */
+export async function createPlot(farmId: string, data: CreatePlotRequest): Promise<Plot> {
+  return request<Plot>('POST', `/farms/${farmId}/plots`, data);
+}
 
 /** GET /api/v1/farms/{farmId}/plots */
 export async function getPlots(farmId: string): Promise<FarmPlotItem[]> {
@@ -172,4 +222,31 @@ export async function getWeather(farmId: string): Promise<WeatherResponse> {
 /** POST /api/v1/chat */
 export async function sendChat(data: ChatMessageRequest): Promise<ChatResponse> {
   return request<ChatResponse>('POST', '/chat', data);
+}
+
+// ── Usage Endpoint ────────────────────────────────────────────────
+
+/** GET /api/v1/usage */
+export async function getUsage(): Promise<UsageResponse> {
+  return request<UsageResponse>('GET', '/usage');
+}
+
+// ── Admin Endpoint ────────────────────────────────────────────────
+
+export interface AdminStatsResponse {
+  entity_counts: { farms: number; users: number; plots: number };
+  global_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    utilization_pct: number;
+  };
+  period_start: string;
+  reset_at: string;
+}
+
+/** GET /api/v1/admin/stats — admin only, returns 403 for non-admins */
+export async function getAdminStats(): Promise<AdminStatsResponse> {
+  return request<AdminStatsResponse>('GET', '/admin/stats');
 }

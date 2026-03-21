@@ -7,7 +7,7 @@ description: >-
   deployment operations — it does NOT write deployment code (use cc-implement)
   or plan deployment strategy (use cc-design).
 metadata:
-  version: 1.0.0
+  version: 2.0.0
   category: workflow-automation
 ---
 
@@ -89,6 +89,10 @@ Typical invocation flow:
    - Correct environment targeted
    - Prerequisites met (credentials, env vars, infra health)
    - Blast radius acceptable
+   - **Pre-deploy environment validation** (learned from v0.7 incident — ADR-20260319):
+     - [ ] Frontend `.env` exists with required env vars set
+     - [ ] API endpoint returns JSON (not HTML) when called through frontend's base URL
+     - Adapt these checks to the current project — the key principle is: verify runtime config before deploying, not after.
 5. **STOP — Present deployment plan for user approval.**
 
    > **Decision options:**
@@ -103,16 +107,47 @@ Typical invocation flow:
 7. After each major step: capture output, verify success
 8. On failure: **STOP immediately**, capture state, present rollback options
 
-### Phase 4: VERIFY (my-reviewer)
-9. Run health checks and smoke tests
-10. Validate deployment outcome
-11. Append to `docs/DEPLOYMENTS.md` (create file with header if it does not exist)
-12. Present results:
+### Phase 4: VERIFY (my-reviewer) — Structured Checklist (MVP pipeline — ADR-20260319)
+
+9. **Generate verification checklist** — output a deploy-specific checklist covering:
+
+   **API Endpoints** (curl or automated):
+   - [ ] Each endpoint returns expected status code + response shape
+   - [ ] Auth-protected endpoints reject unauthenticated requests (if auth is implemented)
+   - [ ] Error responses match error catalog format
+
+   **Frontend Pages** (per locale: EN, JA):
+   - [ ] Every page loads without console errors
+   - [ ] i18n: no hardcoded English visible in JA mode
+   - [ ] Mobile (375px): no overflow, clipping, or layout shift
+   - [ ] Desktop (1024px+): responsive layout renders correctly
+
+   **Cross-Cutting**:
+   - [ ] Settings (theme/locale/temp-unit) persist across navigation
+   - [ ] Farm name appears in page titles
+   - [ ] Weather conditions display as human-readable text
+
+   Adapt checklist items to the current scope level and what was deployed. The template above is the baseline — add project-specific items as needed.
+
+10. **Execute checklist** — a Sonnet agent (or human) works through each item. Record PASS/FAIL for each.
+11. Validate deployment outcome
+12. Append to `docs/DEPLOYMENTS.md` (create file with header if it does not exist)
+
+### Phase 5: POST-DEPLOY FINDINGS — Issue-First Rule (MVP pipeline — ADR-20260319)
+
+13. For ANY finding from verification (failed checklist items, unexpected behavior, UX issues):
+    - **Create a GitHub Issue immediately** via `/cc-issue-create` — BEFORE deciding fix-or-defer
+    - Tag with milestone, severity, and `step:deploy` label
+    - THEN decide: fix now or defer to next cycle
+    - If fix now and fix is size:S (mechanical): delegate to Sonnet agent (my-builder) with acceptance criteria from the issue. Opus reviews the diff. See ADR §5.
+
+14. Present results:
 
     > **Decision options:**
-    > - **Accept** → deployment complete
+    > - **Accept** → deployment complete, any issues are tracked
     > - **Rollback** → execute rollback procedure (user-approved)
     > - **Investigate** → need more info before deciding
+    > - **Fix now** → address critical findings immediately (issues already created)
 
 ## Tool Integration: Progressive Complexity
 

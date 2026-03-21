@@ -9,6 +9,7 @@ import type { Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS } from '@litcrop/shared';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
+import { signOut, getCurrentUser } from '../lib/auth';
 
 const LOCALE_STORAGE_KEY = 'litcrop-locale';
 const TEMP_UNIT_STORAGE_KEY = 'litcrop-temp-unit';
@@ -16,6 +17,7 @@ const TEMP_UNIT_STORAGE_KEY = 'litcrop-temp-unit';
 export default function SettingsPanel() {
   const [locale, setLocale] = useState<Locale>('en');
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Load persisted values on mount
   useEffect(() => {
@@ -35,6 +37,10 @@ export default function SettingsPanel() {
     } catch {
       // localStorage may be unavailable
     }
+
+    // Show logged-in user email
+    const user = getCurrentUser();
+    if (user) setUserEmail(user.email);
   }, []);
 
   function applyLocale(next: Locale) {
@@ -56,6 +62,14 @@ export default function SettingsPanel() {
       // localStorage may be unavailable
     }
     showToast(t('settings.save_success'), 'success');
+  }
+
+  function handleLogout() {
+    signOut();
+    showToast(t('auth.logout_confirm'), 'success');
+    setTimeout(() => {
+      window.location.replace('/login/');
+    }, 800);
   }
 
   return (
@@ -93,6 +107,27 @@ export default function SettingsPanel() {
           <option value="C">{t('settings.temp_units.C')}</option>
           <option value="F">{t('settings.temp_units.F')}</option>
         </select>
+      </div>
+
+      {/* Account section */}
+      <div
+        style="border-top: var(--border-default); padding-top: var(--space-5); margin-top: var(--space-2);"
+      >
+        {userEmail && (
+          <div
+            style="font-size: var(--font-size-sm); color: var(--color-gray-700); margin-bottom: var(--space-4);"
+          >
+            Signed in as <strong>{userEmail}</strong>
+          </div>
+        )}
+        <button
+          type="button"
+          class="btn-secondary"
+          style="width: 100%"
+          onClick={handleLogout}
+        >
+          {t('auth.logout')}
+        </button>
       </div>
     </>
   );

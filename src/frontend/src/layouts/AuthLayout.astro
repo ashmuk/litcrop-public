@@ -1,0 +1,65 @@
+---
+/**
+ * AuthLayout — T-FE-AUTH-03 through T-FE-AUTH-05
+ * Minimal shell for auth screens: no bottom tab bar, centered card, logo block.
+ * Imports auth.css in addition to global styles.
+ */
+import '../styles/global.css';
+import '../styles/components.css';
+import '../styles/auth.css';
+import '../styles/responsive.css';
+
+export interface Props {
+  title?: string;
+  /** Page-level heading shown inside the auth card. If omitted, card renders without a title. */
+  cardTitle?: string;
+}
+
+const {
+  title = 'LitCrop',
+  cardTitle,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1B6B3A" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} — LitCrop</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Restore theme before first paint -->
+    <script is:inline>
+      (function() {
+        var theme = localStorage.getItem('litcrop-theme');
+        var locale = localStorage.getItem('litcrop-locale');
+        if (theme) document.documentElement.setAttribute('data-theme', theme);
+        if (locale) {
+          document.documentElement.setAttribute('data-locale', locale);
+          document.documentElement.setAttribute('lang', locale === 'ja' ? 'ja' : 'en');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <main class="auth-page" role="main">
+      <!-- Brand logo block -->
+      <div class="auth-logo" aria-label="LitCrop">
+        <div class="auth-logo__icon" aria-hidden="true">🌾</div>
+        <div class="auth-logo__name">LitCrop</div>
+      </div>
+
+      <!-- Auth card -->
+      <div class="auth-card">
+        {cardTitle && (
+          <h1 class="auth-card__title">{cardTitle}</h1>
+        )}
+        <slot />
+      </div>
+
+      <!-- Toast container rendered by each page if needed -->
+    </main>
+  </body>
+</html>

@@ -29,11 +29,15 @@ export interface ApiError {
 }
 
 export type ErrorCode =
+  | 'BAD_REQUEST'
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
   | 'PAYLOAD_TOO_LARGE'
   | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'UNAUTHORIZED'
   | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'BUDGET_EXCEEDED'
   | 'INTERNAL_ERROR'
   | 'SERVICE_UNAVAILABLE'
   | 'BAD_CURSOR'
@@ -92,7 +96,6 @@ export interface ImageUploadResponse {
   captured_at: string;
   uploaded_at: string;
   trigger: TriggerType;
-  storage_key: string;
   size_bytes: number;
 }
 
@@ -114,6 +117,8 @@ export interface TagCreateResponse extends Tag {
 export interface WeatherResponse {
   current: {
     temperature: number;
+    apparent_temperature: number;
+    weather_code: number;
     condition: string;
     condition_icon: string;
     humidity: number;
@@ -132,6 +137,7 @@ export interface WeatherResponse {
   daily: DailyForecast[];
   alerts: WeatherAlert[];
   crop_impact: CropImpactCard[];
+  cached_at: string;
 }
 
 export interface HourlyForecast {
@@ -170,9 +176,36 @@ export interface CropImpactCard {
 export interface ChatRequest {
   message: string;
   farm_id?: string;
+  conversation_id?: string;
 }
 
 export interface ChatResponse {
   reply: string;
   suggestions: string[];
+  conversation_id: string;
+}
+
+// ── Usage Types ───────────────────────────────────────────────────
+
+/** GET /api/v1/usage */
+export interface UsageResponse {
+  user_id: string;
+  period: 'daily';
+  period_start: string;
+  reset_at: string;
+  user_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    messages_sent: number;
+    messages_limit: number;
+  };
+  global_budget: {
+    input_tokens_used: number;
+    input_tokens_limit: number;
+    output_tokens_used: number;
+    output_tokens_limit: number;
+    utilization_pct: number;
+  };
 }

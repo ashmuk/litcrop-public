@@ -1,7 +1,8 @@
+import { TEST_USER_ID, authHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
-import { getSignedImageUrl, uploadImage } from '../../services/s3';
+import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage } from '../../services/s3';
 import { NotFoundError } from '../../errors';
 import type { Image } from '@litcrop/shared';
 
@@ -14,11 +15,14 @@ vi.mock('../../services/dynamodb', () => ({
     getTagsForImage: vi.fn(),
     createImage: vi.fn(),
     getLatestImageForPlot: vi.fn(),
+    // Ownership chain: plot → farm
+    getFarm: vi.fn(),
   },
 }));
 
 vi.mock('../../services/s3', () => ({
   getSignedImageUrl: vi.fn(),
+  getSignedThumbnailUrl: vi.fn(),
   uploadImage: vi.fn(),
 }));
 
@@ -26,6 +30,17 @@ const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
 const PLOT_ID = 'a0000000-0000-0000-0000-000000000001';
 const IMAGE_ID = 'e0000000-0000-0000-0000-000000000001';
 const BED_ID = 'bd000000-0000-0000-0000-000000000001';
+
+const farmForOwnership = {
+  id: FARM_ID,
+  user_id: TEST_USER_ID,
+  name: 'Test Farm',
+  latitude: 36.0,
+  longitude: 138.0,
+  locale: 'en' as const,
+  theme: 'system' as const,
+  created_at: '2026-03-17T00:00:00.000Z',
+};
 
 const plotFixture = {
   id: PLOT_ID,
@@ -42,6 +57,7 @@ const plotFixture = {
 const imageFixture: Image = {
   id: IMAGE_ID,
   plot_id: PLOT_ID,
+  bed_id: BED_ID,  // SF-4: denormalized at write time
   node_id: 'cam-001',
   captured_at: '2026-03-17T10:00:00.000Z',
   uploaded_at: '2026-03-17T10:00:05.000Z',
@@ -64,6 +80,9 @@ oversizedBytes[2] = 0xff;
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
+  vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://example.com/thumb-signed');
+  // Ownership chain default: plot → farm
+  vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmForOwnership);
 });
 
 // ── GET /api/v1/plots/:plotId ─────────────────────────────────────
@@ -74,7 +93,7 @@ describe('GET /api/v1/plots/:plotId', () => {
     vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
     vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as { id: string; latest_image: null };
     expect(body.id).toBe(PLOT_ID);
@@ -83,7 +102,7 @@ describe('GET /api/v1/plots/:plotId', () => {
 
   it('returns 404 when plot not found', async () => {
     vi.mocked(dynamoRepo.getPlotById).mockRejectedValue(new NotFoundError('Plot not found'));
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(404);
   });
 });
@@ -99,17 +118,31 @@ describe('GET /api/v1/plots/:plotId/images', () => {
     });
     vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([]);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as { data: Array<Record<string, unknown>>; meta: { count: number } };
     expect(body.data).toHaveLength(1);
     expect(body.meta.count).toBe(1);
-    // MF-4a: field must be thumbnail_url, not url
-    expect(body.data[0]['thumbnail_url']).toBe('https://example.com/signed');
+    // MF-4a: field must be thumbnail_url (null when no thumbnail generated), not url
+    expect(body.data[0]['thumbnail_url']).toBeNull();
     expect(body.data[0]['url']).toBeUndefined();
     // MF-4b: field must be latest_tag (null when no tags)
     expect(body.data[0]['latest_tag']).toBeNull();
     expect(body.data[0]['tags']).toBeUndefined();
+  });
+
+  it('returns thumbnail_url when image has thumbnail_key', async () => {
+    const thumbnailKey = `thumbnails/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`;
+    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+    vi.mocked(dynamoRepo.getImagesForPlot).mockResolvedValue({
+      items: [{ ...imageFixture, thumbnail_key: thumbnailKey }],
+      nextCursor: null,
+    });
+    vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, { headers: authHeaders() });
+    const body = await res.json() as { data: Array<Record<string, unknown>> };
+    expect(body.data[0]['thumbnail_url']).toBe('https://example.com/thumb-signed');
   });
 
   it('returns latest_tag as most-recent tag value when tags exist', async () => {
@@ -123,21 +156,21 @@ describe('GET /api/v1/plots/:plotId/images', () => {
       { id: 't2', image_id: IMAGE_ID, tag: 'healthy', created_at: '2026-03-17T10:00:00.000Z' },
     ]);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, { headers: authHeaders() });
     const body = await res.json() as { data: Array<Record<string, unknown>> };
     // Most recent tag (last in ascending order) should be returned
     expect(body.data[0]['latest_tag']).toBe('healthy');
   });
 
   it('returns 400 when limit < 1', async () => {
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images?limit=0`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images?limit=0`, { headers: authHeaders() });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns 400 when limit > 100', async () => {
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images?limit=101`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images?limit=101`, { headers: authHeaders() });
     expect(res.status).toBe(400);
   });
 
@@ -147,7 +180,7 @@ describe('GET /api/v1/plots/:plotId/images', () => {
     err.name = 'ValidationException';
     vi.mocked(dynamoRepo.getImagesForPlot).mockRejectedValue(err);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images?cursor=not-valid-base64!!`);
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images?cursor=not-valid-base64!!`, { headers: authHeaders() });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('BAD_CURSOR');
@@ -171,6 +204,7 @@ describe('POST /api/v1/plots/:plotId/images', () => {
     }
     return new Request(`http://localhost/api/v1/plots/${PLOT_ID}/images`, {
       method: 'POST',
+      headers: authHeaders(),
       body: formData,
     });
   }
@@ -218,6 +252,7 @@ describe('POST /api/v1/plots/:plotId/images', () => {
     formData.append('trigger', 'scheduled');
     const req = new Request(`http://localhost/api/v1/plots/${PLOT_ID}/images`, {
       method: 'POST',
+      headers: authHeaders(),
       body: formData,
     });
     const res = await app.request(req);

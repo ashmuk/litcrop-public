@@ -39,12 +39,14 @@ export type {
   CropImpactCard,
   ChatRequest,
   ChatResponse,
+  UsageResponse,
 } from './types/api';
 
 // API request types
 export type {
   CreateFarmRequest,
   UpdateFarmRequest,
+  CreatePlotRequest,
   CreateTagRequest,
   ChatMessageRequest,
 } from './types/requests';
@@ -72,6 +74,28 @@ export {
 // Config
 export { DEFAULT_CONFIG } from './config';
 export type { AppConfig } from './config';
+
+// Zod schemas for contract tests and runtime validation
+export {
+  PlotStatusSchema,
+  TriggerTypeSchema,
+  TagValueSchema,
+  LocaleSchema,
+  ThemeSchema,
+  FarmBaseSchema,
+  FarmResponseSchema,
+  FarmWriteResponseSchema,
+  FarmPlotItemSchema,
+  FarmPlotsResponseSchema,
+  PlotDetailResponseSchema,
+  ImageListResponseSchema,
+  ImageUploadResponseSchema,
+  ImageDetailResponseSchema,
+  TagCreateResponseSchema,
+  WeatherResponseSchema,
+  ChatResponseSchema,
+  UsageResponseSchema,
+} from './schemas/index';
 
 // Validation utilities
 export {

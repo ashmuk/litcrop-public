@@ -1,0 +1,29 @@
+{
+  "name": "@litcrop/infra",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-apigatewayv2-alpha": "2.114.1-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.114.1-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.114.1-alpha.0",
+    "aws-cdk-lib": "2.114.1",
+    "cdk-nag": "2.27.231",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "2.114.1",
+    "esbuild": "^0.25.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
+}

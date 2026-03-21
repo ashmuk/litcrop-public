@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import { showToast } from './Toast';
+import { createFarm, updateFarm, ApiError } from '../lib/api';
 import { t } from '../i18n/i18n';
 
 interface FarmConfig {
@@ -63,13 +64,45 @@ export default function SetupForm() {
       showToast(t('setup.name_required'), 'error');
       return;
     }
+    const lat = parseFloat(form.latitude);
+    const lng = parseFloat(form.longitude);
+    if (isNaN(lat) || isNaN(lng)) {
+      showToast(t('setup.location_required'), 'error');
+      return;
+    }
     setSaving(true);
     try {
+      const existingFarmId = localStorage.getItem('litcrop-farmId');
+      const payload = {
+        name: form.name.trim(),
+        latitude: lat,
+        longitude: lng,
+        ...(form.elevation && { elevation_m: parseFloat(form.elevation) }),
+        ...(form.description.trim() && { description: form.description.trim() }),
+      };
+
+      if (existingFarmId) {
+        // Update existing farm
+        await updateFarm(existingFarmId, payload);
+      } else {
+        // Create new farm
+        const farm = await createFarm(payload);
+        localStorage.setItem('litcrop-farmId', farm.id);
+        localStorage.setItem('litcrop-farmName', farm.name);
+      }
       localStorage.setItem('litcrop-setup', JSON.stringify(form));
-      // Farm ID is kept in litcrop-farmId; don't overwrite it here
       showToast(t('setup.save_success'), 'success');
-    } catch {
-      showToast(t('farm.error_loading'), 'error');
+      // Redirect to dashboard after short delay so user sees the toast
+      setTimeout(() => { window.location.replace('/'); }, 800);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 409) {
+        // User already has a farm — redirect to dashboard
+        showToast(t('setup.save_success'), 'success');
+        setTimeout(() => { window.location.replace('/'); }, 800);
+        return;
+      }
+      const msg = err instanceof Error ? err.message : t('farm.error_loading');
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }

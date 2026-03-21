@@ -41,7 +41,7 @@
   },
   "farm": {
     "no_plots": "No plots yet",
-    "no_plots_body": "Plots will appear here once your farm is set up and a camera node is connected.",
+    "no_plots_body": "Add your first crop plot to start monitoring your farm.",
     "error_loading": "Could not load farm data",
     "error_body": "Check your connection and try again.",
     "loading": "Loading farm data…",
@@ -57,7 +57,7 @@
     "harvest": "Harvest",
     "notes": "Notes",
     "no_images": "No images yet",
-    "no_images_body": "Images will appear here once the camera node starts capturing."
+    "no_images_body": "Take a photo of your crops to track their progress."
   },
   "weather": {
     "temperature": "Temperature",
@@ -109,6 +109,7 @@
     "gps_failed": "Could not detect location",
     "gps_unsupported": "Geolocation not supported",
     "name_required": "Farm name is required",
+    "location_required": "Latitude and longitude are required",
     "climate_tropical": "Tropical",
     "climate_subtropical": "Subtropical",
     "climate_temperate": "Temperate",
@@ -119,6 +120,9 @@
     "send": "Send",
     "thinking": "Thinking…",
     "error": "Could not get a response. Please try again.",
+    "rate_limited": "Too many messages. Please wait a moment.",
+    "unauthorized": "Session expired. Please log in again.",
+    "network_error": "Network error. Check your connection.",
     "suggestion_1": "What should I check today?",
     "suggestion_2": "Any frost risk this week?",
     "suggestion_3": "How is my farm doing?"
@@ -152,5 +156,117 @@
     "error": "Upload failed",
     "too_large": "Image exceeds 2 MB limit",
     "wrong_type": "Only JPEG images are accepted"
+  },
+  "add_plot": {
+    "title": "Add Crop Plot",
+    "step1_title": "Choose a crop",
+    "step2_title": "Plot details",
+    "step3_title": "Confirm",
+    "crop_type_label": "Crop type",
+    "crop_variety_label": "Variety",
+    "label_label": "Plot name",
+    "planted_at_label": "Planting date",
+    "next": "Next",
+    "back": "Back",
+    "create": "Create Plot",
+    "creating": "Creating…",
+    "success": "Plot created!",
+    "error": "Could not create plot. Please try again.",
+    "climate_hint": "Suggested crops for your climate:",
+    "add_first_plot": "Add your first crop",
+    "add_plot": "Add plot",
+    "crop_types": {
+      "rice": "Rice",
+      "tomato": "Tomato",
+      "cucumber": "Cucumber",
+      "eggplant": "Eggplant",
+      "lettuce": "Lettuce",
+      "daikon": "Daikon Radish",
+      "cabbage": "Cabbage",
+      "other": "Other"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Log in",
+      "button": "Log in",
+      "loading": "Logging in…"
+    },
+    "register": {
+      "title": "Create your account",
+      "button": "Create account",
+      "loading": "Creating account…",
+      "step1": "Account details",
+      "step2": "Verify email",
+      "step3": "Done"
+    },
+    "reset": {
+      "title": "Reset your password",
+      "step1_title": "Forgot password?",
+      "step2_title": "Set new password",
+      "send_code": "Send reset code",
+      "sending": "Sending…",
+      "confirm_button": "Reset password",
+      "confirming": "Resetting…"
+    },
+    "verify": {
+      "title": "Check your email",
+      "body": "We sent a 6-digit code to {email}. Enter it below.",
+      "code_label": "Verification code",
+      "code_placeholder": "000000",
+      "button": "Verify email",
+      "loading": "Verifying…",
+      "resend": "Resend code",
+      "resend_in": "Resend in {s}s"
+    },
+    "email": {
+      "label": "Email",
+      "placeholder": "you@example.com"
+    },
+    "password": {
+      "label": "Password",
+      "placeholder": "8+ characters",
+      "confirm": "Confirm password",
+      "confirm_placeholder": "Repeat password",
+      "new": "New password",
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "password_strength": {
+      "weak": "Weak",
+      "fair": "Fair",
+      "strong": "Strong"
+    },
+    "password_requirements": {
+      "length": "At least 8 characters",
+      "uppercase": "Uppercase letter",
+      "lowercase": "Lowercase letter",
+      "number": "Number"
+    },
+    "forgot_password": "Forgot password?",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "signup_link": "Sign up",
+    "login_link": "Log in",
+    "logout": "Log out",
+    "logout_confirm": "You have been signed out.",
+    "session_expired": "Your session has expired. Please log in again.",
+    "errors": {
+      "wrong_password": "Incorrect email or password.",
+      "not_confirmed": "Please verify your email before logging in.",
+      "too_many_requests": "Too many attempts. Please wait a moment and try again.",
+      "email_exists": "An account with this email already exists.",
+      "weak_password": "Password does not meet requirements.",
+      "invalid_code": "Invalid verification code. Please try again.",
+      "expired_code": "The code has expired. Please request a new one.",
+      "network": "Could not connect to server. Check your connection and try again.",
+      "generic": "Something went wrong. Please try again.",
+      "passwords_mismatch": "Passwords do not match.",
+      "email_required": "Email is required.",
+      "email_invalid": "Please enter a valid email address.",
+      "password_required": "Password is required.",
+      "code_required": "Verification code is required.",
+      "code_length": "Please enter the full 6-digit code."
+    }
   }
 }

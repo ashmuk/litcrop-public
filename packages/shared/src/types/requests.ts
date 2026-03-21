@@ -31,6 +31,14 @@ export interface CreateTagRequest {
   note?: string;
 }
 
+/** POST /api/v1/farms/{farmId}/plots — Create Plot */
+export interface CreatePlotRequest {
+  crop_type: string;
+  crop_variety: string;
+  label?: string;
+  planted_at?: string; // ISO 8601 date; defaults to today on the server
+}
+
 /** POST /api/v1/chat */
 export interface ChatMessageRequest {
   message: string;

@@ -1,8 +1,10 @@
-import { getSignedImageUrl } from '../services/s3';
+import { getSignedThumbnailUrl } from '../services/s3';
 import type { Image } from '@litcrop/shared';
 
 export async function makeLatestImage(image: Image) {
-  const thumbnail_url = await getSignedImageUrl(image.storage_key);
+  const thumbnail_url = image.thumbnail_key
+    ? await getSignedThumbnailUrl(image.thumbnail_key)
+    : null;
   return {
     id: image.id,
     thumbnail_url,

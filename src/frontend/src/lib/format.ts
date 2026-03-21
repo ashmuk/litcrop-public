@@ -17,6 +17,13 @@ export function translateCondition(condition: string): string {
   return translated === key ? condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : translated;
 }
 
+/** Convert wind direction degrees to 8-point cardinal abbreviation (N, NE, E, SE, S, SW, W, NW). */
+export function degreeToCardinal(degrees: number): string {
+  if (!Number.isFinite(degrees)) return '—';
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return dirs[((Math.round(degrees / 45) % 8) + 8) % 8];
+}
+
 /** Format an ISO timestamp as a relative time string (e.g. '5m ago', '2h ago', '3d ago'). */
 export function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();

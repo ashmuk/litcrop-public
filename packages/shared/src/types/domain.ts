@@ -27,6 +27,7 @@ export type TempUnit = 'C' | 'F';
 
 export interface Farm {
   id: string;
+  user_id: string; // Cognito sub — owner of this farm
   name: string;
   description?: string;
   latitude: number;
@@ -68,10 +69,12 @@ export interface Plot {
 export interface Image {
   id: string;
   plot_id: string;
+  bed_id: string;    // SF-4: denormalized at write time to avoid GSI lookup in createTag
   node_id: string;
   captured_at: string;  // ISO 8601
   uploaded_at: string;  // ISO 8601
   storage_key: string;
+  thumbnail_key?: string; // Set async by thumbnail Lambda after processing
   trigger: TriggerType;
   content_type: string;
   size_bytes: number;

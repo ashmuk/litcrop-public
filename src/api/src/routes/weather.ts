@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
 import { NotFoundError, UpstreamError, ServiceUnavailableError } from '../errors';
+import { getAuthContext } from '../middleware/auth';
 import { WEATHER_CACHE_TTL_SECONDS } from '@litcrop/shared';
 import type { Farm, Plot, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
 
@@ -14,6 +15,7 @@ interface CacheEntry {
 }
 
 const weatherCache = new Map<string, CacheEntry>();
+const WEATHER_CACHE_MAX_SIZE = 100;
 
 // ── WMO weather code mapping ──────────────────────────────────────
 
@@ -171,6 +173,9 @@ function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt:
   }));
 
   // Today summary from first daily entry + raw sunrise/sunset
+  if (dailyForecasts.length === 0) {
+    throw new UpstreamError('No forecast data available from weather service');
+  }
   const today = {
     high: dailyForecasts[0].high,
     low: dailyForecasts[0].low,
@@ -280,14 +285,18 @@ function computeCropImpact(
 
 router.get('/:farmId/weather', async (c) => {
   const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
 
-  // Verify farm exists
+  // Verify farm exists and belongs to caller
   let farm: Farm;
   try {
     farm = await dynamoRepo.getFarm(farmId);
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (farm.user_id !== userId) {
+    throw new NotFoundError(`Farm not found: ${farmId}`);
   }
 
   // Check cache
@@ -323,7 +332,11 @@ router.get('/:farmId/weather', async (c) => {
   const cachedAt = new Date().toISOString();
   const weatherData = transformWeather(rawWeather, plots, cachedAt);
 
-  // Store in cache
+  // Store in cache — evict oldest entry if at capacity
+  if (weatherCache.size >= WEATHER_CACHE_MAX_SIZE) {
+    const oldest = weatherCache.keys().next().value;
+    if (oldest !== undefined) weatherCache.delete(oldest);
+  }
   weatherCache.set(farmId, { data: weatherData, cachedAt: now });
 
   c.res.headers.set('Cache-Control', `max-age=${WEATHER_CACHE_TTL_SECONDS}`);

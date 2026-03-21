@@ -1,49 +1,51 @@
 # Remediation Report
 
-> Date: 2026-03-18
+> Date: 2026-03-20
 > Review source: docs/REVIEW-FINDINGS.md
-> Branch: feature/infra-monorepo
-> Iterations: 1 of 3 max
+> Branch: develop
+> Iterations: 1 of 3 max (residual fix applied within same iteration)
 > Status: **RESOLVED**
 
 ## Summary
 
-All 4 MUST-FIX and 4 SHOULD-FIX findings resolved in a single iteration. No escalation needed.
+All 6 MUST-FIX and 7 SHOULD-FIX findings resolved in a single iteration. 1 residual (HourlyForecast/DailyForecast field naming in API-CONTRACTS.md §8) caught during re-validation and fixed immediately. No escalation needed.
 
 ## Findings Resolution
 
 | # | Finding | Severity | Status | Notes |
 |---|---------|----------|--------|-------|
-| MF-1 | Simulator missing `captured_at` | MUST-FIX | **FIXED** | Added `captured_at` to FormData with optional override |
-| MF-2 | `getPlots` response wrapper mismatch | MUST-FIX | **FIXED** | API client now unwraps `{ data }` envelope |
-| MF-3 | Weather field name mismatches | MUST-FIX | **FIXED** | Route transform aligned to shared type field names |
-| MF-4a | `url` → `thumbnail_url` | MUST-FIX | **FIXED** | Renamed in farms.ts and plots.ts |
-| MF-4b | `tags` → `latest_tag` | MUST-FIX | **FIXED** | Returns single TagValue or null |
-| SF-1 | S3 orphan on DynamoDB failure | SHOULD-FIX | **FIXED** | Compensating deleteImage in catch block |
-| SF-2 | Bad cursor returns 503 | SHOULD-FIX | **FIXED** | decodeCursor errors now throw ValidationException → 400 |
-| SF-3 | `storage_key` leaked in response | SHOULD-FIX | **FIXED** | Removed from image detail response |
-| SF-4 | Non-atomic createTag race | SHOULD-FIX | **DOCUMENTED** | Code comment added; MVP fix via denormalization |
-| SG-1 | Weather cache cold start | SUGGESTION | DEFERRED | Documented; MVP fix via DynamoDB TTL cache |
-| SG-2 | Chat renders Markdown as text | SUGGESTION | DEFERRED | MVP: add marked + sanitize |
-| SG-3 | updateFarm names map leak | SUGGESTION | DEFERRED | Low risk; current routes filter undefined |
+| MF-1 | 403 vs 404 for ownership failures | MUST-FIX | **FIXED** | API-CONTRACTS.md: all ownership 403→404; §4b code example updated; FORBIDDEN reserved for future RBAC. UX-DESIGNS.md: 403 error row → 404 generic "Farm not found" |
+| MF-2 | Pagination envelope mismatch | MUST-FIX | **FIXED** | SYSTEM-DESIGN.md: `pagination` → `meta`, removed `has_more`, added `limit` |
+| MF-3 | Weather response field naming | MUST-FIX | **FIXED** | API-CONTRACTS.md §8: CurrentWeather, HourlyForecast, DailyForecast all aligned to Zod short names |
+| MF-4 | Zod FarmBaseSchema missing `user_id` | MUST-FIX | **FIXED** | Added `user_id: z.string()` to FarmBaseSchema |
+| MF-5 | Zod ImageDetailResponseSchema missing `thumbnail_url` | MUST-FIX | **FIXED** | Added `thumbnail_url: z.string().nullable()` to ImageDetailResponseSchema |
+| MF-6 | S3 bucket name inconsistency | MUST-FIX | **FIXED** | All `litcrop-poc-images` → `litcrop-mvp-images` in API-CONTRACTS.md |
+| SF-1 | FarmPlotItem / PlotSummary field alignment | SHOULD-FIX | **FIXED** | Added `bed_id`, `field_id` to PlotSummary; removed `url` from LatestImage |
+| SF-2 | ImageListItem vs ImageSummary divergence | SHOULD-FIX | **FIXED** | Changed to flat `latest_tag` in API-CONTRACTS.md; removed TagSummary |
+| SF-3 | ChatResponse.tool_calls undocumented | SHOULD-FIX | **FIXED** | Added optional `tool_calls` to API-CONTRACTS.md §5.11 |
+| SF-4 | CropImpact severity enum mismatch | SHOULD-FIX | **FIXED** | `"critical"` → `"danger"`, added `"good"` in API-CONTRACTS.md §8 |
+| SF-5 | UX 403 error state | SHOULD-FIX | **FIXED** | Addressed as part of MF-1 |
+| SF-6 | Single-farm-per-user constraint undocumented | SHOULD-FIX | **FIXED** | Added constraint callout in ARCHITECTURE.md §4 |
+| SF-7 | UX-DESIGNS.md duplicate section numbering | SHOULD-FIX | **FIXED** | Toast Notification renumbered to §5.11 |
 
 ## Iteration Log
 
 ### Iteration 1
-- Findings addressed: MF-1, MF-2, MF-3, MF-4a, MF-4b, SF-1, SF-2, SF-3, SF-4
-- Tests added: 3 new tests (168 total, all passing)
-- Outcome: All MUST-FIX and SHOULD-FIX resolved
+- Findings addressed: MF-1 through MF-6, SF-1 through SF-7
+- Outcome: 12/13 fixed; 1 residual (MF-3 partial — HourlyForecast/DailyForecast field names)
+
+### Iteration 1b (residual fix)
+- Findings addressed: MF-3 residual (HourlyForecast + DailyForecast field naming in API-CONTRACTS.md §8)
+- Outcome: All 13 findings fully resolved
 
 ## Escalations
-None required. All findings were mechanical field-name mismatches and missing fields — no architectural or design issues.
+None required. All findings were cross-document consistency mismatches — no architectural or design flaws.
 
-## Exit Criteria Status (Post-Remediation)
+## Phase E Gate Status (Post-Remediation)
 
-| EC | Criterion | Status |
-|----|-----------|--------|
-| EC-1 | Simulator uploads image via HTTPS | **UNBLOCKED** (captured_at added) |
-| EC-2 | Images viewable in mobile web UI | **UNBLOCKED** (response wrapper + thumbnail_url fixed) |
-| EC-3 | Images associated with specific plot | **UNBLOCKED** (depends on EC-1, now fixed) |
-| EC-4 | Time-ordered image gallery renders | **UNBLOCKED** (thumbnail_url + latest_tag fixed) |
-| EC-5 | Cloud cost under $5/month | **Ready** (architecture guarantees) |
-| EC-6 | Upload-to-viewable latency < 30s | **Ready** (measurable post-deploy) |
+| Gate | Verdict | Status |
+|------|---------|--------|
+| Gate 1: Architecture + System Design | CONDITIONAL PASS → **PASS** | All findings resolved |
+| Gate 2: UX + API Contracts | CONDITIONAL PASS → **PASS** | All findings resolved |
+
+**Phase E is complete.** Design documents are internally consistent and ready for task breakdown / implementation.

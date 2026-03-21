@@ -1,0 +1,14 @@
+---
+/**
+ * Password Reset Page — T-FE-AUTH-05
+ * /reset — public route (no auth guard)
+ */
+import AuthLayout from '../layouts/AuthLayout.astro';
+import ResetPasswordForm from '../components/ResetPasswordForm';
+import Toast from '../components/Toast';
+---
+
+<AuthLayout title="Reset your password" cardTitle="Forgot password?">
+  <ResetPasswordForm client:load />
+  <Toast client:load />
+</AuthLayout>

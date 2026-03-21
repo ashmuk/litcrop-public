@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { PlotDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
 import { TAG_VALUES } from '@litcrop/shared';
-import { getPlot, getImages, createTag } from '../lib/api';
+import { getPlot, getImages, createTag, uploadImage } from '../lib/api';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
@@ -41,6 +41,7 @@ export default function PlotDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<TagValue | null>(null);
   const [tagging, setTagging] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const plotId =
     typeof window !== 'undefined'
@@ -107,6 +108,34 @@ export default function PlotDetail() {
       showToast(t('farm.error_loading'), 'error');
     } finally {
       setTagging(false);
+    }
+  }
+
+  async function handleImageUpload(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast(t('upload.too_large'), 'error');
+      return;
+    }
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('captured_at', new Date().toISOString());
+    formData.append('node_id', 'phone-camera');
+    formData.append('trigger', 'scheduled');
+    try {
+      await uploadImage(plotId, formData);
+      showToast(t('upload.success'), 'success');
+      const imagesData = await getImages(plotId);
+      setImages(imagesData.data);
+      setNextCursor(imagesData.meta.next_cursor);
+    } catch {
+      showToast(t('upload.error'), 'error');
+    } finally {
+      setUploading(false);
+      // Reset input so the same file can be re-selected if needed
+      (e.target as HTMLInputElement).value = '';
     }
   }
 
@@ -225,7 +254,24 @@ export default function PlotDetail() {
 
       {/* ── Island 4: Image History ──────────────────────── */}
       <div>
-        <div class="section-heading">{t('plot.image_history')}</div>
+        <div class="section-heading" style="display:flex;align-items:center;justify-content:space-between">
+          {t('plot.image_history')}
+          <label
+            class="btn-secondary"
+            style={`cursor:${uploading ? 'not-allowed' : 'pointer'};display:inline-flex;align-items:center;gap:var(--space-2);opacity:${uploading ? '0.6' : '1'}`}
+            aria-disabled={uploading}
+          >
+            <input
+              type="file"
+              accept="image/jpeg"
+              capture="environment"
+              style="display:none"
+              disabled={uploading}
+              onChange={handleImageUpload}
+            />
+            {uploading ? t('upload.uploading') : t('buttons.upload')}
+          </label>
+        </div>
         {images.length === 0 ? (
           <div class="empty-state" style="padding:var(--space-8)">
             <span class="empty-state__icon">📷</span>

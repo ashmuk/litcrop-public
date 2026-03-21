@@ -2,7 +2,7 @@ version: 1
 character: staged
 
 staged:
-  current_stage: 5
+  current_stage: 6
   deployment_gate: 5
   roadmap_file: PLANS.md
 

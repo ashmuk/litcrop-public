@@ -74,3 +74,27 @@ export class BadCursorError extends AppError {
     this.name = 'BadCursorError';
   }
 }
+
+export class RateLimitError extends AppError {
+  constructor(message = 'Rate limit exceeded', details?: Record<string, unknown>) {
+    super('RATE_LIMITED', 429, message, details);
+    this.name = 'RateLimitError';
+  }
+}
+
+export class BudgetExceededError extends AppError {
+  constructor(
+    message: string,
+    details: {
+      scope: 'user' | 'global';
+      reset_at: string;
+      input_tokens_used: number;
+      output_tokens_used: number;
+      input_tokens_limit: number;
+      output_tokens_limit: number;
+    },
+  ) {
+    super('BUDGET_EXCEEDED', 429, message, details);
+    this.name = 'BudgetExceededError';
+  }
+}

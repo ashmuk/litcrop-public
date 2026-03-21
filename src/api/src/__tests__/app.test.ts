@@ -1,3 +1,4 @@
+import { authHeaders } from './helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../app';
 import { dynamoRepo } from '../services/dynamodb';
@@ -25,6 +26,7 @@ vi.mock('../services/s3', () => ({
   getSignedImageUrl: vi.fn().mockResolvedValue('https://example.com/signed'),
   uploadImage: vi.fn(),
 }));
+
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -109,7 +111,7 @@ describe('error handler', () => {
     // POST /api/v1/farms with missing name triggers ValidationError
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
@@ -118,11 +120,22 @@ describe('error handler', () => {
     expect(body.error.message).toBeDefined();
   });
 
-  it('unknown error → 500 with INTERNAL_ERROR code', async () => {
+  it('malformed JSON body → 400 with BAD_REQUEST code', async () => {
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: '{invalid json',
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('BAD_REQUEST');
+  });
+
+  it('unknown error → 503 with SERVICE_UNAVAILABLE code', async () => {
     vi.mocked(dynamoRepo.createFarm).mockRejectedValue(new TypeError('unexpected'));
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: 'Farm', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(503); // service unavailable (from try/catch in route)
