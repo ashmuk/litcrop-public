@@ -95,7 +95,6 @@ export interface ImageUploadResponse {
   captured_at: string;
   uploaded_at: string;
   trigger: TriggerType;
-  storage_key: string;
   size_bytes: number;
 }
 
@@ -208,5 +207,4 @@ export interface UsageResponse {
     output_tokens_limit: number;
     utilization_pct: number;
   };
-  model: string;
 }

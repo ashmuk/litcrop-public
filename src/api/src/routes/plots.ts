@@ -320,7 +320,6 @@ router.post('/:plotId/images', async (c) => {
       url: signedUrl,
       captured_at: image.captured_at,
       uploaded_at: image.uploaded_at,
-      storage_key: image.storage_key,
       trigger: image.trigger,
       size_bytes: image.size_bytes,
     },

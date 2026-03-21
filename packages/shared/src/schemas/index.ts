@@ -155,7 +155,6 @@ export const ImageUploadResponseSchema = z.object({
   url: z.string(),
   captured_at: z.string(),
   uploaded_at: z.string(),
-  storage_key: z.string(),
   trigger: TriggerTypeSchema,
   size_bytes: z.number(),
 });
@@ -313,5 +312,4 @@ export const UsageResponseSchema = z.object({
   reset_at: z.string(),
   user_budget: UserBudgetSchema,
   global_budget: GlobalBudgetSchema,
-  model: z.string(),
 });

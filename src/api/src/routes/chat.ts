@@ -298,6 +298,7 @@ async function callWithTools(
     } catch (err) {
       if (err instanceof Anthropic.APIError) {
         const status = err.status ?? 500;
+        console.error('[chat] LLM error', { status, error_type: err.error?.type ?? 'unknown' });
         if (status === 429) {
           throw new RateLimitError('AI service rate limit reached. Try again later.');
         }

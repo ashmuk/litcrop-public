@@ -700,7 +700,6 @@ describe('zod contract: GET /api/v1/usage', () => {
         output_tokens_limit: 100000,
         utilization_pct: 2,
       },
-      model: 'claude-haiku-4-5-20251001',
     });
 
     const res = await app.request('/api/v1/usage', { headers: authHeaders() });

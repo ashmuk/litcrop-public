@@ -224,6 +224,5 @@ export async function getUsage(userId: string): Promise<UsageResponse> {
       output_tokens_limit: GLOBAL_OUTPUT_LIMIT,
       utilization_pct: Math.min(100, Math.round((globalRec.input_tokens_used / GLOBAL_INPUT_LIMIT) * 100)),
     },
-    model: CHAT_MODEL,
   };
 }

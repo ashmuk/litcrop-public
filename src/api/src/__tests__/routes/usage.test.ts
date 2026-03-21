@@ -43,7 +43,6 @@ const usageFixture = {
     output_tokens_limit: 100000,
     utilization_pct: 2,
   },
-  model: 'claude-haiku-4-5-20251001',
 };
 
 beforeEach(() => {
@@ -63,7 +62,7 @@ describe('GET /api/v1/usage', () => {
     expect(body.period).toBe('daily');
     expect(body.user_budget.input_tokens_used).toBe(1200);
     expect(body.global_budget.utilization_pct).toBe(2);
-    expect(body.model).toBe('claude-haiku-4-5-20251001');
+    expect((body as Record<string, unknown>)['model']).toBeUndefined();
   });
 
   it('calls getUsage with the correct user_id from JWT', async () => {

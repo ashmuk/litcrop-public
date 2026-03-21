@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -293,9 +294,16 @@ function handler(event) {
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
 
-    // Grant thumbnail Lambda permissions
-    imagesBucket.grantRead(thumbnailLambda);
-    thumbnailsBucket.grantWrite(thumbnailLambda);
+    // Grant thumbnail Lambda least-privilege S3 permissions (S8)
+    // s3:GetObject on images/* prefix only; s3:PutObject on thumbnails/* prefix only
+    thumbnailLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['s3:GetObject'],
+      resources: [`${imagesBucket.bucketArn}/images/*`],
+    }));
+    thumbnailLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['s3:PutObject'],
+      resources: [`${thumbnailsBucket.bucketArn}/thumbnails/*`],
+    }));
     table.grantWriteData(thumbnailLambda); // Update Image record with thumbnail_key
 
     // S3 event trigger: new objects in images/ prefix → thumbnail generation

@@ -204,7 +204,6 @@ describe('getUsage', () => {
     expect(usage.global_budget.input_tokens_used).toBe(5000);
     expect(usage.global_budget.utilization_pct).toBeGreaterThanOrEqual(0);
     expect(usage.global_budget.utilization_pct).toBeLessThanOrEqual(100);
-    expect(typeof usage.model).toBe('string');
   });
 
   it('returns zero counters when no usage today (new user)', async () => {
