@@ -1,10 +1,17 @@
-# MVP-POST-PLAN.md — MVP Refinement Plan (v0.9 - v1.0)
+# MVP-POST-PLAN.md — MVP Refinement Plan
 
 > Date: 2026-03-21 (updated)
 > Scope: Post-deploy fixes, tech debt, architecture evolution, new features
-> Target: Tag v0.9 after Phase 1, v1.0 after Phase 5
 > Branch: `develop` (merge to `main` for deploy)
 > Total estimated effort: ~11-12 hours across 5 phases
+>
+> **Release Strategy:**
+> - **v0.9** = Phase 1 + Phase 2 + Phase 3 + CI/CD pipeline → PR to `main` → manual deploy
+> - **v1.0+** = Phase 4-5 → all deployed through CI/CD pipeline (no manual deploys)
+>
+> The CI/CD cutoff after Phase 3 means every change from Phase 4
+> onward is automatically validated (build + test + type-check + cdk synth) on PR
+> and auto-deployed on merge to `main`.
 
 ---
 
@@ -853,45 +860,65 @@ This is the most significant change in the plan. It moves from a one-farm-per-us
 ## Execution Roadmap (All Phases)
 
 ```
-Phase 1 (COMPLETE) ─────────────────────────────────────────────
-  A1-A8: Core UX fixes, plot wizard, admin stats       ~4 hrs
+ ═══════════════════════════════════════════════════════════════
+ v0.9 SCOPE (manual deploy — last manual deploy to main)
+ ═══════════════════════════════════════════════════════════════
 
-Phase 2 ─────────── Phase 3 ────────────────────────────────────
-  N3, N5, Q4, Q10,    Q5, Q7, Q8, Q9, S5, S7, S8,     ~3 hrs
-  C6, S11 (~1 hr)     T3-T6 (~2 hrs)                   (parallel)
+ Phase 1 (COMPLETE) ────────────────────────────────────────────
+   A1-A8: Core UX fixes, plot wizard, admin stats       ~4 hrs
 
-Phase 4 ────────────────────────────────────────────────────────
-  N1: Multi-farm architecture                           ~3-4 hrs
-  (requires ADR first)
+ Phase 2 ───────────────────────────────────────────────────────
+   N3, N5, Q4, Q10, C6, S11                             ~1 hr
+   Quick fixes + deploy bugs
 
-Phase 5 ────────────────────────────────────────────────────────
-  N2, #90, S9, Q11, Q12, Q13, S10, T8-T9               ~4.5 hrs
-  (can split into sub-branches)
+ Phase 3 ───────────────────────────────────────────────────────
+   Q5, Q7, Q8, Q9, S5, S7, S8, T3-T6                   ~2 hrs
+   Tech debt sweep
+
+ CI/CD SETUP ───────────────────────────────────────────────────
+   Wire pr-checks.yml (build + test + typecheck + synth)
+   Wire deploy.yml (cdk deploy + S3 sync on push to main)
+   Configure GitHub Secrets (AWS credentials)
+   Configure GitHub Environment (production, require approval)
+
+ TAG v0.9 → PR develop → main → MERGE → MANUAL DEPLOY (last one)
+
+ ═══════════════════════════════════════════════════════════════
+ v1.0+ SCOPE (all through CI/CD — no manual deploys)
+ ═══════════════════════════════════════════════════════════════
+
+ Phase 4 ───────────────────────────────────────────────────────
+   N1: Multi-farm architecture (ADR first)              ~3-4 hrs
+
+ Phase 5 ───────────────────────────────────────────────────────
+   N2, #90, S9, Q11, Q12, Q13, S10, T8-T9              ~4.5 hrs
+   New features + optimization
 ```
 
-**Phase dependencies**:
-- Phase 2 and Phase 3 can run in parallel (no shared files)
-- Phase 4 depends on Phase 1 only (needs stable farm CRUD)
-- Phase 5 items are mostly independent; #90 benefits from Phase 4 but does not require it
+**Release strategy:**
+- v0.9: Phase 1 + Phase 2 + Phase 3 + CI/CD setup → last manual deploy to `main`
+- v1.0+: Phase 4-5 → every PR validated by CI/CD, every merge auto-deploys
+- Phase 4 (multi-farm) is a dedicated PR with ADR
+- Phase 5 items can be split into individual feature PRs
 
 ---
 
 ## Post-MVP Backlog
 
-Items deferred beyond this plan (v1.0+):
+Items deferred beyond Phase 5 (v1.0+):
 
 | Item | Description | Target |
 |------|-------------|--------|
 | F7 IoT management | Camera node pairing, device status, firmware OTA | Production |
 | F9 Full admin dashboard | User management, farm browsing, audit logs | Production |
-| CI/CD pipeline | GitHub Actions for PR checks + auto-deploy to AWS | v1.0+ |
-| Custom domain + TLS | ACM certificate, Route53, CloudFront custom domain | v1.0+ |
-| Runtime SSM fetch for LLM key | Enable real AI chat by fetching API key from SSM at runtime | v1.0+ |
-| Scoped IAM for deploy user | Replace AdministratorAccess with least-privilege CDK deploy role | v1.0+ |
-| Map view | Interactive farm map with plot locations (user feedback request) | v1.0+ |
-| Desktop responsive polish | Full desktop layout optimization (feedback: desktop gaps) | v1.0+ |
+| Custom domain + TLS | ACM certificate, Route53, CloudFront custom domain | Production |
+| Runtime SSM fetch for LLM key | Enable real AI chat by fetching API key from SSM at runtime | Production |
+| Scoped IAM for deploy user | Replace AdministratorAccess with least-privilege CDK deploy role | Production |
+| Map view | Interactive farm map with plot locations (user feedback request) | Production |
+| Desktop responsive polish | Full desktop layout optimization (feedback: desktop gaps) | Production |
 
 **Moved into scope** (from previous backlog):
+- ~~CI/CD pipeline~~ — now v0.9 scope (between Phase 2 and Phase 3)
 - ~~Settings sync (#90)~~ — now Phase 5
 - IoT service/guide page (N2) — now Phase 5 (static guide, not full F7 management)
 
@@ -899,7 +926,7 @@ Items deferred beyond this plan (v1.0+):
 
 ## Success Criteria
 
-### Phase 1 (v0.9) — COMPLETE
+### Phase 1 — COMPLETE
 
 - [x] `GET /api/v1/farms` returns the user's farm for authenticated requests
 - [x] Login flow populates localStorage with farmId + farmName on all devices
@@ -936,7 +963,29 @@ Items deferred beyond this plan (v1.0+):
 - [ ] Thumbnail Lambda IAM policy uses least-privilege
 - [ ] Auth, ownership, budget, and plot edge-case tests pass
 
-### Phase 4 — Multi-Farm Architecture
+### CI/CD Setup (v0.9 gate)
+
+- [ ] `pr-checks.yml` runs build + test + type-check + cdk synth on PRs
+- [ ] `deploy.yml` runs cdk deploy + S3 sync on push to `main`
+- [ ] AWS credentials configured as GitHub Secrets
+- [ ] GitHub Environment `production` with required approval
+- [ ] First PR to `main` passes all CI checks
+
+### v0.9 Release Gate
+
+- [ ] All Phase 1 + Phase 2 + Phase 3 success criteria met
+- [ ] CI/CD pipeline operational
+- [ ] Tag v0.9 created
+- [ ] PR develop → main created and merged
+- [ ] Production deploy verified (last manual deploy)
+
+---
+
+*Everything below this line deploys through CI/CD. No manual deploys.*
+
+---
+
+### Phase 4 — Multi-Farm Architecture (v1.0+)
 
 - [ ] ADR created and accepted for multi-farm support
 - [ ] `GET /api/v1/farms` returns array of all user's farms
@@ -957,9 +1006,9 @@ Items deferred beyond this plan (v1.0+):
 - [ ] Prod data stores have `RemovalPolicy.RETAIN`
 - [ ] Zod schema unit tests pass
 
-### Overall (v1.0 ready to tag)
+### Overall (v1.0+ ready to tag)
 
-- [ ] All Phase 1-5 success criteria met
+- [ ] All Phase 4-5 success criteria met
 - [ ] Frontend builds clean (`npm run build` in `src/frontend/`)
 - [ ] API type-checks clean (`npx tsc --noEmit` in `src/api/`)
 - [ ] All tests pass
