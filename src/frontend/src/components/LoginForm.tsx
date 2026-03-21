@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect } from 'preact/hooks';
-import { signIn, CognitoError } from '../lib/auth';
+import { signIn, getAccessToken, CognitoError } from '../lib/auth';
 import { t } from '../i18n/i18n';
 
 function mapError(err: unknown): string {
@@ -59,12 +59,8 @@ export default function LoginForm() {
 
   // If already authenticated, redirect away from login page
   useEffect(() => {
-    import('../lib/auth').then(({ getAccessToken }) => {
-      getAccessToken().then((token) => {
-        if (token) {
-          window.location.replace('/');
-        }
-      });
+    getAccessToken().then((token) => {
+      if (token) window.location.replace('/');
     });
   }, []);
 

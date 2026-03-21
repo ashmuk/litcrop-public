@@ -19,7 +19,7 @@ import {
   TRIGGER_TYPES,
   isValidTriggerType,
 } from '@litcrop/shared';
-import type { Farm, Field, Bed, Plot, Image } from '@litcrop/shared';
+import type { Farm, Field, Plot, Image } from '@litcrop/shared';
 import { makeLatestImage } from './_helpers';
 
 /** Verify caller owns the farm that contains this plot (plot.farm_id → farm.user_id). */
@@ -188,12 +188,10 @@ router.post('/:plotId/images', async (c) => {
   // 1/3. Parse multipart form data
   const formData = await c.req.parseBody();
 
-  const imageField = formData['image'];
-  if (!imageField || !(imageField instanceof File)) {
+  const imageFile = formData['image'];
+  if (!imageFile || !(imageFile instanceof File)) {
     throw new ValidationError('Missing required field: image', { field: 'image', in: 'body' });
   }
-
-  const imageFile = imageField as File;
 
   // 4. Size check
   if (imageFile.size > MAX_IMAGE_SIZE_BYTES) {

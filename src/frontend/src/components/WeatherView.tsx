@@ -7,7 +7,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
-import { useLocalFarmId, formatTemp, useTempUnit } from '../lib/hooks';
+import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { translateCondition } from '../lib/format';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {

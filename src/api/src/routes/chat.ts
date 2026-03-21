@@ -213,16 +213,10 @@ router.post('/', async (c) => {
 
   // Validate message
   const rawMessage = body['message'];
-  if (rawMessage === undefined || rawMessage === null || rawMessage === '') {
+  if (typeof rawMessage !== 'string' || rawMessage.trim().length === 0) {
     throw new ValidationError('Missing required field: message', { field: 'message', in: 'body' });
-  }
-  if (typeof rawMessage !== 'string') {
-    throw new ValidationError("Invalid value for 'message': must be a string", { field: 'message' });
   }
   const message = rawMessage.trim();
-  if (message.length === 0) {
-    throw new ValidationError('Missing required field: message', { field: 'message', in: 'body' });
-  }
   if (message.length > 2000) {
     throw new ValidationError("Invalid value for 'message': max 2000 characters", {
       field: 'message',
@@ -282,13 +276,10 @@ router.post('/', async (c) => {
   }
 
   // Call LLM
+  const callLLM = LLM_PROVIDER === 'openai' ? callOpenAI : callAnthropic;
   let result: LLMResult;
   try {
-    if (LLM_PROVIDER === 'openai') {
-      result = await callOpenAI(systemPrompt, message);
-    } else {
-      result = await callAnthropic(systemPrompt, message);
-    }
+    result = await callLLM(systemPrompt, message);
   } catch (err) {
     if (err instanceof UpstreamError) throw err;
     throw new UpstreamError('AI service temporarily unavailable');

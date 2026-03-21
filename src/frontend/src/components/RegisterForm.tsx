@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { signUp, confirmSignUp, resendConfirmationCode, CognitoError } from '../lib/auth';
+import { signUp, confirmSignUp, resendConfirmationCode, getAccessToken, CognitoError } from '../lib/auth';
 import { t } from '../i18n/i18n';
 
 // ── Password strength ─────────────────────────────────────────────
@@ -107,10 +107,8 @@ export default function RegisterForm() {
 
   // If already authenticated, redirect away
   useEffect(() => {
-    import('../lib/auth').then(({ getAccessToken }) => {
-      getAccessToken().then((token) => {
-        if (token) window.location.replace('/');
-      });
+    getAccessToken().then((token) => {
+      if (token) window.location.replace('/');
     });
   }, []);
 
@@ -226,13 +224,18 @@ export default function RegisterForm() {
 
   // ── Strength bar ──────────────────────────────────────────────
 
-  const strengthLabel = score <= 1
-    ? t('auth.password_strength.weak')
-    : score <= 3
-      ? t('auth.password_strength.fair')
-      : t('auth.password_strength.strong');
-
-  const strengthIdx = score <= 1 ? 0 : score <= 3 ? 1 : 2;
+  let strengthLabel: string;
+  let strengthIdx: number;
+  if (score <= 1) {
+    strengthLabel = t('auth.password_strength.weak');
+    strengthIdx = 0;
+  } else if (score <= 3) {
+    strengthLabel = t('auth.password_strength.fair');
+    strengthIdx = 1;
+  } else {
+    strengthLabel = t('auth.password_strength.strong');
+    strengthIdx = 2;
+  }
 
   // ── Step indicator dots ───────────────────────────────────────
 

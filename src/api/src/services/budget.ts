@@ -204,9 +204,6 @@ export async function getUsage(userId: string): Promise<UsageResponse> {
     getRecord('GLOBAL'),
   ]);
 
-  const globalInputUsed = globalRec.input_tokens_used;
-  const globalInputLimit = GLOBAL_INPUT_LIMIT;
-
   return {
     user_id: userId,
     period: 'daily',
@@ -221,11 +218,11 @@ export async function getUsage(userId: string): Promise<UsageResponse> {
       messages_limit: MESSAGES_PER_HOUR_LIMIT,
     },
     global_budget: {
-      input_tokens_used: globalInputUsed,
-      input_tokens_limit: globalInputLimit,
+      input_tokens_used: globalRec.input_tokens_used,
+      input_tokens_limit: GLOBAL_INPUT_LIMIT,
       output_tokens_used: globalRec.output_tokens_used,
       output_tokens_limit: GLOBAL_OUTPUT_LIMIT,
-      utilization_pct: Math.min(100, Math.round((globalInputUsed / globalInputLimit) * 100)),
+      utilization_pct: Math.min(100, Math.round((globalRec.input_tokens_used / GLOBAL_INPUT_LIMIT) * 100)),
     },
     model: CHAT_MODEL,
   };

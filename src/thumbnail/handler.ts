@@ -12,14 +12,8 @@
  */
 
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import {
-  DynamoDBClient,
-} from '@aws-sdk/client-dynamodb';
-import {
-  DynamoDBDocumentClient,
-  QueryCommand,
-  UpdateCommand,
-} from '@aws-sdk/lib-dynamodb';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import sharp from 'sharp';
 
 // ── Configuration ─────────────────────────────────────────────────

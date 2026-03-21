@@ -75,14 +75,17 @@ async function request<T>(
     headers['Content-Type'] = 'application/json';
   }
 
+  let requestBody: BodyInit | undefined;
+  if (isFormData) {
+    requestBody = body as FormData;
+  } else if (body !== undefined) {
+    requestBody = JSON.stringify(body);
+  }
+
   const res = await fetch(url, {
     method,
     headers,
-    body: isFormData
-      ? (body as FormData)
-      : body !== undefined
-        ? JSON.stringify(body)
-        : undefined,
+    body: requestBody,
   });
 
   // On 401: attempt token refresh and retry once
