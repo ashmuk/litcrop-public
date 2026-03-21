@@ -2,8 +2,8 @@
 
 > Date: 2026-03-21
 > Branch: develop
-> Session name: litcrop-mvp-phase-j
-> Commits: 2 (28 files changed, 834 insertions, 298 deletions)
+> Session name: litcrop-mvp-phase-j-deploy
+> Commits: 6 (30 files changed, ~1500 insertions, ~300 deletions)
 
 ---
 
@@ -148,6 +148,62 @@ Next:            /cc-push + /cc-pr-create (develop → main)
 | efficiency-reviewer | code-simplifier | Task #3: efficiency analysis (9 findings) | Shut down |
 | fixer | code-simplifier | Task #4: apply fixes (9/10 applied before stall) | Force terminated |
 
+### Team RITCROPPERS-DEPLOY (AWS deployment)
+| Teammate | Agent Type | Tasks | Status |
+|----------|-----------|-------|--------|
+| team-lead | orchestrator | Coordination, approval gates, issue management | Completed |
+| deployer | my-builder | Tasks #1-#5: bootstrap, SSM, synth, deploy, frontend | Shut down |
+| validator | my-reviewer | Task #6: 8-point verification checklist | Shut down |
+
+---
+
+## AWS Deployment
+
+### Timeline
+
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | CDK Bootstrap | Blocked → IAM fix (AdministratorAccess) → ✅ CREATE_COMPLETE |
+| 2 | SSM dummy parameter | ✅ `/litcrop/llm-api-key` = `"not-set"` |
+| 3 | CDK Synth + Diff | Blocked → thumbnail `depsLockFilePath` fix → ✅ 44 resources |
+| 4 | CDK Deploy | Blocked → SSM SecureString fix → ✅ 46/46 CREATE_COMPLETE |
+| 5 | Frontend to S3 | ✅ 10 pages, 282 KiB, CloudFront invalidated |
+| 6 | Verification | ✅ 20/21 PASS, 1 SUGGESTION (CloudFront TLS cosmetic) |
+
+### Live Endpoints
+
+| Endpoint | URL |
+|----------|-----|
+| Frontend | `https://dpj8a3mk3tzkq.cloudfront.net` |
+| API | `https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/` |
+
+### CDK Outputs
+
+| Output | Value |
+|--------|-------|
+| UserPoolId | `ap-northeast-1_XXXXXXXXX` |
+| UserPoolClientId | `5bm4tnbd4kuhjcour2p0n4aldq` |
+| DynamoTableName | `litcrop-mvp` |
+| ImagesBucketName | `litcrop-mvp-images` |
+| ThumbnailsBucketName | `litcrop-mvp-thumbnails` |
+| CloudFront Distribution ID | `EYYYYYYYYYYYYY` |
+
+### Issues Fixed During Deploy
+
+| Issue | Fix | Commit |
+|-------|-----|--------|
+| IAM `litcrop-poc-admin` lacked CloudFormation perms | Attached `AdministratorAccess` | Manual (AWS Console) |
+| SSM SecureString blocked in Lambda env vars | Removed `LLM_API_KEY` env var from CDK | `1837834` |
+| Thumbnail Lambda couldn't find `sharp` in lock file | Added `depsLockFilePath` + generated lock file | `1837834` |
+
+### Known Issues (post-deploy)
+
+| Issue | Severity | Notes |
+|-------|----------|-------|
+| CloudFront TLS reports TLSv1 with default cert | SUGGESTION | TLS 1.2+ negotiated in practice; fix with custom domain + ACM |
+| Chat in stub mode (no LLM API key) | Expected | Set real key in SSM + add runtime fetch for Production |
+| AdministratorAccess on deploy user | MEDIUM | Scope down after deployment stabilizes |
+
 ---
 
 ## Review Findings Summary
@@ -182,32 +238,52 @@ Next:            /cc-push + /cc-pr-create (develop → main)
 | quality-reviewer (SIMPLIFIERS) | Code quality analysis | ~65K input, ~7K output | ~5 min |
 | efficiency-reviewer (SIMPLIFIERS) | Efficiency analysis | ~60K input, ~6K output | ~5 min |
 | fixer (SIMPLIFIERS) | Apply fixes | ~110K input, ~12K output | ~10 min |
-| **Session total** | | **~783K input, ~96K output** | **~65 min** |
+| deployer (DEPLOY) | CDK bootstrap + deploy + frontend | ~80K input, ~10K output | ~15 min |
+| validator (DEPLOY) | 8-point verification | ~60K input, ~6K output | ~5 min |
+| **Session total** | | **~923K input, ~112K output** | **~85 min** |
 
-Estimated session cost: ~$30-35 (Opus agents)
+Estimated session cost: ~$38-42 (Opus agents)
+
+---
+
+## Commits (this session)
+
+| Hash | Message | Files |
+|------|---------|-------|
+| `a8d82d7` | refactor: simplify post-v0.7 code across API, frontend, and thumbnail | 8 |
+| `52ca0aa` | feat(api): complete Phase J — SDK migration, test fixes, and SHOULD-FIX items | 22 |
+| `ca26663` | docs: add session report v0.8.4 | 1 |
+| `e4d5118` | docs: add MVP deployment guide with CDK walkthrough | 1 |
+| `1837834` | fix(infra): resolve CDK deploy blockers — SSM SecureString and thumbnail bundling | 2 |
+| `826ff5c` | docs: update DEPLOY-MVP.md with deploy record, fixes, and known issues | 1 |
 
 ---
 
 ## Final State
 
 ```
-Branch:          develop (6 commits ahead of origin)
+Branch:          develop (pushed, up to date with origin)
 MUST-FIX:        5/5 resolved (100%)
 SHOULD-FIX:      7 additional items addressed
 Tests:           262/262 passing
 Type check:      0 errors
 Review verdict:  PASS (was CONDITIONAL PASS)
-Deploy gate:     APPROVED
+Deploy:          LIVE — 46 AWS resources, verified 20/21 PASS
+Frontend:        https://dpj8a3mk3tzkq.cloudfront.net
+API:             https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/
+GH Issues:       87 total, 0 open
 ```
 
 ---
 
 ## Next Steps
 
-1. `/cc-push` — push develop to origin
-2. `/cc-pr-create` — PR from develop → main
-3. Deploy to production (Phase K)
-4. Post-deploy testing per `docs/FEEDBACK_POC_POST_DEPLOY.md` checklist
+1. Test the app end-to-end (register, login, create farm, upload image, try chat)
+2. `/cc-pr-create` — PR from develop → main (requires approval)
+3. `/cc-tag-create` — tag as v0.9 (MVP release)
+4. Set real Anthropic API key in SSM for live chat
+5. Scope down IAM permissions (remove AdministratorAccess)
+6. CI/CD pipeline automation (pr-checks.yml + deploy.yml)
 
 ### Remaining Technical Debt (acceptable for MVP)
 
