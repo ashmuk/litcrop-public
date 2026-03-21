@@ -43,7 +43,7 @@ export default function DesktopNav({ activeTab = 'farm' }: Props) {
     signOut();
     showToast(t('auth.logout_confirm'), 'success');
     setTimeout(() => {
-      window.location.replace('/login');
+      window.location.replace('/login/');
     }, 800);
   }
 

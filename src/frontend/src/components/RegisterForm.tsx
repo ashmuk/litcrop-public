@@ -203,7 +203,7 @@ export default function RegisterForm() {
       setStep(3);
       // Auto-redirect to login after 2s
       setTimeout(() => {
-        window.location.replace('/login');
+        window.location.replace('/login/');
       }, 2000);
     } catch (err) {
       setStep2ServerError(mapConfirmError(err));

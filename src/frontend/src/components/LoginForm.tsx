@@ -79,7 +79,7 @@ export default function LoginForm() {
       const result = await signIn(email, password);
       // Redirect: new user → /setup, returning user → saved URL or /
       if (result.isNewUser) {
-        window.location.replace('/setup');
+        window.location.replace('/setup/');
         return;
       }
       let returnUrl = '/';

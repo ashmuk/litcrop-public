@@ -157,7 +157,7 @@ export default function ResetPasswordForm() {
       await confirmForgotPassword(email, code.trim(), newPassword);
       setStep(3);
       setTimeout(() => {
-        window.location.replace('/login');
+        window.location.replace('/login/');
       }, 2000);
     } catch (err) {
       setStep2ServerError(mapConfirmError(err));

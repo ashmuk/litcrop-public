@@ -25,7 +25,7 @@ export default function AuthGuard() {
         } catch {
           // ignore
         }
-        window.location.replace('/login');
+        window.location.replace('/login/');
         return;
       }
       setChecking(false);

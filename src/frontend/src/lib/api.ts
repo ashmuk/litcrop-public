@@ -103,7 +103,7 @@ async function request<T>(
     } catch {
       // ignore
     }
-    window.location.replace('/login');
+    window.location.replace('/login/');
     throw new ApiError(401, {
       error: { code: 'UNAUTHORIZED', message: 'Session expired. Please log in again.' },
     });

@@ -68,7 +68,7 @@ export default function SettingsPanel() {
     signOut();
     showToast(t('auth.logout_confirm'), 'success');
     setTimeout(() => {
-      window.location.replace('/login');
+      window.location.replace('/login/');
     }, 800);
   }
 
