@@ -148,6 +148,20 @@ describe('Farm ownership enforcement', () => {
     });
     expect(res.status).toBe(404);
   });
+
+  it('POST /api/v1/farms/:farmId/plots — other user gets 404 (cross-user write blocked)', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader(OTHER_USER_ID),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'Cherry' }),
+    });
+    expect(res.status).toBe(404);
+  });
 });
 
 // ── No-auth returns 401 ────────────────────────────────────────────
@@ -208,6 +222,22 @@ describe('Plot ownership enforcement', () => {
 
     const res = await app.request(`/api/v1/plots/${PLOT_ID}`, {
       headers: { Authorization: authHeader(OTHER_USER_ID) },
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('POST /api/v1/plots/:plotId/images — other user gets 404 (ownership check before form parse)', async () => {
+    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+
+    // Must include multipart Content-Type to pass the app-level Content-Type guard;
+    // ownership check fires before body is parsed, so an empty body is fine here.
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader(OTHER_USER_ID),
+        'Content-Type': 'multipart/form-data; boundary=----TestBoundary',
+      },
     });
     expect(res.status).toBe(404);
   });

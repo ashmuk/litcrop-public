@@ -114,6 +114,32 @@ describe('checkBudget', () => {
     const result = await checkBudget('new-user');
     expect(result.allowed).toBe(true);
   });
+
+  it('allows when user input is exactly at safe boundary (50000 - 500 = 49500 tokens used)', async () => {
+    // With USER_INPUT_LIMIT=50000 and MIN_EXCHANGE_INPUT=500:
+    //   49500 + 500 = 50000, which is NOT > 50000 → still allowed
+    ddbMock
+      .on(GetCommand, { Key: { PK: 'USAGE#user-boundary', SK: `DAY#${todayUtc()}` } })
+      .resolves({ Item: { input_tokens_used: 49500, output_tokens_used: 0, messages_sent: 5 } })
+      .on(GetCommand, { Key: { PK: 'USAGE#GLOBAL', SK: `DAY#${todayUtc()}` } })
+      .resolves({ Item: undefined });
+
+    const result = await checkBudget('user-boundary');
+    expect(result.allowed).toBe(true);
+  });
+
+  it('blocks when user input is one token over the safe boundary (49501 used)', async () => {
+    // 49501 + 500 = 50001 > 50000 → blocked
+    ddbMock
+      .on(GetCommand, { Key: { PK: 'USAGE#user-over-boundary', SK: `DAY#${todayUtc()}` } })
+      .resolves({ Item: { input_tokens_used: 49501, output_tokens_used: 0, messages_sent: 5 } })
+      .on(GetCommand, { Key: { PK: 'USAGE#GLOBAL', SK: `DAY#${todayUtc()}` } })
+      .resolves({ Item: undefined });
+
+    const result = await checkBudget('user-over-boundary');
+    expect(result.allowed).toBe(false);
+    expect(result.scope).toBe('user');
+  });
 });
 
 // ── recordUsage ────────────────────────────────────────────────────

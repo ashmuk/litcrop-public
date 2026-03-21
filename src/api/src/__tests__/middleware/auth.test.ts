@@ -105,6 +105,26 @@ describe('authMiddleware — Bearer token path', () => {
     });
     expect(res.status).toBe(401);
   });
+
+  it('returns 401 when token has sub but no iss (S2: issuer required)', async () => {
+    const app = buildApp();
+    const token = mockJwt({ sub: 'user-abc', email: 'alice@example.com' });
+
+    const res = await app.request('/whoami', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when token has sub but iss is not a Cognito issuer (S2: must include cognito)', async () => {
+    const app = buildApp();
+    const token = mockJwt({ sub: 'user-abc', email: 'alice@example.com', iss: 'https://accounts.google.com' });
+
+    const res = await app.request('/whoami', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('authMiddleware — Lambda event claims path', () => {
