@@ -15,6 +15,7 @@ interface CacheEntry {
 }
 
 const weatherCache = new Map<string, CacheEntry>();
+const WEATHER_CACHE_MAX_SIZE = 100;
 
 // ── WMO weather code mapping ──────────────────────────────────────
 
@@ -331,7 +332,11 @@ router.get('/:farmId/weather', async (c) => {
   const cachedAt = new Date().toISOString();
   const weatherData = transformWeather(rawWeather, plots, cachedAt);
 
-  // Store in cache
+  // Store in cache — evict oldest entry if at capacity
+  if (weatherCache.size >= WEATHER_CACHE_MAX_SIZE) {
+    const oldest = weatherCache.keys().next().value;
+    if (oldest !== undefined) weatherCache.delete(oldest);
+  }
   weatherCache.set(farmId, { data: weatherData, cachedAt: now });
 
   c.res.headers.set('Cache-Control', `max-age=${WEATHER_CACHE_TTL_SECONDS}`);

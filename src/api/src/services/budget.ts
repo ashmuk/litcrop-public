@@ -15,7 +15,8 @@ import type { UsageResponse } from '@litcrop/shared';
 
 // ── Config ────────────────────────────────────────────────────────
 
-const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-poc';
+const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-dev';
+if (!process.env.TABLE_NAME) console.warn('[budget] TABLE_NAME not set, falling back to litcrop-dev');
 const AWS_REGION = process.env.AWS_REGION ?? 'ap-northeast-1';
 
 // Per-user daily limits (can be overridden via env vars)

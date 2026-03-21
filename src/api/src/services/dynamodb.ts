@@ -23,7 +23,8 @@ export interface StoredMessage {
 
 // ── Configuration ────────────────────────────────────────────────
 
-const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-poc';
+const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-dev';
+if (!process.env.TABLE_NAME) console.warn('[dynamodb] TABLE_NAME not set, falling back to litcrop-dev');
 const AWS_REGION = process.env.AWS_REGION ?? 'ap-northeast-1';
 const GSI1_INDEX = 'GSI1';
 const GSI2_INDEX = 'GSI2';

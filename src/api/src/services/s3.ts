@@ -5,7 +5,8 @@ import { SIGNED_URL_EXPIRY_SECONDS } from '@litcrop/shared';
 // ── Configuration ────────────────────────────────────────────────
 
 const AWS_REGION = process.env.AWS_REGION ?? 'ap-northeast-1';
-const IMAGE_BUCKET = process.env.S3_IMAGES_BUCKET ?? process.env.IMAGE_BUCKET ?? 'litcrop-poc-images';
+const IMAGE_BUCKET = process.env.S3_IMAGES_BUCKET ?? process.env.IMAGE_BUCKET ?? 'litcrop-dev-images';
+if (!process.env.S3_IMAGES_BUCKET && !process.env.IMAGE_BUCKET) console.warn('[s3] IMAGE_BUCKET not set, falling back to litcrop-dev-images');
 const THUMBNAIL_BUCKET = process.env.S3_THUMBNAILS_BUCKET ?? 'litcrop-mvp-thumbnails';
 
 // ── Client ───────────────────────────────────────────────────────
