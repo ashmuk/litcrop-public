@@ -249,8 +249,8 @@ function handler(event) {
         // LLM / Chat configuration
         LLM_API_PROVIDER: 'anthropic',
         CHAT_MODEL: 'claude-haiku-4-5-20251001',
-        CHAT_DAILY_INPUT_LIMIT: '50000',
-        CHAT_DAILY_OUTPUT_LIMIT: '10000',
+        CHAT_DAILY_USER_INPUT_LIMIT: '50000',
+        CHAT_DAILY_USER_OUTPUT_LIMIT: '10000',
         CHAT_DAILY_GLOBAL_INPUT_LIMIT: '500000',
         CHAT_DAILY_GLOBAL_OUTPUT_LIMIT: '100000',
       },

@@ -87,7 +87,7 @@ describe('GET /api/v1/admin/stats', () => {
     });
     expect(res.status).toBe(403);
     const body = await res.json() as { error: { code: string; message: string } };
-    expect(body.error.code).toBe('UNAUTHORIZED');
+    expect(body.error.code).toBe('FORBIDDEN');
   });
 
   it('returns 401 for unauthenticated request', async () => {

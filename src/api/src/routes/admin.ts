@@ -27,7 +27,7 @@ router.get('/stats', async (c) => {
   const { userId } = getAuthContext(c);
 
   if (!getAdminIds().includes(userId)) {
-    return c.json({ error: { code: 'UNAUTHORIZED', message: 'Not authorized' } }, 403);
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Not authorized' } }, 403);
   }
 
   try {
