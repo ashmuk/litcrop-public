@@ -11,7 +11,7 @@ import { getPlot, getImages, createTag, uploadImage } from '../lib/api';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
-import { formatDate } from '../lib/format';
+import { formatDate, formatDateShort } from '../lib/format';
 import Lightbox from './Lightbox';
 import TimeLapsePlayer from './TimeLapsePlayer';
 
@@ -30,10 +30,6 @@ const TAG_THUMB_CSS: Record<TagValue, string> = {
   animal_intrusion: 'animal',
 };
 
-function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
 export default function PlotDetail() {
   const [plot, setPlot] = useState<PlotDetailResponse | null>(null);
   const [images, setImages] = useState<ImageListItem[]>([]);
@@ -45,7 +41,6 @@ export default function PlotDetail() {
   const [tagging, setTagging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [lightboxAlt, setLightboxAlt] = useState('');
 
   const plotId =
     typeof window !== 'undefined'
@@ -217,13 +212,12 @@ export default function PlotDetail() {
       </div>
 
       {/* ── TimeLapse Player (F-14) ────────────────────────── */}
-      {plotId && (
-        <TimeLapsePlayer
-          plotId={plotId}
-          plotLabel={plot.label}
-          cropType={plot.crop_type}
-        />
-      )}
+      <TimeLapsePlayer
+        plotId={plotId}
+        cropType={plot.crop_type}
+        initialImages={images}
+        initialCursor={nextCursor}
+      />
 
       {/* ── Island 2: Crop Metadata ──────────────────────── */}
       <div class="crop-info">
@@ -298,22 +292,12 @@ export default function PlotDetail() {
                 <div
                   key={img.id}
                   class={`thumb-item${img.latest_tag ? ` thumb-item--tagged-${TAG_THUMB_CSS[img.latest_tag]}` : ''}`}
-                  onClick={() => {
-                    if (img.thumbnail_url) {
-                      setLightboxSrc(img.thumbnail_url);
-                      setLightboxAlt(`${plot?.crop_type ?? ''} - ${formatDateShort(img.captured_at)}`);
-                    }
-                  }}
+                  onClick={() => img.thumbnail_url && setLightboxSrc(img.thumbnail_url)}
                   style="cursor:pointer"
                   role="button"
                   tabIndex={0}
                   aria-label={`View image from ${formatDateShort(img.captured_at)}`}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && img.thumbnail_url) {
-                      setLightboxSrc(img.thumbnail_url);
-                      setLightboxAlt(`${plot?.crop_type ?? ''} - ${formatDateShort(img.captured_at)}`);
-                    }
-                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && img.thumbnail_url && setLightboxSrc(img.thumbnail_url)}
                 >
                   {img.thumbnail_url ? (
                     <img src={img.thumbnail_url} alt="" loading="lazy" />
@@ -349,7 +333,7 @@ export default function PlotDetail() {
       {lightboxSrc && (
         <Lightbox
           src={lightboxSrc}
-          alt={lightboxAlt}
+          alt={`${plot.crop_type} image`}
           onClose={() => setLightboxSrc(null)}
         />
       )}

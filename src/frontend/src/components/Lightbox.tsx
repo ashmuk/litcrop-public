@@ -24,42 +24,60 @@ export default function Lightbox({ src, alt, caption, onClose }: LightboxProps) 
   const lastTapRef = useRef(0);
   const touchStartRef = useRef<{ dist: number; zoom: number } | null>(null);
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const closedViaPopstateRef = useRef(false);
 
-  // Lock body scroll and push history state on mount
+  // Wrap close to clean up history entry when not triggered by back button
+  const handleClose = useCallback(() => {
+    if (!closedViaPopstateRef.current) {
+      history.back(); // Remove the pushState entry
+    }
+    onCloseRef.current();
+  }, []);
+
+  // Lock body scroll and push history state on mount (runs once)
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     history.pushState({ lightbox: true }, '');
 
-    const onPopState = () => onClose();
+    const onPopState = () => {
+      closedViaPopstateRef.current = true;
+      onCloseRef.current();
+    };
     window.addEventListener('popstate', onPopState);
 
-    // Focus close button
     closeRef.current?.focus();
 
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener('popstate', onPopState);
     };
-  }, [onClose]);
+  }, []);
 
-  // ESC key handler
+  // ESC key + focus trap
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        handleClose();
+      }
+      // Focus trap: keep Tab within the lightbox (only close button is focusable)
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        closeRef.current?.focus();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [handleClose]);
 
   const handleBackdropClick = useCallback((e: MouseEvent) => {
     if ((e.target as HTMLElement).classList.contains('lightbox-overlay')) {
-      onClose();
+      handleClose();
     }
-  }, [onClose]);
+  }, [handleClose]);
 
   // Double-tap to toggle zoom
   const handleDoubleTap = useCallback(() => {
@@ -124,13 +142,13 @@ export default function Lightbox({ src, alt, caption, onClose }: LightboxProps) 
       class="lightbox-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={t('lightbox.close')}
+      aria-label={alt}
       onClick={handleBackdropClick}
     >
       <button
         ref={closeRef}
         class="lightbox-close"
-        onClick={onClose}
+        onClick={handleClose}
         aria-label={t('lightbox.close')}
       >
         ×

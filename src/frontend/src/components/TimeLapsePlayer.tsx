@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import type { ImageListItem } from '@litcrop/shared';
 import { getImages } from '../lib/api';
 import { t } from '../i18n/i18n';
+import { formatDateShort, formatFrameTime } from '../lib/format';
 import Lightbox from './Lightbox';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ interface WeekGroup {
   label: string;
   images: ImageListItem[];
   complete: boolean;
+  uniqueDayCount: number;
 }
 
 type Speed = 0.5 | 1 | 2;
@@ -29,8 +31,10 @@ type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' 
 
 interface TimeLapsePlayerProps {
   plotId: string;
-  plotLabel: string;
   cropType: string;
+  /** First page of images already loaded by PlotDetail — avoids duplicate fetch */
+  initialImages?: ImageListItem[];
+  initialCursor?: string | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -43,19 +47,6 @@ function getWeekMonday(d: Date): Date {
   date.setDate(date.getDate() + diff);
   date.setHours(0, 0, 0, 0);
   return date;
-}
-
-/** Format date as "Mar 15" */
-function formatShort(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-/** Format date as "Mon 06:15" */
-function formatFrameTime(iso: string): string {
-  const d = new Date(iso);
-  const day = d.toLocaleDateString(undefined, { weekday: 'short' });
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${day} ${time}`;
 }
 
 /** Group images by ISO week, oldest-first within each group */
@@ -85,9 +76,10 @@ function groupByWeek(images: ImageListItem[]): WeekGroup[] {
     weeks.push({
       weekStart,
       weekEnd,
-      label: `${formatShort(weekStart)} – ${formatShort(weekEnd)}`,
+      label: `${formatDateShort(weekStart)} – ${formatDateShort(weekEnd)}`,
       images: imgs,
       complete: uniqueDays.size >= 7,
+      uniqueDayCount: uniqueDays.size,
     });
   }
 
@@ -98,10 +90,10 @@ function groupByWeek(images: ImageListItem[]): WeekGroup[] {
 
 /** Calculate time-proportional progress (0-100) */
 function getProgressPercent(capturedAt: string, weekStart: Date, weekEnd: Date): number {
-  const t = new Date(capturedAt).getTime();
-  const s = weekStart.getTime();
-  const e = weekEnd.getTime() + 86400000; // End of Sunday
-  return Math.min(100, Math.max(0, ((t - s) / (e - s)) * 100));
+  const ts = new Date(capturedAt).getTime();
+  const start = weekStart.getTime();
+  const end = weekEnd.getTime() + 86400000; // End of Sunday
+  return Math.min(100, Math.max(0, ((ts - start) / (end - start)) * 100));
 }
 
 // ── Preloader ──────────────────────────────────────────────────
@@ -115,6 +107,7 @@ function preloadImages(
   let cancelled = false;
   let loaded = 0;
   const results: boolean[] = new Array(urls.length).fill(false);
+  const activeImages: HTMLImageElement[] = [];
 
   const done = new Promise<boolean[]>((resolve) => {
     let pending = urls.length;
@@ -126,6 +119,7 @@ function preloadImages(
       while (cursor < urls.length && cursor - loaded < PRELOAD_BATCH) {
         const idx = cursor++;
         const img = new Image();
+        activeImages.push(img);
         img.onload = () => {
           if (cancelled) return;
           results[idx] = true;
@@ -151,7 +145,15 @@ function preloadImages(
   });
 
   return {
-    cancel: () => { cancelled = true; },
+    cancel: () => {
+      cancelled = true;
+      for (const img of activeImages) {
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+      }
+      activeImages.length = 0;
+    },
     done,
   };
 }
@@ -163,7 +165,7 @@ const PLAY_THRESHOLD = 50; // Frames needed before play starts
 const SPEEDS: Speed[] = [0.5, 1, 2];
 const SPEED_LABELS: Record<Speed, string> = { 0.5: '0.5×', 1: '1×', 2: '2×' };
 
-export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLapsePlayerProps) {
+export default function TimeLapsePlayer({ plotId, cropType, initialImages, initialCursor }: TimeLapsePlayerProps) {
   const [status, setStatus] = useState<Status>('idle');
   const [weeks, setWeeks] = useState<WeekGroup[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(0);
@@ -178,8 +180,9 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
   const preloaderRef = useRef<{ cancel: () => void } | null>(null);
   const preloadedRef = useRef<boolean[]>([]);
   const statusRef = useRef<Status>('idle');
+  const lastAnnouncedRef = useRef(0);
+  const [announcedTime, setAnnouncedTime] = useState('');
 
-  // Keep statusRef in sync
   useEffect(() => { statusRef.current = status; }, [status]);
 
   // Reduced motion preference
@@ -194,15 +197,23 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
     async function loadAll() {
       setStatus('loading');
       try {
-        const allImages: ImageListItem[] = [];
-        let cursor: string | undefined;
+        // Reuse first page from PlotDetail if available
+        const allImages: ImageListItem[] = initialImages ? [...initialImages] : [];
+        let cursor: string | undefined = initialImages ? (initialCursor ?? undefined) : undefined;
 
-        do {
+        if (!initialImages) {
+          const firstPage = await getImages(plotId);
+          if (cancelled) return;
+          allImages.push(...firstPage.data);
+          cursor = firstPage.meta.next_cursor ?? undefined;
+        }
+
+        while (cursor) {
           const page = await getImages(plotId, cursor);
           if (cancelled) return;
           allImages.push(...page.data);
           cursor = page.meta.next_cursor ?? undefined;
-        } while (cursor);
+        }
 
         const grouped = groupByWeek(allImages);
         setWeeks(grouped);
@@ -221,7 +232,7 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
 
     loadAll();
     return () => { cancelled = true; };
-  }, [plotId]);
+  }, [plotId, initialImages, initialCursor]);
 
   // ── Preload on week selection ───────────────────────────────
 
@@ -232,16 +243,25 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
   useEffect(() => {
     if (!week || frames.length === 0) return;
 
-    // Cancel previous preload
     preloaderRef.current?.cancel();
     setPreloadCount(0);
     preloadedRef.current = new Array(frames.length).fill(false);
 
-    const urls = frames.map(f => f.thumbnail_url).filter(Boolean);
-    const loader = preloadImages(urls, (loaded) => {
-      setPreloadCount(loaded);
-      preloadedRef.current[loaded - 1] = true;
-    });
+    // Build URL list, tracking which frame indices have valid thumbnails
+    const urlsWithIndex: { url: string; idx: number }[] = [];
+    for (let i = 0; i < frames.length; i++) {
+      if (frames[i].thumbnail_url) urlsWithIndex.push({ url: frames[i].thumbnail_url, idx: i });
+    }
+
+    const loader = preloadImages(
+      urlsWithIndex.map(u => u.url),
+      (loaded) => {
+        setPreloadCount(loaded);
+        if (loaded > 0 && loaded <= urlsWithIndex.length) {
+          preloadedRef.current[urlsWithIndex[loaded - 1].idx] = true;
+        }
+      },
+    );
 
     preloaderRef.current = loader;
     return () => loader.cancel();
@@ -260,13 +280,32 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
       lastFrameRef.current = timestamp;
       setCurrentIndex(prev => {
         let next = prev + frameStep;
-        if (next >= totalFrames) next = 0; // Loop
+        if (next >= totalFrames) next = 0;
+        // If next frame not preloaded, pause with buffering indicator
+        if (!preloadedRef.current[next] && totalFrames > 0) {
+          setStatus('buffering');
+          return prev;
+        }
+        // Debounce aria-live: update announced time at most once/second
+        const now = Date.now();
+        if (now - lastAnnouncedRef.current >= 1000) {
+          lastAnnouncedRef.current = now;
+          const frame = frames[next];
+          if (frame) setAnnouncedTime(formatFrameTime(frame.captured_at));
+        }
         return next;
       });
     }
 
     rafRef.current = requestAnimationFrame(animate);
-  }, [speed, totalFrames]);
+  }, [speed, totalFrames, frames]);
+
+  // Resume from buffering when preload catches up
+  useEffect(() => {
+    if (status === 'buffering' && preloadCount > currentIndex) {
+      setStatus('playing');
+    }
+  }, [status, preloadCount, currentIndex]);
 
   // Start/stop animation based on status
   useEffect(() => {
@@ -345,8 +384,7 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
     ? getProgressPercent(currentFrame.captured_at, week.weekStart, week.weekEnd)
     : 0;
 
-  // Count unique days in current week
-  const uniqueDays = week ? new Set(week.images.map(i => new Date(i.captured_at).toISOString().slice(0, 10))).size : 0;
+  const uniqueDays = week?.uniqueDayCount ?? 0;
 
   // ── Render: idle / ready ────────────────────────────────────
 
@@ -391,28 +429,49 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
         <>
           {/* Frame */}
           <div class="timelapse__frame-container">
-            <img
-              src={currentFrame.thumbnail_url}
-              alt={`${cropType} - ${formatFrameTime(currentFrame.captured_at)}`}
-              class="timelapse__frame-img"
-              onClick={() => {
-                if (status === 'paused') setLightboxSrc(currentFrame.thumbnail_url);
-              }}
-              style={status === 'paused' ? 'cursor:pointer' : undefined}
-            />
+            {currentFrame.thumbnail_url ? (
+              <img
+                src={currentFrame.thumbnail_url}
+                alt={`${cropType} - ${formatFrameTime(currentFrame.captured_at)}`}
+                class="timelapse__frame-img"
+                onClick={() => {
+                  if (status === 'paused') setLightboxSrc(currentFrame.thumbnail_url);
+                }}
+                style={status === 'paused' ? 'cursor:pointer' : undefined}
+              />
+            ) : (
+              <div class="timelapse__frame-img" style="display:flex;align-items:center;justify-content:center;color:var(--color-gray-500)">
+                📷
+              </div>
+            )}
+            {status === 'buffering' && (
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);color:#fff;font-size:var(--font-size-sm)">
+                {t('timelapse.loading')}
+              </div>
+            )}
           </div>
 
           {/* Time-proportional progress bar */}
-          <div class="timelapse__progress-bar">
+          <div
+            class="timelapse__progress-bar"
+            role="progressbar"
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${t('timelapse.title')} progress`}
+          >
             <div class="timelapse__progress-fill" style={{ width: `${progress}%` }} />
           </div>
           <div class="timelapse__progress-labels">
-            <span>{formatShort(week.weekStart)}</span>
-            <span>{formatShort(week.weekEnd)}</span>
+            <span>{formatDateShort(week.weekStart)}</span>
+            <span>{formatDateShort(week.weekEnd)}</span>
           </div>
-          <div class="timelapse__frame-time" aria-live="polite">
+          {/* Visible frame time (updates every frame) */}
+          <div class="timelapse__frame-time">
             {formatFrameTime(currentFrame.captured_at)}
           </div>
+          {/* Debounced screen reader announcement (updates at most 1x/sec) */}
+          <div class="sr-only" aria-live="polite">{announcedTime}</div>
 
           {/* Transport controls */}
           <div class="timelapse__transport">
@@ -447,7 +506,7 @@ export default function TimeLapsePlayer({ plotId, plotLabel, cropType }: TimeLap
           )}
 
           {/* Frame counter */}
-          <div class="timelapse__counter">
+          <div class="timelapse__counter" aria-live="off">
             {currentIndex + 1} {t('timelapse.frame_of')} {totalFrames}
           </div>
 

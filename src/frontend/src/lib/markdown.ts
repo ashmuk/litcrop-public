@@ -9,10 +9,9 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-// Configure marked once at module level
 marked.setOptions({
-  breaks: true, // GFM line breaks (single \n → <br>)
-  gfm: true, // GitHub-flavored: tables, task lists, strikethrough
+  breaks: true,
+  gfm: true,
 });
 
 const ALLOWED_TAGS = [
@@ -23,15 +22,31 @@ const ALLOWED_TAGS = [
 
 const ALLOWED_ATTR = ['href', 'target', 'rel', 'class'];
 
+const ALLOWED_URI_REGEXP = /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
+
+// Register DOMPurify hook lazily (only in browser where addHook exists)
+let hookRegistered = false;
+function ensureHook(): void {
+  if (hookRegistered || typeof DOMPurify.addHook !== 'function') return;
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  hookRegistered = true;
+}
+
 /**
- * Parse markdown to sanitized HTML.
- * Safe for rendering via innerHTML — all dangerous tags/attributes stripped.
+ * Parse markdown to sanitized HTML. Browser-only.
+ * Links get target="_blank" and rel="noopener noreferrer" via DOMPurify hook.
  */
 export function renderMarkdown(text: string): string {
+  ensureHook();
   const rawHtml = marked.parse(text) as string;
   return DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
-    ADD_ATTR: ['target'],
+    ALLOWED_URI_REGEXP,
   });
 }

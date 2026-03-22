@@ -96,12 +96,9 @@ export default function ChatAssistant({ farmId }: Props) {
                   : 'background-color:var(--color-gray-100);color:var(--color-text)'
               }`}
             >
-              {/* Assistant messages: render markdown (sanitized via DOMPurify in renderMarkdown) */}
-              {/* User messages: plain text only — no markdown processing */}
               {msg.role === 'assistant' ? (
                 <div
                   class="chat-markdown"
-                  // Security: renderMarkdown() sanitizes through DOMPurify before reaching here
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }}
                 />
               ) : (

@@ -96,3 +96,67 @@
 
 > Reviewed by rc-reviewer (my-reviewer agent) | Model: Claude Opus 4.6 (1M context)
 > Review scope: READ-ONLY -- no code modifications made
+
+---
+---
+
+# Review Findings -- Phase C: Vision Closure
+
+> Date: 2026-03-22 | Reviewer: alignment + security + quality (3 parallel agents)
+> Scope: Phase C implementation (Issues #59, #119) — commit 2b54ba5 + /simplify fixes
+> Build status: 303 tests passing, build clean, typecheck clean
+
+## Summary
+
+| Severity | Count |
+|----------|-------|
+| MUST-FIX | 4 |
+| SHOULD-FIX | 8 |
+| SUGGESTION | 4 |
+
+## MUST-FIX
+
+| # | File:Line | Issue |
+|---|-----------|-------|
+| M1 | `markdown.ts:30-37` | Links lack `target="_blank"` and `rel="noopener noreferrer"`. Need DOMPurify `afterSanitizeAttributes` hook. |
+| M2 | `TimeLapsePlayer.tsx:415` | Progress bar missing ARIA: `role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`. |
+| M3 | `TimeLapsePlayer.tsx:422` | `aria-live="polite"` on frame timestamp fires 30x/sec. Must debounce to 1x/sec max. |
+| M4 | `TimeLapsePlayer.tsx:250,404` | `thumbnail_url` nullable per schema. No null guard on `<img src>`. Preloader index mismatch after `.filter(Boolean)`. |
+
+## SHOULD-FIX
+
+| # | File:Line | Issue |
+|---|-----------|-------|
+| S1 | `markdown.ts:24` | No explicit URI protocol restriction. Add `ALLOWED_URI_REGEXP` for defense-in-depth. |
+| S2 | `Lightbox.tsx` | No focus trap. Tab escapes dialog. Spec requires trapped focus + return to trigger on close. |
+| S3 | `Lightbox.tsx:34` | `history.pushState` without cleanup on non-popstate close. Double Back needed. |
+| S4 | `Lightbox.tsx:128` | Dialog `aria-label` is "Close" instead of content description. Use `alt` prop. |
+| S5 | `TimeLapsePlayer.tsx:459` | Frame counter lacks `aria-live="polite"` (spec requires it, debounced). |
+| S6 | `TimeLapsePlayer.tsx` | Buffering state never triggered. Shows broken image if playback catches preload cursor. |
+| S7 | `TimeLapsePlayer.tsx:407` | Paused frame lightbox shows thumbnail, not full-size. Spec says "full-size view". |
+| S8 | `TimeLapsePlayer.tsx:234` | `initialImages`/`initialCursor` not in useEffect deps. Stale closure risk. |
+
+## SUGGESTION
+
+| # | File:Line | Issue |
+|---|-----------|-------|
+| G1 | `markdown.ts:35` | `ADD_ATTR: ['target']` redundant with `ALLOWED_ATTR`. Remove. |
+| G2 | `ChatAssistant.tsx:88` | Array index as key (`key={i}`). Works but fragile. |
+| G3 | `TimeLapsePlayer.tsx:253` | `preloadedRef` indexed by running count, not actual image index. |
+| G4 | `markdown.ts:31` | `marked.parse()` cast as `string` assumes sync. Pin version. |
+
+## Positive Observations
+
+- Weekly compilation model correctly implemented with ISO week grouping
+- `requestAnimationFrame` with proper cancellation and status guards
+- `prefers-reduced-motion` fully respected
+- DOMPurify with explicit tag/attribute allow-list
+- Progressive preloading with batch-of-6 and proper cancel cleanup
+- No scope creep — all features map to plan
+- CSS consistently uses design token system
+- i18n keys present in both EN and JA
+
+---
+
+> Reviewed by alignment + security + quality agents | Model: Claude Opus 4.6 (1M context)
+> Review scope: READ-ONLY -- no code modifications made

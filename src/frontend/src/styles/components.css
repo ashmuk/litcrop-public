@@ -1090,6 +1090,20 @@
 .tag-chip--issue          { background: var(--color-status-issue-bg);       color: var(--color-status-issue); }
 .tag-chip--animal-intrusion { background: var(--color-status-animal-bg);   color: var(--color-status-animal); }
 
+/* ── Utility ─────────────────────────────────────────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Lightbox (FR-3.5) ──────────────────────────────────────── */
 
 .lightbox-overlay {

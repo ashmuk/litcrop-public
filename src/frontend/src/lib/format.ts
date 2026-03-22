@@ -10,6 +10,20 @@ export function formatDate(iso: string): string {
   });
 }
 
+/** Format a date as short month + day, e.g. "Mar 15" */
+export function formatDateShort(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** Format a timestamp as weekday + time, e.g. "Mon 06:15" */
+export function formatFrameTime(iso: string): string {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString(undefined, { weekday: 'short' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day} ${time}`;
+}
+
 /** Translate a weather condition slug (e.g. 'clear_sky') via i18n, with title-case fallback. */
 export function translateCondition(condition: string): string {
   const key = `weather_conditions.${condition}`;
