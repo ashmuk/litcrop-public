@@ -65,8 +65,11 @@ cd infra && npm ci && npx tsc --noEmit
 
 #### Job 4: `cdk-synth`
 ```bash
-cd infra && npm ci && npx cdk synth
+npm ci                                # Root install — needed for @litcrop/shared workspace symlinks
+cd infra && npm ci && npx cdk synth   # Infra install + synth
 ```
+**Why root `npm ci` first**: `cdk synth` triggers esbuild bundling of the API Lambda, which resolves `@litcrop/shared` via npm workspace symlinks. Without the root install, esbuild fails to resolve the workspace package. (MUST-FIX from rc-reviewer.)
+
 **Why**: Validates the CDK stack compiles to valid CloudFormation. Catches IAM, resource config, and cdk-nag issues before merge. Can share the `infra/` install with typecheck if we combine them, but keeping them separate is clearer for failure diagnosis.
 
 **Optimization note**: `cdk synth` implicitly runs `tsc` on the infra project, so the infra typecheck in Job 3 is technically redundant. However, keeping it provides a clear signal — "typecheck passed but synth failed" means a CDK-specific issue, not a type error. For a ~1min job, the clarity is worth the cost.
