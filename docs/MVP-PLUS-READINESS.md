@@ -1,9 +1,9 @@
 # MVP-PLUS-READINESS.md — Context & Entry Point for MVP+ Pipeline
 
-> Date: 2026-03-21 | Updated: 2026-03-22 (Phase D complete)
-> Status: Phase D COMPLETE — Phase E next
-> Predecessor: v0.12 (Phase C), now v0.13 on develop (Phase D)
-> Next: `/cc-push` → Phase E (security) or Phase F (quality)
+> Date: 2026-03-21 | Updated: 2026-03-22 (ALL PHASES COMPLETE)
+> Status: **MVP+ COMPLETE** — all 6 phases done, ready for deploy
+> Latest: v0.14 on develop (Phase E+F), v0.13 on main (Phase C+D merged)
+> Next: PR develop → main for E+F, tag v0.14, deploy
 
 ---
 
@@ -21,10 +21,10 @@ This document is the **entry point** for resuming work on LitCrop. Read this fir
 |------|-------|
 | Frontend | https://dpj8a3mk3tzkq.cloudfront.net (v0.9 deployed; v0.13 not yet deployed) |
 | API | https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/ |
-| Branch | develop at `7c45077` (9 commits ahead of origin/develop) |
-| Tag | v0.11 (latest on main); v0.13 pending |
-| Tests | 287/287 pass (18 test files) |
-| GH Issues | 3 open (#90, #121, #122) | 113 closed total |
+| Branch | develop at `ec4c8cb` (4 commits ahead of origin/main) |
+| Tag | v0.13 (on main); v0.14 pending |
+| Tests | 321/321 pass (19 test files) |
+| GH Issues | 1 open (#90 — PROD-1) | 115 closed total |
 | AWS Resources | 46 (CDK-managed LitCropStack) |
 | Cost | ~$0.01-1.18/month |
 
@@ -36,15 +36,14 @@ This document is the **entry point** for resuming work on LitCrop. Read this fir
 | B — Multi-Farm Foundation | **DONE** | v0.11 | FARM_MEMBER records, roles, farm switching, demo seed |
 | C — Vision Closure | **DONE** | v0.12 | Time-lapse (30fps weekly), lightbox, chat markdown |
 | D — UX Restructure | **DONE** | v0.13 | Farm→Bed flattening, map picker, bed-grid, profile |
-| E — Security Hardening | **NEXT** | — | S3/S4/S6/S10 |
-| F — Quality | TODO | — | Q6/SG-3/Q12/T8-T9/FR-3.6 |
+| E — Security Hardening | **DONE** | v0.14 | S10 RemovalPolicy RETAIN (S3/S4/S6 already done) |
+| F — Quality | **DONE** | v0.14 | Q6 503→404, Q12 timezone, T8-T9 schema tests (+34) |
 
-### What's NOT Done
+### What's NOT Done (MVP+ scope complete — these are PROD-1+)
 
-- Security hardening: S3/S4/S6/S10 (Phase E — #121)
-- Quality fixes: Q6/SG-3/Q12/T8-T9 (Phase F — #122)
-- Side-by-side comparison FR-3.6 (Phase F, if time)
-- 14 Production-scope features
+- Side-by-side comparison FR-3.6 (deferred P2 — Phase F)
+- Settings cross-device sync #90 (PROD-1)
+- 13 other Production-scope features
 - 7 Vision categories (V-01..V-07)
 
 Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
@@ -120,14 +119,16 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
    CROP: Crop-per-bed model
    PROF: Profile page redesign (farm list + switch + settings)
 
- PHASE E — Security Hardening (~2-3h)  ← NEXT
-   S3, S4, S6: Security SHOULD-FIX (3 items)
-   S10: RemovalPolicy RETAIN
+ PHASE E — Security Hardening (~1h actual)             ✅ DONE (v0.14)
+   S3/S4/S6: Already done in prior phases
+   S10: RemovalPolicy RETAIN for DDB + S3
 
- PHASE F — Quality (~3-4h)
-   Q6, SG-3, Q12: Code fixes
-   T8-T9: Schema tests
-   FR-3.6: Side-by-side (if time)
+ PHASE F — Quality (~1h actual)                        ✅ DONE (v0.14)
+   Q6: assertImageOwnership 503→404
+   Q12: Timezone utility (longitude-based)
+   T8-T9: 34 new Zod schema tests
+   SG-3: Already fixed in Phase D
+   FR-3.6: Side-by-side deferred (P2)
 ```
 
 ### Vision Alignment After MVP+
@@ -157,7 +158,8 @@ All 4 Vision MVP deliverables are implemented.
 | CDN | CloudFront | HTTPS, SPA fallback |
 | IaC | CDK v2 (TypeScript) | 46 resources |
 | AI | Anthropic SDK | Haiku model, stub mode until SSM key |
-| Schemas | Zod (@litcrop/shared) | 20+ schemas, contract tests |
+| Schemas | Zod (@litcrop/shared) | 20+ schemas, contract tests, 34 standalone schema tests |
+| Timezone | Shared utility | Longitude-based UTC offset approximation |
 
 ---
 
@@ -165,24 +167,22 @@ All 4 Vision MVP deliverables are implemented.
 
 When starting a new session for MVP+ work, follow this sequence:
 
-### For Phase E/F (remaining work)
+### MVP+ Complete — Deploy Sequence
 ```
-1. Read this file (context + state)
-2. Read the relevant issue (#121 for Phase E, #122 for Phase F)
-3. /cc-implement → build fixes
-4. /simplify → code quality pass
-5. /cc-review → validate
-6. /cc-remediate → fix findings (if any)
-7. /cc-commit → commit
-8. /cc-push → push to origin
+1. /cc-pr-create → PR develop → main (Phase E+F + final remediation)
+2. /cc-pr-merge → merge after CI passes
+3. /cc-tag-create → tag v0.14
+4. /cc-deploy → deploy via CI/CD pipeline
+5. Create 3 Cognito user accounts (A/B/C roles)
+6. Configure camera simulator with bed IDs
 ```
 
-### After Phase F: Merge + Deploy
+### Starting PROD-1 (future session)
 ```
-1. /cc-pr-create → PR develop → main (Phase C+D+E+F combined)
-2. /cc-pr-merge → merge after CI passes
-3. /cc-tag-create → tag v0.13
-4. /cc-deploy → deploy via CI/CD pipeline
+1. Read this file (context + state)
+2. Review docs/MVP-PLUS-REVISE-PLAN.md §PRODUCTION-1
+3. /cc-design → architecture for PROD-1 scope
+4. /cc-implement → build in batches
 ```
 
 ---
@@ -196,7 +196,7 @@ When starting a new session for MVP+ work, follow this sequence:
 | B can create own farm via wizard + map | MVP-PLUS-SCENARIO §Step 2 | ✅ Done (v0.13 — FarmWizard + MapPicker) |
 | Farm switching works (Demo ↔ user farm) | MVP-PLUS-SCENARIO §Step 2 | ✅ Done (v0.11 FarmSwitcher + v0.13 ProfilePage) |
 | Bed-grid layout creation (5×5 max) | MVP-PLUS-SCENARIO §Step 3 | ✅ Done (v0.13 — BedGridLayout + CropAssignment) |
-| Camera images associate to beds | MVP-PLUS-SCENARIO §Step 4 | ✅ Done (v0.13 — POST /beds/:bedId/images) |
+| Camera images associate to beds | MVP-PLUS-SCENARIO §Step 4 | ✅ Done (v0.13 — POST /beds/:bedId/images, simulator updated) |
 | Admin-managed farm membership (A adds C) | MVP-PLUS-SCENARIO §Step 5 | ✅ Done (v0.11 POST /farms/:id/members) |
 | Time-lapse playback working | Vision.md MVP #3 | ✅ Done (v0.12 — weekly 30fps player) |
 | 1-2 camera nodes uploading images | Vision.md | Camera sim running; real Pi TBD |
@@ -223,23 +223,24 @@ When starting a new session for MVP+ work, follow this sequence:
 
 ---
 
-## 9. Next Step: Phase E — Security Hardening
+## 9. Next Step: Deploy + Field Evaluation
 
-**Status**: Ready to start. Phases A+B+C+D complete. 14/16 readiness criteria met.
+**Status**: All 6 phases complete. 14/16 readiness criteria met. Code ready.
 
-**Phase E scope** (4 items, ~2-3h):
-- **S3**: Auth middleware on `/beds` and `/images` root paths
-- **S4**: Validate pagination cursor PK
-- **S6**: Sanitize user input in chat stub (XSS)
-- **S10**: RemovalPolicy RETAIN for prod DynamoDB + S3
+**Remaining operational steps**:
+1. PR develop → main (Phase E+F + final remediation — 4 commits)
+2. Tag v0.14
+3. Deploy via CI/CD (`deploy.yml` on push to main)
+4. Create 3 Cognito user accounts: Muk (admin), Kiku (manager), Yama (observer)
+5. Configure camera simulator: `--bed <bedId>` for target bed
+6. Pre-seed 14 days of simulator images for time-lapse demo
 
-**Issue**: #121
+**After deploy**: Begin April field evaluation per `docs/MVP-PLUS-SCENARIO.md`.
 
-**Pipeline**: `/cc-implement` → `/simplify` → `/cc-review` → `/cc-remediate`
-
-**Working constraints**: Work solo, always ask before /simplify, run /cc-review after implementation.
+**Future work**: PROD-1 scope (#90 settings sync, invite workflow, IoT UI, SSE streaming) — see `docs/MVP-PLUS-REVISE-PLAN.md` §PRODUCTION-1.
 
 ---
 
-> Generated 2026-03-21 | Updated 2026-03-22 (Phase D complete, Phase E next)
+> Generated 2026-03-21 | Updated 2026-03-22 (ALL PHASES COMPLETE)
+> MVP+ scope: DONE. All 28 items across 6 phases delivered.
 > Entry point for MVP+ pipeline. Resume here. Read this file first.

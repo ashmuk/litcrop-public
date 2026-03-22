@@ -63,12 +63,14 @@ Complete the final two MVP+ phases: Phase E (Security Hardening) and Phase F (Qu
 
 ---
 
-## Commits (2)
+## Commits (4)
 
 | # | Hash | Type | Description |
 |---|------|------|-------------|
 | 1 | `e563bc3` | fix(infra) | Phase E — RemovalPolicy RETAIN for DynamoDB + S3 |
 | 2 | `f52965b` | fix(quality) | Phase F — image 503→404, timezone util, schema tests |
+| 3 | `9dfb5b7` | docs | Session report v0.14 |
+| 4 | `ec4c8cb` | fix | Final remediation — budget env vars, FORBIDDEN, timezone auto |
 
 ---
 
@@ -118,7 +120,9 @@ All 6 phases are now implemented:
 | Tests | 321 pass (19 files) |
 | Open MVP+ issues | 0 |
 | Open PROD-1 issues | 1 (#90) |
+| Total closed issues | 115 |
 | April readiness | 14/16 (remaining 2 are operational) |
+| Final review | 1 MUST-FIX + 3 SHOULD-FIX found and resolved |
 
 ### April Readiness Criteria
 
