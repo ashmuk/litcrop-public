@@ -16,7 +16,10 @@ async function assertImageOwnership(image: Image, userId: string): Promise<void>
   let bed: Bed;
   try {
     bed = await dynamoRepo.getBedById(image.bed_id);
-  } catch {
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Image not found: ${image.id}`);
+    }
     throw new ServiceUnavailableError('Storage service unavailable');
   }
   try {
@@ -34,7 +37,10 @@ async function assertImageWriteAccess(image: Image, userId: string): Promise<Bed
   let bed: Bed;
   try {
     bed = await dynamoRepo.getBedById(image.bed_id);
-  } catch {
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Image not found: ${image.id}`);
+    }
     throw new ServiceUnavailableError('Storage service unavailable');
   }
   try {

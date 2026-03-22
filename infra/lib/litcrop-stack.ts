@@ -76,7 +76,7 @@ export class LitCropStack extends cdk.Stack {
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       pointInTimeRecovery: false,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve data on stack delete
       timeToLiveAttribute: 'TTL',
     });
 
@@ -104,8 +104,8 @@ export class LitCropStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: false,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve images on stack delete
+      autoDeleteObjects: false,
       // ADR-004: lifecycle — Standard → IA 30d → Glacier 90d
       lifecycleRules: [
         {
@@ -138,8 +138,8 @@ export class LitCropStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: false,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve thumbnails on stack delete
+      autoDeleteObjects: false,
     });
 
     // ── T-CDK-06: CloudFront Distribution with S3 OAI ─────────────────────────
@@ -249,8 +249,8 @@ function handler(event) {
         // LLM / Chat configuration
         LLM_API_PROVIDER: 'anthropic',
         CHAT_MODEL: 'claude-haiku-4-5-20251001',
-        CHAT_DAILY_INPUT_LIMIT: '50000',
-        CHAT_DAILY_OUTPUT_LIMIT: '10000',
+        CHAT_DAILY_USER_INPUT_LIMIT: '50000',
+        CHAT_DAILY_USER_OUTPUT_LIMIT: '10000',
         CHAT_DAILY_GLOBAL_INPUT_LIMIT: '500000',
         CHAT_DAILY_GLOBAL_OUTPUT_LIMIT: '100000',
       },

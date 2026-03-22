@@ -1,20 +1,26 @@
 ---
 /**
- * Plot Detail — T-FE-08
- * Static page; plotId read from ?id=<plotId> query param at runtime.
- * Renders: hero image, crop metadata, tag buttons (optimistic UI), image history.
+ * Plot Detail — deprecated redirect shim
+ * Redirects to /beds/view preserving the ?id= query param.
+ * No visible content is rendered to avoid a "Plot Detail" flash before redirect.
  */
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import PlotDetail from '../../components/PlotDetail';
-import Toast from '../../components/Toast';
 ---
-
-<BaseLayout title="LitCrop — Plot Detail" activeTab="farm">
-  <nav class="nav-header" aria-label="Page navigation">
-    <a href="/" class="nav-header__back" aria-label="Back to Farm Overview">←</a>
-    <span class="nav-header__title" id="plot-title">Plot Detail</span>
-  </nav>
-
-  <PlotDetail client:load />
-  <Toast client:load />
-</BaseLayout>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0;url=/beds/view" id="meta-refresh" />
+    <title></title>
+    <script is:inline>
+      // Preserve query string (e.g. ?id=…) on redirect
+      var search = window.location.search;
+      if (search) {
+        var meta = document.getElementById('meta-refresh');
+        if (meta) meta.setAttribute('content', '0;url=/beds/view' + search);
+        window.location.replace('/beds/view' + search);
+      } else {
+        window.location.replace('/beds/view');
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
