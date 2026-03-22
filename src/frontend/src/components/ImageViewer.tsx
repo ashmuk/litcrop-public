@@ -10,6 +10,7 @@ import { getImage, getImages } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
 import { formatDate } from '../lib/format';
+import Lightbox from './Lightbox';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -23,6 +24,7 @@ export default function ImageViewer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imageId, setImageId] = useState('');
+  const [showLightbox, setShowLightbox] = useState(false);
 
   // Resolve imageId on client only
   useEffect(() => {
@@ -112,6 +114,8 @@ export default function ImageViewer() {
           src={image.url}
           alt={`Captured ${formatDate(image.captured_at)}`}
           class="image-viewer__img"
+          onClick={() => setShowLightbox(true)}
+          style="cursor:pointer"
         />
 
         {/* Prev / Next overlay buttons */}
@@ -213,6 +217,16 @@ export default function ImageViewer() {
           ← {t('buttons.back')}
         </a>
       </div>
+
+      {/* Lightbox overlay */}
+      {showLightbox && (
+        <Lightbox
+          src={image.url}
+          alt={`Captured ${formatDate(image.captured_at)}`}
+          caption={formatDate(image.captured_at)}
+          onClose={() => setShowLightbox(false)}
+        />
+      )}
     </div>
   );
 }

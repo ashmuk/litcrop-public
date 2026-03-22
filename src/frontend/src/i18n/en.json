@@ -127,6 +127,32 @@
     "suggestion_2": "Any frost risk this week?",
     "suggestion_3": "How is my farm doing?"
   },
+  "timelapse": {
+    "title": "Time-lapse",
+    "play": "Play This Week",
+    "pause": "Pause",
+    "resume": "Resume",
+    "close": "Close time-lapse",
+    "loading": "Loading...",
+    "loading_progress": "Loading…",
+    "frame_of": "of",
+    "images_days": "images",
+    "no_complete_weeks": "Time-lapse available after first full week of captures",
+    "week_progress": "This week in progress",
+    "error": "Could not load images",
+    "speed": "Speed",
+    "first": "First frame",
+    "last": "Last frame",
+    "prev": "Previous frame",
+    "next": "Next frame",
+    "prev_week": "Previous week",
+    "next_week": "Next week"
+  },
+  "lightbox": {
+    "close": "Close",
+    "loading": "Loading image…",
+    "error": "Image could not be loaded"
+  },
   "weather_conditions": {
     "clear_sky": "Clear Sky",
     "mainly_clear": "Mainly Clear",

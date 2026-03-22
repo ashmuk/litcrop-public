@@ -127,6 +127,32 @@
     "suggestion_2": "今週の霜のリスクは？",
     "suggestion_3": "農場の状態はどうですか？"
   },
+  "timelapse": {
+    "title": "タイムラプス",
+    "play": "今週を再生",
+    "pause": "一時停止",
+    "resume": "再開",
+    "close": "タイムラプスを閉じる",
+    "loading": "読み込み中…",
+    "loading_progress": "読み込み中…",
+    "frame_of": "/",
+    "images_days": "枚",
+    "no_complete_weeks": "最初の1週間分のキャプチャ後にタイムラプスが利用可能になります",
+    "week_progress": "今週は進行中です",
+    "error": "画像を読み込めませんでした",
+    "speed": "速度",
+    "first": "最初のフレーム",
+    "last": "最後のフレーム",
+    "prev": "前のフレーム",
+    "next": "次のフレーム",
+    "prev_week": "前の週",
+    "next_week": "次の週"
+  },
+  "lightbox": {
+    "close": "閉じる",
+    "loading": "画像を読み込み中…",
+    "error": "画像を読み込めませんでした"
+  },
   "weather_conditions": {
     "clear_sky": "快晴",
     "mainly_clear": "晴れ",

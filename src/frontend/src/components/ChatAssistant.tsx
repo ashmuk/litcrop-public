@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { sendChat, ApiError } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { useLocalFarmId } from '../lib/hooks';
+import { renderMarkdown } from '../lib/markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -95,7 +96,17 @@ export default function ChatAssistant({ farmId }: Props) {
                   : 'background-color:var(--color-gray-100);color:var(--color-text)'
               }`}
             >
-              {msg.text}
+              {/* Assistant messages: render markdown (sanitized via DOMPurify in renderMarkdown) */}
+              {/* User messages: plain text only — no markdown processing */}
+              {msg.role === 'assistant' ? (
+                <div
+                  class="chat-markdown"
+                  // Security: renderMarkdown() sanitizes through DOMPurify before reaching here
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }}
+                />
+              ) : (
+                msg.text
+              )}
             </div>
           </div>
         ))}

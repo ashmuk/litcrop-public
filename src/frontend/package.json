@@ -10,10 +10,13 @@
   "dependencies": {
     "@astrojs/preact": "^5.0.1",
     "@litcrop/shared": "*",
+    "dompurify": "^3.3.3",
+    "marked": "^17.0.5",
     "preact": "^10.29.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.3",
+    "@types/dompurify": "^3.0.5",
     "astro": "^5.0.0"
   }
 }

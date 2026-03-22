@@ -12,6 +12,8 @@ import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
 import { formatDate } from '../lib/format';
+import Lightbox from './Lightbox';
+import TimeLapsePlayer from './TimeLapsePlayer';
 
 const TAG_CSS: Record<TagValue, string> = {
   healthy: 'tag-btn--healthy',
@@ -42,6 +44,8 @@ export default function PlotDetail() {
   const [activeTag, setActiveTag] = useState<TagValue | null>(null);
   const [tagging, setTagging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxAlt, setLightboxAlt] = useState('');
 
   const plotId =
     typeof window !== 'undefined'
@@ -212,6 +216,15 @@ export default function PlotDetail() {
         )}
       </div>
 
+      {/* ── TimeLapse Player (F-14) ────────────────────────── */}
+      {plotId && (
+        <TimeLapsePlayer
+          plotId={plotId}
+          plotLabel={plot.label}
+          cropType={plot.crop_type}
+        />
+      )}
+
       {/* ── Island 2: Crop Metadata ──────────────────────── */}
       <div class="crop-info">
         <h1 class="crop-info__title">{plot.crop_type}</h1>
@@ -285,6 +298,22 @@ export default function PlotDetail() {
                 <div
                   key={img.id}
                   class={`thumb-item${img.latest_tag ? ` thumb-item--tagged-${TAG_THUMB_CSS[img.latest_tag]}` : ''}`}
+                  onClick={() => {
+                    if (img.thumbnail_url) {
+                      setLightboxSrc(img.thumbnail_url);
+                      setLightboxAlt(`${plot?.crop_type ?? ''} - ${formatDateShort(img.captured_at)}`);
+                    }
+                  }}
+                  style="cursor:pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View image from ${formatDateShort(img.captured_at)}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && img.thumbnail_url) {
+                      setLightboxSrc(img.thumbnail_url);
+                      setLightboxAlt(`${plot?.crop_type ?? ''} - ${formatDateShort(img.captured_at)}`);
+                    }
+                  }}
                 >
                   {img.thumbnail_url ? (
                     <img src={img.thumbnail_url} alt="" loading="lazy" />
@@ -315,6 +344,15 @@ export default function PlotDetail() {
           </>
         )}
       </div>
+
+      {/* Lightbox overlay */}
+      {lightboxSrc && (
+        <Lightbox
+          src={lightboxSrc}
+          alt={lightboxAlt}
+          onClose={() => setLightboxSrc(null)}
+        />
+      )}
 
       {/* Bottom padding for tab bar */}
       <div style="height:80px" aria-hidden="true" />
