@@ -118,7 +118,26 @@ export const FarmBedsResponseSchema = z.object({
   data: z.array(FarmBedItemSchema),
 });
 
+// ── Tag in image schema (shared by bed detail + image detail) ────
+
+const TagInImageSchema = z.object({
+  id: z.string(),
+  tag: TagValueSchema,
+  note: z.string().nullable(),
+  created_at: z.string(),
+});
+
 // ── Bed detail schema ────────────────────────────────────────────
+
+/** Full image shape for bed detail — includes signed URL and tags */
+const BedDetailImageSchema = z.object({
+  id: z.string(),
+  thumbnail_url: z.string().nullable(),
+  url: z.string(),
+  captured_at: z.string(),
+  trigger: TriggerTypeSchema,
+  tags: z.array(TagInImageSchema),
+});
 
 /** GET /api/v1/beds/:bedId */
 export const BedDetailResponseSchema = FarmBedSchema.extend({
@@ -126,7 +145,7 @@ export const BedDetailResponseSchema = FarmBedSchema.extend({
   planted_at: z.string().nullable(),
   expected_harvest: z.string().nullable(),
   notes: z.string().nullable(),
-  latest_image: LatestImageThumbnailSchema.nullable(),
+  latest_image: BedDetailImageSchema.nullable(),
 });
 
 /** PATCH /api/v1/beds/:bedId — request body */
@@ -172,13 +191,6 @@ export const ImageUploadResponseSchema = z.object({
 });
 
 // ── Image detail schema ───────────────────────────────────────────
-
-const TagInImageSchema = z.object({
-  id: z.string(),
-  tag: TagValueSchema,
-  note: z.string().nullable(),
-  created_at: z.string(),
-});
 
 /** GET /api/v1/images/:imageId */
 export const ImageDetailResponseSchema = z.object({

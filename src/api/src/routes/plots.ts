@@ -13,15 +13,15 @@ const router = new Hono();
 const GONE_MESSAGE = 'This endpoint has been removed. Use the /api/v1/beds/ endpoints instead.';
 
 router.get('/:plotId', (c) =>
-  c.json({ error: { code: 'NOT_FOUND', message: GONE_MESSAGE } }, 410),
+  c.json({ error: { code: 'GONE', message: GONE_MESSAGE } }, 410),
 );
 
 router.get('/:plotId/images', (c) =>
-  c.json({ error: { code: 'NOT_FOUND', message: GONE_MESSAGE } }, 410),
+  c.json({ error: { code: 'GONE', message: GONE_MESSAGE } }, 410),
 );
 
 router.post('/:plotId/images', (c) =>
-  c.json({ error: { code: 'NOT_FOUND', message: GONE_MESSAGE } }, 410),
+  c.json({ error: { code: 'GONE', message: GONE_MESSAGE } }, 410),
 );
 
 export default router;

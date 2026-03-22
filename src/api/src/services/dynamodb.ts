@@ -242,35 +242,44 @@ export class DynamoRepository {
   }
 
   // 4. Update bed crop/details
+  // Accepts null values to clear fields (DynamoDB REMOVE) and non-null to set.
   async updateBed(
     farmId: string,
     bedId: string,
     row: number,
     col: number,
-    updates: Partial<Pick<Bed, 'crop_type' | 'crop_variety' | 'planted_at' | 'expected_harvest' | 'notes'>>,
+    updates: Record<string, unknown>,
   ): Promise<void> {
-    const expressions: string[] = [];
+    const setExpressions: string[] = [];
+    const removeExpressions: string[] = [];
     const values: Record<string, unknown> = {};
     const names: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined) {
-        expressions.push(`#${key} = :${key}`);
-        // null means "clear field"
+      if (value === undefined) continue;
+      names[`#${key}`] = key;
+      if (value === null) {
+        // null means "clear field" — use REMOVE
+        removeExpressions.push(`#${key}`);
+      } else {
+        setExpressions.push(`#${key} = :${key}`);
         values[`:${key}`] = value;
-        names[`#${key}`] = key;
       }
     }
 
-    if (expressions.length === 0) return;
+    if (setExpressions.length === 0 && removeExpressions.length === 0) return;
+
+    const parts: string[] = [];
+    if (setExpressions.length > 0) parts.push(`SET ${setExpressions.join(', ')}`);
+    if (removeExpressions.length > 0) parts.push(`REMOVE ${removeExpressions.join(', ')}`);
 
     await ddb.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { PK: pk.farm(farmId), SK: sk.bed(row, col, bedId) },
-        UpdateExpression: `SET ${expressions.join(', ')}`,
+        UpdateExpression: parts.join(' '),
         ExpressionAttributeNames: names,
-        ExpressionAttributeValues: values,
+        ...(Object.keys(values).length > 0 ? { ExpressionAttributeValues: values } : {}),
         ConditionExpression: 'attribute_exists(PK)',
       }),
     );
@@ -309,16 +318,91 @@ export class DynamoRepository {
       }
     }
 
-    // BatchWrite in chunks of 25
+    // BatchWrite in chunks of 25, with one retry for unprocessed items
     for (let i = 0; i < items.length; i += 25) {
       const chunk = items.slice(i, i + 25);
-      await ddb.send(
+      const result = await ddb.send(
         new BatchWriteCommand({
           RequestItems: {
             [TABLE_NAME]: chunk,
           },
         }),
       );
+
+      // Check for unprocessed items and retry once
+      const unprocessed = result.UnprocessedItems?.[TABLE_NAME];
+      if (unprocessed && unprocessed.length > 0) {
+        const retryResult = await ddb.send(
+          new BatchWriteCommand({
+            RequestItems: { [TABLE_NAME]: unprocessed },
+          }),
+        );
+        const stillUnprocessed = retryResult.UnprocessedItems?.[TABLE_NAME];
+        if (stillUnprocessed && stillUnprocessed.length > 0) {
+          console.warn(`[createBedsForFarm] ${stillUnprocessed.length} items still unprocessed after retry for farm ${farmId}`);
+        }
+      }
+    }
+
+    return beds;
+  }
+
+  // 5b. Create beds for specific positions (used when expanding grid)
+  async createBedsForPositions(
+    farmId: string,
+    positions: Array<{ row: number; col: number }>,
+  ): Promise<Bed[]> {
+    if (positions.length === 0) return [];
+
+    const beds: Bed[] = [];
+    const items: Array<{ PutRequest: { Item: Record<string, unknown> } }> = [];
+
+    for (const { row, col } of positions) {
+      const bedId = crypto.randomUUID();
+      const name = bedName(row, col);
+      const bed: Bed = {
+        id: bedId,
+        farm_id: farmId,
+        row,
+        col,
+        name,
+        latest_status: 'no_data',
+      };
+      beds.push(bed);
+      items.push({
+        PutRequest: {
+          Item: {
+            PK: pk.farm(farmId),
+            SK: sk.bed(row, col, bedId),
+            GSI1PK: pk.bed(bedId),
+            GSI1SK: sk.meta(),
+            ...bed,
+          },
+        },
+      });
+    }
+
+    // BatchWrite in chunks of 25, with one retry for unprocessed items
+    for (let i = 0; i < items.length; i += 25) {
+      const chunk = items.slice(i, i + 25);
+      const result = await ddb.send(
+        new BatchWriteCommand({
+          RequestItems: { [TABLE_NAME]: chunk },
+        }),
+      );
+
+      const unprocessed = result.UnprocessedItems?.[TABLE_NAME];
+      if (unprocessed && unprocessed.length > 0) {
+        const retryResult = await ddb.send(
+          new BatchWriteCommand({
+            RequestItems: { [TABLE_NAME]: unprocessed },
+          }),
+        );
+        const stillUnprocessed = retryResult.UnprocessedItems?.[TABLE_NAME];
+        if (stillUnprocessed && stillUnprocessed.length > 0) {
+          console.warn(`[createBedsForPositions] ${stillUnprocessed.length} items still unprocessed after retry for farm ${farmId}`);
+        }
+      }
     }
 
     return beds;

@@ -33,6 +33,7 @@ export type ErrorCode =
   | 'BAD_REQUEST'
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
+  | 'GONE'
   | 'PAYLOAD_TOO_LARGE'
   | 'UNSUPPORTED_MEDIA_TYPE'
   | 'UNAUTHORIZED'

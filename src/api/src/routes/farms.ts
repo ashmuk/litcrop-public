@@ -218,7 +218,7 @@ router.get('/:farmId/plots', async (c) => {
   return c.json(
     {
       error: {
-        code: 'NOT_FOUND',
+        code: 'GONE',
         message: `This endpoint has been replaced. Use GET /api/v1/farms/${farmId}/beds instead.`,
       },
     },
@@ -232,7 +232,7 @@ router.post('/:farmId/plots', async (c) => {
   return c.json(
     {
       error: {
-        code: 'NOT_FOUND',
+        code: 'GONE',
         message: 'This endpoint has been removed. Beds are auto-created with the farm grid. Use PATCH /api/v1/beds/:bedId to assign crops.',
       },
     },
@@ -282,7 +282,7 @@ router.patch('/:farmId', async (c) => {
   const { farmId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  const { farm: oldFarm } = await assertFarmAccess(farmId, userId, ['admin', 'manager']);
 
   const body = await c.req.json<Record<string, unknown>>();
 
@@ -303,6 +303,24 @@ router.patch('/:farmId', async (c) => {
       throw new NotFoundError(`Farm not found: ${farmId}`);
     }
     throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  // If grid expanded, create beds for new positions
+  const newRows = updates.grid_rows ?? oldFarm.grid_rows;
+  const newCols = updates.grid_cols ?? oldFarm.grid_cols;
+  if (newRows > oldFarm.grid_rows || newCols > oldFarm.grid_cols) {
+    const newPositions: Array<{ row: number; col: number }> = [];
+    for (let row = 1; row <= newRows; row++) {
+      for (let col = 1; col <= newCols; col++) {
+        // Only create beds for positions that didn't exist before
+        if (row > oldFarm.grid_rows || col > oldFarm.grid_cols) {
+          newPositions.push({ row, col });
+        }
+      }
+    }
+    if (newPositions.length > 0) {
+      await dynamoRepo.createBedsForPositions(farmId, newPositions);
+    }
   }
 
   const farm = await dynamoRepo.getFarm(farmId);

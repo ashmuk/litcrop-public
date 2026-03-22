@@ -6,7 +6,13 @@
 
 // ── Enums ────────────────────────────────────────────────────────
 
-/** Bed health status, derived from the most recent tag */
+/**
+ * Bed health status, derived from the most recent tag.
+ * Intentionally kept as 5 values (not reduced to 4 as originally planned in D-01).
+ * Reason: TagValue is `Exclude<BedStatus, 'no_data'>` — changing status values
+ * would break the tagging system. All 5 values are used consistently across
+ * types, schemas, constants, i18n, and frontend status maps.
+ */
 export type BedStatus = 'healthy' | 'slow_growth' | 'issue' | 'animal_intrusion' | 'no_data';
 
 /** @deprecated Use BedStatus — alias kept for one version */

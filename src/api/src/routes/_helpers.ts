@@ -1,4 +1,4 @@
-import { getSignedThumbnailUrl } from '../services/s3';
+import { getSignedThumbnailUrl, getSignedImageUrl } from '../services/s3';
 import { dynamoRepo } from '../services/dynamodb';
 import { NotFoundError, ServiceUnavailableError } from '../errors';
 import type { Farm, FarmMember, FarmRole, Image } from '@litcrop/shared';
@@ -45,5 +45,32 @@ export async function makeLatestImage(image: Image) {
     thumbnail_url,
     captured_at: image.captured_at,
     trigger: image.trigger,
+  };
+}
+
+/**
+ * Build the full latest_image shape for bed detail (includes signed URL + tags).
+ * Used by GET /beds/:bedId — heavier than makeLatestImage() which is for list views.
+ */
+export async function makeBedDetailImage(image: Image) {
+  const [thumbnail_url, url, tags] = await Promise.all([
+    image.thumbnail_key
+      ? getSignedThumbnailUrl(image.thumbnail_key)
+      : Promise.resolve(null),
+    getSignedImageUrl(image.storage_key),
+    dynamoRepo.getTagsForImage(image.id),
+  ]);
+  return {
+    id: image.id,
+    thumbnail_url,
+    url,
+    captured_at: image.captured_at,
+    trigger: image.trigger,
+    tags: tags.map((t) => ({
+      id: t.id,
+      tag: t.tag,
+      note: t.note ?? null,
+      created_at: t.created_at,
+    })),
   };
 }

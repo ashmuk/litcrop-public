@@ -21,7 +21,7 @@ import {
   UpdateBedRequestSchema,
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
-import { makeLatestImage, assertFarmAccess } from './_helpers';
+import { makeBedDetailImage, assertFarmAccess } from './_helpers';
 
 const router = new Hono();
 
@@ -88,7 +88,7 @@ router.get('/:bedId', async (c) => {
     expected_harvest: bed.expected_harvest ?? null,
     notes: bed.notes ?? null,
     latest_status: bed.latest_status,
-    latest_image: latestImage ? await makeLatestImage(latestImage) : null,
+    latest_image: latestImage ? await makeBedDetailImage(latestImage) : null,
   });
 });
 
@@ -115,11 +115,11 @@ router.patch('/:bedId', async (c) => {
     throw new ValidationError(firstIssue.message, { errors: parsed.error.issues });
   }
 
-  // Convert null values to undefined for the Bed type (null means "clear field")
-  const updates: Partial<Pick<Bed, 'crop_type' | 'crop_variety' | 'planted_at' | 'expected_harvest' | 'notes'>> = {};
+  // Pass through null values (to trigger DynamoDB REMOVE) and non-null values (SET)
+  const updates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(parsed.data)) {
     if (value !== undefined) {
-      (updates as Record<string, unknown>)[key] = value === null ? undefined : value;
+      updates[key] = value;
     }
   }
 
