@@ -1,25 +1,26 @@
 /**
  * LitCrop API Client — T-FE-05, T-FE-AUTH-07
  *
- * Typed client for all 11 endpoints.
+ * Typed client for all endpoints.
  * Base URL: import.meta.env.PUBLIC_API_BASE_URL (Vite public env var)
  *           Falls back to '/api/v1' for same-origin SSR dev.
  *
  * All functions throw ApiError on non-2xx responses.
  * Authorization: Bearer token is injected automatically via getAccessToken().
  * On 401 the token is refreshed once; if refresh fails the user is redirected to /login.
+ *
+ * Updated: Phase D — Plot endpoints replaced by Bed endpoints (ADR-20260322)
  */
 
 import { getAccessToken } from './auth';
 
 import type {
   Farm,
-  Plot,
   FarmRole,
   FarmMember,
   FarmResponse,
-  FarmPlotItem,
-  PlotDetailResponse,
+  FarmBedItem,
+  BedDetailResponse,
   PaginatedResponse,
   ImageListItem,
   ImageUploadResponse,
@@ -31,7 +32,7 @@ import type {
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
-import type { CreateFarmRequest, UpdateFarmRequest, CreatePlotRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
+import type { CreateFarmRequest, UpdateFarmRequest, UpdateBedRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
 
 // ── Base URL ──────────────────────────────────────────────────────
 
@@ -163,55 +164,55 @@ export async function getFarm(farmId: string): Promise<FarmResponse> {
   return request<FarmResponse>('GET', `/farms/${farmId}`);
 }
 
-/** POST /api/v1/farms — returns flat Farm (no fields array) */
+/** POST /api/v1/farms — returns flat Farm (no beds array) */
 export async function createFarm(data: CreateFarmRequest): Promise<Farm> {
   return request<Farm>('POST', '/farms', data);
 }
 
-/** PATCH /api/v1/farms/{farmId} — returns flat Farm (no fields array) */
+/** PATCH /api/v1/farms/{farmId} — returns flat Farm (no beds array) */
 export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<Farm> {
   return request<Farm>('PATCH', `/farms/${farmId}`, data);
 }
 
-// ── Plot Endpoints ────────────────────────────────────────────────
+// ── Bed Endpoints ────────────────────────────────────────────────
 
-/** POST /api/v1/farms/{farmId}/plots — create a plot (auto-creates Field+Bed if needed) */
-export async function createPlot(farmId: string, data: CreatePlotRequest): Promise<Plot> {
-  return request<Plot>('POST', `/farms/${farmId}/plots`, data);
-}
-
-/** GET /api/v1/farms/{farmId}/plots */
-export async function getPlots(farmId: string): Promise<FarmPlotItem[]> {
-  const res = await request<{ data: FarmPlotItem[] }>('GET', `/farms/${farmId}/plots`);
+/** GET /api/v1/farms/{farmId}/beds */
+export async function getBeds(farmId: string): Promise<FarmBedItem[]> {
+  const res = await request<{ data: FarmBedItem[] }>('GET', `/farms/${farmId}/beds`);
   return res.data;
 }
 
-/** GET /api/v1/plots/{plotId} */
-export async function getPlot(plotId: string): Promise<PlotDetailResponse> {
-  return request<PlotDetailResponse>('GET', `/plots/${plotId}`);
+/** GET /api/v1/beds/{bedId} */
+export async function getBed(bedId: string): Promise<BedDetailResponse> {
+  return request<BedDetailResponse>('GET', `/beds/${bedId}`);
+}
+
+/** PATCH /api/v1/beds/{bedId} */
+export async function updateBed(bedId: string, data: UpdateBedRequest): Promise<BedDetailResponse> {
+  return request<BedDetailResponse>('PATCH', `/beds/${bedId}`, data);
 }
 
 // ── Image Endpoints ───────────────────────────────────────────────
 
 /**
- * GET /api/v1/plots/{plotId}/images
+ * GET /api/v1/beds/{bedId}/images
  * @param cursor Opaque pagination cursor from a previous response's meta.next_cursor
  */
 export async function getImages(
-  plotId: string,
+  bedId: string,
   cursor?: string,
 ): Promise<PaginatedResponse<ImageListItem>> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  return request<PaginatedResponse<ImageListItem>>('GET', `/plots/${plotId}/images${query}`);
+  return request<PaginatedResponse<ImageListItem>>('GET', `/beds/${bedId}/images${query}`);
 }
 
 /**
- * POST /api/v1/plots/{plotId}/images
- * @param plotId Target plot ID
+ * POST /api/v1/beds/{bedId}/images
+ * @param bedId Target bed ID
  * @param formData FormData containing the JPEG image file under the "image" field
  */
-export async function uploadImage(plotId: string, formData: FormData): Promise<ImageUploadResponse> {
-  return request<ImageUploadResponse>('POST', `/plots/${plotId}/images`, formData, true);
+export async function uploadImage(bedId: string, formData: FormData): Promise<ImageUploadResponse> {
+  return request<ImageUploadResponse>('POST', `/beds/${bedId}/images`, formData, true);
 }
 
 /** GET /api/v1/images/{imageId} */
@@ -250,7 +251,7 @@ export async function getUsage(): Promise<UsageResponse> {
 // ── Admin Endpoint ────────────────────────────────────────────────
 
 export interface AdminStatsResponse {
-  entity_counts: { farms: number; users: number; plots: number };
+  entity_counts: { farms: number; users: number; beds: number };
   global_budget: {
     input_tokens_used: number;
     input_tokens_limit: number;

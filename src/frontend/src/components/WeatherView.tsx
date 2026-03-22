@@ -247,9 +247,9 @@ export default function WeatherView({ farmId }: Props) {
                     <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
                       {card.description}
                     </div>
-                    {card.affected_plots.length > 0 && (
+                    {card.affected_beds.length > 0 && (
                       <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
-                        {card.affected_plots.map((p) => p.crop_type).join(', ')}
+                        {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => b.crop_type).join(', ')}
                       </div>
                     )}
                   </div>

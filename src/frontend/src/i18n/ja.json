@@ -42,6 +42,8 @@
   "farm": {
     "no_plots": "区画がありません",
     "no_plots_body": "最初の作物区画を追加して、農場のモニタリングを始めましょう。",
+    "no_beds": "ベッドがありません",
+    "no_beds_body": "ベッドグリッド付きの農場を作成して、作物のモニタリングを始めましょう。",
     "error_loading": "農場データを読み込めませんでした",
     "error_body": "接続を確認して、もう一度お試しください。",
     "loading": "農場データを読み込み中…",
@@ -211,6 +213,41 @@
       "cabbage": "白菜",
       "other": "その他"
     }
+  },
+  "map": {
+    "title": "農場の位置",
+    "instruction": "地図をスクロールするかGPSを使って農場の位置を設定してください。",
+    "gps_button": "GPSを使う",
+    "elevation_auto": "標高を自動検出しました",
+    "elevation_failed": "標高を取得できませんでした",
+    "fallback": "地図を読み込めませんでした。座標を手動で入力してください。"
+  },
+  "wizard": {
+    "new_farm": "新しい農場",
+    "step_name": "農場に名前を付ける",
+    "step_location": "位置を設定",
+    "step_review": "確認して作成",
+    "next": "次へ",
+    "create": "農場を作成",
+    "success": "農場を作成しました！",
+    "switch_prompt": "新しい農場に切り替えますか？"
+  },
+  "profile": {
+    "title": "プロフィール",
+    "farms": "あなたの農場",
+    "you": "あなた",
+    "new_farm": "新しい農場",
+    "switch": "切替",
+    "active": "アクティブ",
+    "no_farms": "まだ農場に所属していません。"
+  },
+  "bed": {
+    "empty": "空",
+    "no_crop": "作物が割り当てられていません",
+    "no_selection": "ベッドが選択されていません",
+    "assign_crop": "作物を割り当て",
+    "grid_rows": "行数",
+    "grid_cols": "列数"
   },
   "auth": {
     "login": {

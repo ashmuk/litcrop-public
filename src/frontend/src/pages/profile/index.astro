@@ -1,0 +1,29 @@
+---
+/**
+ * Profile — Phase D
+ * Farm list, farm switching, user settings, and new farm wizard.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProfilePage from '../../components/ProfilePage';
+import ThemeSwitcher from '../../components/ThemeSwitcher';
+import Toast from '../../components/Toast';
+---
+
+<BaseLayout title="LitCrop — Profile" activeTab="setup">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      🌱 Profile
+    </h1>
+  </div>
+
+  <div class="settings-desktop-wrapper">
+    <div style="padding:0 var(--space-4)">
+      <ThemeSwitcher client:load />
+    </div>
+    <ProfilePage client:load />
+  </div>
+
+  <Toast client:load />
+</BaseLayout>

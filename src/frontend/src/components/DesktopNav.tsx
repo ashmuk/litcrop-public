@@ -20,8 +20,8 @@ export interface Props {
 const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey: string }[] = [
   { tab: 'farm',     href: '/',         icon: '🌾', labelKey: 'nav.farm' },
   { tab: 'weather',  href: '/weather',  icon: '⛅', labelKey: 'nav.weather' },
-  { tab: 'setup',    href: '/setup',    icon: '🌱', labelKey: 'nav.setup' },
-  { tab: 'settings', href: '/settings', icon: '⚙️', labelKey: 'nav.settings' },
+  { tab: 'setup',    href: '/profile/',  icon: '🌱', labelKey: 'nav.setup' },
+  { tab: 'settings', href: '/profile/',  icon: '⚙️', labelKey: 'nav.settings' },
 ];
 
 export default function DesktopNav({ activeTab = 'farm' }: Props) {

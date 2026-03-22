@@ -46,7 +46,7 @@ export default function ImageViewer() {
         setImage(detail);
 
         // Fetch sibling images for prev/next navigation
-        const list = await getImages(detail.plot_id);
+        const list = await getImages(detail.bed_id);
         if (cancelled) return;
         setSiblings(list.data);
       } catch (err) {
@@ -201,7 +201,7 @@ export default function ImageViewer() {
               aria-label={`View image from ${formatDate(s.captured_at)}`}
               aria-current={s.id === imageId ? 'true' : undefined}
             >
-              <img src={s.thumbnail_url} alt="" loading="lazy" />
+              <img src={s.thumbnail_url ?? undefined} alt="" loading="lazy" />
             </button>
           ))}
         </div>
@@ -210,7 +210,7 @@ export default function ImageViewer() {
       {/* ── Back link ── */}
       <div style="padding:var(--space-4)">
         <a
-          href={`/plots/view?id=${encodeURIComponent(image.plot_id)}`}
+          href={`/beds/view?id=${encodeURIComponent(image.bed_id)}`}
           class="btn btn--secondary"
           style="display:inline-flex;align-items:center;gap:var(--space-2)"
         >

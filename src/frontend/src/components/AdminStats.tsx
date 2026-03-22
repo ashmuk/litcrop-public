@@ -102,7 +102,7 @@ export default function AdminStats() {
           {([
             { label: 'Users', value: entity_counts.users, icon: '👤' },
             { label: 'Farms', value: entity_counts.farms, icon: '🏡' },
-            { label: 'Plots', value: entity_counts.plots, icon: '🌱' },
+            { label: 'Beds', value: entity_counts.beds, icon: '🌱' },
           ] as const).map(({ label, value, icon }) => (
             <div
               key={label}

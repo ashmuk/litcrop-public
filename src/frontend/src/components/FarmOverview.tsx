@@ -1,18 +1,19 @@
 /**
  * Farm Overview Island — T-FE-06
- * Fetches farm plots sorted by severity, filterable status pills, weather strip.
+ * Fetches farm beds sorted by severity, filterable status pills, weather strip.
+ * Updated: Phase D — beds replace plots (ADR-20260322)
  */
 
 import { useState, useEffect } from 'preact/hooks';
-import type { FarmPlotItem, WeatherResponse, PlotStatus } from '@litcrop/shared';
-import { getFarm, getPlots, getWeather } from '../lib/api';
+import type { FarmBedItem, WeatherResponse, BedStatus } from '@litcrop/shared';
+import { getFarm, getBeds, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { translateCondition, formatRelativeTime } from '../lib/format';
 
 // Most critical first
-const STATUS_SEVERITY: Record<PlotStatus, number> = {
+const STATUS_SEVERITY: Record<BedStatus, number> = {
   issue: 0,
   animal_intrusion: 1,
   slow_growth: 2,
@@ -20,7 +21,7 @@ const STATUS_SEVERITY: Record<PlotStatus, number> = {
   no_data: 4,
 };
 
-const STATUS_ORDER: PlotStatus[] = [
+const STATUS_ORDER: BedStatus[] = [
   'issue',
   'animal_intrusion',
   'slow_growth',
@@ -33,11 +34,11 @@ export interface Props {
 }
 
 export default function FarmOverview({ farmId }: Props) {
-  const [plots, setPlots] = useState<FarmPlotItem[]>([]);
+  const [beds, setBeds] = useState<FarmBedItem[]>([]);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<PlotStatus | 'all'>('all');
+  const [filterStatus, setFilterStatus] = useState<BedStatus | 'all'>('all');
 
   // Allow setup page to override farmId via localStorage
   const effectiveFarmId = useLocalFarmId(farmId);
@@ -47,9 +48,9 @@ export default function FarmOverview({ farmId }: Props) {
 
     async function load() {
       try {
-        const [farmData, plotData, weatherData] = await Promise.all([
+        const [farmData, bedData, weatherData] = await Promise.all([
           getFarm(effectiveFarmId).catch(() => null),
-          getPlots(effectiveFarmId),
+          getBeds(effectiveFarmId),
           getWeather(effectiveFarmId).catch(() => null),
         ]);
         if (cancelled) return;
@@ -65,7 +66,7 @@ export default function FarmOverview({ farmId }: Props) {
             titleEl.textContent = (titleEl.dataset.prefix ?? '') + farmData.name;
           }
         }
-        setPlots(plotData);
+        setBeds(bedData);
         if (weatherData) setWeather(weatherData);
       } catch {
         if (!cancelled) setError(t('farm.error_loading'));
@@ -106,23 +107,22 @@ export default function FarmOverview({ farmId }: Props) {
     );
   }
 
-  const sorted = [...plots].sort(
+  const sorted = [...beds].sort(
     (a, b) => STATUS_SEVERITY[a.latest_status] - STATUS_SEVERITY[b.latest_status],
   );
   const filtered =
-    filterStatus === 'all' ? sorted : sorted.filter((p) => p.latest_status === filterStatus);
+    filterStatus === 'all' ? sorted : sorted.filter((b) => b.latest_status === filterStatus);
 
-  const statusCounts = plots.reduce((acc, p) => {
-    acc[p.latest_status] = (acc[p.latest_status] ?? 0) + 1;
+  const statusCounts = beds.reduce((acc, b) => {
+    acc[b.latest_status] = (acc[b.latest_status] ?? 0) + 1;
     return acc;
-  }, {} as Partial<Record<PlotStatus, number>>);
+  }, {} as Partial<Record<BedStatus, number>>);
 
   return (
-    <>
     <div class="farm-layout">
-      {/* ── Main column: filter bar + plot grid ────────────────── */}
+      {/* -- Main column: filter bar + bed grid -- */}
       <div class="farm-main">
-        {/* Mobile weather strip (hidden at desktop — sidebar used instead) */}
+        {/* Mobile weather strip (hidden at desktop -- sidebar used instead) */}
         {weather && (
           <div
             class="offline-banner farm-weather-strip"
@@ -141,14 +141,14 @@ export default function FarmOverview({ farmId }: Props) {
         )}
 
         {/* Status filter bar */}
-        <div class="status-summary-bar" role="group" aria-label="Filter plots by status">
+        <div class="status-summary-bar" role="group" aria-label="Filter beds by status">
           <button
             class={`summary-pill ${filterStatus === 'all' ? 'status-healthy' : 'status-nodata'}`}
             style="cursor:pointer;border:none;font-family:inherit"
             onClick={() => setFilterStatus('all')}
             aria-pressed={filterStatus === 'all'}
           >
-            All {plots.length}
+            All {beds.length}
           </button>
           {STATUS_ORDER.filter((s) => statusCounts[s]).map((status) => (
             <button
@@ -163,61 +163,56 @@ export default function FarmOverview({ farmId }: Props) {
           ))}
         </div>
 
-        {/* Plot list */}
+        {/* Bed list */}
         {filtered.length === 0 ? (
           <div class="empty-state">
             <span class="empty-state__icon">🌱</span>
-            <p class="empty-state__heading">{t('farm.no_plots')}</p>
-            <p class="empty-state__body">{t('farm.no_plots_body')}</p>
-            {plots.length === 0 && (
-              <a
-                href="/plots/add/"
-                class="btn-primary"
-                style="margin-top:var(--space-4);text-decoration:none"
-              >
-                {t('add_plot.add_first_plot')}
-              </a>
-            )}
+            <p class="empty-state__heading">{t('farm.no_beds')}</p>
+            <p class="empty-state__body">{t('farm.no_beds_body')}</p>
           </div>
         ) : (
           <div
             class="plot-list"
             style="padding:var(--space-3);display:flex;flex-direction:column;gap:var(--space-3)"
           >
-            {filtered.map((plot) => (
+            {filtered.map((bed) => (
               <a
-                key={plot.id}
-                href={`/plots/view?id=${plot.id}`}
+                key={bed.id}
+                href={`/beds/view?id=${bed.id}`}
                 class="plot-tile"
-                aria-label={`${plot.crop_type} ${plot.crop_variety}, ${t(`status.${plot.latest_status}`)}`}
+                aria-label={`${bed.name}${bed.crop_type ? ` — ${bed.crop_type}` : ''}, ${t(`status.${bed.latest_status}`)}`}
               >
                 <div class="plot-tile__thumb">
-                  {plot.latest_image ? (
-                    <img src={plot.latest_image.thumbnail_url} alt="" loading="lazy" />
+                  {bed.latest_image?.thumbnail_url ? (
+                    <img src={bed.latest_image.thumbnail_url} alt="" loading="lazy" />
                   ) : (
                     <span aria-hidden="true">📷</span>
                   )}
                 </div>
                 <div class="plot-tile__info">
-                  <div class="plot-tile__crop-name">{plot.crop_type}</div>
-                  <div class="plot-tile__plot-label">{plot.crop_variety}</div>
-                  {plot.latest_image && (
+                  <div class="plot-tile__crop-name">
+                    {bed.crop_type || t('bed.empty')}
+                  </div>
+                  <div class="plot-tile__plot-label">
+                    {bed.name}{bed.crop_variety ? ` — ${bed.crop_variety}` : ''}
+                  </div>
+                  {bed.latest_image && (
                     <div
                       class="plot-tile__plot-label"
                       style="font-size:var(--font-size-xs);color:var(--color-gray-500)"
                     >
-                      {formatRelativeTime(plot.latest_image.captured_at)}
+                      {formatRelativeTime(bed.latest_image.captured_at)}
                     </div>
                   )}
                 </div>
                 <div class="plot-tile__badges">
-                  <span class={`badge ${STATUS_CSS[plot.latest_status]}`}>
+                  <span class={`badge ${STATUS_CSS[bed.latest_status]}`}>
                     <span class="badge-icon" aria-hidden="true">
-                      {STATUS_ICONS[plot.latest_status]}
+                      {STATUS_ICONS[bed.latest_status]}
                     </span>
-                    {t(`status.${plot.latest_status}`)}
+                    {t(`status.${bed.latest_status}`)}
                   </span>
-                  {plot.latest_image?.trigger === 'motion' && (
+                  {bed.latest_image?.trigger === 'motion' && (
                     <span class="badge-motion-sm">🏃 {t('motion.motion')}</span>
                   )}
                 </div>
@@ -227,7 +222,7 @@ export default function FarmOverview({ farmId }: Props) {
         )}
       </div>
 
-      {/* ── Desktop weather sidebar (hidden on mobile via CSS) ──── */}
+      {/* -- Desktop weather sidebar (hidden on mobile via CSS) -- */}
       {weather && (
         <aside class="farm-sidebar" aria-label="Weather overview" style="position:relative">
           {/* Current conditions */}
@@ -307,16 +302,5 @@ export default function FarmOverview({ farmId }: Props) {
         </aside>
       )}
     </div>
-    {plots.length > 0 && (
-      <a
-        href="/plots/add/"
-        class="btn-primary"
-        aria-label={t('add_plot.add_plot')}
-        style="position:fixed;bottom:calc(64px + var(--space-4));right:var(--space-4);z-index:50;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);text-decoration:none;padding:0"
-      >
-        +
-      </a>
-    )}
-    </>
   );
 }

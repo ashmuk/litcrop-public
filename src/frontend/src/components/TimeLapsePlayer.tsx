@@ -30,9 +30,9 @@ type Speed = 0.5 | 1 | 2;
 type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'error';
 
 interface TimeLapsePlayerProps {
-  plotId: string;
+  bedId: string;
   cropType: string;
-  /** First page of images already loaded by PlotDetail — avoids duplicate fetch */
+  /** First page of images already loaded by BedDetail — avoids duplicate fetch */
   initialImages?: ImageListItem[];
   initialCursor?: string | null;
 }
@@ -165,7 +165,7 @@ const PLAY_THRESHOLD = 50; // Frames needed before play starts
 const SPEEDS: Speed[] = [0.5, 1, 2];
 const SPEED_LABELS: Record<Speed, string> = { 0.5: '0.5×', 1: '1×', 2: '2×' };
 
-export default function TimeLapsePlayer({ plotId, cropType, initialImages, initialCursor }: TimeLapsePlayerProps) {
+export default function TimeLapsePlayer({ bedId, cropType, initialImages, initialCursor }: TimeLapsePlayerProps) {
   const [status, setStatus] = useState<Status>('idle');
   const [weeks, setWeeks] = useState<WeekGroup[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(0);
@@ -197,19 +197,19 @@ export default function TimeLapsePlayer({ plotId, cropType, initialImages, initi
     async function loadAll() {
       setStatus('loading');
       try {
-        // Reuse first page from PlotDetail if available
+        // Reuse first page from BedDetail if available
         const allImages: ImageListItem[] = initialImages ? [...initialImages] : [];
         let cursor: string | undefined = initialImages ? (initialCursor ?? undefined) : undefined;
 
         if (!initialImages) {
-          const firstPage = await getImages(plotId);
+          const firstPage = await getImages(bedId);
           if (cancelled) return;
           allImages.push(...firstPage.data);
           cursor = firstPage.meta.next_cursor ?? undefined;
         }
 
         while (cursor) {
-          const page = await getImages(plotId, cursor);
+          const page = await getImages(bedId, cursor);
           if (cancelled) return;
           allImages.push(...page.data);
           cursor = page.meta.next_cursor ?? undefined;
@@ -232,7 +232,7 @@ export default function TimeLapsePlayer({ plotId, cropType, initialImages, initi
 
     loadAll();
     return () => { cancelled = true; };
-  }, [plotId, initialImages, initialCursor]);
+  }, [bedId, initialImages, initialCursor]);
 
   // ── Preload on week selection ───────────────────────────────
 
@@ -250,7 +250,7 @@ export default function TimeLapsePlayer({ plotId, cropType, initialImages, initi
     // Build URL list, tracking which frame indices have valid thumbnails
     const urlsWithIndex: { url: string; idx: number }[] = [];
     for (let i = 0; i < frames.length; i++) {
-      if (frames[i].thumbnail_url) urlsWithIndex.push({ url: frames[i].thumbnail_url, idx: i });
+      if (frames[i].thumbnail_url) urlsWithIndex.push({ url: frames[i].thumbnail_url as string, idx: i });
     }
 
     const loader = preloadImages(

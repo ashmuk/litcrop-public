@@ -42,6 +42,8 @@
   "farm": {
     "no_plots": "No plots yet",
     "no_plots_body": "Add your first crop plot to start monitoring your farm.",
+    "no_beds": "No beds yet",
+    "no_beds_body": "Create a farm with a bed grid to start monitoring your crops.",
     "error_loading": "Could not load farm data",
     "error_body": "Check your connection and try again.",
     "loading": "Loading farm data…",
@@ -211,6 +213,41 @@
       "cabbage": "Cabbage",
       "other": "Other"
     }
+  },
+  "map": {
+    "title": "Farm Location",
+    "instruction": "Pan the map or use GPS to set your farm location.",
+    "gps_button": "Use GPS",
+    "elevation_auto": "Elevation auto-detected",
+    "elevation_failed": "Could not fetch elevation",
+    "fallback": "Map could not load. Enter coordinates manually."
+  },
+  "wizard": {
+    "new_farm": "New Farm",
+    "step_name": "Name your farm",
+    "step_location": "Set location",
+    "step_review": "Review & create",
+    "next": "Next",
+    "create": "Create Farm",
+    "success": "Farm created!",
+    "switch_prompt": "Switch to the new farm now?"
+  },
+  "profile": {
+    "title": "Profile",
+    "farms": "Your Farms",
+    "you": "You",
+    "new_farm": "New Farm",
+    "switch": "Switch",
+    "active": "Active",
+    "no_farms": "You don't belong to any farms yet."
+  },
+  "bed": {
+    "empty": "Empty",
+    "no_crop": "No crop assigned",
+    "no_selection": "No bed selected",
+    "assign_crop": "Assign crop",
+    "grid_rows": "Rows",
+    "grid_cols": "Columns"
   },
   "auth": {
     "login": {
