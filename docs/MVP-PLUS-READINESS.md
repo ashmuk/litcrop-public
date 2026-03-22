@@ -66,45 +66,66 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 
 ---
 
-## 3. Decisions Already Made
+## 3. Decisions
+
+### Confirmed (2026-03-22 scope revision)
 
 | # | Decision | Choice | Rationale |
 |---|----------|--------|-----------|
 | 1 | v0.9 scope | Batches 1-5 only (CI/CD deferred) | Ship security/quality fixes first |
 | 2 | v0.9 deploy | Manual deploy (last one) | CI/CD not ready yet |
 | 3 | F-14 priority | P0 for MVP+ | Vision MVP deliverable #3, used in 4/10 use cases |
-| 4 | Multi-farm timing | PRODUCTION-1 (not MVP+) | April evaluation is single-farm |
-| 5 | MVP+ user model | 5 users on 1 farm | Shared access, ownership decision pending (see Section 4) |
+| 4 | Multi-farm timing | **MVP+ (revised)** | Evaluation scenario requires demo farm + user farm + switching |
+| 5 | MVP+ user model | **3 users, 2 farms, 3 roles** | Admin (Muk) + Manager (Kiku) + Observer (Yama); see `docs/USE-CASES.md` §7 |
 | 6 | Real AI chat | PRODUCTION-1 (SSM key fetch) | Stub mode fine for April; needs budget decision |
+| 7 | Shared farm access model | **Role-based membership** (FARM_MEMBER records) | Admin-managed for MVP+; invite/apply workflow deferred to PROD-1 |
+| 8 | FR-3.6 side-by-side | **MVP+ (Phase D)** | Include if time allows |
+| 9 | SSE streaming | **PROD-1** | Chat works without it (stub mode until SSM fetch) |
+| 10 | Bed-grid layout | **MVP+ — replaces freeform plot wizard** | Rows × cols (5 max each) is more intuitive; crop tied to bed |
+| 11 | IoT device web config | **PROD-1** | Camera configured locally for April; web UI deferred |
+| 12 | Demo farm seed | **MVP+** | Pre-seeded data for onboarding new users |
 
-### Decisions Pending (need user input)
-
-| # | Decision | Options | Recommended | Where |
-|---|----------|---------|-------------|-------|
-| 7 | Shared farm access model | A: shared creds / B: member records / C: full N1 / **D: relax GET ownership** | D | `docs/USE-CASES.md` §5 |
-| 8 | FR-3.6 side-by-side | MVP+ (if time) vs PROD-1 | MVP+ if time | `docs/MVP-PLUS-REVISE-PLAN.md` §7 |
-| 9 | SSE streaming | MVP+ vs PROD-1 | PROD-1 | `docs/MVP-PLUS-REVISE-PLAN.md` §7 |
+### No Pending Decisions
 
 ---
 
-## 4. MVP+ Scope Summary (18 items, ~12-14h)
+## 4. MVP+ Scope Summary (28 items, ~22-26h)
+
+> Revised 2026-03-22 — expanded from 18 items after evaluation scenario review.
+> Estimate revised upward after ultrathink alignment review (middleware refactor, test updates, doc updates).
+> See `docs/MVP-PLUS-SCENARIO.md` and `docs/USE-CASES.md` §7 for the scenario driving these changes.
+> See `docs/REVIEW-FOR-MVP-PLUS-BY-ULTRATHINK.md` for deep alignment review, pros/cons, tech feasibility.
 
 ```
  PHASE A — CI/CD Foundation (~1h)
    CI-1..CI-4: Pipeline setup
 
- PHASE B — Vision Closure (~4h)
-   F-14: Time-lapse playback          ← THE missing Vision deliverable
-   FR-3.5: Image lightbox
-   SF-4: Chat Markdown rendering
+ PHASE B — Multi-Farm Foundation (~5-7h)  ← NEW (pulled from PROD-1)
+   N1-ADR: ADR for multi-farm support
+   N1-BE:  DynamoDB schema — SK=FARM#<farmId>, FARM_MEMBER records
+   N1-API: GET /farms returns Farm[], POST /farms creates farm
+   N1-FE:  Farm switcher + farm context provider
+   N1-MIG: Dual SK format support (no data migration)
+   ROLE:   Role model (admin / manager / observer) via membership
+   DEMO:   Demo farm seed data for onboarding
 
- PHASE C — UX + Security (~4h)
-   F-09: Map picker for farm location
-   F-10: Elevation auto-fetch
+ PHASE C — Vision Closure (~4h)
+   F-14:   Time-lapse playback           ← THE missing Vision deliverable
+   FR-3.5: Image lightbox
+   SF-4:   Chat Markdown rendering
+
+ PHASE D — UX Restructure (~5-6h)  ← EXPANDED
+   F-09:   Map picker for farm location (integrated into farm creation wizard)
+   F-10:   Elevation auto-fetch
+   BED:    Bed-grid layout (rows × cols, 5 max) — replaces freeform plot wizard
+   CROP:   Crop-per-bed model
+   PROF:   Profile page redesign (farm list + switch + member list)
+
+ PHASE E — Security Hardening (~2-3h)
    S3, S4, S6: Security SHOULD-FIX (3 items)
    S10: RemovalPolicy RETAIN
 
- PHASE D — Quality (~3h)
+ PHASE F — Quality (~3-4h)
    Q6, SG-3, Q12: Code fixes
    T8-T9: Schema tests
    FR-3.6: Side-by-side (if time)
@@ -114,9 +135,9 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 
 ```
 Vision MVP deliverables:
-1. Farm layout creation/editing    ✅ Done (creation; editing read-only by design)
-2. Camera nodes uploading images   ✅ Done (simulator + phone)
-3. Time-lapse growth per plot      ← MVP+ closes this gap (F-14)
+1. Farm layout creation/editing    ✅ Done (bed-grid replaces freeform wizard)
+2. Camera nodes uploading images   ✅ Done (simulator + phone + bed association)
+3. Time-lapse growth per plot      ← MVP+ closes this gap (F-14, Phase C)
 4. Manual observation and tagging  ✅ Done
 ```
 
@@ -205,17 +226,22 @@ Present consolidated execution preview to user
 
 | Criterion | Source | Status |
 |-----------|--------|--------|
-| 5 user accounts created (Cognito) | USE-CASES.md | Planned |
-| 1 farm with 8+ beds, 20+ plots | USE-CASES.md | Partially seeded |
+| 3 user accounts created (A/B/C roles) | USE-CASES.md §7 | Planned |
+| Demo farm pre-seeded with sample data | MVP-PLUS-SCENARIO §Step 1 | **NOT DONE** — MVP+ Phase B |
+| B can create own farm via wizard + map | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — MVP+ Phase B+D |
+| Farm switching works (Demo ↔ user farm) | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — MVP+ Phase B |
+| Bed-grid layout creation (5×5 max) | MVP-PLUS-SCENARIO §Step 3 | **NOT DONE** — MVP+ Phase D |
+| Camera images associate to beds | MVP-PLUS-SCENARIO §Step 4 | Partially (simulator exists) |
+| Admin-managed farm membership (A adds C) | MVP-PLUS-SCENARIO §Step 5 | **NOT DONE** — MVP+ Phase B |
+| Time-lapse playback working | Vision.md MVP #3 | **NOT DONE** — MVP+ Phase C |
 | 1-2 camera nodes uploading images | Vision.md | Camera sim running; real Pi TBD |
-| Time-lapse playback working | Vision.md MVP #3 | **NOT DONE** — MVP+ Phase B |
 | Weather + crop impact functional | REQUIREMENTS FR-7 | Done |
 | AI chat responsive (stub or live) | REQUIREMENTS FR-9 | Done (stub) |
 | Japanese UI complete (no English leaks) | REQUIREMENTS NFR-6 | Done (v0.9 N3 fix) |
 | Mobile UX usable outdoors | REQUIREMENTS NFR-3 | Done |
-| Desktop layout for advisor (P-04) | REQUIREMENTS FR-12 | Done |
+| Desktop layout for advisor | REQUIREMENTS FR-12 | Done |
 | CI/CD pipeline operational | MVP-POST-PLAN | **NOT DONE** — MVP+ Phase A |
-| Shared farm access for 5 users | USE-CASES.md §5 | **DECISION PENDING** |
+| Profile page shows farm list + switch | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — MVP+ Phase D |
 
 ---
 
@@ -231,5 +257,5 @@ Present consolidated execution preview to user
 
 ---
 
-> Generated 2026-03-21 | Entry point for MVP+ pipeline
-> Resume here. Read this file first. Follow Steps 1-4.
+> Generated 2026-03-21 | Updated 2026-03-22 (scope revision: +multi-farm, +bed-grid, +roles, +demo seed)
+> Entry point for MVP+ pipeline. Resume here. Read this file first. Follow Steps 1-4.

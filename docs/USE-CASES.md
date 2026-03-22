@@ -458,4 +458,148 @@ To add a new use case, copy the template from Section 3. Link it to existing or 
 
 ---
 
-> Generated 2026-03-21 | 5 personas, 10 use cases, feature mapping, shared access decision
+---
+
+## 7. MVP+ Field Evaluation Scenario (2026-03-22)
+
+> Source: `docs/MVP-PLUS-SCENARIO.md` — concrete 3-user evaluation scenario
+> Status: APPROVED — scope decisions confirmed
+> Relationship: Complements Sections 2-4 above. Original personas (P-01..P-05) represent the Nagano farm story. This section defines the **actual evaluation personas and walkthrough** for the April field test.
+
+### 7.1 Evaluation Personas
+
+| ID | Name | Role | Description |
+|----|------|------|-------------|
+| **A** | Muk | Site Admin | Operates and supports the MVP+ LitCrop prototype. Creates demo data, onboards B and C, monitors system stats via admin-only views. |
+| **B** | Kiku | Farm Manager | Creates and manages his own farm. Full read/write access. Sets up crops, installs camera nodes, adds observers. |
+| **C** | Yama | Farm Observer | Read-only user. Cannot create farms. Joins B's farm when added by A or B. Views crops, watches time-lapse. |
+
+#### Role Capability Matrix
+
+| Capability | A (Admin) | B (Manager) | C (Observer) |
+|------------|:---------:|:-----------:|:------------:|
+| Create farm | Yes (demo seed) | Yes | No |
+| Edit farm / crops | Yes (demo) | Yes (own farm) | No |
+| View farm data | All farms | Own farms | Joined farms |
+| Install camera node | — | Yes | No |
+| Add members to farm | Yes | Yes (own farm) | No |
+| Access admin stats | Yes | No | No |
+| Use AI assistant | Yes | Yes | Yes |
+| Switch between farms | Yes | Yes | Yes |
+
+#### Mapping to Original Personas
+
+| Eval Persona | Closest Original | Key Difference |
+|-------------|-----------------|----------------|
+| A (Muk) — Admin | P-05 (Akira, tech-savvy) | Admin role, system operator |
+| B (Kiku) — Manager | P-01 (Tanaka Kenji, farm owner) | Creates farm from scratch, manages IoT |
+| C (Yama) — Observer | P-03 (Suzuki, cautious neighbor) | Read-only, joins existing farm |
+
+### 7.2 Scenario Overview
+
+**Setup**: 3 end-users, 2 farms
+- **Demo farm** — pre-seeded by A with sample data (beds, crops, images) for onboarding
+- **B's farm** — created by B through the farm creation wizard
+
+### 7.3 Scenario Walkthrough
+
+#### Step 1: Onboarding
+
+| Actor | Action |
+|-------|--------|
+| **A** | Creates demo farm with pre-seeded data (beds, crops, sample images) so new users can explore without creating a farm first. |
+| **A** | Onboards B and C to the LitCrop prototype (account creation via Cognito). |
+| **A** | Monitors onboarding progress via admin-only stats view. |
+| **B** | Logs in for the first time. Sees the Demo farm. Explores the app. Optionally uses AI assistant to learn how things work. |
+| **C** | Logs in for the first time. Sees the Demo farm. Browses as a reader. Optionally uses AI assistant for guidance. |
+| **B, C** | Both are now onboarded and familiar with the app through the Demo farm. |
+
+**Feature deps**: Auth (existing), Demo farm seed (new), AI assistant (existing stub), Admin stats (existing)
+
+#### Step 2: New Farm Creation (B)
+
+1. B optionally asks the AI assistant: *"How do I create a farm?"* — it answers with guidance.
+2. B enters the **[Profile]** menu. It shows two sections: **"Farm"** and **"You"**.
+3. The **"Farm"** section lists farms B belongs to — currently only **"Demo"**.
+4. B taps the **[+]** button in the Farm section to start the farm creation wizard.
+5. Wizard steps:
+   - **Name** — B chooses a name for the farm.
+   - **Description** — B writes a short description.
+   - **Location** — B picks the location on an embedded map. The selected point auto-fills latitude and longitude fields as a preview.
+6. B saves the farm. The wizard detects B is currently on the Demo farm and asks: *"Switch to the new farm?"*
+7. B chooses **"Yes"**. The wizard closes. The entire LitCrop app now shows B's newly created farm.
+8. The farm profile is visible in **[Profile]** as read-only, including a members list (currently only B).
+9. B can use a **[Switch Farm]** button to toggle between "Demo" and the new farm. B stays on the new farm for now.
+
+**Feature deps**: Multi-farm N1 (pulled into MVP+), Farm creation wizard, Map picker (F-09), Farm switching, Profile page redesign
+
+#### Step 3: New Crops (B)
+
+1. B enters the **[Crops]** menu. Two view modes are available: **"List"** and **"Layout"** (toggle buttons).
+2. In **Layout** mode, B creates a bed layout for the farm:
+   - Specifies **rows** and **columns** (MVP+ limit: 5 max each, up to 25 beds).
+3. B taps a bed cell — a prompt asks: *"What crop do you plant here?"*
+4. B selects a crop and saves. (MVP+ constraint: one crop per bed. Crop is tied to the bed.)
+5. Repeats for other beds as desired.
+
+**Feature deps**: Bed-grid layout (new — replaces freeform plot wizard), Crop-per-bed model (new), List/Layout view toggle
+
+#### Step 4: Camera Node Setup (B)
+
+1. B has a physical camera (Raspberry Pi) to install at the farm. For MVP+: **one camera per bed**.
+2. Camera configuration is done locally (physical setup + CLI/config file).
+3. Images begin uploading automatically. B sees pictures appearing in the targeted bed's data view, rendered in the app.
+
+> **Note**: Web UI for IoT device configuration (the [Manage] page described in the original sketch) is deferred to PROD-1. For MVP+, camera setup is handled locally by the technical user (A or B).
+
+**Feature deps**: Image upload pipeline (existing), Bed-to-camera association (new — data model), Camera simulator (existing)
+
+#### Step 5: Sharing & Monitoring Together
+
+1. **MVP+ approach**: A or B adds C as a member of B's farm (admin-managed — creates a `FARM_MEMBER` record).
+2. C now has B's farm in addition to "Demo" in the **[Profile] → Farm** section.
+3. C switches to B's farm. Now **all three (A, B, C)** can view and monitor the farm.
+4. C enters **[Crops]** menu, taps a bed/crop, and sees the **"Time-lapse"** option (available when the bed has enough images).
+5. C taps it and enjoys the time-lapse replay — automatically generated by LitCrop from uploaded camera images.
+
+> **Note**: Self-service invite/apply-to-join workflow (with approval queue and notifications) is deferred to PROD-1. For MVP+, membership is managed by admin or farm owner directly.
+
+**Feature deps**: Farm membership records (new), Multi-farm profile (N1), Time-lapse playback (F-14), Farm switching
+
+### 7.4 Scope Decisions (confirmed 2026-03-22)
+
+| # | Item | MVP+ Scope | Deferred To |
+|---|------|-----------|-------------|
+| 1 | Multi-farm foundation (N1) | **Yes** — schema, API, farm list, farm switcher | — |
+| 2a | Membership: admin-managed | **Yes** — A/B adds C via FARM_MEMBER record | — |
+| 2b | Membership: invite/apply workflow | — | PROD-1 |
+| 3 | Bed-grid layout (rows × cols, 5 max) | **Yes** — replaces freeform plot wizard | — |
+| 4a | IoT data pipeline (images → bed) | **Yes** — existing simulator + bed association | — |
+| 4b | IoT device web config UI ([Manage] page) | — | PROD-1 |
+| 5 | Demo farm seed data | **Yes** — pre-seeded by admin for onboarding | — |
+| 6 | Role model (Admin / Manager / Observer) | **Yes** — via farm membership with role field | — |
+| 7 | Profile page redesign (farm list + switch) | **Yes** — required for multi-farm UX | — |
+
+### 7.5 Feature-to-Step Mapping
+
+| Feature | Step 1 | Step 2 | Step 3 | Step 4 | Step 5 |
+|---------|:------:|:------:|:------:|:------:|:------:|
+| Auth (existing) | X | | | | |
+| Demo farm seed (new) | X | | | | |
+| AI assistant (existing) | X | X | | | |
+| Admin stats (existing) | X | | | | |
+| Multi-farm N1 | | X | | | X |
+| Farm creation wizard | | X | | | |
+| Map picker F-09 | | X | | | |
+| Farm switching | | X | | | X |
+| Profile redesign | | X | | | X |
+| Bed-grid layout (new) | | | X | | |
+| Crop-per-bed model (new) | | | X | | |
+| Image pipeline (existing) | | | | X | |
+| Bed-camera association (new) | | | | X | |
+| Farm membership (new) | | | | | X |
+| Time-lapse F-14 | | | | | X |
+
+---
+
+> Updated 2026-03-22 | 8 personas (5 original + 3 evaluation), 10 original use cases + 5-step evaluation scenario, scope decisions confirmed
