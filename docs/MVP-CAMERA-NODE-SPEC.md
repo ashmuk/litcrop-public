@@ -194,17 +194,19 @@ The camera node uploads images to the LitCrop API. The upload must match the imp
 
 **Retry strategy**: 3 attempts with exponential backoff (1s, 2s, 4s) — matches simulator implementation.
 
-### 6.6 Authentication (MVP — TBD)
+### 6.6 Authentication (MVP — Option B: Pre-provisioned Token)
 
-The API is protected by Cognito JWT. The camera node needs an authentication strategy:
+The API is protected by Cognito JWT. For MVP+ field evaluation, we use **Option B**: a pre-provisioned access token stored on the device, with automatic refresh via cron.
 
-| Option | Approach | Complexity |
-|--------|----------|------------|
-| A | Service account in Cognito (machine-to-machine) | Low — use client credentials grant |
-| B | Pre-provisioned long-lived token stored on device | Low — but token rotation needed |
-| C | API key bypass for device uploads | Medium — new API Gateway key |
+| Component | Detail |
+|-----------|--------|
+| Initial token | Obtained via `aws cognito-idp initiate-auth` using a user account (e.g., Kiku) |
+| Storage | `/etc/litcrop/node.conf` (`AUTH_TOKEN` field) |
+| Refresh | `scripts/camera-node/refresh-token.sh` via cron every 50 minutes |
+| Expiry | Access tokens last 1 hour; refresh tokens last 30 days |
+| PROD-1 | Replace with Cognito machine-to-machine client credentials (no user account needed) |
 
-**Decision pending** — resolve before field deployment.
+**Setup guide**: `docs/CAMERA-NODE-SETUP.md` §4
 
 ### 6.7 Configuration
 
@@ -217,7 +219,7 @@ image_width: 1920
 image_height: 1080
 jpeg_quality: 75
 trigger: scheduled
-api_base_url: https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com
+api_base_url: https://<your-api-gateway-url>
 spool_dir: /var/spool/litcrop
 max_retry_count: 5
 ```
@@ -337,3 +339,13 @@ The upload contract is already validated by the existing camera simulator. The r
 4. Field-test with the assembled prototype
 
 The system remains extensible for LTE/SIM, solar power, and multi-node deployments beyond MVP.
+
+### Scripts & Documentation
+
+| File | Purpose |
+|------|---------|
+| `scripts/camera-node/install.sh` | Automated installer (run on Pi with `sudo`) |
+| `scripts/camera-node/capture.sh` | Capture + upload script (run on Pi) |
+| `scripts/camera-node/refresh-token.sh` | Cognito token refresh (cron every 50 min) |
+| `scripts/camera-node/node.conf.example` | Configuration template |
+| `docs/CAMERA-NODE-SETUP.md` | Step-by-step setup guide |
