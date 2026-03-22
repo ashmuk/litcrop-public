@@ -12,7 +12,7 @@ import {
   CHAT_MODEL,
 } from '../services/budget';
 import { assertFarmAccess } from './_helpers';
-import type { Farm, Plot } from '@litcrop/shared';
+import type { Farm, Bed } from '@litcrop/shared';
 
 const router = new Hono();
 
@@ -71,7 +71,7 @@ const DEFAULT_SUGGESTIONS = [
 
 // ── System prompt builder ─────────────────────────────────────────
 
-function buildSystemPrompt(farm: Farm | null, plots: Plot[]): string {
+function buildSystemPrompt(farm: Farm | null, beds: Bed[]): string {
   const base = `You are a crop planning assistant for small-scale farmers.
 You give practical, location-specific advice about what to grow, when to plant,
 and how to manage crops. Keep answers concise and actionable.
@@ -86,8 +86,9 @@ SUGGESTIONS: ["What soil pH do tomatoes need?", "When to harvest cucumbers?"]`;
 
   if (!farm) return base;
 
-  const cropList = plots
-    .map((p) => `- ${p.label}: ${p.crop_type} (${p.crop_variety}), planted ${p.planted_at}`)
+  const cropList = beds
+    .filter((b) => b.crop_type)
+    .map((b) => `- ${b.name}: ${b.crop_type} (${b.crop_variety ?? 'unknown'}), planted ${b.planted_at ?? 'unknown'}`)
     .join('\n');
 
   return `${base}
@@ -223,8 +224,8 @@ async function executeTool(
       return 'Error: Farm not found';
     }
     try {
-      const plots = await dynamoRepo.getPlotsForFarm(farmId);
-      return JSON.stringify({ farm, plots });
+      const beds = await dynamoRepo.getBedsForFarm(farmId);
+      return JSON.stringify({ farm, beds });
     } catch {
       return 'Error: Could not retrieve farm data';
     }
@@ -404,23 +405,23 @@ router.post('/', async (c) => {
 
   // Load farm context for system prompt — only the caller's own farm (T-AUTH-05)
   let farm: Farm | null = null;
-  let plots: Plot[] = [];
+  let beds: Bed[] = [];
 
   const farmId = body['farm_id'];
   if (farmId && typeof farmId === 'string') {
     try {
       ({ farm } = await assertFarmAccess(farmId, userId));
       try {
-        plots = await dynamoRepo.getPlotsForFarm(farmId);
+        beds = await dynamoRepo.getBedsForFarm(farmId);
       } catch {
-        // Non-fatal: proceed with farm but no plots
+        // Non-fatal: proceed with farm but no beds
       }
     } catch {
       // Non-fatal: proceed without farm context if not a member
     }
   }
 
-  const systemPrompt = buildSystemPrompt(farm, plots);
+  const systemPrompt = buildSystemPrompt(farm, beds);
 
   // If no API key, return stub (no rate limit or budget check needed)
   if (!process.env['LLM_API_KEY']) {

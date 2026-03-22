@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { uploadImage } from '../upload';
 
-const PLOT_ID = 'a0000000-0000-0000-0000-000000000001';
+const BED_ID = 'a0000000-0000-0000-0000-000000000001';
 const API_URL = 'http://localhost:3000';
 
 // Valid JPEG buffer
@@ -33,7 +33,7 @@ describe('uploadImage retry logic', () => {
 
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'scheduled',
       nodeId: 'cam-001',
@@ -55,7 +55,7 @@ describe('uploadImage retry logic', () => {
 
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'motion',
       nodeId: 'cam-001',
@@ -77,7 +77,7 @@ describe('uploadImage retry logic', () => {
 
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'scheduled',
       nodeId: 'cam-001',
@@ -99,7 +99,7 @@ describe('uploadImage retry logic', () => {
 
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'scheduled',
       nodeId: 'cam-001',
@@ -122,7 +122,7 @@ describe('uploadImage retry logic', () => {
     const before = new Date().toISOString();
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'scheduled',
       nodeId: 'cam-001',
@@ -147,7 +147,7 @@ describe('uploadImage retry logic', () => {
     const customTime = '2026-03-17T08:00:00.000Z';
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'scheduled',
       nodeId: 'cam-001',
@@ -171,7 +171,7 @@ describe('uploadImage retry logic', () => {
 
     const promise = uploadImage({
       apiBaseUrl: API_URL,
-      plotId: PLOT_ID,
+      bedId: BED_ID,
       imageBuffer: jpegBuffer,
       triggerType: 'scheduled',
       nodeId: 'cam-001',

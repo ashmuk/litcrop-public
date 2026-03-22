@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { AppError, InternalError } from './errors';
 import { authMiddleware } from './middleware/auth';
 import farmsRouter from './routes/farms';
+import bedsRouter from './routes/beds';
 import plotsRouter from './routes/plots';
 import imagesRouter from './routes/images';
 import weatherRouter from './routes/weather';
@@ -108,6 +109,8 @@ app.onError((err, c) => {
 
 app.use('/api/v1/farms', authMiddleware);
 app.use('/api/v1/farms/*', authMiddleware);
+app.use('/api/v1/beds', authMiddleware);
+app.use('/api/v1/beds/*', authMiddleware);
 app.use('/api/v1/plots', authMiddleware);
 app.use('/api/v1/plots/*', authMiddleware);
 app.use('/api/v1/images', authMiddleware);
@@ -123,14 +126,18 @@ app.get('/health', (c) => c.json({ status: 'ok', service: 'litcrop-api' }));
 app.get('/api/v1/health', (c) => c.json({ status: 'ok', service: 'litcrop-api' }));
 app.get('/api/v1', (c) => c.json({ version: '1', status: 'ok' }));
 
-// GET|POST|PATCH /api/v1/farms/...  (includes /:farmId/plots)
+// GET|POST|PATCH /api/v1/farms/...  (includes /:farmId/beds)
 app.route('/api/v1/farms', farmsRouter);
 
 // GET /api/v1/farms/:farmId/weather
 app.route('/api/v1/farms', weatherRouter);
 
-// GET /api/v1/plots/:plotId
-// GET|POST /api/v1/plots/:plotId/images
+// GET|PATCH /api/v1/beds/:bedId
+// GET|POST /api/v1/beds/:bedId/images
+app.route('/api/v1/beds', bedsRouter);
+
+// GET /api/v1/plots/:plotId (410 Gone)
+// GET|POST /api/v1/plots/:plotId/images (410 Gone)
 app.route('/api/v1/plots', plotsRouter);
 
 // GET /api/v1/images/:imageId

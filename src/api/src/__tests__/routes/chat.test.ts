@@ -15,7 +15,7 @@ vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
     getFarmMembership: vi.fn(),
-    getPlotsForFarm: vi.fn(),
+    getBedsForFarm: vi.fn(),
     getConversationHistory: vi.fn().mockResolvedValue([]),
     saveConversationHistory: vi.fn().mockResolvedValue(undefined),
   },
@@ -320,7 +320,7 @@ describe('POST /api/v1/chat tool use', () => {
   beforeEach(() => {
     process.env['LLM_API_KEY'] = 'test-key';
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(MOCK_FARM as never);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
   });
 
   afterEach(() => {

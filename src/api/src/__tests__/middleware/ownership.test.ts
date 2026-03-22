@@ -11,25 +11,22 @@ import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
 import { getSignedImageUrl } from '../../services/s3';
 import { NotFoundError } from '../../errors';
-import type { Farm, Plot, Image } from '@litcrop/shared';
+import type { Farm, Bed, Image } from '@litcrop/shared';
 
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
     getFarmsForUser: vi.fn(),
-    getFarmForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
-    getFieldsForFarm: vi.fn(),
-    getBedsForField: vi.fn(),
-    getPlotsForBed: vi.fn(),
-    getPlotsForFarm: vi.fn(),
-    getLatestImageForPlot: vi.fn(),
-    getPlotById: vi.fn(),
-    getImagesForPlot: vi.fn(),
+    getBedsForFarm: vi.fn(),
+    getLatestImageForBed: vi.fn(),
+    getBedById: vi.fn(),
+    getImagesForBed: vi.fn(),
     getTagsForImage: vi.fn(),
+    getLatestTagForImage: vi.fn(),
     createImage: vi.fn(),
     getImageById: vi.fn(),
     createTag: vi.fn(),
@@ -47,7 +44,7 @@ vi.mock('../../services/s3', () => ({
 const OWNER_USER_ID = 'owner-cognito-sub';
 const OTHER_USER_ID = 'intruder-cognito-sub';
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
-const PLOT_ID = 'p0000000-0000-0000-0000-000000000001';
+const BED_ID = 'b0000000-0000-0000-0000-000000000001';
 const IMAGE_ID = 'i0000000-0000-0000-0000-000000000001';
 
 const farmFixture: Farm = {
@@ -58,29 +55,29 @@ const farmFixture: Farm = {
   longitude: 138.0,
   locale: 'en',
   theme: 'system',
+  grid_rows: 1,
+  grid_cols: 1,
   created_at: '2026-03-17T00:00:00.000Z',
 };
 
-const plotFixture: Plot = {
-  id: PLOT_ID,
-  bed_id: 'bed-001',
-  label: 'A1',
+const bedFixture: Bed = {
+  id: BED_ID,
+  farm_id: FARM_ID,
+  row: 1,
+  col: 1,
+  name: 'A1',
   crop_type: 'tomato',
   crop_variety: 'Cherry',
-  planted_at: '2026-03-01',
-  expected_harvest: '2026-07-01',
   latest_status: 'no_data',
-  farm_id: FARM_ID,
 };
 
 const imageFixture: Image = {
   id: IMAGE_ID,
-  plot_id: PLOT_ID,
-  bed_id: 'bed-001',
+  bed_id: BED_ID,
   node_id: 'cam-01',
   captured_at: '2026-03-17T00:00:00.000Z',
   uploaded_at: '2026-03-17T00:00:00.000Z',
-  storage_key: `images/${FARM_ID}/${PLOT_ID}/${IMAGE_ID}.jpg`,
+  storage_key: `images/${FARM_ID}/${BED_ID}/${IMAGE_ID}.jpg`,
   trigger: 'scheduled',
   content_type: 'image/jpeg',
   size_bytes: 100000,
@@ -117,7 +114,7 @@ beforeEach(() => {
 describe('Farm ownership enforcement', () => {
   it('GET /api/v1/farms/:farmId — owner gets 200', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
       headers: { Authorization: authHeader(OWNER_USER_ID) },
@@ -134,13 +131,11 @@ describe('Farm ownership enforcement', () => {
     expect(res.status).toBe(404);
   });
 
-  it('GET /api/v1/farms/:farmId/plots — other user gets 404', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-
+  it('GET /api/v1/farms/:farmId/plots — returns 410 Gone (deprecated)', async () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
       headers: { Authorization: authHeader(OTHER_USER_ID) },
     });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(410);
   });
 
   it('PATCH /api/v1/farms/:farmId — other user gets 404', async () => {
@@ -166,9 +161,7 @@ describe('Farm ownership enforcement', () => {
     expect(res.status).toBe(404);
   });
 
-  it('POST /api/v1/farms/:farmId/plots — other user gets 404 (cross-user write blocked)', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-
+  it('POST /api/v1/farms/:farmId/plots — returns 410 Gone (deprecated)', async () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
       method: 'POST',
       headers: {
@@ -177,7 +170,7 @@ describe('Farm ownership enforcement', () => {
       },
       body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'Cherry' }),
     });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(410);
   });
 });
 
@@ -199,7 +192,7 @@ describe('Missing auth returns 401', () => {
   });
 
   it('GET /api/v1/plots/:plotId without token → 401', async () => {
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`);
+    const res = await app.request(`/api/v1/plots/some-plot-id`);
     expect(res.status).toBe(401);
   });
 
@@ -218,54 +211,12 @@ describe('Missing auth returns 401', () => {
   });
 });
 
-// ── Plot ownership ─────────────────────────────────────────────────
-
-describe('Plot ownership enforcement', () => {
-  it('GET /api/v1/plots/:plotId — owner gets 200', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
-
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, {
-      headers: { Authorization: authHeader(OWNER_USER_ID) },
-    });
-    expect(res.status).toBe(200);
-  });
-
-  it('GET /api/v1/plots/:plotId — other user gets 404', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, {
-      headers: { Authorization: authHeader(OTHER_USER_ID) },
-    });
-    expect(res.status).toBe(404);
-  });
-
-  it('POST /api/v1/plots/:plotId/images — other user gets 404 (ownership check before form parse)', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-
-    // Must include multipart Content-Type to pass the app-level Content-Type guard;
-    // ownership check fires before body is parsed, so an empty body is fine here.
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, {
-      method: 'POST',
-      headers: {
-        Authorization: authHeader(OTHER_USER_ID),
-        'Content-Type': 'multipart/form-data; boundary=----TestBoundary',
-      },
-    });
-    expect(res.status).toBe(404);
-  });
-});
-
 // ── Image ownership ────────────────────────────────────────────────
 
 describe('Image ownership enforcement', () => {
   it('GET /api/v1/images/:imageId — owner gets 200', async () => {
     vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
     vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([]);
 
@@ -277,7 +228,7 @@ describe('Image ownership enforcement', () => {
 
   it('GET /api/v1/images/:imageId — other user gets 404', async () => {
     vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
 
     const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {

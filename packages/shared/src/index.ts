@@ -1,11 +1,13 @@
 /**
  * @litcrop/shared — Public API
  * Types, constants, and config shared across frontend, API, and simulator.
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
 // Domain entity types and enums
 export type {
-  PlotStatus,
+  BedStatus,
+  PlotStatus, // deprecated alias
   TriggerType,
   TagValue,
   Locale,
@@ -14,9 +16,7 @@ export type {
   FarmRole,
   FarmMember,
   Farm,
-  Field,
   Bed,
-  Plot,
   Image,
   Tag,
 } from './types/domain';
@@ -27,9 +27,10 @@ export type {
   PaginatedResponse,
   ApiError,
   ErrorCode,
+  FarmBed,
   FarmResponse,
-  FarmPlotItem,
-  PlotDetailResponse,
+  FarmBedItem,
+  BedDetailResponse,
   ImageListItem,
   ImageUploadResponse,
   ImageDetailResponse,
@@ -48,15 +49,17 @@ export type {
 export type {
   CreateFarmRequest,
   UpdateFarmRequest,
-  CreatePlotRequest,
+  UpdateBedRequest,
   CreateTagRequest,
   ChatMessageRequest,
 } from './types/requests';
 
 // Constants
 export {
-  PLOT_STATUS,
-  PLOT_STATUS_VALUES,
+  BED_STATUS,
+  BED_STATUS_VALUES,
+  PLOT_STATUS,          // deprecated alias
+  PLOT_STATUS_VALUES,   // deprecated alias
   TAG_VALUES,
   TRIGGER_TYPES,
   THEME_OPTIONS,
@@ -70,6 +73,8 @@ export {
   MIN_PAGE_LIMIT,
   WEATHER_CACHE_TTL_SECONDS,
   SIGNED_URL_EXPIRY_SECONDS,
+  MIN_GRID_SIZE,
+  MAX_GRID_SIZE,
   DDB_KEY_PREFIXES,
 } from './constants';
 
@@ -79,7 +84,8 @@ export type { AppConfig } from './config';
 
 // Zod schemas for contract tests and runtime validation
 export {
-  PlotStatusSchema,
+  BedStatusSchema,
+  PlotStatusSchema,     // deprecated alias
   TriggerTypeSchema,
   TagValueSchema,
   LocaleSchema,
@@ -88,11 +94,13 @@ export {
   FarmMemberSchema,
   FarmsListResponseSchema,
   FarmBaseSchema,
+  FarmBedSchema,
   FarmResponseSchema,
   FarmWriteResponseSchema,
-  FarmPlotItemSchema,
-  FarmPlotsResponseSchema,
-  PlotDetailResponseSchema,
+  FarmBedItemSchema,
+  FarmBedsResponseSchema,
+  BedDetailResponseSchema,
+  UpdateBedRequestSchema,
   ImageListResponseSchema,
   ImageUploadResponseSchema,
   ImageDetailResponseSchema,
@@ -107,10 +115,12 @@ export {
   isValidImageContentType,
   isValidImageSize,
   isValidTagValue,
-  isValidPlotStatus,
+  isValidBedStatus,
+  isValidPlotStatus, // deprecated alias
   isValidTriggerType,
   isValidLatLng,
   isValidFarmId,
-  isValidPlotId,
+  isValidBedId,
+  isValidPlotId,     // deprecated alias
   isValidImageId,
 } from './validation';

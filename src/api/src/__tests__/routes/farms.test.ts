@@ -9,19 +9,12 @@ vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
     getFarmsForUser: vi.fn(),
-    getFarmForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
-    getFieldsForFarm: vi.fn(),
-    getBedsForField: vi.fn(),
-    createField: vi.fn(),
-    createBed: vi.fn(),
-    createPlot: vi.fn(),
-    getPlotsForBed: vi.fn(),
-    getPlotsForFarm: vi.fn(),
-    getLatestImageForPlot: vi.fn(),
+    getBedsForFarm: vi.fn(),
+    getLatestImageForBed: vi.fn(),
   },
 }));
 
@@ -31,7 +24,7 @@ vi.mock('../../services/s3', () => ({
 }));
 
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
-const PLOT_ID = 'a0000000-0000-0000-0000-000000000001';
+const BED_ID = 'bd000000-0000-0000-0000-000000000001';
 
 const farmFixture = {
   id: FARM_ID,
@@ -42,6 +35,8 @@ const farmFixture = {
   longitude: 138.3,
   locale: 'en' as const,
   theme: 'system' as const,
+  grid_rows: 1,
+  grid_cols: 1,
   created_at: '2026-03-17T00:00:00.000Z',
 };
 
@@ -51,6 +46,17 @@ const membershipFixture = {
   role: 'manager' as const,
   joined_at: '2026-03-17T00:00:00.000Z',
   farm_name: 'Test Farm',
+};
+
+const bedFixture = {
+  id: BED_ID,
+  farm_id: FARM_ID,
+  row: 1,
+  col: 1,
+  name: 'A1',
+  crop_type: 'tomato',
+  crop_variety: 'Cherry',
+  latest_status: 'no_data' as const,
 };
 
 beforeEach(() => {
@@ -94,16 +100,16 @@ describe('GET /api/v1/farms', () => {
 // ── GET /api/v1/farms/:farmId ─────────────────────────────────────
 
 describe('GET /api/v1/farms/:farmId', () => {
-  it('returns 200 with farm and empty fields', async () => {
+  it('returns 200 with farm and empty beds', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['id']).toBe(FARM_ID);
     expect(body['name']).toBe('Test Farm');
-    expect(body['fields']).toEqual([]);
+    expect(body['beds']).toEqual([]);
   });
 
   it('returns 404 when farm not found', async () => {
@@ -114,49 +120,29 @@ describe('GET /api/v1/farms/:farmId', () => {
     expect(body.error.code).toBe('NOT_FOUND');
   });
 
-  it('returns nested fields→beds→plots', async () => {
+  it('returns flat beds array', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([
-      { id: 'field-1', farm_id: FARM_ID, name: 'Field A', position: 1 },
-    ]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([
-      { id: 'bed-1', field_id: 'field-1', name: 'Bed 1', position: 1 },
-    ]);
-    vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([
-      {
-        id: PLOT_ID,
-        bed_id: 'bed-1',
-        farm_id: FARM_ID,
-        label: 'P1',
-        crop_type: 'tomato',
-        crop_variety: 'Cherry',
-        planted_at: '2026-03-01',
-        expected_harvest: '2026-07-01',
-        latest_status: 'no_data',
-      },
-    ]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedFixture]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
-    const body = await res.json() as {
-      fields: Array<{ beds: Array<{ plots: unknown[] }> }>;
-    };
-    expect(body.fields[0].beds[0].plots).toHaveLength(1);
+    const body = await res.json() as { beds: Array<Record<string, unknown>> };
+    expect(body.beds).toHaveLength(1);
+    expect(body.beds[0]['id']).toBe(BED_ID);
+    expect(body.beds[0]['name']).toBe('A1');
+    expect(body.beds[0]['crop_type']).toBe('tomato');
   });
 
-  it('returns bed with no plots as empty array', async () => {
+  it('returns bed with null fields when no crop assigned', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([
-      { id: 'field-1', farm_id: FARM_ID, name: 'Field A', position: 1 },
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([
+      { ...bedFixture, crop_type: undefined, crop_variety: undefined },
     ]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([
-      { id: 'bed-1', field_id: 'field-1', name: 'Bed 1', position: 1 },
-    ]);
-    vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
-    const body = await res.json() as { fields: Array<{ beds: Array<{ plots: unknown[] }> }> };
-    expect(body.fields[0].beds[0].plots).toEqual([]);
+    const body = await res.json() as { beds: Array<Record<string, unknown>> };
+    expect(body.beds[0]['crop_type']).toBeNull();
+    expect(body.beds[0]['crop_variety']).toBeNull();
   });
 });
 
@@ -253,213 +239,25 @@ describe('PATCH /api/v1/farms/:farmId', () => {
   });
 });
 
-// ── GET /api/v1/farms/:farmId/plots ──────────────────────────────
+// ── GET /api/v1/farms/:farmId/plots — now returns 410 Gone ──────
 
 describe('GET /api/v1/farms/:farmId/plots', () => {
-  it('returns 200 with plot list', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([
-      {
-        id: PLOT_ID,
-        bed_id: 'bed-1',
-        farm_id: FARM_ID,
-        label: 'Plot 1',
-        crop_type: 'tomato',
-        crop_variety: 'Cherry',
-        planted_at: '2026-03-01',
-        expected_harvest: '2026-07-01',
-        latest_status: 'no_data',
-      },
-    ]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
-
+  it('returns 410 Gone', async () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
-    expect(res.status).toBe(200);
-    const body = await res.json() as { data: unknown[] };
-    expect(body.data).toHaveLength(1);
-  });
-
-  it('returns 404 when farm not found', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
-    expect(res.status).toBe(404);
-  });
-
-  it('returns latest_image: null when no images', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([
-      {
-        id: PLOT_ID,
-        bed_id: 'bed-1',
-        farm_id: FARM_ID,
-        label: 'P1',
-        crop_type: 'tomato',
-        crop_variety: 'Cherry',
-        planted_at: '2026-03-01',
-        expected_harvest: '2026-07-01',
-        latest_status: 'no_data',
-      },
-    ]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
-    const body = await res.json() as { data: Array<{ latest_image: null }> };
-    expect(body.data[0].latest_image).toBeNull();
+    expect(res.status).toBe(410);
   });
 });
 
-// ── POST /api/v1/farms/:farmId/plots ──────────────────────────────
-
-const plotFixture = {
-  id: PLOT_ID,
-  bed_id: 'bed-1',
-  farm_id: FARM_ID,
-  label: 'Tomato Plot',
-  crop_type: 'tomato',
-  crop_variety: 'Cherry',
-  planted_at: '2026-03-21',
-  expected_harvest: '2026-06-19',
-  latest_status: 'no_data' as const,
-};
+// ── POST /api/v1/farms/:farmId/plots — now returns 410 Gone ─────
 
 describe('POST /api/v1/farms/:farmId/plots', () => {
-  it('creates a plot with auto-created field+bed when farm has none → 201', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
-    vi.mocked(dynamoRepo.createField).mockResolvedValue({
-      id: 'field-1', farm_id: FARM_ID, name: 'Main Field', position: 1,
-    });
-    vi.mocked(dynamoRepo.createBed).mockResolvedValue({
-      id: 'bed-1', field_id: 'field-1', name: 'Bed 1', position: 1,
-    });
-    vi.mocked(dynamoRepo.createPlot).mockResolvedValue(plotFixture);
-
+  it('returns 410 Gone', async () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'Cherry' }),
     });
-    expect(res.status).toBe(201);
-    const body = await res.json() as { crop_type: string; id: string };
-    expect(body.crop_type).toBe('tomato');
-    expect(body.id).toBe(PLOT_ID);
-  });
-
-  it('uses existing field+bed when available → 201', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([
-      { id: 'field-1', farm_id: FARM_ID, name: 'Main Field', position: 1 },
-    ]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([
-      { id: 'bed-1', field_id: 'field-1', name: 'Bed 1', position: 1 },
-    ]);
-    vi.mocked(dynamoRepo.createPlot).mockResolvedValue({ ...plotFixture, crop_type: 'lettuce', crop_variety: 'Romaine' });
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: 'lettuce', crop_variety: 'Romaine' }),
-    });
-    expect(res.status).toBe(201);
-  });
-
-  it('auto-creates bed when field exists but has no beds → 201', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([
-      { id: 'field-1', farm_id: FARM_ID, name: 'Main Field', position: 1 },
-    ]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([]);
-    vi.mocked(dynamoRepo.createBed).mockResolvedValue({
-      id: 'bed-1', field_id: 'field-1', name: 'Bed 1', position: 1,
-    });
-    vi.mocked(dynamoRepo.createPlot).mockResolvedValue(plotFixture);
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'Cherry' }),
-    });
-    expect(res.status).toBe(201);
-  });
-
-  it('uses provided label when given', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
-    vi.mocked(dynamoRepo.createField).mockResolvedValue({ id: 'field-1', farm_id: FARM_ID, name: 'Main Field', position: 1 });
-    vi.mocked(dynamoRepo.createBed).mockResolvedValue({ id: 'bed-1', field_id: 'field-1', name: 'Bed 1', position: 1 });
-    vi.mocked(dynamoRepo.createPlot).mockResolvedValue({ ...plotFixture, label: 'North Patch' });
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'Cherry', label: 'North Patch' }),
-    });
-    expect(res.status).toBe(201);
-    // Verify createPlot was called with the provided label
-    expect(vi.mocked(dynamoRepo.createPlot)).toHaveBeenCalledWith(
-      'bed-1', FARM_ID,
-      expect.objectContaining({ label: 'North Patch' }),
-    );
-  });
-
-  it('returns 400 when crop_type is missing', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_variety: 'Cherry' }),
-    });
-    expect(res.status).toBe(400);
-    const body = await res.json() as { error: { code: string } };
-    expect(body.error.code).toBe('VALIDATION_ERROR');
-  });
-
-  it('returns 400 when crop_variety is missing', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: 'tomato' }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 404 when farm not found or not owned', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'Cherry' }),
-    });
-    expect(res.status).toBe(404);
-  });
-
-  it('returns 400 when crop_type is empty string', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: '', crop_variety: 'Cherry' }),
-    });
-    expect(res.status).toBe(400);
-    const body = await res.json() as { error: { code: string } };
-    expect(body.error.code).toBe('VALIDATION_ERROR');
-  });
-
-  it('returns 400 when crop_variety exceeds 100 characters', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ crop_type: 'tomato', crop_variety: 'a'.repeat(101) }),
-    });
-    expect(res.status).toBe(400);
-    const body = await res.json() as { error: { code: string } };
-    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.status).toBe(410);
   });
 });
 

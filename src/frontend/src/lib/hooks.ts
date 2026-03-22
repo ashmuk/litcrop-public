@@ -1,13 +1,16 @@
 import type { FarmRole } from '@litcrop/shared';
 
+export const LS_FARM_ID = 'litcrop-farmId';
+export const LS_FARM_NAME = 'litcrop-farmName';
+
 export function useLocalFarmId(defaultId: string): string {
-  return (typeof window !== 'undefined' && localStorage.getItem('litcrop-farmId')) || defaultId;
+  return (typeof window !== 'undefined' && localStorage.getItem(LS_FARM_ID)) || defaultId;
 }
 
 /** Persist the active farm ID to localStorage. */
 export function setLocalFarmId(farmId: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('litcrop-farmId', farmId);
+    localStorage.setItem(LS_FARM_ID, farmId);
   }
 }
 

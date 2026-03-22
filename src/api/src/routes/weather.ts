@@ -3,7 +3,7 @@ import { dynamoRepo } from '../services/dynamodb';
 import { UpstreamError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { WEATHER_CACHE_TTL_SECONDS } from '@litcrop/shared';
-import type { Farm, Plot, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
+import type { Farm, Bed, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
 import { assertFarmAccess } from './_helpers';
 
 const router = new Hono();
@@ -134,7 +134,7 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<Record<string, 
 
 // ── Transform Open-Meteo response ─────────────────────────────────
 
-function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt: string): WeatherData {
+function transformWeather(raw: Record<string, unknown>, beds: Bed[], cachedAt: string): WeatherData {
   const current = raw['current'] as Record<string, unknown>;
   const hourly = raw['hourly'] as Record<string, unknown[]>;
   const daily = raw['daily'] as Record<string, unknown[]>;
@@ -187,7 +187,7 @@ function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt:
   };
 
   // Crop impact analysis
-  const { impacts, alerts } = computeCropImpact(plots, dailyForecasts);
+  const { impacts, alerts } = computeCropImpact(beds, dailyForecasts);
 
   return {
     current: currentWeather,
@@ -203,30 +203,33 @@ function transformWeather(raw: Record<string, unknown>, plots: Plot[], cachedAt:
 // ── Crop impact analysis ──────────────────────────────────────────
 
 function computeCropImpact(
-  plots: Plot[],
+  beds: Bed[],
   daily: DailyForecast[],
 ): { impacts: CropImpactCard[]; alerts: WeatherAlert[] } {
   const impacts: CropImpactCard[] = [];
   const alerts: WeatherAlert[] = [];
 
+  // Only consider beds that have a crop assigned
+  const croppedBeds = beds.filter((b) => b.crop_type);
+
   // Check frost risk
   for (const day of daily) {
     if (day.low < 2) {
-      const affectedPlots = plots.filter((p) => {
-        const tol = getCropTolerance(p.crop_type);
+      const affectedBeds = croppedBeds.filter((b) => {
+        const tol = getCropTolerance(b.crop_type!);
         return tol.frostSensitive && day.low < tol.minTemp;
       });
-      if (affectedPlots.length > 0) {
+      if (affectedBeds.length > 0) {
         const severity = day.low < 0 ? 'danger' : 'warning';
         const message = `Frost-sensitive crops are at risk. Expected low: ${day.low}°C on ${day.date}.`;
         impacts.push({
           severity,
           title: 'Frost Risk',
           description: message,
-          affected_plots: affectedPlots.map((p) => ({
-            id: p.id,
-            label: p.label,
-            crop_type: p.crop_type,
+          affected_beds: affectedBeds.map((b) => ({
+            id: b.id,
+            name: b.name,
+            crop_type: b.crop_type!,
           })),
         });
         alerts.push({ type: 'frost', severity, message });
@@ -238,20 +241,20 @@ function computeCropImpact(
   // Check heat stress
   for (const day of daily) {
     if (day.high > 35) {
-      const affectedPlots = plots.filter((p) => {
-        const tol = getCropTolerance(p.crop_type);
+      const affectedBeds = croppedBeds.filter((b) => {
+        const tol = getCropTolerance(b.crop_type!);
         return day.high > tol.maxTemp;
       });
-      if (affectedPlots.length > 0) {
+      if (affectedBeds.length > 0) {
         const message = `High temperatures may stress crops. Expected high: ${day.high}°C on ${day.date}.`;
         impacts.push({
           severity: 'warning',
           title: 'Heat Stress',
           description: message,
-          affected_plots: affectedPlots.map((p) => ({
-            id: p.id,
-            label: p.label,
-            crop_type: p.crop_type,
+          affected_beds: affectedBeds.map((b) => ({
+            id: b.id,
+            name: b.name,
+            crop_type: b.crop_type!,
           })),
         });
         alerts.push({ type: 'extreme_heat', severity: 'warning', message });
@@ -268,10 +271,10 @@ function computeCropImpact(
         severity: 'warning',
         title: 'Heavy Rain',
         description: message,
-        affected_plots: plots.map((p) => ({
-          id: p.id,
-          label: p.label,
-          crop_type: p.crop_type,
+        affected_beds: croppedBeds.map((b) => ({
+          id: b.id,
+          name: b.name,
+          crop_type: b.crop_type!,
         })),
       });
       alerts.push({ type: 'heavy_rain', severity: 'warning', message });
@@ -313,16 +316,16 @@ router.get('/:farmId/weather', async (c) => {
     throw new UpstreamError('Weather service temporarily unavailable');
   }
 
-  // Get plots for crop impact analysis
-  let plots: Plot[] = [];
+  // Get beds for crop impact analysis
+  let beds: Bed[] = [];
   try {
-    plots = await dynamoRepo.getPlotsForFarm(farmId);
+    beds = await dynamoRepo.getBedsForFarm(farmId);
   } catch {
     // Non-fatal: proceed without crop impact
   }
 
   const cachedAt = new Date().toISOString();
-  const weatherData = transformWeather(rawWeather, plots, cachedAt);
+  const weatherData = transformWeather(rawWeather, beds, cachedAt);
 
   // Store in cache — evict oldest entry if at capacity
   if (weatherCache.size >= WEATHER_CACHE_MAX_SIZE) {

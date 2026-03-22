@@ -1131,3 +1131,172 @@ Every FR was cross-referenced against the task list. Results:
 - All Must-priority FRs covered; 2 Could-priority items intentionally deferred
 - Dependencies form a valid DAG with clear parallelization opportunities
 - No blocking risks identified; highest-risk items (DynamoDB schema, image upload) are prioritized in early phases
+
+---
+
+## Phase C: Vision Closure (MVP+ v0.12)
+
+> Added 2026-03-22 — 6 tasks for F-14, FR-3.5, SF-4.
+> Dependencies: Phase A+B complete (v0.11). Frontend-only — no API/infra changes.
+> Gate: Time-lapse plays on a bed with 7+ images.
+
+### T-FE-C1: Install `marked` + `dompurify` dependencies
+
+**Package**: frontend
+**Complexity**: S
+**Dependencies**: none
+**Issues**: #119 (SF-4 prerequisite)
+
+**Description**: Add `marked`, `dompurify`, and `@types/dompurify` to `src/frontend/package.json`. Verify build still passes. Create `src/frontend/src/lib/markdown.ts` utility with `renderMarkdown()` function that parses markdown through `marked` and sanitizes via DOMPurify with an explicit allow-list of HTML tags and attributes.
+
+**Acceptance Criteria**:
+- [ ] `marked` and `dompurify` installed in frontend workspace
+- [ ] `renderMarkdown("**bold** and _italic_")` returns sanitized HTML with `<strong>` and `<em>`
+- [ ] `renderMarkdown("<script>alert('xss')</script>")` returns empty string (script stripped)
+- [ ] `npm run build` passes in frontend workspace
+- [ ] Bundle size increase is ~19KB gzip (check with `du` on dist)
+
+---
+
+### T-FE-C2: Chat Markdown Rendering (SF-4)
+
+**Package**: frontend
+**Complexity**: S
+**Dependencies**: T-FE-C1
+**Issues**: #119
+
+**Description**: Modify `ChatAssistant.tsx` to render assistant messages through `renderMarkdown()` instead of plain text. User messages remain plain text. Add `.chat-markdown` scoped CSS styles for paragraphs, lists, code, blockquotes, and headings. Support all 4 themes (light, dark, earthy, system).
+
+**Acceptance Criteria**:
+- [ ] Assistant messages render bold, italic, lists, code blocks, blockquotes correctly
+- [ ] User messages render as plain text (no markdown processing)
+- [ ] Code blocks have dark background with horizontal scroll
+- [ ] Blockquotes have green left border (primary color)
+- [ ] Links open in new tab with `rel="noopener"`
+- [ ] All 4 themes render markdown correctly
+- [ ] Existing chat tests still pass
+
+---
+
+### T-FE-C3: Lightbox Component (FR-3.5)
+
+**Package**: frontend
+**Complexity**: M
+**Dependencies**: none (parallel with T-FE-C1/C2)
+**Issues**: #119
+
+**Description**: Create `Lightbox.tsx` Preact component. Portal-rendered overlay with full-screen image view, close button (ESC/backdrop/button), pinch-to-zoom (mobile), double-tap toggle zoom, body scroll lock. Add i18n keys for lightbox. Add CSS styles.
+
+**Acceptance Criteria**:
+- [ ] Lightbox opens as fullscreen overlay with dark backdrop
+- [ ] Close via ESC key, tap backdrop, or close button (48px touch target)
+- [ ] Browser back button closes lightbox (pushState guard)
+- [ ] Body scroll locked while lightbox is open
+- [ ] Image centered with `object-fit: contain`
+- [ ] Pinch-to-zoom works on mobile (1x to 3x range)
+- [ ] Double-tap toggles between 1x and 2x zoom
+- [ ] Focus trapped within lightbox; returns to trigger on close
+- [ ] `role="dialog"`, `aria-modal="true"`, descriptive alt text
+- [ ] Loading spinner shown while image loads
+- [ ] i18n keys added for EN and JA
+
+---
+
+### T-FE-C4: Integrate Lightbox into PlotDetail and ImageViewer
+
+**Package**: frontend
+**Complexity**: S
+**Dependencies**: T-FE-C3
+**Issues**: #119
+
+**Description**: Wire Lightbox into PlotDetail (tap thumbnail in image history grid opens lightbox) and ImageViewer (tap main image opens lightbox). Add `useState` for lightbox visibility and selected image URL. Lightbox receives the thumbnail URL (PlotDetail) or full-size URL (ImageViewer).
+
+**Acceptance Criteria**:
+- [ ] Tap thumbnail in PlotDetail → lightbox opens with that image
+- [ ] Tap main image in ImageViewer → lightbox opens with full-size image
+- [ ] Lightbox close returns focus to the tapped element
+- [ ] Existing PlotDetail and ImageViewer functionality unchanged
+
+---
+
+### T-FE-C5: TimeLapsePlayer Component (F-14)
+
+**Package**: frontend
+**Complexity**: L
+**Dependencies**: T-FE-C3 (uses Lightbox on pause-tap)
+**Issues**: #59
+
+**Description**: Create `TimeLapsePlayer.tsx` — the core Phase C deliverable. The camera captures ~42 images/day (variable: 15-min intervals at 6-9am/3-6pm, 30-min otherwise, 5am-8pm only). Time-lapse operates as a **weekly compilation**: images grouped by ISO week, playback per complete week. Component fetches all image pages on mount, groups by week, presents a week selector, then animates the selected week's ~294 frames using `requestAnimationFrame` at 4fps default. Includes transport controls (play/pause, first/last, prev/next), speed selector (1x/2x/4x/8x), time-proportional progress bar, frame timestamp, frame counter. Progressive preloading — playback starts after 10 frames, streams rest. Tapping a paused frame opens Lightbox. Add i18n keys. Add CSS styles. Respects `prefers-reduced-motion`.
+
+**Acceptance Criteria**:
+- [ ] Time-lapse section appears on PlotDetail when plot has images
+- [ ] Week selector shows available complete weeks (Mon-Sun ranges)
+- [ ] Incomplete current week shows progress ("126/294 images, 3 of 7 days") but is not playable
+- [ ] "Play This Week" button plays the selected complete week
+- [ ] Progressive loading: playback starts after 10 frames preloaded, streams rest in background
+- [ ] Loading progress shows "Loading... (42/294)" during preload
+- [ ] Playback animates at 30fps default (~10s for 294 frames, smooth video feel)
+- [ ] Transport controls: play/pause, first/last, prev/next all work
+- [ ] Speed selector: 0.5x (15fps, ~20s), 1x (30fps, ~10s, default), 2x (skip frames, ~5s)
+- [ ] Playback loops automatically (last frame → first frame)
+- [ ] Time-proportional progress bar (morning/afternoon dense, midday sparse)
+- [ ] Frame timestamp shows day + time ("Mon 06:15")
+- [ ] Preloading starts on week selection (not play tap), play enables after 50 frames
+- [ ] Buffering indicator if playback catches preload cursor
+- [ ] At 2x speed, every 2nd frame is skipped (maintains 30fps render rate)
+- [ ] Frame counter shows "147 of 294" with `aria-live="polite"` (debounced every 30th frame at 30fps)
+- [ ] Tap paused frame opens Lightbox with that image
+- [ ] Close (×) returns to normal PlotDetail view
+- [ ] `prefers-reduced-motion`: auto-play disabled, manual stepping only
+- [ ] All transport controls are 48px+ touch targets
+- [ ] Speed selector uses `role="radiogroup"` + `aria-checked`
+- [ ] Week selector accessible: `role="group"`, arrow buttons labeled
+- [ ] Works with 1 full week of images (~294 frames, gate requirement)
+- [ ] Works with multiple weeks (pagination + week navigation)
+- [ ] i18n keys added for EN and JA
+
+---
+
+### T-FE-C6: Phase C Integration Test + Gate Verification
+
+**Package**: frontend
+**Complexity**: S
+**Dependencies**: T-FE-C2, T-FE-C4, T-FE-C5
+**Issues**: #59, #119
+
+**Description**: Verify all Phase C features work end-to-end. Run existing 303 tests + any new tests. Verify gate: time-lapse plays a full week of images on a bed. Check bundle size delta. Verify all 4 themes render correctly. Run `tsc --noEmit` and `npm run build`.
+
+**Acceptance Criteria**:
+- [ ] All existing tests pass (303+)
+- [ ] `npm run build` succeeds
+- [ ] `tsc --noEmit` clean (no type errors)
+- [ ] Time-lapse plays a full week (~294 frames) on demo farm bed (GATE)
+- [ ] Week selector navigates between available weeks
+- [ ] Bundle size increase <= 30KB gzip total
+- [ ] All 4 themes: light, dark, earthy, system render correctly
+- [ ] Japanese locale: all new i18n keys present and correct
+
+---
+
+### Phase C Task Summary
+
+| Task | Name | Size | Dependencies | Est. |
+|------|------|------|-------------|------|
+| T-FE-C1 | Install marked + dompurify + markdown util | S | — | 30min |
+| T-FE-C2 | Chat Markdown rendering | S | C1 | 45min |
+| T-FE-C3 | Lightbox component | M | — | 1.5h |
+| T-FE-C4 | Integrate Lightbox into PlotDetail + ImageViewer | S | C3 | 30min |
+| T-FE-C5 | TimeLapsePlayer component | L | C3 | 2.5h |
+| T-FE-C6 | Integration test + gate verification | S | C2, C4, C5 | 30min |
+| **Total** | | | | **~6h** |
+
+### Phase C Dependency DAG
+
+```
+T-FE-C1 (marked+dompurify) ──→ T-FE-C2 (chat markdown) ──┐
+                                                            ├──→ T-FE-C6 (gate)
+T-FE-C3 (lightbox) ──→ T-FE-C4 (integrate lightbox) ─────┤
+                   └──→ T-FE-C5 (time-lapse player) ──────┘
+```
+
+**Parallelism**: C1 and C3 can run in parallel (independent). C2 depends on C1. C4 and C5 depend on C3. C6 is the final gate.

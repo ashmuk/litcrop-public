@@ -1,0 +1,20 @@
+---
+/**
+ * Bed Detail — Phase D (replaces plots/view)
+ * Static page; bedId read from ?id=<bedId> query param at runtime.
+ * Renders: hero image, crop metadata, tag buttons (optimistic UI), image history.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BedDetail from '../../components/BedDetail';
+import Toast from '../../components/Toast';
+---
+
+<BaseLayout title="LitCrop — Bed Detail" activeTab="farm">
+  <nav class="nav-header" aria-label="Page navigation">
+    <a href="/" class="nav-header__back" aria-label="Back to Farm Overview">←</a>
+    <span class="nav-header__title" id="bed-title">Bed Detail</span>
+  </nav>
+
+  <BedDetail client:load />
+  <Toast client:load />
+</BaseLayout>

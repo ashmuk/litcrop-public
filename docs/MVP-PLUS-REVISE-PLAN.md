@@ -366,26 +366,25 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
  MVP+ (v1.0) — Target: Before April field evaluation
  ═══════════════════════════════════════════════════════════════
 
- PHASE A — CI/CD Foundation (~1h)
+ PHASE A — CI/CD Foundation (~1h)                    ✅ DONE (v0.10, PR #123)
    CI-1..CI-4: Pipeline setup
-   → Gate: first PR passes CI checks
+   → Gate: PASSED — first PR passes CI checks
 
- PHASE B — Multi-Farm Foundation (~5-7h)  ← NEW
+ PHASE B — Multi-Farm Foundation (~5-7h)             ✅ DONE (v0.11, PR #124)
    N1-ADR: Multi-farm ADR + REQUIREMENTS.md + ARCHITECTURE.md updates
    N1-BE/API/FE/MIG: Schema + API + frontend farm switcher
    ROLE: Admin/Manager/Observer via FARM_MEMBER records
    DEMO: Demo farm seed data for onboarding
-   TECH: Evaluate Preact context vs signals for farm state
-   → Gate: user can create farm, switch between demo + own farm
+   → Gate: PASSED — user can create farm, switch between demo + own farm
 
- PHASE C — Vision Closure (~4h)
-   TECH: marked (~12KB) for markdown, custom Preact for time-lapse + lightbox
-   F-14: Time-lapse playback (THE missing Vision deliverable)
-   FR-3.5: Image lightbox
-   SF-4: Chat Markdown rendering
-   → Gate: time-lapse plays on a bed with 7+ images
+ PHASE C — Vision Closure (~4h → ~6h actual)         ✅ DONE (v0.12, #59+#119 closed)
+   marked + DOMPurify for markdown, custom Preact for time-lapse + lightbox
+   F-14: Time-lapse playback (weekly compilation, 30fps, 0.5x/1x/2x)
+   FR-3.5: Image lightbox (portal, zoom, focus trap)
+   SF-4: Chat Markdown rendering (sanitized HTML)
+   → Gate: PASSED — time-lapse plays weekly compilation (~294 frames)
 
- PHASE D — UX Restructure (~5-6h)  ← EXPANDED
+ PHASE D — UX Restructure (~5-6h)  ← NEXT
    F-09: Map picker (Leaflet ~40KB, lazy-loaded, integrated into wizard)
    F-10: Elevation auto-fetch (Open-Meteo Elevation API)
    BED: Bed-grid layout (CSS Grid + Preact, rows × cols, 5 max)

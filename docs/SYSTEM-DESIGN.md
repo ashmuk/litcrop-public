@@ -2269,6 +2269,813 @@ A state library (Redux, Zustand, Jotai) would add bundle size and complexity wit
 
 ---
 
+## 9. Phase C: Vision Closure — System Design (MVP+ v0.12)
+
+> Added 2026-03-22 — detailed component design for F-14, FR-3.5, SF-4.
+
+### 9.1 TimeLapsePlayer Component
+
+**File**: `src/frontend/src/components/TimeLapsePlayer.tsx`
+**Hydration**: `client:load` — renders within PlotDetail page
+**Entry**: Rendered conditionally when images.length >= 2
+
+#### Props Interface
+
+```typescript
+interface TimeLapsePlayerProps {
+  plotId: string;
+  plotLabel: string;
+  cropType: string;
+}
+```
+
+#### State Shape
+
+```typescript
+interface TimeLapseState {
+  status: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'error';
+  allImages: ImageListItem[];     // All images for this plot (all pages)
+  weeks: WeekGroup[];             // Images grouped by ISO week
+  selectedWeekIndex: number;      // Currently selected week
+  frames: TimeLapseFrame[];       // Frames for selected week, oldest-first
+  currentIndex: number;
+  speed: 0.5 | 1 | 2;            // Multiplier (1x=30fps default)
+  loadProgress: { loaded: number; total: number };
+  error: string | null;
+}
+
+interface WeekGroup {
+  weekStart: string;              // ISO date (Monday)
+  weekEnd: string;                // ISO date (Sunday)
+  images: ImageListItem[];        // Images in this week, oldest-first
+  complete: boolean;              // true if 7 days of data exist
+}
+
+interface TimeLapseFrame {
+  id: string;
+  thumbnailUrl: string;           // 300x300 thumbnail for playback
+  capturedAt: string;             // ISO 8601
+  trigger: TriggerType;
+  preloaded: boolean;             // true after Image() onload fires
+}
+```
+
+#### Data Loading Strategy
+
+```
+1. On component mount (not on play tap):
+   - Fetch all pages of GET /plots/{plotId}/images
+   - Accumulate all ImageListItem[]
+   - Group by ISO week (Mon-Sun), sort each group oldest-first
+   - Mark complete weeks (7 unique days)
+   - Show week selector with available weeks
+
+2. User selects a week (preloading starts immediately):
+   - Map selected week's images to TimeLapseFrame[]
+   - Batch-preload all thumbnails (6 parallel via new Image().src)
+   - Play button enables after 50 frames preloaded
+
+3. User taps "Play This Week":
+   - Start playback at 30fps (1x) after 50+ frames ready
+   - Continue preloading remaining frames in background
+```
+
+**Why thumbnails**: 300x300 JPEGs are ~15-30KB each. A full week (~294 frames) = ~5.7MB. Full-size images would be ~441MB — impossible on LTE in the field.
+
+**Week grouping**: Uses `getISOWeek()` from captured_at timestamp. Camera schedule produces ~42 images/day. Complete weeks have all 7 days represented. Current (incomplete) week shows progress but is not playable.
+
+#### Animation Loop
+
+```typescript
+// Speed mapping:
+//   0.5x → 15fps (show every frame, 33ms interval)
+//   1x   → 30fps (show every frame, 33ms interval) — DEFAULT
+//   2x   → 30fps (skip every 2nd frame, 33ms interval)
+const BASE_FPS = 30;
+const frameInterval = state.speed >= 1 ? 1000 / BASE_FPS : 1000 / 15;
+const frameStep = state.speed === 2 ? 2 : 1;
+let lastFrameTime = 0;
+
+function animate(timestamp: number) {
+  if (state.status !== 'playing') return;
+  if (timestamp - lastFrameTime >= frameInterval) {
+    lastFrameTime = timestamp;
+    setCurrentIndex(prev => {
+      let next = prev + frameStep;
+      if (next >= frames.length) next = 0;  // Loop
+      // If next frame not preloaded, pause with buffering indicator
+      if (!frames[next].preloaded) {
+        setStatus('buffering');
+        return prev;
+      }
+      return next;
+    });
+  }
+  rafId = requestAnimationFrame(animate);
+}
+```
+
+**Preload strategy**: Preloading starts on week selection (not play tap). 6 parallel `new Image()` requests. Play button enables after 50 frames. At 30fps, 50 frames = 1.7s of headroom — typically enough for the remaining ~244 frames to finish loading (~4.8MB at ~5Mbps LTE = ~8s, well within the 10s playback window).
+
+**`prefers-reduced-motion`**: If true, auto-play disabled; manual stepping only.
+
+#### Time-Proportional Progress Bar
+
+The progress bar maps frame position to real clock time, not frame index. This means morning/afternoon dense capture windows (15-min intervals) compress visually, while midday sparse windows (30-min intervals) expand.
+
+```typescript
+function getProgressPercent(frame: TimeLapseFrame, weekStart: Date, weekEnd: Date): number {
+  const frameTime = new Date(frame.capturedAt).getTime();
+  const start = weekStart.getTime();
+  const end = weekEnd.getTime();
+  return ((frameTime - start) / (end - start)) * 100;
+}
+```
+
+#### Integration with PlotDetail
+
+TimeLapsePlayer manages its own data fetching and week grouping. It does NOT share image state with PlotDetail. The week selector and play controls render inline below the hero image.
+
+---
+
+### 9.2 Lightbox Component
+
+**File**: `src/frontend/src/components/Lightbox.tsx`
+**Pattern**: Portal-rendered overlay (appended to `document.body`)
+
+#### Props Interface
+
+```typescript
+interface LightboxProps {
+  src: string;
+  alt: string;
+  caption?: string;
+  onClose: () => void;
+}
+```
+
+#### Lifecycle
+
+```
+1. Mount: push history state, lock body scroll, trap focus
+2. Image load: set loaded=true, show image
+3. Dismiss (ESC/backdrop/close/popstate): restore scroll, return focus
+4. Unmount: cleanup event listeners
+```
+
+#### Zoom: Pinch gesture (touchstart/touchmove/touchend), double-tap toggle 1x/2x, pan when zoomed. CSS transform: scale() + translate().
+
+#### Trigger Points
+
+| Source Component | Trigger | src value |
+|-----------------|---------|-----------|
+| PlotDetail thumbnails | Tap thumbnail | item.thumbnail_url |
+| TimeLapsePlayer (paused) | Tap frame | frame.thumbnailUrl |
+| ImageViewer main image | Tap image | image.url (full-size) |
+
+---
+
+### 9.3 ChatMarkdown Rendering
+
+**New utility**: `src/frontend/src/lib/markdown.ts`
+
+```typescript
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+
+marked.setOptions({ breaks: true, gfm: true });
+
+export function renderMarkdown(text: string): string {
+  const rawHtml = marked.parse(text) as string;
+  return DOMPurify.sanitize(rawHtml, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'code', 'pre', 'blockquote',
+      'ul', 'ol', 'li', 'h3', 'h4', 'h5', 'h6', 'a', 'table',
+      'thead', 'tbody', 'tr', 'th', 'td', 'del', 'hr',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+  });
+}
+```
+
+**ChatAssistant change**: Assistant messages render via `renderMarkdown()` with sanitized HTML output. User messages remain plain text. CSS scoped under `.chat-markdown` class.
+
+**Security**: All HTML is sanitized through DOMPurify before rendering, providing defense-in-depth against prompt injection producing malicious HTML.
+
+---
+
+### 9.4 Phase C State Management Updates
+
+| Screen | Island | State Shape | Data Source |
+|--------|--------|-------------|-------------|
+| Plot Detail | `TimeLapsePlayer` | `{ status, frames, currentIndex, speed, loadProgress }` | `GET /plots/{id}/images` (all pages) |
+| Plot Detail | `Lightbox` | `{ loaded, error, zoom, panX, panY }` | Props (image URL) |
+| Image Timeline | `Lightbox` | Same as above | Props (image URL) |
+
+### 9.5 Phase C New File Summary
+
+| File | Action |
+|------|--------|
+| `src/frontend/src/components/TimeLapsePlayer.tsx` | **Create** |
+| `src/frontend/src/components/Lightbox.tsx` | **Create** |
+| `src/frontend/src/lib/markdown.ts` | **Create** |
+| `src/frontend/src/components/ChatAssistant.tsx` | **Modify** — use renderMarkdown() |
+| `src/frontend/src/components/PlotDetail.tsx` | **Modify** — add TimeLapsePlayer + Lightbox |
+| `src/frontend/src/components/ImageViewer.tsx` | **Modify** — add Lightbox trigger |
+| `src/frontend/src/styles/components.css` | **Modify** — add timelapse, lightbox, chat-markdown styles |
+| `src/frontend/src/i18n/en.json` | **Modify** — add timelapse + lightbox i18n keys |
+| `src/frontend/src/i18n/ja.json` | **Modify** — add timelapse + lightbox i18n keys |
+| `package.json` (frontend) | **Modify** — add `marked`, `dompurify`, `@types/dompurify` |
+
+---
+
+## 10. Phase D: Bed-Grid System Design (MVP+ v0.13)
+
+> Added 2026-03-22 -- System design for the UX Restructure phase.
+> Covers: Farm->Bed flattened data model, bed grid auto-generation, crop assignment,
+> map picker with elevation, profile page farm management.
+> Depends on: [ADR-20260322](decisions/ADR-20260322-phase-d-bed-grid-data-model.md),
+> [PHASE-D-ARCHITECTURE.md](designs/PHASE-D-ARCHITECTURE.md), [UX-DESIGNS.md Section 14](UX-DESIGNS.md#14-phase-d-ux-restructure----map-bed-grid-profile-mvp-v10).
+
+### 10.1 Sequence Diagrams
+
+#### 10.1a Farm Creation with Map Picker + Elevation Auto-Fetch
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant MP as MapPicker (Leaflet)
+    participant OM as Open-Meteo API
+    participant AG as API Gateway
+    participant L as Lambda/Hono
+    participant DB as DynamoDB
+
+    Note over B,MP: Step 1: User enters name/description in FarmWizard
+
+    B->>MP: Step 2: Render map (lazy import)
+    MP->>MP: Load OSM tiles, center on Japan (35.68, 139.69)
+
+    alt Browser geolocation available
+        MP->>B: Request navigator.geolocation
+        B-->>MP: {lat, lon}
+        MP->>MP: Center map on user, zoom 16
+    end
+
+    B->>MP: User taps map (places pin)
+    MP-->>B: {latitude, longitude}
+
+    B->>OM: GET /v1/elevation?latitude={lat}&longitude={lon}
+
+    alt Elevation success (< 3s)
+        OM-->>B: { elevation: [745.0] }
+        Note over B: Display "745m (auto)" in coordinate card
+    else Elevation timeout / error
+        OM-->>B: Timeout / error
+        Note over B: Show "-- m" with manual entry fallback
+    end
+
+    Note over B: Step 3: User reviews and taps "Create Farm"
+
+    B->>AG: POST /api/v1/farms<br/>{name, latitude, longitude, elevation_m, grid_rows: 1, grid_cols: 1}
+    AG->>L: Proxy (JWT validated)
+    L->>L: Validate request (Zod)
+    L->>DB: PutItem PK=FARM#{id} SK=#META (farm record)
+    L->>DB: BatchWriteItem: 1 Bed (1x1 grid)<br/>PK=FARM#{id} SK=BED#01#01#{bedId}
+
+    DB-->>L: Success
+    L-->>AG: 201 Created {farm + beds[]}
+    AG-->>B: 201
+
+    Note over B: Post-create prompt: "Switch to new farm?"
+```
+
+#### 10.1b Bed Grid Auto-Generation (3x4 Example)
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AG as API Gateway
+    participant L as Lambda/Hono
+    participant SVC as FarmService
+    participant DB as DynamoDB
+
+    B->>AG: POST /api/v1/farms<br/>{name, lat, lon, grid_rows: 3, grid_cols: 4}
+    AG->>L: Proxy (JWT validated)
+    L->>SVC: createFarm(data)
+
+    SVC->>SVC: Generate 12 Bed records:<br/>A1(1,1) A2(1,2) A3(1,3) A4(1,4)<br/>B1(2,1) B2(2,2) B3(2,3) B4(2,4)<br/>C1(3,1) C2(3,2) C3(3,3) C4(3,4)
+
+    SVC->>DB: TransactWriteItems:<br/>1. PutItem PK=FARM#{farmId} SK=#META<br/>2-13. PutItem PK=FARM#{farmId} SK=BED#{row}#{col}#{bedId} (x12)
+
+    Note over SVC,DB: Single transaction -- all or nothing (max 25 items OK for 5x5=25+1=26, use BatchWrite for 5x5)
+
+    DB-->>SVC: Success
+    SVC-->>L: {farm, beds: FarmBed[12]}
+    L-->>AG: 201 Created
+    AG-->>B: {id, name, ..., grid_rows: 3, grid_cols: 4, beds: [...]}
+```
+
+> **Note**: For a 5x5 grid (25 beds + 1 farm meta = 26 items), this exceeds DynamoDB's TransactWriteItems limit of 25. The implementation uses BatchWriteItem (max 25 per batch) with the farm meta as a separate PutItem, accepting the small window of partial writes. This is acceptable for MVP+ since farm creation is a rare, user-initiated action.
+
+#### 10.1c Crop Assignment to Bed (PATCH /beds/{bedId})
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AG as API Gateway
+    participant L as Lambda/Hono
+    participant MW as Middleware Chain
+    participant SVC as BedService
+    participant DB as DynamoDB
+
+    Note over B: User taps empty bed cell in BedGridLayout,<br/>Crop Assignment Sheet opens
+
+    B->>AG: PATCH /api/v1/beds/{bedId}<br/>{crop_type: "Tomato", crop_variety: "Cherry", planted_at: "2026-02-15"}
+    AG->>L: Proxy (JWT validated)
+    L->>MW: cors() -> logger() -> authMiddleware (extract user_id)
+    MW->>MW: Role check: admin or manager required
+
+    alt Insufficient role
+        MW-->>B: 403 FORBIDDEN
+    else Authorized
+        MW->>SVC: updateBed(bedId, data)
+        SVC->>DB: GSI1 Query PK=BED#{bedId} SK=#META
+        DB-->>SVC: Bed record (with farm_id)
+
+        alt Bed not found
+            SVC-->>L: null
+            L-->>B: 404 NOT_FOUND
+        else Bed found
+            SVC->>SVC: Validate: crop_type 1-100 chars, notes max 500
+            SVC->>DB: UpdateItem PK=FARM#{farmId} SK=BED#{row}#{col}#{bedId}<br/>SET crop_type, crop_variety, planted_at, expected_harvest, notes
+            DB-->>SVC: Updated Bed
+            SVC-->>L: Bed
+            L-->>AG: 200 OK {bed}
+            AG-->>B: 200 {id, farm_id, row, col, name, crop_type, ...}
+        end
+    end
+
+    Note over B: Optimistic UI: cell already shows crop name.<br/>On success: confirm. On error: revert + toast.
+```
+
+#### 10.1d Image Upload to Bed (Replaces Plot-Based Upload)
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AG as API Gateway
+    participant L as Lambda/Hono
+    participant SVC as ImageService
+    participant S3 as S3 Bucket
+    participant DB as DynamoDB
+
+    B->>AG: POST /api/v1/beds/{bedId}/images<br/>Content-Type: multipart/form-data<br/>{image file, trigger, captured_at}
+    AG->>L: Proxy (JWT validated)
+
+    L->>SVC: createImage(bedId, file, metadata)
+    SVC->>DB: GSI1 Query PK=BED#{bedId} SK=#META
+    DB-->>SVC: Bed record (confirms bed exists, gets farm_id)
+
+    SVC->>S3: PutObject images/{farmId}/{bedId}/{imageId}.jpg
+    S3-->>SVC: OK
+
+    SVC->>DB: PutItem PK=BED#{bedId} SK=IMG#{capturedAt}#{imageId}<br/>GSI1PK=IMG#{imageId} GSI1SK=#META<br/>GSI2PK=FARM#{farmId}
+
+    Note over SVC,DB: Image PK is BED# (was PLOT# before Phase D)
+
+    DB-->>SVC: Success
+    SVC-->>L: Image
+    L-->>AG: 201 Created
+    AG-->>B: {id, bed_id, storage_key, thumbnail_key, ...}
+```
+
+#### 10.1e Farm Overview Query (Simplified 2-Query Pattern)
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AG as API Gateway
+    participant L as Lambda/Hono
+    participant SVC as FarmService
+    participant DB as DynamoDB
+
+    B->>AG: GET /api/v1/farms/{farmId}
+    AG->>L: Proxy (JWT validated)
+    L->>SVC: getFarm(farmId)
+
+    par Query 1: Farm metadata
+        SVC->>DB: Query PK=FARM#{farmId} SK=#META
+        DB-->>SVC: Farm record
+    and Query 2: All beds
+        SVC->>DB: Query PK=FARM#{farmId} SK begins_with BED#
+        DB-->>SVC: Bed records (sorted by row/col via SK)
+    end
+
+    Note over SVC: 2 queries total (was 1 + N fields + N beds + N plots)
+
+    SVC->>SVC: Assemble response: farm metadata + flat beds[]
+    SVC-->>L: {farm + beds: FarmBed[]}
+    L-->>AG: 200 OK
+    AG-->>B: {id, name, ..., grid_rows, grid_cols, beds: [{id, row, col, name, crop_type, ...}]}
+```
+
+---
+
+### 10.2 Component Interaction Diagram
+
+```mermaid
+graph TD
+    subgraph "Profile Page (/profile/)"
+        PROF[ProfilePage]
+        FLIST[FarmList]
+        FSWITCH[FarmSwitcher]
+        UINFO[UserInfo]
+    end
+
+    subgraph "Farm Creation"
+        FW[FarmWizard]
+        FW_S1[Step 1: Name/Description]
+        FW_S2[Step 2: Location]
+        FW_S3[Step 3: Review + Create]
+        MAP[MapPicker - Leaflet]
+    end
+
+    subgraph "Farm Overview (/)"
+        FO[FarmOverview]
+        TOGGLE[List/Layout Toggle]
+        GRID[BedGridLayout]
+        LIST[BedListView]
+    end
+
+    subgraph "Bed Detail (/beds/view)"
+        BD[BedDetail]
+        TLP[TimeLapsePlayer]
+        LB[Lightbox]
+    end
+
+    subgraph "Crop Assignment"
+        CA[CropAssignment Sheet/Modal]
+    end
+
+    subgraph "External APIs"
+        OMELEV[Open-Meteo Elevation API]
+        OSM[OpenStreetMap Tiles]
+    end
+
+    subgraph "Backend API"
+        API_FARMS_LIST[GET /farms]
+        API_FARMS_POST[POST /farms]
+        API_FARM_GET[GET /farms/farmId]
+        API_BEDS_GET[GET /farms/farmId/beds]
+        API_BED_GET[GET /beds/bedId]
+        API_BED_PATCH[PATCH /beds/bedId]
+        API_BED_IMAGES[GET /beds/bedId/images]
+        API_BED_UPLOAD[POST /beds/bedId/images]
+    end
+
+    %% Profile Page flows
+    PROF --> FLIST
+    PROF --> UINFO
+    FLIST -->|list farms| API_FARMS_LIST
+    FLIST --> FSWITCH
+    FSWITCH -->|update localStorage + reload| FO
+    FLIST -->|"[+] New Farm"| FW
+
+    %% Farm Wizard flows
+    FW --> FW_S1
+    FW_S1 --> FW_S2
+    FW_S2 --> MAP
+    MAP -->|tile requests| OSM
+    MAP -->|lat/lon selected| FW_S2
+    FW_S2 -->|auto-fetch elevation| OMELEV
+    FW_S2 --> FW_S3
+    FW_S3 -->|POST /farms| API_FARMS_POST
+
+    %% Farm Overview flows
+    FO --> TOGGLE
+    TOGGLE -->|layout mode| GRID
+    TOGGLE -->|list mode| LIST
+    FO -->|load farm + beds| API_FARM_GET
+    GRID -->|render grid cells| API_BEDS_GET
+
+    %% Bed interactions
+    GRID -->|tap assigned cell| BD
+    GRID -->|tap empty cell| CA
+    CA -->|PATCH /beds/bedId| API_BED_PATCH
+    BD -->|load bed detail| API_BED_GET
+    BD -->|image timeline| API_BED_IMAGES
+    BD --> TLP
+    BD --> LB
+    BD -->|upload| API_BED_UPLOAD
+```
+
+---
+
+### 10.3 Updated TypeScript Types
+
+Phase D modifies the shared domain types. Existing types (Farm, Bed, Image) are updated; Field and Plot are removed. See [PHASE-D-ARCHITECTURE.md Section 2](designs/PHASE-D-ARCHITECTURE.md) for full interface definitions.
+
+#### 10.3a Farm (extended)
+
+```typescript
+// packages/shared/src/types/domain.ts
+
+export interface Farm {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  elevation_m?: number;          // F-10: auto-fetched from Open-Meteo
+  climate_zone?: string;
+  locale: Locale;
+  theme: Theme;
+  grid_rows: number;             // NEW (Phase D): 1-5, default 1
+  grid_cols: number;             // NEW (Phase D): 1-5, default 1
+  created_at: string;
+}
+```
+
+#### 10.3b Bed (replaces Bed + Plot)
+
+```typescript
+export interface Bed {
+  id: string;
+  farm_id: string;               // CHANGED: was field_id
+  row: number;                   // NEW: 1-based grid position (1-5)
+  col: number;                   // NEW: 1-based grid position (1-5)
+  name: string;                  // auto-generated: "A1", "B2", etc.
+  crop_type?: string;            // MERGED from Plot
+  crop_variety?: string;         // MERGED from Plot
+  planted_at?: string;           // MERGED from Plot
+  expected_harvest?: string;     // MERGED from Plot
+  notes?: string;                // MERGED from Plot
+  latest_status: BedStatus;      // MERGED from Plot (renamed from PlotStatus)
+}
+
+export type BedStatus = 'healthy' | 'issue' | 'critical' | 'no_data';
+```
+
+#### 10.3c Image (modified)
+
+```typescript
+export interface Image {
+  id: string;
+  bed_id: string;                // CHANGED: was plot_id
+  node_id: string;
+  captured_at: string;
+  uploaded_at: string;
+  storage_key: string;
+  thumbnail_key?: string;
+  trigger: TriggerType;
+  content_type: string;
+  size_bytes: number;
+  metadata?: Record<string, unknown>;
+}
+```
+
+#### 10.3d Removed Types
+
+```typescript
+// REMOVED in Phase D:
+// - Field (entire interface)
+// - Plot (merged into Bed)
+// - PlotStatus (renamed to BedStatus)
+```
+
+#### 10.3e API Response Types (new/modified)
+
+```typescript
+// GET /farms/{farmId} response
+export interface GetFarmResponse {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  latitude: number;
+  longitude: number;
+  elevation_m: number | null;
+  climate_zone: string | null;
+  locale: Locale;
+  theme: Theme;
+  grid_rows: number;
+  grid_cols: number;
+  created_at: string;
+  beds: FarmBed[];               // CHANGED: flat array (was nested fields[])
+}
+
+export interface FarmBed {
+  id: string;
+  row: number;
+  col: number;
+  name: string;
+  crop_type: string | null;
+  crop_variety: string | null;
+  latest_status: BedStatus;
+}
+
+// PATCH /beds/{bedId} request
+export interface UpdateBedRequest {
+  crop_type?: string | null;
+  crop_variety?: string | null;
+  planted_at?: string | null;
+  expected_harvest?: string | null;
+  notes?: string | null;
+}
+
+// POST /farms request (extended)
+export interface CreateFarmRequest {
+  name: string;
+  latitude: number;
+  longitude: number;
+  elevation_m?: number | null;
+  locale?: Locale;
+  theme?: Theme;
+  description?: string | null;
+  grid_rows?: number;            // NEW: 1-5, default 1
+  grid_cols?: number;            // NEW: 1-5, default 1
+}
+```
+
+---
+
+### 10.4 State Management
+
+#### 10.4a Farm Wizard Multi-Step State
+
+```typescript
+// FarmWizard.tsx -- Preact island, client:load on /profile/
+
+interface FarmWizardState {
+  step: 1 | 2 | 3;
+  // Step 1
+  name: string;
+  description: string;
+  // Step 2
+  latitude: number | null;
+  longitude: number | null;
+  elevation_m: number | null;
+  elevationStatus: 'idle' | 'loading' | 'loaded' | 'error';
+  mapLoaded: boolean;            // false if Leaflet fails to load
+  // Step 3 (derived from above -- no additional state)
+  // Submission
+  submitting: boolean;
+  error: string | null;
+  createdFarmId: string | null;  // non-null after successful creation
+}
+```
+
+**Validation rules per step**:
+- Step 1: `name.trim().length >= 1` (required). Description optional.
+- Step 2: `latitude !== null && longitude !== null` (pin placed). Elevation optional (can fail).
+- Step 3: All Step 1 + Step 2 conditions met. "Create Farm" enabled.
+
+**State persistence**: Wizard state is held in Preact component state only (not localStorage). Closing the wizard discards state with a confirmation dialog.
+
+#### 10.4b Bed Grid Selection State
+
+```typescript
+// BedGridLayout.tsx -- Preact island, client:load on /
+
+interface BedGridState {
+  viewMode: 'list' | 'layout';
+  beds: FarmBed[];               // from GET /farms/{farmId} response
+  gridRows: number;
+  gridCols: number;
+  loading: boolean;
+  error: string | null;
+  // Grid size editor (when visible)
+  editingGrid: boolean;
+  pendingRows: number;
+  pendingCols: number;
+}
+```
+
+**Data flow**: BedGridLayout reads `beds[]` from the farm overview response. Grid dimensions come from `grid_rows` and `grid_cols` on the farm object. The grid is a CSS Grid with `grid-template-columns: repeat(gridCols, 1fr)`.
+
+**Grid resize**: When `editingGrid` is true, the user picks new dimensions via pill selectors. On confirm, PATCH /farms/{farmId} updates grid dimensions. If shrinking below occupied cells, the API returns a 409 CONFLICT with details about which cells would be affected.
+
+#### 10.4c Crop Assignment Form State
+
+```typescript
+// CropAssignment.tsx -- Preact island (bottom sheet / modal)
+
+interface CropAssignmentState {
+  bedId: string;
+  bedName: string;               // e.g., "A3" -- for display in title
+  row: number;
+  col: number;
+  // Form fields
+  cropType: string;              // dropdown selection
+  cropTypeCustom: string;        // visible only when cropType === 'Other'
+  variety: string;
+  plantedAt: string;             // ISO date, default: today
+  // Submission
+  submitting: boolean;
+  error: string | null;
+}
+```
+
+**Optimistic UI**: On "Save Crop" tap, the grid cell immediately updates to show the crop name with "No Data" status. The PATCH request fires in the background. On failure, the cell reverts and a toast error appears.
+
+#### 10.4d Profile Page State
+
+```typescript
+// ProfilePage.tsx -- Preact island, client:load on /profile/
+
+interface ProfilePageState {
+  // Farm list
+  farms: Array<{
+    id: string;
+    name: string;
+    role: 'admin' | 'manager' | 'observer';
+    grid_rows: number;
+    grid_cols: number;
+  }>;
+  activeFarmId: string;          // from localStorage('litcrop-farmId')
+  farmsLoading: boolean;
+  farmsError: string | null;
+  // Farm wizard
+  wizardOpen: boolean;
+  // User info (from Cognito JWT claims)
+  email: string;
+  locale: Locale;
+  theme: Theme;
+}
+```
+
+**Farm switching**: Tapping "Switch" on a farm card calls `localStorage.setItem('litcrop-farmId', farmId)` and triggers `window.location.reload()`. The active farm is highlighted with a primary-color left border.
+
+---
+
+### 10.5 Error Handling
+
+Phase D introduces new error conditions beyond the existing strategy (Section 4). These are specific to new flows.
+
+#### 10.5a Map Tile Loading Failure
+
+| Condition | Detection | User-Facing Behavior | Technical Detail |
+|-----------|-----------|---------------------|------------------|
+| Leaflet JS fails to load | `lazy(() => import('./MapPicker'))` catch | Fallback: 3 text inputs (latitude, longitude, elevation) with helper text "Enter your farm coordinates manually." | Leaflet is ~40KB gzipped. On slow connections or CSP issues, the dynamic import may fail. The wizard Step 2 detects the error boundary and renders the fallback form. |
+| Map tiles fail to load (offline) | Leaflet `tileerror` event | Banner above map: "Map unavailable offline. Enter coordinates manually." Manual inputs appear below. | OpenStreetMap tile CDN may be unreachable. Map container renders but shows gray squares. |
+| GPS denied | `navigator.geolocation` PermissionDeniedError | Toast: "Location access denied. Tap the map to set manually." GPS button returns to default state. | Non-blocking -- map still usable via manual pan/tap. |
+
+#### 10.5b Elevation API Timeout
+
+| Condition | Detection | User-Facing Behavior | Technical Detail |
+|-----------|-----------|---------------------|------------------|
+| Open-Meteo timeout (> 3s) | `AbortController` with 3s timeout | Elevation field shows "-- m" with editable text input. Wizard "Next" button still enabled (elevation is optional). | `fetch` with `signal: AbortSignal.timeout(3000)`. |
+| Open-Meteo HTTP error | Non-200 response | Same as timeout. | Catches 4xx/5xx. No retry -- user can enter manually. |
+| Open-Meteo returns invalid data | Missing `elevation` array in response | Same as timeout. | Defensive parsing: `response?.elevation?.[0]` with fallback. |
+
+#### 10.5c Grid Resize with Existing Data
+
+| Condition | Detection | User-Facing Behavior | Technical Detail |
+|-----------|-----------|---------------------|------------------|
+| Shrink removes empty beds only | Backend checks: no images/crops on beds being removed | Grid resizes. Removed beds are soft-deleted. Success toast. | Beds outside new bounds marked `status: 'inactive'`. Images preserved in DynamoDB under `BED#` PK. |
+| Shrink would remove beds with crops | Backend checks: occupied beds in removed area | Confirmation dialog: "Removing rows will delete {N} beds with crops. Continue?" If confirmed, beds soft-deleted. If declined, resize canceled. | API returns 409 CONFLICT with `affected_beds[]` listing bed names and crop types. Frontend renders the confirmation dialog from this data. |
+| Shrink would remove beds with images | Same as above | Same confirmation flow. Dialog adds: "{M} images will be archived." | Images remain in S3 and DynamoDB. Only the bed metadata is soft-deleted. Images are still accessible via direct URL. |
+
+#### 10.5d Crop Assignment Validation
+
+| Condition | Detection | User-Facing Behavior | Technical Detail |
+|-----------|-----------|---------------------|------------------|
+| crop_type empty | Frontend validation (required field) | "Save Crop" button disabled. No error message needed (field is visually required). | Zod schema: `crop_type: z.string().min(1).max(100)` |
+| crop_type too long (> 100 chars) | Backend Zod validation | 400 VALIDATION_ERROR. Toast: "Crop type must be 100 characters or less." | Only reachable if "Other" freeform input is used. |
+| notes too long (> 500 chars) | Backend Zod validation | 400 VALIDATION_ERROR. Toast: "Notes must be 500 characters or less." | Frontend also enforces `maxlength="500"`. |
+| planted_at in future | Frontend validation (soft warning) | Warning text below date input: "This date is in the future." Submission still allowed. | Not a hard error -- pre-planting scheduling is valid. |
+| Bed not found | Backend lookup miss | 404 NOT_FOUND. Toast: "Bed not found. It may have been removed." Sheet closes, grid reloads. | Possible if grid was resized by another session between opening the sheet and saving. |
+| Unauthorized (observer role) | Middleware role check | 403 FORBIDDEN. Toast: "You don't have permission to assign crops." | CropAssignment sheet is hidden for observers via progressive disclosure, so this is a defense-in-depth catch. |
+
+---
+
+### 10.6 Phase D New File Summary
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `packages/shared/src/types/domain.ts` | **Modify** | Add grid_rows/cols to Farm, merge Plot into Bed, remove Field/Plot |
+| `packages/shared/src/schemas/bed.ts` | **Create** | Zod schemas for Bed, UpdateBedRequest, CreateFarmRequest (extended) |
+| `packages/shared/src/schemas/field.ts` | **Remove** | Field entity removed |
+| `packages/shared/src/schemas/plot.ts` | **Remove** | Plot entity removed (merged into bed.ts) |
+| `src/api/src/routes/beds.ts` | **Create** | GET /beds/{bedId}, PATCH /beds/{bedId}, GET /beds/{bedId}/images, POST /beds/{bedId}/images |
+| `src/api/src/routes/farms.ts` | **Modify** | Extended POST/PATCH with grid_rows/cols, response includes flat beds[] |
+| `src/api/src/routes/plots.ts` | **Modify** | Add 301 redirects to /beds/* equivalents (one version cycle) |
+| `src/api/src/services/dynamodb.ts` | **Modify** | New: createBedForFarm, getBedsForFarm, getBedById, updateBed. Modified: createFarm (auto-generates beds), createImage (BED# PK) |
+| `src/frontend/src/components/MapPicker.tsx` | **Create** | Leaflet map picker with GPS, crosshair, coordinate preview |
+| `src/frontend/src/components/FarmWizard.tsx` | **Create** | 3-step farm creation wizard |
+| `src/frontend/src/components/BedGridLayout.tsx` | **Create** | CSS Grid bed layout with status colors, empty cell CTAs |
+| `src/frontend/src/components/CropAssignment.tsx` | **Create** | Bottom sheet (mobile) / modal (desktop) for crop assignment |
+| `src/frontend/src/components/ProfilePage.tsx` | **Create** | Farm list + user info + farm switcher |
+| `src/frontend/src/pages/beds/view.astro` | **Create** | Bed detail page (replaces /plots/view) |
+| `src/frontend/src/pages/profile/index.astro` | **Create** | Profile page (replaces /settings/) |
+| `src/frontend/src/i18n/en.json` | **Modify** | Add bed grid, crop assignment, profile, map picker i18n keys |
+| `src/frontend/src/i18n/ja.json` | **Modify** | Japanese translations for all new keys |
+| `src/frontend/package.json` | **Modify** | Add `leaflet`, `@types/leaflet` |
+| `scripts/seed-data.ts` | **Modify** | Rewrite to create Farm + Bed grid + Images under BED# keys |
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Functional and non-functional requirements (expanded for MVP)
@@ -2279,3 +3086,7 @@ A state library (Redux, Zustand, Jotai) would add bundle size and complexity wit
 - [ADR-007](decisions/ADR-20260320-authentication-provider.md) -- Cognito User Pools + JWT
 - [ADR-008](decisions/ADR-20260320-iac-tool-selection.md) -- AWS CDK (TypeScript)
 - [ADR-009](decisions/ADR-20260320-ai-llm-framework.md) -- Anthropic SDK
+- [ADR-20260322](decisions/ADR-20260322-phase-d-bed-grid-data-model.md) -- Phase D: Bed-Grid Data Model
+- [PHASE-D-ARCHITECTURE.md](designs/PHASE-D-ARCHITECTURE.md) -- Phase D API & data model design
+
+> Updated 2026-03-22 for Phase D: +bed-grid system design, +farm creation sequences, +crop assignment flows, +component interaction diagram.

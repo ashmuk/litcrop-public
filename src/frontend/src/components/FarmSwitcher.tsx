@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole } from '@litcrop/shared';
 import { getMyFarms } from '../lib/api';
-import { useLocalFarmId, setLocalFarmId, setLocalFarmList } from '../lib/hooks';
+import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_ID } from '../lib/hooks';
 
 export interface FarmWithRole extends Farm {
   role: FarmRole;
@@ -32,7 +32,7 @@ export default function FarmSwitcher({ defaultFarmId, onFarmChange }: Props) {
         setFarms(list as FarmWithRole[]);
         setLocalFarmList(list);
         // If no active farm stored yet, persist the first one
-        if (typeof window !== 'undefined' && !localStorage.getItem('litcrop-farmId') && list.length > 0) {
+        if (typeof window !== 'undefined' && !localStorage.getItem(LS_FARM_ID) && list.length > 0) {
           setLocalFarmId(list[0].id);
         }
       })

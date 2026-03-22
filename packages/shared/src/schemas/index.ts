@@ -5,19 +5,24 @@
  * which may include extra fields not declared in the TypeScript types
  * (e.g. cached_at, apparent_temperature). Use these for contract tests
  * and runtime validation at API boundaries.
+ *
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
 import { z } from 'zod';
 
 // ── Enum schemas ─────────────────────────────────────────────────
 
-export const PlotStatusSchema = z.enum([
+export const BedStatusSchema = z.enum([
   'healthy',
   'slow_growth',
   'issue',
   'animal_intrusion',
   'no_data',
 ]);
+
+/** @deprecated Use BedStatusSchema */
+export const PlotStatusSchema = BedStatusSchema;
 
 export const TriggerTypeSchema = z.enum(['scheduled', 'motion']);
 
@@ -36,7 +41,7 @@ export const FarmRoleSchema = z.enum(['admin', 'manager', 'observer']);
 
 // ── Farm schemas ─────────────────────────────────────────────────
 
-/** farmToResponse() shape — base farm fields without nested relations */
+/** farmToResponse() shape — base farm fields without beds */
 export const FarmBaseSchema = z.object({
   id: z.string(),
   user_id: z.string(),
@@ -48,35 +53,25 @@ export const FarmBaseSchema = z.object({
   climate_zone: z.string().nullable(),
   locale: LocaleSchema,
   theme: ThemeSchema,
+  grid_rows: z.number().int().min(1).max(5),
+  grid_cols: z.number().int().min(1).max(5),
   created_at: z.string(),
 });
 
-/** Minimal plot summary nested inside GET /farms/:farmId */
-const NestedPlotSchema = z.object({
+/** Bed summary within GET /farms/:farmId response */
+export const FarmBedSchema = z.object({
   id: z.string(),
-  label: z.string(),
-  crop_type: z.string(),
-  crop_variety: z.string(),
-  latest_status: PlotStatusSchema,
+  row: z.number().int().min(1).max(5),
+  col: z.number().int().min(1).max(5),
+  name: z.string(),
+  crop_type: z.string().nullable(),
+  crop_variety: z.string().nullable(),
+  latest_status: BedStatusSchema,
 });
 
-/** GET /api/v1/farms/:farmId — full farm with field/bed/plot tree */
+/** GET /api/v1/farms/:farmId — farm with flat beds array */
 export const FarmResponseSchema = FarmBaseSchema.extend({
-  fields: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      position: z.number(),
-      beds: z.array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          position: z.number(),
-          plots: z.array(NestedPlotSchema),
-        }),
-      ),
-    }),
-  ),
+  beds: z.array(FarmBedSchema),
 });
 
 /** POST /api/v1/farms and PATCH /api/v1/farms/:farmId */
@@ -97,7 +92,7 @@ export const FarmsListResponseSchema = z.object({
   })),
 });
 
-// ── Plot list schemas ─────────────────────────────────────────────
+// ── Bed list schemas ─────────────────────────────────────────────
 
 const LatestImageThumbnailSchema = z.object({
   id: z.string(),
@@ -106,41 +101,60 @@ const LatestImageThumbnailSchema = z.object({
   trigger: TriggerTypeSchema,
 });
 
-/** GET /api/v1/farms/:farmId/plots — each item */
-export const FarmPlotItemSchema = z.object({
+/** GET /api/v1/farms/:farmId/beds — each item */
+export const FarmBedItemSchema = z.object({
   id: z.string(),
-  label: z.string(),
-  bed_id: z.string(),
-  field_id: z.string().optional(),  // populated when bed lookup succeeds
-  crop_type: z.string(),
-  crop_variety: z.string(),
-  latest_status: PlotStatusSchema,
+  row: z.number().int(),
+  col: z.number().int(),
+  name: z.string(),
+  crop_type: z.string().nullable(),
+  crop_variety: z.string().nullable(),
+  latest_status: BedStatusSchema,
   latest_image: LatestImageThumbnailSchema.nullable(),
-  field_name: z.string(),
-  bed_name: z.string(),
 });
 
-/** GET /api/v1/farms/:farmId/plots — envelope */
-export const FarmPlotsResponseSchema = z.object({
-  data: z.array(FarmPlotItemSchema),
+/** GET /api/v1/farms/:farmId/beds — envelope */
+export const FarmBedsResponseSchema = z.object({
+  data: z.array(FarmBedItemSchema),
 });
 
-// ── Plot detail schema ────────────────────────────────────────────
+// ── Tag in image schema (shared by bed detail + image detail) ────
 
-/** GET /api/v1/plots/:plotId */
-export const PlotDetailResponseSchema = z.object({
+const TagInImageSchema = z.object({
   id: z.string(),
-  label: z.string(),
-  crop_type: z.string(),
-  crop_variety: z.string(),
-  planted_at: z.string(),
-  expected_harvest: z.string(),
-  notes: z.string().nullable(),
-  latest_status: PlotStatusSchema,
-  field_name: z.string(),
-  bed_name: z.string(),
+  tag: TagValueSchema,
+  note: z.string().nullable(),
+  created_at: z.string(),
+});
+
+// ── Bed detail schema ────────────────────────────────────────────
+
+/** Full image shape for bed detail — includes signed URL and tags */
+const BedDetailImageSchema = z.object({
+  id: z.string(),
+  thumbnail_url: z.string().nullable(),
+  url: z.string(),
+  captured_at: z.string(),
+  trigger: TriggerTypeSchema,
+  tags: z.array(TagInImageSchema),
+});
+
+/** GET /api/v1/beds/:bedId */
+export const BedDetailResponseSchema = FarmBedSchema.extend({
   farm_id: z.string(),
-  latest_image: LatestImageThumbnailSchema.nullable(),
+  planted_at: z.string().nullable(),
+  expected_harvest: z.string().nullable(),
+  notes: z.string().nullable(),
+  latest_image: BedDetailImageSchema.nullable(),
+});
+
+/** PATCH /api/v1/beds/:bedId — request body */
+export const UpdateBedRequestSchema = z.object({
+  crop_type: z.string().min(1).max(100).nullable().optional(),
+  crop_variety: z.string().min(1).max(100).nullable().optional(),
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
 });
 
 // ── Image list schema ─────────────────────────────────────────────
@@ -154,7 +168,7 @@ const ImageListItemSchema = z.object({
   latest_tag: TagValueSchema.nullable(),
 });
 
-/** GET /api/v1/plots/:plotId/images — paginated envelope */
+/** GET /api/v1/beds/:bedId/images — paginated envelope */
 export const ImageListResponseSchema = z.object({
   data: z.array(ImageListItemSchema),
   meta: z.object({
@@ -166,7 +180,7 @@ export const ImageListResponseSchema = z.object({
 
 // ── Image upload schema ───────────────────────────────────────────
 
-/** POST /api/v1/plots/:plotId/images (201) */
+/** POST /api/v1/beds/:bedId/images (201) */
 export const ImageUploadResponseSchema = z.object({
   id: z.string(),
   url: z.string(),
@@ -178,17 +192,10 @@ export const ImageUploadResponseSchema = z.object({
 
 // ── Image detail schema ───────────────────────────────────────────
 
-const TagInImageSchema = z.object({
-  id: z.string(),
-  tag: TagValueSchema,
-  note: z.string().nullable(),
-  created_at: z.string(),
-});
-
 /** GET /api/v1/images/:imageId */
 export const ImageDetailResponseSchema = z.object({
   id: z.string(),
-  plot_id: z.string(),
+  bed_id: z.string(),
   node_id: z.string(),
   captured_at: z.string(),
   uploaded_at: z.string(),
@@ -210,7 +217,7 @@ export const TagCreateResponseSchema = z.object({
   tag: TagValueSchema,
   note: z.string().nullable(),
   created_at: z.string(),
-  plot_status_updated: z.boolean(),
+  bed_status_updated: z.boolean(),
 });
 
 // ── Weather schemas ───────────────────────────────────────────────
@@ -242,10 +249,10 @@ const CropImpactCardSchema = z.object({
   severity: z.enum(['danger', 'warning', 'good', 'info']),
   title: z.string(),
   description: z.string(),
-  affected_plots: z.array(
+  affected_beds: z.array(
     z.object({
       id: z.string(),
-      label: z.string(),
+      name: z.string(),
       crop_type: z.string(),
     }),
   ),
@@ -282,7 +289,7 @@ export const WeatherResponseSchema = z.object({
   daily: z.array(DailyForecastSchema),
   alerts: z.array(WeatherAlertSchema),
   crop_impact: z.array(CropImpactCardSchema),
-  cached_at: z.string(), // present in wire format even though not in WeatherResponse type
+  cached_at: z.string(),
 });
 
 // ── Chat schema ───────────────────────────────────────────────────
