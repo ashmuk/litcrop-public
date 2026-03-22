@@ -139,6 +139,23 @@ All deployed via IaC (CDK), reproducible and CI/CD-ready.
 - **Recommendation**: Proceed with MVP scope (Phase D: /cc-define)
 - **User decision**: Approved
 
+### Iteration 3 — 2026-03-22
+- **Trigger**: Phase D design complete (cc-design re-entry)
+- **Entry point**: Step 7 (Execution Plan) — design artifacts complete, ready for /cc-implement
+- **What changed**:
+  - PHASE-D-ARCHITECTURE.md: Full API contract design — data model flattening (Farm→Bed), 8 modified/new endpoints, DynamoDB access patterns (2-query farm overview vs N+1)
+  - ADR-20260322: Option B selected — flatten 4-level hierarchy to Farm→Bed, merge Plot into Bed
+  - UX-DESIGNS.md §14: Map picker wireframes, farm creation wizard (3-step), bed grid editor, profile page redesign, accessibility audit, i18n keys, component state matrix
+  - SYSTEM-DESIGN.md §10: 5 sequence diagrams, component interaction diagram, 34-file change summary
+  - docs/EXECUTION-PLAN-PHASE-D.md: 4-batch plan, gate criteria, risk register, readiness mapping
+- **What preserved**: All Phase A+B+C artifacts, 303 passing tests, v0.12 build, ADRs 001-009
+- **Key design decisions**:
+  - Farm→Bed flattening (ADR Option B): removes Field and Plot, 4→2 levels, 2 DynamoDB queries for farm overview
+  - Leaflet for map picker: ~40KB gzip, BSD-2, no API key, lazy-loaded in wizard step 2 only
+  - Crosshair pattern: map pans under fixed pin, avoids tap-to-place accidents on mobile
+  - Elevation auto-fetch from Open-Meteo frontend-direct (CORS-enabled, no proxy needed)
+  - 5×5 max grid (25 beds) — exceeds TransactWriteItems limit; use BatchWrite + separate PutItem
+
 ### Phase C Design (cc-design re-entry) — 2026-03-22
 - **Trigger**: Phase A+B complete (v0.11), Phase C next per MVP+ pipeline
 - **Entry point**: Step 2 (Architecture) — re-entry with existing artifacts
