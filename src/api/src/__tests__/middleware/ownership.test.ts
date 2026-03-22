@@ -16,6 +16,10 @@ import type { Farm, Plot, Image } from '@litcrop/shared';
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
+    getFarmsForUser: vi.fn(),
+    getFarmForUser: vi.fn(),
+    getFarmMembership: vi.fn(),
+    addFarmMember: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
     getFieldsForFarm: vi.fn(),
@@ -29,7 +33,6 @@ vi.mock('../../services/dynamodb', () => ({
     createImage: vi.fn(),
     getImageById: vi.fn(),
     createTag: vi.fn(),
-    getFarmForUser: vi.fn(),
   },
 }));
 
@@ -90,9 +93,23 @@ function authHeader(userId: string): string {
   return `Bearer ${makeAuthToken(userId, `${userId}@example.com`)}`;
 }
 
+const ownerMembershipFixture = {
+  user_id: OWNER_USER_ID,
+  farm_id: FARM_ID,
+  role: 'manager' as const,
+  joined_at: '2026-03-17T00:00:00.000Z',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
+  // Default: mock getFarmMembership to return membership for owner, null for others
+  vi.mocked(dynamoRepo.getFarmMembership).mockImplementation(
+    async (userId: string, _farmId: string) => {
+      if (userId === OWNER_USER_ID) return ownerMembershipFixture;
+      return null;
+    },
+  );
 });
 
 // ── Farm ownership ─────────────────────────────────────────────────

@@ -19,20 +19,30 @@ import {
   TRIGGER_TYPES,
   isValidTriggerType,
 } from '@litcrop/shared';
-import type { Farm, Field, Plot, Image } from '@litcrop/shared';
-import { makeLatestImage } from './_helpers';
+import type { Field, Plot, Image } from '@litcrop/shared';
+import { makeLatestImage, assertFarmAccess } from './_helpers';
 
-/** Verify caller owns the farm that contains this plot (plot.farm_id → farm.user_id). */
+/** Verify caller is a member of the farm that contains this plot. */
 async function assertPlotOwnership(plot: Plot, userId: string): Promise<void> {
-  let farm: Farm;
   try {
-    farm = await dynamoRepo.getFarm(plot.farm_id);
+    await assertFarmAccess(plot.farm_id, userId);
   } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Plot not found: ${plot.id}`);
+    }
+    throw err;
   }
-  if (farm.user_id !== userId) {
-    throw new NotFoundError(`Plot not found: ${plot.id}`);
+}
+
+/** Verify caller has admin or manager role for the farm containing this plot (write operations). */
+async function assertPlotWriteAccess(plot: Plot, userId: string): Promise<void> {
+  try {
+    await assertFarmAccess(plot.farm_id, userId, ['admin', 'manager']);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Plot not found: ${plot.id}`);
+    }
+    throw err;
   }
 }
 
@@ -176,7 +186,7 @@ router.post('/:plotId/images', async (c) => {
   const { plotId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  // 2. Verify plot exists and caller owns it
+  // 2. Verify plot exists and caller has write access (admin/manager only)
   let plot: Plot;
   try {
     plot = await dynamoRepo.getPlotById(plotId);
@@ -184,7 +194,7 @@ router.post('/:plotId/images', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
-  await assertPlotOwnership(plot, userId);
+  await assertPlotWriteAccess(plot, userId);
 
   // 1/3. Parse multipart form data
   const formData = await c.req.parseBody();

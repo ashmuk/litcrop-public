@@ -11,9 +11,10 @@ vi.mock('../../services/dynamodb', () => ({
     getImageById: vi.fn(),
     getTagsForImage: vi.fn(),
     createTag: vi.fn(),
-    // Ownership chain: image → plot → farm
+    // Ownership chain: image → plot → farm → membership
     getPlotById: vi.fn(),
     getFarm: vi.fn(),
+    getFarmMembership: vi.fn(),
   },
 }));
 
@@ -76,9 +77,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
   vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://example.com/thumb-signed');
-  // Ownership chain defaults (image → plot → farm)
+  // Ownership chain defaults (image → plot → farm → membership)
   vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotForOwnership);
   vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmForOwnership);
+  vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+    user_id: TEST_USER_ID,
+    farm_id: FARM_ID,
+    role: 'manager' as const,
+    joined_at: '2026-03-17T00:00:00.000Z',
+  });
 });
 
 // ── GET /api/v1/images/:imageId ───────────────────────────────────
@@ -197,5 +204,22 @@ describe('POST /api/v1/images/:imageId/tags', () => {
       });
       expect(res.status).toBe(201);
     }
+  });
+
+  it('observer cannot POST tag → 404', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'observer' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ tag: 'healthy' }),
+    });
+    expect(res.status).toBe(404);
   });
 });

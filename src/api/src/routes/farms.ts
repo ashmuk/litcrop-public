@@ -13,9 +13,10 @@ import {
   DEFAULT_THEME,
   DEFAULT_LOCALE,
   isValidLatLng,
+  FarmRoleSchema,
 } from '@litcrop/shared';
-import type { Farm, Field, Bed, Plot } from '@litcrop/shared';
-import { makeLatestImage } from './_helpers';
+import type { Farm, Field, Bed, Plot, FarmRole } from '@litcrop/shared';
+import { makeLatestImage, assertFarmAccess } from './_helpers';
 
 const router = new Hono();
 
@@ -27,22 +28,6 @@ function isConditionalCheckFailed(err: unknown): boolean {
 
 function isTransactionCanceled(err: unknown): boolean {
   return err instanceof Error && err.name === 'TransactionCanceledException';
-}
-
-/** Assert userId owns the farm; throws 404 if not (prevents resource enumeration). */
-async function assertFarmOwnership(farmId: string, userId: string): Promise<Farm> {
-  let farm: Farm;
-  try {
-    farm = await dynamoRepo.getFarm(farmId);
-  } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-  if (farm.user_id !== userId) {
-    // Return 404 (not 403) to avoid leaking existence of other users' farms
-    throw new NotFoundError(`Farm not found: ${farmId}`);
-  }
-  return farm;
 }
 
 /** Validate farm create/update fields. Throws ValidationError on failure. */
@@ -125,19 +110,36 @@ function farmToResponse(farm: Farm) {
   };
 }
 
-// ── GET /api/v1/farms — list caller's own farm ────────────────────
+// ── GET /api/v1/farms — list all farms the caller belongs to ──────
 
 router.get('/', async (c) => {
   const { userId } = getAuthContext(c);
 
-  let farm;
+  let memberships;
   try {
-    farm = await dynamoRepo.getFarmForUser(userId);
+    memberships = await dynamoRepo.getFarmsForUser(userId);
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  return c.json({ data: farm ? [farmToResponse(farm)] : [] });
+  if (memberships.length === 0) {
+    return c.json({ data: [] });
+  }
+
+  // Fetch each farm in parallel
+  const farms = await Promise.all(
+    memberships.map(async (m) => {
+      try {
+        const farm = await dynamoRepo.getFarm(m.farm_id);
+        return { ...farmToResponse(farm), role: m.role };
+      } catch {
+        // Farm record missing — skip stale membership
+        return null;
+      }
+    }),
+  );
+
+  return c.json({ data: farms.filter((f): f is NonNullable<typeof f> => f !== null) });
 });
 
 // ── 5.1 GET /api/v1/farms/:farmId ────────────────────────────────
@@ -146,7 +148,7 @@ router.get('/:farmId', async (c) => {
   const { farmId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  const farm = await assertFarmOwnership(farmId, userId);
+  const { farm } = await assertFarmAccess(farmId, userId);
 
   const fields = await dynamoRepo.getFieldsForFarm(farmId);
 
@@ -193,7 +195,7 @@ router.get('/:farmId/plots', async (c) => {
   const { farmId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  const farm = await assertFarmOwnership(farmId, userId);
+  const { farm } = await assertFarmAccess(farmId, userId);
 
   // Build bed_id → { bed_name, field_name, field_id } map in parallel with plots fetch
   const fields = await dynamoRepo.getFieldsForFarm(farm.id);
@@ -239,7 +241,7 @@ router.post('/:farmId/plots', async (c) => {
   const { farmId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  await assertFarmOwnership(farmId, userId);
+  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
 
   const body = await c.req.json<Record<string, unknown>>();
 
@@ -331,8 +333,8 @@ router.post('/', async (c) => {
       theme: (body['theme'] as Farm['theme']) ?? DEFAULT_THEME,
     });
   } catch (err) {
-    if (isTransactionCanceled(err) || isConditionalCheckFailed(err)) {
-      throw new ConflictError('You already have a farm');
+    if (isConditionalCheckFailed(err) || isTransactionCanceled(err)) {
+      throw new ConflictError('Farm ID already exists');
     }
     throw new ServiceUnavailableError('Storage service unavailable');
   }
@@ -346,7 +348,7 @@ router.patch('/:farmId', async (c) => {
   const { farmId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  await assertFarmOwnership(farmId, userId);
+  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
 
   const body = await c.req.json<Record<string, unknown>>();
 
@@ -369,6 +371,45 @@ router.patch('/:farmId', async (c) => {
 
   const farm = await dynamoRepo.getFarm(farmId);
   return c.json(farmToResponse(farm));
+});
+
+// ── POST /api/v1/farms/:farmId/members ───────────────────────────
+
+router.post('/:farmId/members', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  // Only admin or manager can add members
+  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+
+  const body = await c.req.json<Record<string, unknown>>();
+
+  const newUserId = body['user_id'];
+  if (typeof newUserId !== 'string' || newUserId.trim().length === 0) {
+    throw new ValidationError("Missing or invalid 'user_id'");
+  }
+
+  const role = body['role'];
+  const parsedRole = FarmRoleSchema.safeParse(role);
+  if (!parsedRole.success) {
+    throw new ValidationError(`Invalid 'role': must be one of ${FarmRoleSchema.options.join(', ')}`);
+  }
+
+  let member;
+  try {
+    member = await dynamoRepo.addFarmMember(
+      newUserId.trim(),
+      farmId,
+      parsedRole.data,
+    );
+  } catch (err) {
+    if (isTransactionCanceled(err)) {
+      throw new ConflictError('User is already a member of this farm');
+    }
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  return c.json(member, 201);
 });
 
 export default router;

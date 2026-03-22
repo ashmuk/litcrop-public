@@ -7,6 +7,7 @@ import { NotFoundError } from '../../errors';
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
+    getFarmMembership: vi.fn(),
     getPlotsForFarm: vi.fn(),
   },
 }));
@@ -75,6 +76,15 @@ function makeOpenMeteoResponse(overrides: {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
+  // Default: user is a member of any farm they request
+  vi.mocked(dynamoRepo.getFarmMembership).mockImplementation(
+    async (_userId: string, farmId: string) => ({
+      user_id: TEST_USER_ID,
+      farm_id: farmId,
+      role: 'manager' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    }),
+  );
 });
 
 // ── Happy path ────────────────────────────────────────────────────

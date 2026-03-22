@@ -23,6 +23,17 @@ export type Theme = 'light' | 'dark' | 'earthy' | 'system';
 /** Temperature unit preference */
 export type TempUnit = 'C' | 'F';
 
+/** Farm membership role */
+export type FarmRole = 'admin' | 'manager' | 'observer';
+
+/** Farm membership record — links a user to a farm with a role */
+export interface FarmMember {
+  user_id: string;
+  farm_id: string;
+  role: FarmRole;
+  joined_at: string; // ISO 8601
+}
+
 // ── Entity Types ─────────────────────────────────────────────────
 
 export interface Farm {

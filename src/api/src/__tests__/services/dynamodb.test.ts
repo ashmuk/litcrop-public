@@ -326,7 +326,7 @@ describe('createFarm', () => {
     expect(typeof farm.created_at).toBe('string');
   });
 
-  it('TransactWriteCommand includes farm Put and user-index Put', async () => {
+  it('TransactWriteCommand includes farm Put, user FARM_MEMBER Put, and farm MEMBER Put', async () => {
     ddbMock.on(TransactWriteCommand).resolves({});
     await repo.createFarm(FARM_ID, USER_ID, {
       name: 'Farm',
@@ -338,11 +338,24 @@ describe('createFarm', () => {
     const calls = ddbMock.commandCalls(TransactWriteCommand);
     expect(calls).toHaveLength(1);
     const items = calls[0].args[0].input.TransactItems as Array<Record<string, unknown>>;
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
+    // Item 0: farm metadata record
     const farmPut = items[0]['Put'] as Record<string, unknown>;
     expect(farmPut['ConditionExpression']).toBe('attribute_not_exists(PK)');
+    // Item 1: user→farm membership record (USER# PK, FARM_MEMBER# SK)
     const userPut = items[1]['Put'] as Record<string, unknown>;
-    expect((userPut['Item'] as Record<string, unknown>)['PK']).toBe(`USER#${USER_ID}`);
+    const userItem = userPut['Item'] as Record<string, unknown>;
+    expect(userItem['PK']).toBe(`USER#${USER_ID}`);
+    expect(typeof userItem['SK']).toBe('string');
+    expect((userItem['SK'] as string).startsWith('FARM_MEMBER#')).toBe(true);
+    expect(userItem['role']).toBe('manager');
+    // Item 2: farm→member index record (FARM# PK, MEMBER# SK)
+    const memberPut = items[2]['Put'] as Record<string, unknown>;
+    const memberItem = memberPut['Item'] as Record<string, unknown>;
+    expect((memberItem['PK'] as string).startsWith('FARM#')).toBe(true);
+    expect((memberItem['SK'] as string).startsWith('MEMBER#')).toBe(true);
+    expect(memberItem['user_id']).toBe(USER_ID);
+    expect(memberItem['role']).toBe('manager');
   });
 });
 
@@ -397,5 +410,100 @@ describe('updateImageThumbnailKey', () => {
 
     await expect(repo.updateImageThumbnailKey(IMAGE_ID, thumbnailKey))
       .rejects.toThrow(NotFoundError);
+  });
+});
+
+// ── getFarmsForUser ───────────────────────────────────────────────
+
+describe('getFarmsForUser', () => {
+  it('returns empty array when user has no memberships', async () => {
+    ddbMock.on(QueryCommand).resolves({ Items: [] });
+    const result = await repo.getFarmsForUser(USER_ID);
+    expect(result).toEqual([]);
+  });
+
+  it('returns memberships mapped from FARM_MEMBER# items', async () => {
+    const memberItem = {
+      PK: `USER#${USER_ID}`,
+      SK: `FARM_MEMBER#${FARM_ID}`,
+      farm_id: FARM_ID,
+      role: 'manager',
+      joined_at: '2026-03-17T00:00:00.000Z',
+    };
+    ddbMock.on(QueryCommand).resolves({ Items: [memberItem] });
+    const result = await repo.getFarmsForUser(USER_ID);
+    expect(result).toHaveLength(1);
+    expect(result[0].farm_id).toBe(FARM_ID);
+    expect(result[0].role).toBe('manager');
+    expect(result[0].user_id).toBe(USER_ID);
+  });
+
+  it('queries USER# PK with FARM_MEMBER# prefix', async () => {
+    ddbMock.on(QueryCommand).resolves({ Items: [] });
+    await repo.getFarmsForUser(USER_ID);
+    const calls = ddbMock.commandCalls(QueryCommand);
+    const values = calls[0].args[0].input.ExpressionAttributeValues as Record<string, string>;
+    expect(values[':pk']).toBe(`USER#${USER_ID}`);
+    expect(values[':sk']).toBe('FARM_MEMBER#');
+  });
+});
+
+// ── getFarmMembership ─────────────────────────────────────────────
+
+describe('getFarmMembership', () => {
+  it('returns null when no membership record exists', async () => {
+    ddbMock.on(GetCommand).resolves({ Item: undefined });
+    const result = await repo.getFarmMembership(USER_ID, FARM_ID);
+    expect(result).toBeNull();
+  });
+
+  it('returns membership when record exists', async () => {
+    const memberItem = {
+      PK: `USER#${USER_ID}`,
+      SK: `FARM_MEMBER#${FARM_ID}`,
+      farm_id: FARM_ID,
+      role: 'observer',
+      joined_at: '2026-03-17T00:00:00.000Z',
+    };
+    ddbMock.on(GetCommand).resolves({ Item: memberItem });
+    const result = await repo.getFarmMembership(USER_ID, FARM_ID);
+    expect(result).not.toBeNull();
+    expect(result!.role).toBe('observer');
+    expect(result!.farm_id).toBe(FARM_ID);
+    expect(result!.user_id).toBe(USER_ID);
+  });
+
+  it('uses correct USER# PK and FARM_MEMBER# SK', async () => {
+    ddbMock.on(GetCommand).resolves({ Item: undefined });
+    await repo.getFarmMembership(USER_ID, FARM_ID);
+    const calls = ddbMock.commandCalls(GetCommand);
+    const key = calls[0].args[0].input.Key as Record<string, string>;
+    expect(key['PK']).toBe(`USER#${USER_ID}`);
+    expect(key['SK']).toBe(`FARM_MEMBER#${FARM_ID}`);
+  });
+});
+
+// ── addFarmMember ─────────────────────────────────────────────────
+
+describe('addFarmMember', () => {
+  it('writes both USER# and FARM# records in a single TransactWrite', async () => {
+    ddbMock.on(TransactWriteCommand).resolves({});
+    const result = await repo.addFarmMember(USER_ID, FARM_ID, 'observer');
+    expect(result.user_id).toBe(USER_ID);
+    expect(result.farm_id).toBe(FARM_ID);
+    expect(result.role).toBe('observer');
+
+    const calls = ddbMock.commandCalls(TransactWriteCommand);
+    const items = calls[0].args[0].input.TransactItems as Array<Record<string, unknown>>;
+    expect(items).toHaveLength(2);
+    // First item: USER# → FARM_MEMBER# (with ConditionExpression to prevent duplicate)
+    const userItem = (items[0]['Put'] as Record<string, unknown>)['Item'] as Record<string, unknown>;
+    expect(userItem['PK']).toBe(`USER#${USER_ID}`);
+    expect((userItem['SK'] as string).startsWith('FARM_MEMBER#')).toBe(true);
+    expect((items[0]['Put'] as Record<string, unknown>)['ConditionExpression']).toBe('attribute_not_exists(PK)');
+    // Second item: FARM# → MEMBER#
+    const farmItem2 = (items[1]['Put'] as Record<string, unknown>)['Item'] as Record<string, unknown>;
+    expect((farmItem2['PK'] as string).startsWith('FARM#')).toBe(true);
+    expect((farmItem2['SK'] as string).startsWith('MEMBER#')).toBe(true);
   });
 });

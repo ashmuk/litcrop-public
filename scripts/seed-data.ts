@@ -27,6 +27,7 @@ const ddb = DynamoDBDocumentClient.from(client, {
 
 // ── Deterministic IDs ────────────────────────────────────────────
 
+const DEMO_USER_ID = 'demo-admin-user-00000000000000000001';
 const FARM_ID   = '00000000-0000-0000-0000-000000000001';
 const FIELD_NORTH_ID = '00000000-0000-0000-0000-000000000011';
 const FIELD_SOUTH_ID = '00000000-0000-0000-0000-000000000012';
@@ -63,12 +64,16 @@ async function put(item: Record<string, unknown>) {
 }
 
 async function seedFarm() {
+  const FARM_NAME = 'LitCrop Demo Farm';
+  const CREATED_AT = '2026-03-17T00:00:00Z';
+
   console.log('[seed] Farm: LitCrop Demo Farm');
   await put({
     PK: pk.farm(FARM_ID),
     SK: sk.meta(),
     id: FARM_ID,
-    name: 'LitCrop Demo Farm',
+    user_id: DEMO_USER_ID,
+    name: FARM_NAME,
     description: 'Demonstration farm in Nagano Prefecture, Japan.',
     latitude: 36.0,
     longitude: 138.3,
@@ -76,7 +81,26 @@ async function seedFarm() {
     climate_zone: 'USDA 7a',
     locale: 'en',
     theme: 'system',
-    created_at: '2026-03-17T00:00:00Z',
+    created_at: CREATED_AT,
+  });
+
+  // Create FARM_MEMBER record: USER# → FARM_MEMBER# (user can list their farms)
+  console.log('[seed] FarmMember: demo user → LitCrop Demo Farm (manager)');
+  await put({
+    PK: `USER#${DEMO_USER_ID}`,
+    SK: `FARM_MEMBER#${FARM_ID}`,
+    farm_id: FARM_ID,
+    role: 'manager',
+    joined_at: CREATED_AT,
+  });
+
+  // Create MEMBER record: FARM# → MEMBER# (farm can list its members)
+  await put({
+    PK: pk.farm(FARM_ID),
+    SK: `MEMBER#${DEMO_USER_ID}`,
+    user_id: DEMO_USER_ID,
+    role: 'manager',
+    joined_at: CREATED_AT,
   });
 }
 
@@ -248,6 +272,7 @@ async function main() {
 
   console.log('[seed] Done! Seeded:');
   console.log('  - 1 farm: LitCrop Demo Farm');
+  console.log(`  - 1 demo user membership (user: ${DEMO_USER_ID})`);
   console.log('  - 2 fields: North Field, South Field');
   console.log('  - 3 beds: Bed A, Bed B, Bed C');
   console.log('  - 6 plots: A1 Cherry Tomato, A2 Basil, B1 Cucumber, B2 Lettuce, C1 Strawberry, C2 Eggplant');
