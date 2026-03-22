@@ -304,7 +304,7 @@ function handler(event) {
       actions: ['s3:PutObject'],
       resources: [`${thumbnailsBucket.bucketArn}/thumbnails/*`],
     }));
-    table.grantWriteData(thumbnailLambda); // Update Image record with thumbnail_key
+    table.grantReadWriteData(thumbnailLambda); // QueryCommand on GSI1 (read) + update Image record (write)
 
     // S3 event trigger: new objects in images/ prefix → thumbnail generation
     thumbnailLambda.addEventSource(

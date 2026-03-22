@@ -94,6 +94,9 @@ capture() {
     size=$(stat -c%s "$filepath" 2>/dev/null || stat -f%z "$filepath" 2>/dev/null)
     log "[CAPTURE] OK — ${size} bytes"
 
+    # Write sidecar timestamp file so upload_spool() doesn't need to parse the filename
+    echo "$timestamp" > "${filepath%.jpg}.ts"
+
     echo "$filepath"
 }
 
@@ -124,6 +127,7 @@ upload() {
         if [ "$http_code" = "201" ]; then
             log "[UPLOAD] OK — HTTP 201"
             rm -f "$filepath"
+            rm -f "${filepath%.jpg}.ts"  # Remove sidecar timestamp file
             return 0
         else
             log "[UPLOAD] FAILED — HTTP ${http_code}"
@@ -152,13 +156,9 @@ upload_spool() {
         [ -f "$file" ] || continue
         count=$((count + 1))
 
-        # Extract timestamp from filename: NODE_ID_YYYY-MM-DDTHH-MM-SS+HH-MM.jpg
-        local basename
-        basename=$(basename "$file" .jpg)
-        # Reconstruct ISO timestamp from filename (replace - with : in time portion)
-        local ts_part="${basename#*_}"
+        # Read timestamp from sidecar file; fall back to file mtime if missing
         local captured_at
-        captured_at=$(echo "$ts_part" | sed 's/\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)/\1:\2:\3/')
+        captured_at=$(cat "${file%.jpg}.ts" 2>/dev/null || date -Iseconds)
 
         upload "$file" "$captured_at" || true
     done

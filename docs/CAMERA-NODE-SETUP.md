@@ -44,15 +44,18 @@ ssh litcrop@litcrop-cam-01.local
 
 ## 2. Enable Camera
 
+Camera is enabled by default on Raspberry Pi OS Bookworm (2023+). No `raspi-config` step needed.
+
+Verify the camera is detected:
+
 ```bash
 # On the Pi via SSH
-sudo raspi-config
-# Navigate: Interface Options → Camera → Enable
-# Reboot when prompted
-sudo reboot
+rpicam-hello --list-cameras
+# Expected: Available cameras: 1
+# If you see "Available cameras: 0" — check the ribbon cable connection and re-seat both ends.
 ```
 
-After reboot, verify the camera works:
+Test capture:
 
 ```bash
 # Test capture (saves to test.jpg)
@@ -103,6 +106,22 @@ sudo apt install -y curl
 
 The LitCrop API requires a Cognito JWT. For MVP+, we use a pre-provisioned token from an existing user account.
 
+### Install AWS CLI (required for token commands)
+
+Run this on **your dev machine** (not the Pi) if the AWS CLI is not already installed:
+
+```bash
+# macOS (Homebrew)
+brew install awscli
+
+# Debian/Ubuntu (including Raspberry Pi OS if running commands on the Pi)
+sudo apt install -y python3-pip
+pip3 install awscli --break-system-packages
+
+# Set the region (ap-northeast-1 for LitCrop)
+aws configure set region ap-northeast-1
+```
+
 ### Get token via AWS CLI
 
 ```bash
@@ -112,9 +131,13 @@ aws cognito-idp initiate-auth \
   --auth-flow USER_PASSWORD_AUTH \
   --auth-parameters USERNAME=<email>,PASSWORD=<password> \
   --region ap-northeast-1 \
-  --query 'AuthenticationResult.AccessToken' \
+  --query 'AuthenticationResult.IdToken' \
   --output text
 ```
+
+> **Why IdToken, not AccessToken?** The API Gateway JWT authorizer validates the `aud` (audience) claim,
+> which is only present in the **ID token**. Access tokens from Cognito do not include `aud` and will be
+> rejected with HTTP 401. Both tokens expire after 1 hour; the refresh script below handles renewal.
 
 Replace `<COGNITO_CLIENT_ID>` with the app client ID from the CDK stack outputs, and `<email>`/`<password>` with a valid LitCrop user account (e.g., Kiku the farm manager).
 
@@ -122,12 +145,12 @@ Replace `<COGNITO_CLIENT_ID>` with the app client ID from the CDK stack outputs,
 
 1. Log in to LitCrop in your browser
 2. Open DevTools → Application → Local Storage
-3. Find the access token (stored by Cognito SDK)
+3. Find the **ID token** (key contains `idToken`, not `accessToken`)
 4. Copy the token value
 
 ### Token lifetime
 
-- Access tokens expire after **1 hour** (Cognito default)
+- ID tokens expire after **1 hour** (Cognito default)
 - For the field evaluation (~2 weeks), you'll need to refresh the token periodically
 - **Quick workaround**: Create a helper script that refreshes the token using the refresh token:
 
@@ -142,7 +165,7 @@ TOKEN=$(aws cognito-idp initiate-auth \
   --auth-flow REFRESH_TOKEN_AUTH \
   --auth-parameters REFRESH_TOKEN="$REFRESH_TOKEN" \
   --region ap-northeast-1 \
-  --query 'AuthenticationResult.AccessToken' \
+  --query 'AuthenticationResult.IdToken' \
   --output text 2>/dev/null)
 
 if [ -n "$TOKEN" ]; then
