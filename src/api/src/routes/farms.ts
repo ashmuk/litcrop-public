@@ -14,8 +14,10 @@ import {
   DEFAULT_LOCALE,
   isValidLatLng,
   FarmRoleSchema,
+  MIN_GRID_SIZE,
+  MAX_GRID_SIZE,
 } from '@litcrop/shared';
-import type { Farm, Field, Bed, Plot, FarmRole } from '@litcrop/shared';
+import type { Farm, Bed, FarmRole } from '@litcrop/shared';
 import { makeLatestImage, assertFarmAccess } from './_helpers';
 
 const router = new Hono();
@@ -89,6 +91,20 @@ function validateFarmFields(body: Record<string, unknown>, required?: string[]) 
     }
   }
 
+  const grid_rows = body['grid_rows'];
+  if (grid_rows !== undefined && grid_rows !== null) {
+    if (typeof grid_rows !== 'number' || !Number.isInteger(grid_rows) || grid_rows < MIN_GRID_SIZE || grid_rows > MAX_GRID_SIZE) {
+      errors.push(`Invalid value for 'grid_rows': must be an integer between ${MIN_GRID_SIZE} and ${MAX_GRID_SIZE}`);
+    }
+  }
+
+  const grid_cols = body['grid_cols'];
+  if (grid_cols !== undefined && grid_cols !== null) {
+    if (typeof grid_cols !== 'number' || !Number.isInteger(grid_cols) || grid_cols < MIN_GRID_SIZE || grid_cols > MAX_GRID_SIZE) {
+      errors.push(`Invalid value for 'grid_cols': must be an integer between ${MIN_GRID_SIZE} and ${MAX_GRID_SIZE}`);
+    }
+  }
+
   if (errors.length > 0) {
     throw new ValidationError(errors[0], { errors });
   }
@@ -106,7 +122,21 @@ function farmToResponse(farm: Farm) {
     climate_zone: farm.climate_zone ?? null,
     locale: farm.locale,
     theme: farm.theme,
+    grid_rows: farm.grid_rows,
+    grid_cols: farm.grid_cols,
     created_at: farm.created_at,
+  };
+}
+
+function bedToSummary(bed: Bed) {
+  return {
+    id: bed.id,
+    row: bed.row,
+    col: bed.col,
+    name: bed.name,
+    crop_type: bed.crop_type ?? null,
+    crop_variety: bed.crop_variety ?? null,
+    latest_status: bed.latest_status,
   };
 }
 
@@ -142,7 +172,7 @@ router.get('/', async (c) => {
   return c.json({ data: farms.filter((f): f is NonNullable<typeof f> => f !== null) });
 });
 
-// ── 5.1 GET /api/v1/farms/:farmId ────────────────────────────────
+// ── GET /api/v1/farms/:farmId ────────────────────────────────────
 
 router.get('/:farmId', async (c) => {
   const { farmId } = c.req.param();
@@ -150,84 +180,30 @@ router.get('/:farmId', async (c) => {
 
   const { farm } = await assertFarmAccess(farmId, userId);
 
-  const fields = await dynamoRepo.getFieldsForFarm(farmId);
-
-  const fieldsWithBeds = await Promise.all(
-    fields.map(async (field: Field) => {
-      const beds = await dynamoRepo.getBedsForField(field.id);
-
-      const bedsWithPlots = await Promise.all(
-        beds.map(async (bed: Bed) => {
-          const plots = await dynamoRepo.getPlotsForBed(bed.id);
-          return {
-            id: bed.id,
-            name: bed.name,
-            position: bed.position,
-            plots: plots.map((p: Plot) => ({
-              id: p.id,
-              label: p.label,
-              crop_type: p.crop_type,
-              crop_variety: p.crop_variety,
-              latest_status: p.latest_status,
-            })),
-          };
-        }),
-      );
-
-      return {
-        id: field.id,
-        name: field.name,
-        position: field.position,
-        beds: bedsWithPlots,
-      };
-    }),
-  );
+  const beds = await dynamoRepo.getBedsForFarm(farmId);
 
   return c.json({
     ...farmToResponse(farm),
-    fields: fieldsWithBeds,
+    beds: beds.map(bedToSummary),
   });
 });
 
-// ── 5.4 GET /api/v1/farms/:farmId/plots ──────────────────────────
+// ── GET /api/v1/farms/:farmId/beds ───────────────────────────────
 
-router.get('/:farmId/plots', async (c) => {
+router.get('/:farmId/beds', async (c) => {
   const { farmId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  const { farm } = await assertFarmAccess(farmId, userId);
+  await assertFarmAccess(farmId, userId);
 
-  // Build bed_id → { bed_name, field_name, field_id } map in parallel with plots fetch
-  const fields = await dynamoRepo.getFieldsForFarm(farm.id);
-  const bedMeta = new Map<string, { bed_name: string; field_name: string; field_id: string }>();
-
-  const [, plots] = await Promise.all([
-    Promise.all(
-      fields.map(async (field: Field) => {
-        const beds = await dynamoRepo.getBedsForField(field.id);
-        for (const bed of beds) {
-          bedMeta.set(bed.id, { bed_name: bed.name, field_name: field.name, field_id: field.id });
-        }
-      }),
-    ),
-    dynamoRepo.getPlotsForFarm(farmId),
-  ]);
+  const beds = await dynamoRepo.getBedsForFarm(farmId);
 
   const data = await Promise.all(
-    plots.map(async (plot: Plot) => {
-      const meta = bedMeta.get(plot.bed_id) ?? { bed_name: '', field_name: '', field_id: '' };
-      const latestImage = await dynamoRepo.getLatestImageForPlot(plot.id);
+    beds.map(async (bed: Bed) => {
+      const latestImage = await dynamoRepo.getLatestImageForBed(bed.id);
       return {
-        id: plot.id,
-        label: plot.label,
-        bed_id: plot.bed_id,
-        field_id: meta.field_id,
-        crop_type: plot.crop_type,
-        crop_variety: plot.crop_variety,
-        latest_status: plot.latest_status,
+        ...bedToSummary(bed),
         latest_image: latestImage ? await makeLatestImage(latestImage) : null,
-        field_name: meta.field_name,
-        bed_name: meta.bed_name,
       };
     }),
   );
@@ -235,82 +211,36 @@ router.get('/:farmId/plots', async (c) => {
   return c.json({ data });
 });
 
-// ── POST /api/v1/farms/:farmId/plots ─────────────────────────────
+// ── GET /api/v1/farms/:farmId/plots — redirect to beds ───────────
 
-router.post('/:farmId/plots', async (c) => {
+router.get('/:farmId/plots', async (c) => {
   const { farmId } = c.req.param();
-  const { userId } = getAuthContext(c);
-
-  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
-
-  const body = await c.req.json<Record<string, unknown>>();
-
-  const cropType = body['crop_type'];
-  if (typeof cropType !== 'string' || cropType.trim().length === 0 || cropType.trim().length > 100) {
-    throw new ValidationError("Invalid value for 'crop_type': must be 1-100 characters");
-  }
-
-  const cropVariety = body['crop_variety'];
-  if (typeof cropVariety !== 'string' || cropVariety.trim().length === 0 || cropVariety.trim().length > 100) {
-    throw new ValidationError("Invalid value for 'crop_variety': must be 1-100 characters");
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const plantedAt = typeof body['planted_at'] === 'string' && body['planted_at'].trim()
-    ? body['planted_at'].trim()
-    : today;
-
-  const autoLabel = `${cropType.trim()} Plot`;
-  const label = typeof body['label'] === 'string' && body['label'].trim()
-    ? body['label'].trim()
-    : autoLabel;
-
-  // Compute expected harvest: 90 days from planted_at
-  const harvestDate = new Date(plantedAt);
-  harvestDate.setDate(harvestDate.getDate() + 90);
-  const expectedHarvest = harvestDate.toISOString().slice(0, 10);
-
-  // Auto-create default Field + Bed when none exist (keeps UX simple for small farms)
-  let bedId: string;
-  try {
-    const fields = await dynamoRepo.getFieldsForFarm(farmId);
-    if (fields.length === 0) {
-      const field = await dynamoRepo.createField(farmId, 'Main Field', 1);
-      const bed = await dynamoRepo.createBed(field.id, 'Bed 1', 1);
-      bedId = bed.id;
-    } else {
-      const field = fields[0];
-      const beds = await dynamoRepo.getBedsForField(field.id);
-      if (beds.length === 0) {
-        const bed = await dynamoRepo.createBed(field.id, 'Bed 1', 1);
-        bedId = bed.id;
-      } else {
-        bedId = beds[0].id;
-      }
-    }
-  } catch (err) {
-    if (err instanceof ValidationError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-
-  let plot: Plot;
-  try {
-    plot = await dynamoRepo.createPlot(bedId, farmId, {
-      label,
-      crop_type: cropType.trim(),
-      crop_variety: cropVariety.trim(),
-      planted_at: plantedAt,
-      expected_harvest: expectedHarvest,
-      notes: typeof body['notes'] === 'string' ? body['notes'] : undefined,
-    });
-  } catch {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-
-  return c.json(plot, 201);
+  return c.json(
+    {
+      error: {
+        code: 'NOT_FOUND',
+        message: `This endpoint has been replaced. Use GET /api/v1/farms/${farmId}/beds instead.`,
+      },
+    },
+    410,
+  );
 });
 
-// ── 5.2 POST /api/v1/farms ───────────────────────────────────────
+// ── POST /api/v1/farms/:farmId/plots — gone ─────────────────────
+
+router.post('/:farmId/plots', async (c) => {
+  return c.json(
+    {
+      error: {
+        code: 'NOT_FOUND',
+        message: 'This endpoint has been removed. Beds are auto-created with the farm grid. Use PATCH /api/v1/beds/:bedId to assign crops.',
+      },
+    },
+    410,
+  );
+});
+
+// ── POST /api/v1/farms ───────────────────────────────────────────
 
 router.post('/', async (c) => {
   const { userId } = getAuthContext(c);
@@ -319,6 +249,8 @@ router.post('/', async (c) => {
   validateFarmFields(body, ['name', 'latitude', 'longitude']);
 
   const farmId = crypto.randomUUID();
+  const gridRows = typeof body['grid_rows'] === 'number' ? body['grid_rows'] : 1;
+  const gridCols = typeof body['grid_cols'] === 'number' ? body['grid_cols'] : 1;
 
   let farm: Farm;
   try {
@@ -331,6 +263,8 @@ router.post('/', async (c) => {
       climate_zone: undefined,
       locale: (body['locale'] as Farm['locale']) ?? DEFAULT_LOCALE,
       theme: (body['theme'] as Farm['theme']) ?? DEFAULT_THEME,
+      grid_rows: gridRows as number,
+      grid_cols: gridCols as number,
     });
   } catch (err) {
     if (isConditionalCheckFailed(err) || isTransactionCanceled(err)) {
@@ -342,7 +276,7 @@ router.post('/', async (c) => {
   return c.json(farmToResponse(farm), 201);
 });
 
-// ── 5.3 PATCH /api/v1/farms/:farmId ─────────────────────────────
+// ── PATCH /api/v1/farms/:farmId ─────────────────────────────────
 
 router.patch('/:farmId', async (c) => {
   const { farmId } = c.req.param();
@@ -354,11 +288,13 @@ router.patch('/:farmId', async (c) => {
 
   validateFarmFields(body);
 
-  const updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme'>> = {};
+  const updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>> = {};
   if (body['name'] !== undefined) updates['name'] = (body['name'] as string).trim();
   if (body['description'] !== undefined) updates['description'] = body['description'] as string | undefined;
   if (body['locale'] !== undefined) updates['locale'] = body['locale'] as Farm['locale'];
   if (body['theme'] !== undefined) updates['theme'] = body['theme'] as Farm['theme'];
+  if (body['grid_rows'] !== undefined) updates['grid_rows'] = body['grid_rows'] as number;
+  if (body['grid_cols'] !== undefined) updates['grid_cols'] = body['grid_cols'] as number;
 
   try {
     await dynamoRepo.updateFarm(farmId, updates);

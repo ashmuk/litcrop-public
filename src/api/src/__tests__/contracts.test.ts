@@ -4,6 +4,8 @@
  * Each test mocks DynamoDB with seed-like data, calls app.request(), and asserts:
  *   1. All expected fields are present with the correct types.
  *   2. No unexpected internal fields leak into responses (e.g., storage_key).
+ *
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
 import { TEST_USER_ID, authHeaders } from './helpers/auth';
@@ -24,8 +26,8 @@ import { NotFoundError } from '../errors';
 import {
   FarmResponseSchema,
   FarmWriteResponseSchema,
-  FarmPlotsResponseSchema,
-  PlotDetailResponseSchema,
+  FarmBedsResponseSchema,
+  BedDetailResponseSchema,
   ImageListResponseSchema,
   ImageUploadResponseSchema,
   ImageDetailResponseSchema,
@@ -44,13 +46,10 @@ vi.mock('../services/dynamodb', () => ({
     addFarmMember: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
-    getFieldsForFarm: vi.fn(),
-    getBedsForField: vi.fn(),
-    getPlotsForBed: vi.fn(),
-    getPlotsForFarm: vi.fn(),
-    getPlotById: vi.fn(),
-    getLatestImageForPlot: vi.fn(),
-    getImagesForPlot: vi.fn(),
+    getBedsForFarm: vi.fn(),
+    getBedById: vi.fn(),
+    getLatestImageForBed: vi.fn(),
+    getImagesForBed: vi.fn(),
     getTagsForImage: vi.fn(),
     createImage: vi.fn(),
     getImageById: vi.fn(),
@@ -83,9 +82,7 @@ vi.mock('../services/budget', () => ({
 // ── Seed fixtures ────────────────────────────────────────────────
 
 const FARM_ID   = 'cf000000-0000-0000-0000-000000000001';
-const FIELD_ID  = 'cf000000-0000-0000-0000-000000000002';
 const BED_ID    = 'cf000000-0000-0000-0000-000000000003';
-const PLOT_ID   = 'cf000000-0000-0000-0000-000000000004';
 const IMAGE_ID  = 'cf000000-0000-0000-0000-000000000005';
 
 const farmSeed = {
@@ -99,31 +96,32 @@ const farmSeed = {
   climate_zone: 'temperate',
   locale: 'en' as const,
   theme: 'system' as const,
+  grid_rows: 2,
+  grid_cols: 2,
   created_at: '2026-01-01T00:00:00.000Z',
 };
 
-const fieldSeed = { id: FIELD_ID, farm_id: FARM_ID, name: 'North Field', position: 1 };
-const bedSeed   = { id: BED_ID,   field_id: FIELD_ID, name: 'Bed A', position: 1 };
-const plotSeed  = {
-  id: PLOT_ID,
-  bed_id: BED_ID,
+const bedSeed = {
+  id: BED_ID,
   farm_id: FARM_ID,
-  label: 'P-01',
+  row: 1,
+  col: 1,
+  name: 'A1',
   crop_type: 'tomato',
   crop_variety: 'Cherry',
   planted_at: '2026-03-01',
   expected_harvest: '2026-07-01',
+  notes: undefined as string | undefined,
   latest_status: 'healthy' as const,
 };
 
 const imageSeed = {
   id: IMAGE_ID,
-  plot_id: PLOT_ID,
-  bed_id: BED_ID,   // SF-4: denormalized at write time
+  bed_id: BED_ID,
   node_id: 'cam-001',
   captured_at: '2026-03-17T10:00:00.000Z',
   uploaded_at: '2026-03-17T10:00:05.000Z',
-  storage_key: `images/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`,
+  storage_key: `images/${FARM_ID}/${BED_ID}/2026/03/17/${IMAGE_ID}.jpg`,
   trigger: 'scheduled' as const,
   content_type: 'image/jpeg',
   size_bytes: 102400,
@@ -148,22 +146,20 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://cdn.example.com/signed-url');
   vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://cdn.example.com/thumb-signed-url');
-  vi.mocked(uploadImage).mockResolvedValue(`images/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`);
-  // Ownership chain defaults (membership check + farm.user_id matches TEST_USER_ID)
+  vi.mocked(uploadImage).mockResolvedValue(`images/${FARM_ID}/${BED_ID}/2026/03/17/${IMAGE_ID}.jpg`);
+  // Ownership chain defaults
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed as any);
   vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipSeed);
-  vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
+  vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedSeed);
 });
 
 // ── GET /api/v1/farms/:farmId ─────────────────────────────────────
-// Verifies FarmResponse shape: id, name, description, latitude, longitude,
-// elevation_m, climate_zone, locale, theme, created_at, fields[].beds[].plots[]
 
 describe('contract: GET /api/v1/farms/:farmId → FarmResponse', () => {
-  it('has all top-level FarmResponse fields', async () => {
+  it('has all top-level FarmResponse fields with flat beds', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedSeed]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
@@ -177,61 +173,29 @@ describe('contract: GET /api/v1/farms/:farmId → FarmResponse', () => {
       longitude: 139.6503,
       locale: 'en',
       theme: 'system',
+      grid_rows: 2,
+      grid_cols: 2,
       created_at: '2026-01-01T00:00:00.000Z',
     });
-    expect(Array.isArray(body['fields'])).toBe(true);
-  });
-
-  it('nested fields → beds → plots contain correct shapes', async () => {
-    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([plotSeed]);
-
-    const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
-    expect(res.status).toBe(200);
-    const body = await res.json() as {
-      fields: Array<{
-        id: string; name: string; position: number;
-        beds: Array<{
-          id: string; name: string; position: number;
-          plots: Array<Record<string, unknown>>;
-        }>;
-      }>;
-    };
-
-    const field = body.fields[0];
-    expect(field.id).toBe(FIELD_ID);
-    expect(field.name).toBe('North Field');
-
-    const bed = field.beds[0];
-    expect(bed.id).toBe(BED_ID);
-    expect(bed.name).toBe('Bed A');
-
-    const plot = bed.plots[0];
-    expect(plot['id']).toBe(PLOT_ID);
-    expect(plot['crop_type']).toBe('tomato');
-    expect(plot['latest_status']).toBe('healthy');
-    // Plots in the nested GET /farms/:farmId response do not expose internal ids
-    // but do have these required display fields
-    expect(plot['label']).toBe('P-01');
-    expect(plot['crop_variety']).toBe('Cherry');
+    expect(Array.isArray(body['beds'])).toBe(true);
+    const beds = body['beds'] as Array<Record<string, unknown>>;
+    expect(beds).toHaveLength(1);
+    expect(beds[0]['id']).toBe(BED_ID);
+    expect(beds[0]['name']).toBe('A1');
+    expect(beds[0]['crop_type']).toBe('tomato');
+    expect(beds[0]['latest_status']).toBe('healthy');
   });
 });
 
-// ── GET /api/v1/farms/:farmId/plots ──────────────────────────────
-// Verifies FarmPlotItem shape: id, label, bed_id, field_id, crop_type,
-// crop_variety, latest_status, latest_image (null or object with thumbnail_url)
+// ── GET /api/v1/farms/:farmId/beds ──────────────────────────────
 
-describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
-  it('has all FarmPlotItem fields including bed_id and field_id', async () => {
+describe('contract: GET /api/v1/farms/:farmId/beds → FarmBedItem[]', () => {
+  it('has all FarmBedItem fields including latest_image', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedSeed]);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/beds`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as { data: Array<Record<string, unknown>> };
 
@@ -239,11 +203,10 @@ describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
     expect(body.data).toHaveLength(1);
 
     const item = body.data[0];
-    // Required FarmPlotItem fields
-    expect(item['id']).toBe(PLOT_ID);
-    expect(item['label']).toBe('P-01');
-    expect(item['bed_id']).toBe(BED_ID);       // critical — was missing before fix
-    expect(item['field_id']).toBe(FIELD_ID);   // critical — was missing before fix
+    expect(item['id']).toBe(BED_ID);
+    expect(item['row']).toBe(1);
+    expect(item['col']).toBe(1);
+    expect(item['name']).toBe('A1');
     expect(item['crop_type']).toBe('tomato');
     expect(item['crop_variety']).toBe('Cherry');
     expect(item['latest_status']).toBe('healthy');
@@ -252,12 +215,10 @@ describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
 
   it('latest_image has thumbnail_url: null when no thumbnail generated yet', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(imageSeed);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedSeed]);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(imageSeed);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/beds`, { headers: authHeaders() });
     const body = await res.json() as { data: Array<Record<string, unknown>> };
     const img = body.data[0]['latest_image'] as Record<string, unknown>;
 
@@ -271,15 +232,13 @@ describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
 
   it('latest_image has thumbnail_url when thumbnail_key present', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue({
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedSeed]);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue({
       ...imageSeed,
-      thumbnail_key: `thumbnails/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`,
+      thumbnail_key: `thumbnails/${FARM_ID}/${BED_ID}/2026/03/17/${IMAGE_ID}.jpg`,
     });
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/beds`, { headers: authHeaders() });
     const body = await res.json() as { data: Array<Record<string, unknown>> };
     const img = body.data[0]['latest_image'] as Record<string, unknown>;
 
@@ -288,85 +247,37 @@ describe('contract: GET /api/v1/farms/:farmId/plots → FarmPlotItem[]', () => {
 
   it('returns 404 when farm does not exist', async () => {
     vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/beds`, { headers: authHeaders() });
     expect(res.status).toBe(404);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('NOT_FOUND');
   });
 });
 
-// ── GET /api/v1/plots/:plotId ─────────────────────────────────────
-// Verifies PlotDetailResponse shape: id, label, crop_type, crop_variety,
-// planted_at, expected_harvest, latest_status, farm_id, latest_image
+// ── GET /api/v1/beds/:bedId ─────────────────────────────────────
 
-describe('contract: GET /api/v1/plots/:plotId → PlotDetailResponse', () => {
-  it('has all PlotDetailResponse fields with latest_image: null', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
+describe('contract: GET /api/v1/beds/:bedId → BedDetailResponse', () => {
+  it('has all BedDetailResponse fields with latest_image: null', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedSeed);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
 
-    expect(body['id']).toBe(PLOT_ID);
-    expect(body['label']).toBe('P-01');
+    expect(body['id']).toBe(BED_ID);
+    expect(body['farm_id']).toBe(FARM_ID);
+    expect(body['row']).toBe(1);
+    expect(body['col']).toBe(1);
+    expect(body['name']).toBe('A1');
     expect(body['crop_type']).toBe('tomato');
     expect(body['crop_variety']).toBe('Cherry');
-    expect(body['planted_at']).toBe('2026-03-01');
-    expect(body['expected_harvest']).toBe('2026-07-01');
     expect(body['latest_status']).toBe('healthy');
-    expect(body['farm_id']).toBe(FARM_ID);
     expect(body['latest_image']).toBeNull();
-  });
-
-  it('latest_image has thumbnail_url: null when no thumbnail generated yet', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(imageSeed);
-
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
-    expect(res.status).toBe(200);
-    const body = await res.json() as Record<string, unknown>;
-    const img = body['latest_image'] as Record<string, unknown>;
-
-    expect(img).not.toBeNull();
-    expect(img['id']).toBe(IMAGE_ID);
-    expect(img['thumbnail_url']).toBeNull();  // null until Lambda generates thumbnail
-    expect(img['storage_key']).toBeUndefined();   // must not leak internal path
-    expect(img['captured_at']).toBe('2026-03-17T10:00:00.000Z');
-    expect(img['trigger']).toBe('scheduled');
-  });
-
-  it('latest_image has thumbnail_url when thumbnail_key present', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue({
-      ...imageSeed,
-      thumbnail_key: `thumbnails/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`,
-    });
-
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
-    const body = await res.json() as Record<string, unknown>;
-    const img = body['latest_image'] as Record<string, unknown>;
-
-    expect(img['thumbnail_url']).toBe('https://cdn.example.com/thumb-signed-url');
-  });
-
-  it('returns 404 when plot does not exist', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockRejectedValue(new NotFoundError('Plot not found'));
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
-    expect(res.status).toBe(404);
-    const body = await res.json() as { error: { code: string } };
-    expect(body.error.code).toBe('NOT_FOUND');
   });
 });
 
 // ── GET /api/v1/farms/:farmId/weather ────────────────────────────
-// Verifies WeatherResponse shape: current, today, hourly, daily, alerts fields
 
 describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () => {
   const WEATHER_FARM_ID = 'cf000000-0000-0000-0000-000000000099';
@@ -377,7 +288,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
       json: () => Promise.resolve(makeOpenMeteoResponse()),
     }));
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmSeed, id: WEATHER_FARM_ID });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
   });
 
   it('has all top-level WeatherResponse fields', async () => {
@@ -449,7 +360,7 @@ describe('contract: GET /api/v1/farms/:farmId/weather → WeatherResponse', () =
 });
 
 // ══════════════════════════════════════════════════════════════════
-// Zod-based Contract Tests — one per API endpoint (11 total)
+// Zod-based Contract Tests — one per API endpoint
 //
 // Each test: mock the repo with seed data, call the route, parse the
 // response with the corresponding Zod schema. If the wire shape ever
@@ -493,9 +404,7 @@ function makeOpenMeteoResponse() {
 describe('zod contract: GET /api/v1/farms/:farmId', () => {
   it('response parses against FarmResponseSchema', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getPlotsForBed).mockResolvedValue([plotSeed]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedSeed]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
@@ -537,55 +446,51 @@ describe('zod contract: PATCH /api/v1/farms/:farmId', () => {
   });
 });
 
-// 4 ── GET /api/v1/farms/:farmId/plots
-describe('zod contract: GET /api/v1/farms/:farmId/plots', () => {
-  it('response parses against FarmPlotsResponseSchema', async () => {
+// 4 ── GET /api/v1/farms/:farmId/beds
+describe('zod contract: GET /api/v1/farms/:farmId/beds', () => {
+  it('response parses against FarmBedsResponseSchema', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([plotSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([bedSeed]);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/farms/${FARM_ID}/plots`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/beds`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(() => FarmPlotsResponseSchema.parse(body)).not.toThrow();
+    expect(() => FarmBedsResponseSchema.parse(body)).not.toThrow();
   });
 });
 
-// 5 ── GET /api/v1/plots/:plotId
-describe('zod contract: GET /api/v1/plots/:plotId', () => {
-  it('response parses against PlotDetailResponseSchema', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
-    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([fieldSeed]);
-    vi.mocked(dynamoRepo.getBedsForField).mockResolvedValue([bedSeed]);
-    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
+// 5 ── GET /api/v1/beds/:bedId
+describe('zod contract: GET /api/v1/beds/:bedId', () => {
+  it('response parses against BedDetailResponseSchema', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedSeed);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(() => PlotDetailResponseSchema.parse(body)).not.toThrow();
+    expect(() => BedDetailResponseSchema.parse(body)).not.toThrow();
   });
 });
 
-// 6 ── GET /api/v1/plots/:plotId/images
-describe('zod contract: GET /api/v1/plots/:plotId/images', () => {
+// 6 ── GET /api/v1/beds/:bedId/images
+describe('zod contract: GET /api/v1/beds/:bedId/images', () => {
   it('response parses against ImageListResponseSchema', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
-    vi.mocked(dynamoRepo.getImagesForPlot).mockResolvedValue({ items: [imageSeed], nextCursor: null });
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedSeed);
+    vi.mocked(dynamoRepo.getImagesForBed).mockResolvedValue({ items: [imageSeed], nextCursor: null });
     vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([tagSeed]);
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, { headers: authHeaders() });
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images`, { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => ImageListResponseSchema.parse(body)).not.toThrow();
   });
 });
 
-// 7 ── POST /api/v1/plots/:plotId/images
-describe('zod contract: POST /api/v1/plots/:plotId/images', () => {
+// 7 ── POST /api/v1/beds/:bedId/images
+describe('zod contract: POST /api/v1/beds/:bedId/images', () => {
   it('response parses against ImageUploadResponseSchema', async () => {
-    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedSeed);
     vi.mocked(dynamoRepo.createImage).mockResolvedValue(imageSeed);
 
     // Minimal valid JPEG: magic bytes + padding
@@ -596,7 +501,7 @@ describe('zod contract: POST /api/v1/plots/:plotId/images', () => {
     formData.append('node_id', 'cam-001');
     formData.append('trigger', 'scheduled');
 
-    const res = await app.request(`/api/v1/plots/${PLOT_ID}/images`, {
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images`, {
       method: 'POST',
       headers: authHeaders(),
       body: formData,
@@ -647,7 +552,7 @@ describe('zod contract: GET /api/v1/farms/:farmId/weather', () => {
       json: () => Promise.resolve(makeOpenMeteoResponse()),
     }));
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmSeed, id: ZSCHEMA_FARM_ID });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
   });
 
   it('response parses against WeatherResponseSchema', async () => {
@@ -698,19 +603,19 @@ describe('zod contract: GET /api/v1/usage', () => {
       period_start: '2026-03-20T00:00:00.000Z',
       reset_at: '2026-03-21T00:00:00.000Z',
       user_budget: {
-        input_tokens_used: 1200,
+        input_tokens_used: 100,
         input_tokens_limit: 50000,
-        output_tokens_used: 300,
+        output_tokens_used: 50,
         output_tokens_limit: 10000,
-        messages_sent: 4,
+        messages_sent: 1,
         messages_limit: 20,
       },
       global_budget: {
-        input_tokens_used: 12000,
+        input_tokens_used: 5000,
         input_tokens_limit: 500000,
-        output_tokens_used: 3000,
+        output_tokens_used: 1000,
         output_tokens_limit: 100000,
-        utilization_pct: 2,
+        utilization_pct: 1,
       },
     });
 

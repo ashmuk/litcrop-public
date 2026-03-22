@@ -7,9 +7,10 @@ import {
   ScanCommand,
   UpdateCommand,
   TransactWriteCommand,
+  BatchWriteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import type { Farm, Field, Bed, Plot, Image, Tag, TagValue, PlotStatus, FarmRole, FarmMember } from '@litcrop/shared';
+import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
@@ -27,7 +28,6 @@ const TABLE_NAME = process.env.TABLE_NAME ?? 'litcrop-dev';
 if (!process.env.TABLE_NAME) console.warn('[dynamodb] TABLE_NAME not set, falling back to litcrop-dev');
 const AWS_REGION = process.env.AWS_REGION ?? 'ap-northeast-1';
 const GSI1_INDEX = 'GSI1';
-const GSI2_INDEX = 'GSI2';
 
 // ── Client ───────────────────────────────────────────────────────
 
@@ -40,9 +40,7 @@ const ddb = DynamoDBDocumentClient.from(ddbClient, {
 
 const pk = {
   farm: (farmId: string) => `${DDB_KEY_PREFIXES.FARM}${farmId}`,
-  field: (fieldId: string) => `${DDB_KEY_PREFIXES.FIELD}${fieldId}`,
   bed: (bedId: string) => `${DDB_KEY_PREFIXES.BED}${bedId}`,
-  plot: (plotId: string) => `${DDB_KEY_PREFIXES.PLOT}${plotId}`,
   image: (imageId: string) => `${DDB_KEY_PREFIXES.IMG}${imageId}`,
   tag: (tagId: string) => `${DDB_KEY_PREFIXES.TAG}${tagId}`,
   user: (userId: string) => `${DDB_KEY_PREFIXES.USER}${userId}`,
@@ -50,9 +48,8 @@ const pk = {
 
 const sk = {
   meta: () => DDB_KEY_PREFIXES.META,
-  field: (position: number, fieldId: string) => `${DDB_KEY_PREFIXES.FIELD}${String(position).padStart(6, '0')}#${fieldId}`,
-  bed: (position: number, bedId: string) => `${DDB_KEY_PREFIXES.BED}${String(position).padStart(6, '0')}#${bedId}`,
-  plot: (plotId: string) => `${DDB_KEY_PREFIXES.PLOT}${plotId}`,
+  bed: (row: number, col: number, bedId: string) =>
+    `${DDB_KEY_PREFIXES.BED}${row.toString().padStart(2, '0')}#${col.toString().padStart(2, '0')}#${bedId}`,
   image: (capturedAt: string, imageId: string) => `${DDB_KEY_PREFIXES.IMG}${capturedAt}#${imageId}`,
   tag: (createdAt: string, tagId: string) => `${DDB_KEY_PREFIXES.TAG}${createdAt}#${tagId}`,
   farmMember: (farmId: string) => `${DDB_KEY_PREFIXES.FARM_MEMBER}${farmId}`,
@@ -69,8 +66,8 @@ function decodeCursor(cursor: string, expectedPkPrefix: string): Record<string, 
   const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf-8'));
   // S4: Validate decoded PK matches the caller's expected prefix to prevent
   // cross-user data access via crafted cursors.
-  const pk = decoded['PK'];
-  if (typeof pk !== 'string' || !pk.startsWith(expectedPkPrefix)) {
+  const pkVal = decoded['PK'];
+  if (typeof pkVal !== 'string' || !pkVal.startsWith(expectedPkPrefix)) {
     const err = new Error('Invalid cursor: PK mismatch');
     err.name = 'ValidationException';
     throw err;
@@ -92,47 +89,31 @@ function itemToFarm(item: Record<string, unknown>, farmId: string): Farm {
     climate_zone: item['climate_zone'] as string | undefined,
     locale: (item['locale'] as Farm['locale']) ?? 'en',
     theme: (item['theme'] as Farm['theme']) ?? 'system',
+    grid_rows: (item['grid_rows'] as number) ?? 1,
+    grid_cols: (item['grid_cols'] as number) ?? 1,
     created_at: item['created_at'] as string,
   };
 }
 
-function itemToField(item: Record<string, unknown>, farmId: string, fieldId: string): Field {
-  return {
-    id: fieldId,
-    farm_id: farmId,
-    name: item['name'] as string,
-    position: item['position'] as number,
-  };
-}
-
-function itemToBed(item: Record<string, unknown>, fieldId: string, bedId: string): Bed {
+function itemToBed(item: Record<string, unknown>, farmId: string, bedId: string): Bed {
   return {
     id: bedId,
-    field_id: fieldId,
+    farm_id: farmId,
+    row: item['row'] as number,
+    col: item['col'] as number,
     name: item['name'] as string,
-    position: item['position'] as number,
-  };
-}
-
-function itemToPlot(item: Record<string, unknown>, plotId: string): Plot {
-  return {
-    id: plotId,
-    bed_id: item['bed_id'] as string,
-    label: item['label'] as string,
-    crop_type: item['crop_type'] as string,
-    crop_variety: item['crop_variety'] as string,
-    planted_at: item['planted_at'] as string,
-    expected_harvest: item['expected_harvest'] as string,
+    crop_type: item['crop_type'] as string | undefined,
+    crop_variety: item['crop_variety'] as string | undefined,
+    planted_at: item['planted_at'] as string | undefined,
+    expected_harvest: item['expected_harvest'] as string | undefined,
     notes: item['notes'] as string | undefined,
-    latest_status: (item['latest_status'] as PlotStatus) ?? 'no_data',
-    farm_id: item['farm_id'] as string,
+    latest_status: (item['latest_status'] as BedStatus) ?? 'no_data',
   };
 }
 
 function itemToImage(item: Record<string, unknown>, imageId: string): Image {
   return {
     id: imageId,
-    plot_id: item['plot_id'] as string,
     bed_id: item['bed_id'] as string,
     node_id: item['node_id'] as string,
     captured_at: item['captured_at'] as string,
@@ -194,12 +175,17 @@ function buildMembershipItems(userId: string, farmId: string, role: FarmRole, jo
   ];
 }
 
-// Extract entity ID from a composite key, e.g. "FIELD#pos#<id>" → "<id>"
+// Extract entity ID from a composite key, e.g. "BED#01#01#<id>" → "<id>"
 function extractIdFromSk(skValue: string, prefix: string): string {
   const withoutPrefix = skValue.slice(prefix.length);
-  // For keys with position padding: "000001#<uuid>", extract uuid after last #
+  // For keys with position padding: "01#01#<uuid>", extract uuid after last #
   const lastHash = withoutPrefix.lastIndexOf('#');
   return lastHash >= 0 ? withoutPrefix.slice(lastHash + 1) : withoutPrefix;
+}
+
+/** Generate a bed name from row/col: row 1='A', 2='B', etc. + col number */
+function bedName(row: number, col: number): string {
+  return `${String.fromCharCode(64 + row)}${col}`;
 }
 
 // ── Repository ───────────────────────────────────────────────────
@@ -217,82 +203,130 @@ export class DynamoRepository {
     return itemToFarm(result.Item, farmId);
   }
 
-  // 2. Get all fields for a farm (ordered by position via SK prefix sort)
-  async getFieldsForFarm(farmId: string): Promise<Field[]> {
+  // 2. Get all beds for a farm (ordered by row/col via SK prefix sort)
+  async getBedsForFarm(farmId: string): Promise<Bed[]> {
     const result = await ddb.send(
       new QueryCommand({
         TableName: TABLE_NAME,
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
         ExpressionAttributeValues: {
           ':pk': pk.farm(farmId),
-          ':prefix': DDB_KEY_PREFIXES.FIELD,
-        },
-      }),
-    );
-    return (result.Items ?? []).map((item) => {
-      const fieldId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.FIELD);
-      return itemToField(item, farmId, fieldId);
-    });
-  }
-
-  // 2b. Get all beds for a field
-  async getBedsForField(fieldId: string): Promise<Bed[]> {
-    const result = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk.field(fieldId),
           ':prefix': DDB_KEY_PREFIXES.BED,
         },
       }),
     );
     return (result.Items ?? []).map((item) => {
       const bedId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.BED);
-      return itemToBed(item, fieldId, bedId);
+      return itemToBed(item, farmId, bedId);
     });
   }
 
-  // 3. Get all plots for a farm via GSI2
-  async getPlotsForFarm(farmId: string): Promise<Plot[]> {
-    const result = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        IndexName: GSI2_INDEX,
-        KeyConditionExpression: 'GSI2PK = :pk',
-        ExpressionAttributeValues: {
-          ':pk': pk.farm(farmId),
-        },
-      }),
-    );
-    return (result.Items ?? []).map((item) => {
-      const plotId = extractIdFromSk(item['GSI2SK'] as string, DDB_KEY_PREFIXES.PLOT);
-      return itemToPlot(item, plotId);
-    });
-  }
-
-  // 4. Get plot by ID via GSI1
-  async getPlotById(plotId: string): Promise<Plot> {
+  // 3. Get bed by ID via GSI1
+  async getBedById(bedId: string): Promise<Bed> {
     const result = await ddb.send(
       new QueryCommand({
         TableName: TABLE_NAME,
         IndexName: GSI1_INDEX,
         KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK = :sk',
         ExpressionAttributeValues: {
-          ':pk': pk.plot(plotId),
+          ':pk': pk.bed(bedId),
           ':sk': sk.meta(),
         },
         Limit: 1,
       }),
     );
     const item = result.Items?.[0];
-    if (!item) throw new NotFoundError(`Plot not found: ${plotId}`);
-    return itemToPlot(item, plotId);
+    if (!item) throw new NotFoundError(`Bed not found: ${bedId}`);
+    const farmId = item['farm_id'] as string;
+    return itemToBed(item, farmId, bedId);
   }
 
-  // 5. Get images for a plot (paginated, newest first)
-  async getImagesForPlot(
-    plotId: string,
+  // 4. Update bed crop/details
+  async updateBed(
+    farmId: string,
+    bedId: string,
+    row: number,
+    col: number,
+    updates: Partial<Pick<Bed, 'crop_type' | 'crop_variety' | 'planted_at' | 'expected_harvest' | 'notes'>>,
+  ): Promise<void> {
+    const expressions: string[] = [];
+    const values: Record<string, unknown> = {};
+    const names: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) {
+        expressions.push(`#${key} = :${key}`);
+        // null means "clear field"
+        values[`:${key}`] = value;
+        names[`#${key}`] = key;
+      }
+    }
+
+    if (expressions.length === 0) return;
+
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.bed(row, col, bedId) },
+        UpdateExpression: `SET ${expressions.join(', ')}`,
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: values,
+        ConditionExpression: 'attribute_exists(PK)',
+      }),
+    );
+  }
+
+  // 5. Create beds for a farm grid
+  async createBedsForFarm(farmId: string, gridRows: number, gridCols: number): Promise<Bed[]> {
+    const beds: Bed[] = [];
+    const items: Array<{ PutRequest: { Item: Record<string, unknown> } }> = [];
+
+    for (let row = 1; row <= gridRows; row++) {
+      for (let col = 1; col <= gridCols; col++) {
+        const bedId = crypto.randomUUID();
+        const name = bedName(row, col);
+        const bed: Bed = {
+          id: bedId,
+          farm_id: farmId,
+          row,
+          col,
+          name,
+          latest_status: 'no_data',
+        };
+        beds.push(bed);
+        items.push({
+          PutRequest: {
+            Item: {
+              PK: pk.farm(farmId),
+              SK: sk.bed(row, col, bedId),
+              // GSI1 for direct bed lookup
+              GSI1PK: pk.bed(bedId),
+              GSI1SK: sk.meta(),
+              ...bed,
+            },
+          },
+        });
+      }
+    }
+
+    // BatchWrite in chunks of 25
+    for (let i = 0; i < items.length; i += 25) {
+      const chunk = items.slice(i, i + 25);
+      await ddb.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [TABLE_NAME]: chunk,
+          },
+        }),
+      );
+    }
+
+    return beds;
+  }
+
+  // 6. Get images for a bed (paginated, newest first)
+  async getImagesForBed(
+    bedId: string,
     limit = 20,
     cursor?: string,
   ): Promise<{ items: Image[]; nextCursor: string | null }> {
@@ -300,7 +334,7 @@ export class DynamoRepository {
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
       ExpressionAttributeValues: {
-        ':pk': pk.plot(plotId),
+        ':pk': pk.bed(bedId),
         ':prefix': DDB_KEY_PREFIXES.IMG,
       },
       ScanIndexForward: false,
@@ -309,7 +343,7 @@ export class DynamoRepository {
 
     if (cursor) {
       try {
-        queryInput.ExclusiveStartKey = decodeCursor(cursor, pk.plot(plotId));
+        queryInput.ExclusiveStartKey = decodeCursor(cursor, pk.bed(bedId));
       } catch {
         // Malformed base64url, non-JSON, or PK mismatch: treat as a client error
         const badCursor = new Error('Invalid cursor format');
@@ -331,7 +365,27 @@ export class DynamoRepository {
     return { items, nextCursor };
   }
 
-  // 6. Get image by ID via GSI1
+  // 7. Get the most recent image for a bed (null if none)
+  async getLatestImageForBed(bedId: string): Promise<Image | null> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': pk.bed(bedId),
+          ':prefix': DDB_KEY_PREFIXES.IMG,
+        },
+        ScanIndexForward: false,
+        Limit: 1,
+      }),
+    );
+    const item = result.Items?.[0];
+    if (!item) return null;
+    const imageId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.IMG);
+    return itemToImage(item, imageId);
+  }
+
+  // 8. Get image by ID via GSI1
   async getImageById(imageId: string): Promise<Image> {
     const result = await ddb.send(
       new QueryCommand({
@@ -350,7 +404,7 @@ export class DynamoRepository {
     return itemToImage(item, imageId);
   }
 
-  // 7. Get tags for an image
+  // 9. Get tags for an image
   async getTagsForImage(imageId: string): Promise<Tag[]> {
     const result = await ddb.send(
       new QueryCommand({
@@ -368,15 +422,13 @@ export class DynamoRepository {
     });
   }
 
-  // 8. Write tag + 9. Update plot status
-  //
-  // SF-4: accepts bed_id directly from the caller (read from the Image record,
-  // which stores it at upload time). This removes the PoC-era race condition where
-  // two concurrent tag writes would both do a GSI1 read, then race on the UpdateItem.
+  // 10. Write tag + update bed status
   async createTag(
     imageId: string,
-    plotId: string,
     bedId: string,
+    farmId: string,
+    row: number,
+    col: number,
     tagValue: TagValue,
     note?: string,
   ): Promise<Tag> {
@@ -391,7 +443,7 @@ export class DynamoRepository {
       created_at: createdAt,
     };
 
-    // 8. PutItem for the tag
+    // PutItem for the tag
     await ddb.send(
       new PutCommand({
         TableName: TABLE_NAME,
@@ -403,19 +455,17 @@ export class DynamoRepository {
       }),
     );
 
-    // 9. Update plot status using bed_id from the Image record (SF-4).
-    // No intermediate getPlotById call needed — bed_id was denormalized at image
-    // upload time, eliminating the non-atomic read-then-write race condition.
+    // Update bed status on the FARM# partition
     await ddb.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: {
-          PK: pk.bed(bedId),
-          SK: sk.plot(plotId),
+          PK: pk.farm(farmId),
+          SK: sk.bed(row, col, bedId),
         },
         UpdateExpression: 'SET latest_status = :status',
         ExpressionAttributeValues: {
-          ':status': tagValue as PlotStatus,
+          ':status': tagValue as BedStatus,
         },
       }),
     );
@@ -431,7 +481,16 @@ export class DynamoRepository {
     data: Omit<Farm, 'id' | 'user_id' | 'created_at'>,
   ): Promise<Farm> {
     const createdAt = new Date().toISOString();
-    const farm: Farm = { id: farmId, user_id: userId, ...data, created_at: createdAt };
+    const gridRows = data.grid_rows ?? 1;
+    const gridCols = data.grid_cols ?? 1;
+    const farm: Farm = {
+      id: farmId,
+      user_id: userId,
+      ...data,
+      grid_rows: gridRows,
+      grid_cols: gridCols,
+      created_at: createdAt,
+    };
     const joinedAt = createdAt;
 
     // Atomic write: farm item + user membership record (both directions)
@@ -453,6 +512,9 @@ export class DynamoRepository {
         ],
       }),
     );
+
+    // Create bed grid after the farm is written
+    await this.createBedsForFarm(farmId, gridRows, gridCols);
 
     return farm;
   }
@@ -542,103 +604,23 @@ export class DynamoRepository {
     return this.getFarm(result.Item['farm_id'] as string);
   }
 
-  async createField(farmId: string, name: string, position: number): Promise<Field> {
-    const fieldId = crypto.randomUUID();
-    await ddb.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: pk.farm(farmId),
-          SK: sk.field(position, fieldId),
-          id: fieldId,
-          farm_id: farmId,
-          name,
-          position,
-        },
-      }),
-    );
-    return { id: fieldId, farm_id: farmId, name, position };
-  }
-
-  async createBed(fieldId: string, name: string, position: number): Promise<Bed> {
-    const bedId = crypto.randomUUID();
-    await ddb.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: pk.field(fieldId),
-          SK: sk.bed(position, bedId),
-          id: bedId,
-          field_id: fieldId,
-          name,
-          position,
-        },
-      }),
-    );
-    return { id: bedId, field_id: fieldId, name, position };
-  }
-
-  async createPlot(
-    bedId: string,
-    farmId: string,
-    data: {
-      label: string;
-      crop_type: string;
-      crop_variety: string;
-      planted_at: string;
-      expected_harvest: string;
-      notes?: string;
-    },
-  ): Promise<Plot> {
-    const plotId = crypto.randomUUID();
-    const plot: Plot = {
-      id: plotId,
-      bed_id: bedId,
-      farm_id: farmId,
-      label: data.label,
-      crop_type: data.crop_type,
-      crop_variety: data.crop_variety,
-      planted_at: data.planted_at,
-      expected_harvest: data.expected_harvest,
-      notes: data.notes,
-      latest_status: 'no_data',
-    };
-    await ddb.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: pk.bed(bedId),
-          SK: sk.plot(plotId),
-          // GSI2: farm-level plot queries (getPlotsForFarm)
-          GSI2PK: pk.farm(farmId),
-          GSI2SK: sk.plot(plotId),
-          ...plot,
-        },
-      }),
-    );
-    return plot;
-  }
-
   async updateFarm(
     farmId: string,
-    updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme'>>,
+    updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>>,
   ): Promise<void> {
     const expressions: string[] = [];
     const values: Record<string, unknown> = {};
+    const names: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined) {
         expressions.push(`#${key} = :${key}`);
         values[`:${key}`] = value;
+        names[`#${key}`] = key;
       }
     }
 
     if (expressions.length === 0) return;
-
-    const names: Record<string, string> = {};
-    for (const key of Object.keys(updates)) {
-      names[`#${key}`] = key;
-    }
 
     await ddb.send(
       new UpdateCommand({
@@ -652,57 +634,18 @@ export class DynamoRepository {
     );
   }
 
-  // Get all plots for a specific bed
-  async getPlotsForBed(bedId: string): Promise<Plot[]> {
-    const result = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk.bed(bedId),
-          ':prefix': DDB_KEY_PREFIXES.PLOT,
-        },
-      }),
-    );
-    return (result.Items ?? []).map((item) => {
-      const plotId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.PLOT);
-      return itemToPlot(item, plotId);
-    });
-  }
-
-  // Get the most recent image for a plot (null if none)
-  async getLatestImageForPlot(plotId: string): Promise<Image | null> {
-    const result = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk.plot(plotId),
-          ':prefix': DDB_KEY_PREFIXES.IMG,
-        },
-        ScanIndexForward: false,
-        Limit: 1,
-      }),
-    );
-    const item = result.Items?.[0];
-    if (!item) return null;
-    const imageId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.IMG);
-    return itemToImage(item, imageId);
-  }
-
   async createImage(
-    plotId: string,
+    bedId: string,
     imageId: string,
-    data: Omit<Image, 'id' | 'plot_id'>,
+    data: Omit<Image, 'id' | 'bed_id'>,
   ): Promise<Image> {
-    const image: Image = { id: imageId, plot_id: plotId, ...data };
-    // bed_id is included in `data` (SF-4) and spread into the DDB item below.
+    const image: Image = { id: imageId, bed_id: bedId, ...data };
 
     await ddb.send(
       new PutCommand({
         TableName: TABLE_NAME,
         Item: {
-          PK: pk.plot(plotId),
+          PK: pk.bed(bedId),
           SK: sk.image(data.captured_at, imageId),
           // GSI1 for direct lookup
           GSI1PK: pk.image(imageId),
@@ -792,7 +735,7 @@ export class DynamoRepository {
    * Count entity types across the table for admin observability.
    * Uses paginated scans with Select:COUNT — acceptable at MVP scale.
    */
-  async getStats(): Promise<{ farms: number; users: number; plots: number }> {
+  async getStats(): Promise<{ farms: number; users: number; beds: number }> {
     const countScan = async (
       filterExpr: string,
       exprValues: Record<string, string>,
@@ -815,13 +758,54 @@ export class DynamoRepository {
       return count;
     };
 
-    const [farms, users, plots] = await Promise.all([
+    const [farms, users, beds] = await Promise.all([
       countScan('begins_with(PK, :p) AND SK = :s', { ':p': 'FARM#', ':s': '#META' }),
       countScan('begins_with(PK, :p)', { ':p': 'USER#' }),
-      countScan('begins_with(SK, :s)', { ':s': 'PLOT#' }),
+      countScan('begins_with(SK, :s)', { ':s': 'BED#' }),
     ]);
 
-    return { farms, users, plots };
+    return { farms, users, beds };
+  }
+
+  // ── Deprecated stubs (Phase D migration) ────────────────────────
+
+  /** @deprecated Use getBedsForFarm — returns empty array */
+  async getFieldsForFarm(_farmId: string): Promise<never[]> {
+    return [];
+  }
+
+  /** @deprecated Use getBedsForFarm — returns empty array */
+  async getBedsForField(_fieldId: string): Promise<never[]> {
+    return [];
+  }
+
+  /** @deprecated Use getBedsForFarm — returns empty array */
+  async getPlotsForFarm(_farmId: string): Promise<never[]> {
+    return [];
+  }
+
+  /** @deprecated Use getBedById — throws NotFoundError */
+  async getPlotById(plotId: string): Promise<never> {
+    throw new NotFoundError(`Plot not found: ${plotId}`);
+  }
+
+  /** @deprecated Use getImagesForBed */
+  async getImagesForPlot(
+    _plotId: string,
+    _limit?: number,
+    _cursor?: string,
+  ): Promise<{ items: Image[]; nextCursor: string | null }> {
+    return { items: [], nextCursor: null };
+  }
+
+  /** @deprecated Use getLatestImageForBed */
+  async getLatestImageForPlot(_plotId: string): Promise<Image | null> {
+    return null;
+  }
+
+  /** @deprecated Beds are auto-created via createBedsForFarm — returns empty array */
+  async getPlotsForBed(_bedId: string): Promise<never[]> {
+    return [];
   }
 }
 

@@ -17,11 +17,11 @@ const s3 = new S3Client({ region: AWS_REGION });
 
 /**
  * Build a deterministic S3 key for an image.
- * Format: images/{farmId}/{plotId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
+ * Format: images/{farmId}/{bedId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
  */
 export function buildStorageKey(
   farmId: string,
-  plotId: string,
+  bedId: string,
   imageId: string,
   capturedAt: string,
 ): string {
@@ -29,13 +29,13 @@ export function buildStorageKey(
   const yyyy = date.getUTCFullYear();
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
   const dd = String(date.getUTCDate()).padStart(2, '0');
-  return `images/${farmId}/${plotId}/${yyyy}/${mm}/${dd}/${imageId}.jpg`;
+  return `images/${farmId}/${bedId}/${yyyy}/${mm}/${dd}/${imageId}.jpg`;
 }
 
 /**
  * Derive the thumbnail key from the original image storage key.
  * Replaces the leading "images/" prefix with "thumbnails/".
- * Format: thumbnails/{farmId}/{plotId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
+ * Format: thumbnails/{farmId}/{bedId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
  */
 export function buildThumbnailKey(storageKey: string): string {
   return storageKey.replace(/^images\//, 'thumbnails/');
@@ -49,13 +49,13 @@ export function buildThumbnailKey(storageKey: string): string {
  */
 export async function uploadImage(
   farmId: string,
-  plotId: string,
+  bedId: string,
   imageId: string,
   capturedAt: string,
   buffer: Uint8Array,
   contentType: string,
 ): Promise<string> {
-  const storageKey = buildStorageKey(farmId, plotId, imageId, capturedAt);
+  const storageKey = buildStorageKey(farmId, bedId, imageId, capturedAt);
 
   await s3.send(
     new PutObjectCommand({

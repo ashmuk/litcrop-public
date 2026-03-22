@@ -50,7 +50,7 @@ const usageFixture = {
   model: 'claude-haiku-4-5-20251001',
 };
 
-const statsFixture = { farms: 5, users: 8, plots: 17 };
+const statsFixture = { farms: 5, users: 8, beds: 17 };
 
 beforeEach(() => {
   vi.clearAllMocks();

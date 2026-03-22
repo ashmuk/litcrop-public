@@ -8,7 +8,7 @@ vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
     getFarmMembership: vi.fn(),
-    getPlotsForFarm: vi.fn(),
+    getBedsForFarm: vi.fn(),
   },
 }));
 
@@ -27,6 +27,8 @@ const farmFixture = {
   longitude: 138.3,
   locale: 'en' as const,
   theme: 'system' as const,
+  grid_rows: 1,
+  grid_cols: 1,
   created_at: '2026-03-17T00:00:00.000Z',
 };
 
@@ -92,7 +94,7 @@ beforeEach(() => {
 describe('GET /api/v1/farms/:farmId/weather happy path', () => {
   it('returns 200 with weather data (WMO code 0 → Clear sky / clear_sky)', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: FARM_ID_2 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(makeOpenMeteoResponse({ weatherCode: 0 })),
@@ -109,7 +111,7 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
 
   it('WMO code 95 → Thunderstorm / thunderstorm', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: FARM_ID_4 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(makeOpenMeteoResponse({ weatherCode: 95 })),
@@ -127,12 +129,13 @@ describe('GET /api/v1/farms/:farmId/weather happy path', () => {
 describe('crop_impact: frost risk', () => {
   it('detects frost-sensitive crops when temp < 2°C', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([
       {
-        id: 'plot-t',
-        bed_id: 'bed-1',
+        id: 'bed-t',
         farm_id: FARM_ID,
-        label: 'Tomato 1',
+        row: 1,
+        col: 1,
+        name: 'A1',
         crop_type: 'tomato',
         crop_variety: 'Cherry',
         planted_at: '2026-03-01',
@@ -158,12 +161,13 @@ describe('crop_impact: frost risk', () => {
     // Reset to a unique farmId to avoid cache from previous test
     const farmId5 = 'f0000000-0000-0000-0000-000000000005';
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: farmId5 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([
       {
-        id: 'plot-t2',
-        bed_id: 'bed-1',
+        id: 'bed-t2',
         farm_id: farmId5,
-        label: 'Tomato 2',
+        row: 1,
+        col: 1,
+        name: 'A1',
         crop_type: 'tomato',
         crop_variety: 'Cherry',
         planted_at: '2026-03-01',
@@ -188,12 +192,13 @@ describe('crop_impact: frost risk', () => {
   it('non-frost-sensitive crop (lettuce) not affected by frost', async () => {
     const farmId6 = 'f0000000-0000-0000-0000-000000000006';
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: farmId6 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([
       {
-        id: 'plot-l',
-        bed_id: 'bed-1',
+        id: 'bed-l',
         farm_id: farmId6,
-        label: 'Lettuce 1',
+        row: 1,
+        col: 1,
+        name: 'A1',
         crop_type: 'lettuce',
         crop_variety: 'Butter',
         planted_at: '2026-03-01',
@@ -226,7 +231,7 @@ describe('cache behavior', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: farmId7 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
 
     // First request populates cache
     await app.request(`/api/v1/farms/${farmId7}/weather`, { headers: authHeaders() });
@@ -239,7 +244,7 @@ describe('cache behavior', () => {
   it('serves stale cache when Open-Meteo fetch fails', async () => {
     const farmId8 = 'f0000000-0000-0000-0000-000000000008';
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: farmId8 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
 
     // First request succeeds and caches data
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -273,7 +278,7 @@ describe('error handling', () => {
   it('returns 502 when Open-Meteo fails and no cache exists', async () => {
     const farmId9 = 'f0000000-0000-0000-0000-000000000009';
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, id: farmId9 });
-    vi.mocked(dynamoRepo.getPlotsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 503,

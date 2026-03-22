@@ -8,24 +8,19 @@ import {
 } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { TAG_VALUES, isValidTagValue } from '@litcrop/shared';
-import type { Image } from '@litcrop/shared';
+import type { Image, Bed } from '@litcrop/shared';
 import { assertFarmAccess } from './_helpers';
 
-/** Resolve farm_id for an image via its plot. */
-async function getImageFarmId(image: Image): Promise<string> {
+/** Resolve farm access for an image via its bed_id. */
+async function assertImageOwnership(image: Image, userId: string): Promise<void> {
+  let bed: Bed;
   try {
-    const plot = await dynamoRepo.getPlotById(image.plot_id);
-    return plot.farm_id;
+    bed = await dynamoRepo.getBedById(image.bed_id);
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
-}
-
-/** Verify caller is a member of the farm that contains this image (plot → farm chain). */
-async function assertImageOwnership(image: Image, userId: string): Promise<void> {
-  const farmId = await getImageFarmId(image);
   try {
-    await assertFarmAccess(farmId, userId);
+    await assertFarmAccess(bed.farm_id, userId);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Image not found: ${image.id}`);
@@ -35,21 +30,27 @@ async function assertImageOwnership(image: Image, userId: string): Promise<void>
 }
 
 /** Verify caller has admin or manager role for the farm containing this image (write operations). */
-async function assertImageWriteAccess(image: Image, userId: string): Promise<void> {
-  const farmId = await getImageFarmId(image);
+async function assertImageWriteAccess(image: Image, userId: string): Promise<Bed> {
+  let bed: Bed;
   try {
-    await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+    bed = await dynamoRepo.getBedById(image.bed_id);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  try {
+    await assertFarmAccess(bed.farm_id, userId, ['admin', 'manager']);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Image not found: ${image.id}`);
     }
     throw err;
   }
+  return bed;
 }
 
 const router = new Hono();
 
-// ── 5.8 GET /api/v1/images/:imageId ──────────────────────────────
+// ── GET /api/v1/images/:imageId ──────────────────────────────────
 
 router.get('/:imageId', async (c) => {
   const { imageId } = c.req.param();
@@ -73,7 +74,7 @@ router.get('/:imageId', async (c) => {
 
   return c.json({
     id: image.id,
-    plot_id: image.plot_id,
+    bed_id: image.bed_id,
     node_id: image.node_id,
     captured_at: image.captured_at,
     uploaded_at: image.uploaded_at,
@@ -92,7 +93,7 @@ router.get('/:imageId', async (c) => {
   });
 });
 
-// ── 5.9 POST /api/v1/images/:imageId/tags ────────────────────────
+// ── POST /api/v1/images/:imageId/tags ────────────────────────────
 
 router.post('/:imageId/tags', async (c) => {
   const { imageId } = c.req.param();
@@ -125,12 +126,14 @@ router.post('/:imageId/tags', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  await assertImageWriteAccess(image, userId);
+  const bed = await assertImageWriteAccess(image, userId);
 
   const tag = await dynamoRepo.createTag(
     imageId,
-    image.plot_id,
-    image.bed_id,  // SF-4: use denormalized bed_id from image record
+    image.bed_id,
+    bed.farm_id,
+    bed.row,
+    bed.col,
     tagValue as import('@litcrop/shared').TagValue,
     typeof note === 'string' ? note : undefined,
   );
@@ -142,7 +145,7 @@ router.post('/:imageId/tags', async (c) => {
       tag: tag.tag,
       note: tag.note ?? null,
       created_at: tag.created_at,
-      plot_status_updated: true,
+      bed_status_updated: true,
     },
     201,
   );
