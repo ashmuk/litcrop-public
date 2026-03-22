@@ -1,6 +1,6 @@
 /**
  * LitCrop Camera Simulator — Image Upload with Retry
- * T-SIM-01: Upload JPEG to POST /api/v1/plots/{plotId}/images
+ * T-SIM-01: Upload JPEG to POST /api/v1/beds/{bedId}/images
  * Exponential backoff: 3 attempts (delays: 1s, 2s, 4s)
  */
 
@@ -11,7 +11,7 @@ const BASE_DELAY_MS = 1000;
 
 export interface UploadOptions {
   apiBaseUrl: string;
-  plotId: string;
+  bedId: string;
   imageBuffer: Buffer;
   triggerType: 'scheduled' | 'motion';
   nodeId: string;
@@ -34,8 +34,8 @@ function sleep(ms: number): Promise<void> {
  * Makes up to 3 attempts with delays: 1 s, 2 s, 4 s between retries.
  */
 export async function uploadImage(options: UploadOptions): Promise<UploadResult> {
-  const { apiBaseUrl, plotId, imageBuffer, triggerType, nodeId, capturedAt } = options;
-  const url = `${apiBaseUrl}/api/v1/plots/${plotId}/images`;
+  const { apiBaseUrl, bedId, imageBuffer, triggerType, nodeId, capturedAt } = options;
+  const url = `${apiBaseUrl}/api/v1/beds/${bedId}/images`;
 
   let lastError: Error | undefined;
 
@@ -60,7 +60,7 @@ export async function uploadImage(options: UploadOptions): Promise<UploadResult>
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       console.error(
-        `[upload] Attempt ${attempt}/${MAX_ATTEMPTS} failed for plot ${plotId}: ${lastError.message}`,
+        `[upload] Attempt ${attempt}/${MAX_ATTEMPTS} failed for bed ${bedId}: ${lastError.message}`,
       );
       if (attempt < MAX_ATTEMPTS) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 1 s, 2 s, 4 s

@@ -16,8 +16,8 @@ const __dirname = dirname(__filename);
 interface CliArgs {
   apiUrl: string;
   farmId: string | null;
-  plotId: string | null;
-  allPlots: boolean;
+  bedId: string | null;
+  allBeds: boolean;
   mode: 'scheduled' | 'motion';
   intervalSeconds: number;
   once: boolean;
@@ -30,8 +30,8 @@ function parseArgs(argv: string[]): CliArgs {
   const result: CliArgs = {
     apiUrl: DEFAULT_CONFIG.apiBaseUrl,
     farmId: null,
-    plotId: null,
-    allPlots: false,
+    bedId: null,
+    allBeds: false,
     mode: 'scheduled',
     intervalSeconds: 300, // 5 minutes default (overrides config's 1h default)
     once: false,
@@ -47,13 +47,17 @@ function parseArgs(argv: string[]): CliArgs {
       case '--farm-id':
         result.farmId = args[++i] ?? null;
         break;
-      case '--plot':
-        result.plotId = args[++i] ?? null;
-        result.allPlots = false;
+      case '--bed':
+        result.bedId = args[++i] ?? null;
+        result.allBeds = false;
+        break;
+      case '--plot': // backward compat alias
+        result.bedId = args[++i] ?? null;
+        result.allBeds = false;
         break;
       case '--all':
-        result.allPlots = true;
-        result.plotId = null;
+        result.allBeds = true;
+        result.bedId = null;
         break;
       case '--mode': {
         const m = args[++i];
@@ -95,8 +99,9 @@ Usage:
 Options:
   --api-url <url>        API base URL (default: ${DEFAULT_CONFIG.apiBaseUrl})
   --farm-id <id>         Farm ID (informational, logged only)
-  --plot <plotId>        Target plot ID
-  --all                  Target all plots (uses PLOT_IDS env var)
+  --bed <bedId>          Target bed ID
+  --plot <bedId>         Alias for --bed (backward compat)
+  --all                  Target all beds (uses BED_IDS env var)
   --mode <scheduled|motion>  Capture mode (default: scheduled)
   --interval <seconds>   Upload interval for scheduled mode (default: 300)
   --once                 Upload once then exit
@@ -104,9 +109,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  npx tsx src/index.ts --once --plot plot-a1 --api-url http://localhost:3000
-  npx tsx src/index.ts --mode motion --plot plot-a1
-  npx tsx src/index.ts --mode scheduled --interval 60 --plot plot-a1
+  npx tsx src/index.ts --once --bed bed-a1 --api-url http://localhost:3000
+  npx tsx src/index.ts --mode motion --bed bed-a1
+  npx tsx src/index.ts --mode scheduled --interval 60 --bed bed-a1
 `.trim());
 }
 
@@ -138,9 +143,9 @@ function pickRandomImage(): Buffer | null {
 
 async function runCycle(args: CliArgs): Promise<void> {
   const timestamp = new Date().toISOString();
-  const plotId = args.plotId ?? 'demo-plot-1';
+  const bedId = args.bedId ?? 'demo-bed-1';
 
-  console.log(`[${timestamp}] mode=${args.mode} plot=${plotId}`);
+  console.log(`[${timestamp}] mode=${args.mode} bed=${bedId}`);
 
   const imageBuffer = pickRandomImage();
   if (!imageBuffer) return;
@@ -149,11 +154,11 @@ async function runCycle(args: CliArgs): Promise<void> {
   // scheduled mode uses 'scheduled' trigger.
   const triggerType = args.mode === 'motion' ? 'motion' : 'scheduled';
 
-  console.log(`[simulator] Uploading to plot ${plotId} (trigger: ${triggerType})…`);
+  console.log(`[simulator] Uploading to bed ${bedId} (trigger: ${triggerType})…`);
 
   const result = await uploadImage({
     apiBaseUrl: args.apiUrl,
-    plotId,
+    bedId,
     imageBuffer,
     triggerType,
     nodeId: args.nodeId,
@@ -185,7 +190,7 @@ async function main(): Promise<void> {
   console.log('LitCrop simulator starting…');
   console.log(`API base URL : ${args.apiUrl}`);
   console.log(`Mode         : ${args.mode}`);
-  console.log(`Plot ID      : ${args.plotId ?? 'demo-plot-1'}`);
+  console.log(`Bed ID       : ${args.bedId ?? 'demo-bed-1'}`);
   console.log(`Node ID      : ${args.nodeId}`);
   if (!args.once) {
     if (args.mode === 'scheduled') {

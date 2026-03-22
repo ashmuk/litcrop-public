@@ -41,7 +41,6 @@ vi.mock('../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
     getFarmsForUser: vi.fn(),
-    getFarmForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
     createFarm: vi.fn(),

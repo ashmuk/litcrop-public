@@ -17,7 +17,6 @@ vi.mock('../../services/budget', () => ({
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
-    getPlotsForFarm: vi.fn(),
   },
 }));
 

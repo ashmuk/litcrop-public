@@ -71,7 +71,7 @@ export const handler = async (event: S3Event): Promise<void> => {
 async function processThumbnail(sourceBucket: string, sourceKey: string): Promise<void> {
   console.log('[thumbnail] processing', { sourceBucket, sourceKey });
 
-  // 1. Parse imageId from storage key: images/{farmId}/{plotId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
+  // 1. Parse imageId from storage key: images/{farmId}/{bedId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
   const filename = sourceKey.split('/').pop();
   const imageId = filename?.replace(/\.jpg$/i, '');
   if (!imageId) {

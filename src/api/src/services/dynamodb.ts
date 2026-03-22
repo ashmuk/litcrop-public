@@ -588,22 +588,6 @@ export class DynamoRepository {
     }));
   }
 
-  /**
-   * @deprecated Use getFarmsForUser() which supports the multi-farm membership model.
-   * Retained for backward compatibility with existing records using the old `#FARM` SK pattern.
-   */
-  async getFarmForUser(userId: string): Promise<Farm | null> {
-    // Check legacy single-farm record first
-    const result = await ddb.send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: pk.user(userId), SK: '#FARM' },
-      }),
-    );
-    if (!result.Item) return null;
-    return this.getFarm(result.Item['farm_id'] as string);
-  }
-
   async updateFarm(
     farmId: string,
     updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>>,
@@ -767,46 +751,6 @@ export class DynamoRepository {
     return { farms, users, beds };
   }
 
-  // ── Deprecated stubs (Phase D migration) ────────────────────────
-
-  /** @deprecated Use getBedsForFarm — returns empty array */
-  async getFieldsForFarm(_farmId: string): Promise<never[]> {
-    return [];
-  }
-
-  /** @deprecated Use getBedsForFarm — returns empty array */
-  async getBedsForField(_fieldId: string): Promise<never[]> {
-    return [];
-  }
-
-  /** @deprecated Use getBedsForFarm — returns empty array */
-  async getPlotsForFarm(_farmId: string): Promise<never[]> {
-    return [];
-  }
-
-  /** @deprecated Use getBedById — throws NotFoundError */
-  async getPlotById(plotId: string): Promise<never> {
-    throw new NotFoundError(`Plot not found: ${plotId}`);
-  }
-
-  /** @deprecated Use getImagesForBed */
-  async getImagesForPlot(
-    _plotId: string,
-    _limit?: number,
-    _cursor?: string,
-  ): Promise<{ items: Image[]; nextCursor: string | null }> {
-    return { items: [], nextCursor: null };
-  }
-
-  /** @deprecated Use getLatestImageForBed */
-  async getLatestImageForPlot(_plotId: string): Promise<Image | null> {
-    return null;
-  }
-
-  /** @deprecated Beds are auto-created via createBedsForFarm — returns empty array */
-  async getPlotsForBed(_bedId: string): Promise<never[]> {
-    return [];
-  }
 }
 
 export const dynamoRepo = new DynamoRepository();

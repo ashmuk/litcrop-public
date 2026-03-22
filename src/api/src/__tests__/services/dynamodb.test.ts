@@ -492,20 +492,3 @@ describe('addFarmMember', () => {
   });
 });
 
-// ── Deprecated stubs ─────────────────────────────────────────────
-
-describe('deprecated stubs', () => {
-  it('getFieldsForFarm returns empty array', async () => {
-    const result = await repo.getFieldsForFarm(FARM_ID);
-    expect(result).toEqual([]);
-  });
-
-  it('getPlotById throws NotFoundError', async () => {
-    await expect(repo.getPlotById('some-id')).rejects.toThrow(NotFoundError);
-  });
-
-  it('getImagesForPlot returns empty', async () => {
-    const result = await repo.getImagesForPlot('some-id');
-    expect(result.items).toEqual([]);
-  });
-});

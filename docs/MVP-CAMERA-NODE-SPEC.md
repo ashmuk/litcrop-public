@@ -165,7 +165,7 @@ flowchart TD
 
 The camera node uploads images to the LitCrop API. The upload must match the implemented API contract.
 
-**Endpoint**: `POST /api/v1/plots/{plotId}/images`
+**Endpoint**: `POST /api/v1/beds/{bedId}/images`
 
 **Content-Type**: `multipart/form-data`
 
@@ -211,7 +211,7 @@ The API is protected by Cognito JWT. The camera node needs an authentication str
 ```yaml
 # /etc/litcrop/node.yaml
 node_id: field-01-camera-01
-plot_id: <target-plot-uuid>
+bed_id: <target-bed-uuid>
 capture_interval_minutes: 10
 image_width: 1920
 image_height: 1080
