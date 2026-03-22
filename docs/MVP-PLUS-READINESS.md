@@ -59,7 +59,8 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 | 3 | `docs/MVP-PLUS-REVISE-PLAN.md` | Scope proposal (MVP+ / PROD-1 / PROD-2), user scenarios, execution phases |
 | 4 | `docs/MVP-PLUS-ALL-ITEMS.md` | Complete 72-item inventory with status tracking |
 | 5 | `docs/decisions/ADR-20260322-phase-d-bed-grid-data-model.md` | Farm→Bed flattening decision |
-| 6 | `docs/designs/PHASE-D-ARCHITECTURE.md` | Phase D API contracts, DDB patterns |
+| 6 | `docs/CAMERA-NODE-SETUP.md` | Step-by-step Pi camera setup guide |
+| 7 | `docs/designs/PHASE-D-ARCHITECTURE.md` | Phase D API contracts, DDB patterns |
 | 7 | `Vision.md` | Original product vision — 4 MVP deliverables, long-term direction |
 | 8 | `REQUIREMENTS.md` | FR-1 through FR-14, NFR-1 through NFR-8 |
 | 9 | `docs/ARCHITECTURE.md` | System architecture, API endpoints, tech stack |
@@ -196,7 +197,7 @@ When starting a new session for MVP+ work, follow this sequence:
 | B can create own farm via wizard + map | MVP-PLUS-SCENARIO §Step 2 | ✅ Done (v0.13 — FarmWizard + MapPicker) |
 | Farm switching works (Demo ↔ user farm) | MVP-PLUS-SCENARIO §Step 2 | ✅ Done (v0.11 FarmSwitcher + v0.13 ProfilePage) |
 | Bed-grid layout creation (5×5 max) | MVP-PLUS-SCENARIO §Step 3 | ✅ Done (v0.13 — BedGridLayout + CropAssignment) |
-| Camera images associate to beds | MVP-PLUS-SCENARIO §Step 4 | ✅ Done (v0.13 — POST /beds/:bedId/images, simulator updated) |
+| Camera images associate to beds | MVP-PLUS-SCENARIO §Step 4 | ✅ Done (v0.13 — POST /beds/:bedId/images, simulator + Pi capture script) |
 | Admin-managed farm membership (A adds C) | MVP-PLUS-SCENARIO §Step 5 | ✅ Done (v0.11 POST /farms/:id/members) |
 | Time-lapse playback working | Vision.md MVP #3 | ✅ Done (v0.12 — weekly 30fps player) |
 | 1-2 camera nodes uploading images | Vision.md | Camera sim running; real Pi TBD |
@@ -228,12 +229,11 @@ When starting a new session for MVP+ work, follow this sequence:
 **Status**: All 6 phases complete. 14/16 readiness criteria met. Code ready.
 
 **Remaining operational steps**:
-1. PR develop → main (Phase E+F + final remediation — 4 commits)
-2. Tag v0.14
-3. Deploy via CI/CD (`deploy.yml` on push to main)
-4. Create 3 Cognito user accounts: Muk (admin), Kiku (manager), Yama (observer)
-5. Configure camera simulator: `--bed <bedId>` for target bed
-6. Pre-seed 14 days of simulator images for time-lapse demo
+1. Deploy via CI/CD (`deploy.yml` on push to main)
+2. Create 3 Cognito user accounts: Muk (admin), Kiku (manager), Yama (observer)
+3. Set up Pi camera node: follow `docs/CAMERA-NODE-SETUP.md`
+4. Configure camera simulator: `--bed <bedId>` for target bed
+5. Pre-seed 14 days of simulator images for time-lapse demo
 
 **After deploy**: Begin April field evaluation per `docs/MVP-PLUS-SCENARIO.md`.
 
