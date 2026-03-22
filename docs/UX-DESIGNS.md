@@ -2042,3 +2042,1095 @@ New translation keys to add to `en.json` and `ja.json`:
 > Updated 2026-03-17 after Step 4 mockup feedback consolidation.
 > Updated 2026-03-20 for MVP scope: +3 auth screens, desktop layout promotion, auth flows, nav renaming.
 > Updated 2026-03-22 for Phase C: +time-lapse player, +lightbox, +chat markdown rendering.
+> Updated 2026-03-22 for Phase D: +map picker, +bed-grid editor, +crop assignment, +profile page redesign, +navigation updates.
+
+---
+
+## 14. Phase D: UX Restructure -- Map, Bed Grid, Profile (MVP+ v1.0)
+
+> Added 2026-03-22 -- UX specifications for F-09, F-10, BED, CROP, PROF.
+> Follows existing Design Principles P1-P4. Extends navigation model from Section 4.1.
+> Driven by MVP-PLUS-SCENARIO.md Steps 2 (Farm Creation) and 3 (Crop Setup).
+
+### 14.0 Phase D Design Principles
+
+Phase D introduces farm creation and layout editing -- the first *write-heavy* workflows. The existing design system is optimized for *read-heavy* monitoring. These additional principles apply:
+
+- **Wizard Simplicity**: Multi-step wizards use linear progression with clear step indicators. Each step has a single focus. Back navigation is always available.
+- **Immediate Feedback**: Every user action (pin drop, grid resize, crop assignment) produces immediate visual feedback. No "silent saves."
+- **Fallback Gracefully**: If Leaflet fails to load (JS error, offline), fall back to manual lat/lon text inputs. If elevation API fails, show manual entry field.
+- **Role Awareness**: Observers (C) see read-only views of bed grids and profiles. Edit controls are hidden, not disabled (progressive disclosure per P3).
+
+---
+
+### 14.1 Map Picker Component (F-09 + F-10)
+
+**Purpose**: Allow users to set farm location by tapping a point on an embedded map. Auto-fills latitude, longitude, and elevation.
+
+**Context**: Replaces the current manual coordinate text inputs in SetupForm. Integrated into the farm creation wizard (Step 2 of MVP+ scenario). Also used for editing existing farm location from Profile.
+
+**Design Principles applied**:
+- **P2 (Forgiving Touch)**: Map is a large tap target. Pin placement uses the center of the map viewport (crosshair pattern) rather than requiring precise tap on small screen.
+- **P3 (Progressive Depth)**: Simple surface (tap map, get location) with coordinate preview for technical users.
+
+#### Wireframe -- Mobile (375px)
+
+```
++------------------------------------------+
+| Farm Location                            |
++------------------------------------------+
+|                                          |
+| +--------------------------------------+ |
+| |                                      | |
+| |          LEAFLET MAP                 | |  <- 300px height, full width
+| |          (tile layer)                | |
+| |                                      | |
+| |              [+]                     | |  <- Crosshair center marker
+| |                                      | |
+| |     [-]  [+]              [GPS]     | |  <- Zoom controls + GPS button
+| +--------------------------------------+ |
+|                                          |
+| Tap the map to set your farm location.   |  <- Instruction text
+|                                          |
+| +--------------------------------------+ |
+| | Location Preview                     | |  <- Coordinate card (appears after pin)
+| | Lat:  36.0                      | |
+| | Lon: 138.3                      | |
+| | Elev: 760m (auto)         [loading]  | |  <- Elevation auto-fetches
+| +--------------------------------------+ |
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Desktop (1024px+)
+
+```
++--------------------------------------------------------------+
+| Farm Location                                                |
++--------------------------------------------------------------+
+| +------------------------------------+  +------------------+ |
+| |                                    |  | Location Preview | |
+| |          LEAFLET MAP               |  |                  | |
+| |          (tile layer)              |  | Lat:  36.0  | |
+| |                                    |  | Lon: 138.3  | |
+| |              [+]                   |  |                  | |
+| |                                    |  | Elevation        | |
+| |     [-]  [+]            [GPS]     |  | 760m (auto)      | |
+| +------------------------------------+  |                  | |
+|                                         | [Edit manually]  | |
+|                                         +------------------+ |
++--------------------------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Map container** | Mobile: `width: 100%`, `height: 300px`, `border-radius: var(--radius-lg)`, `overflow: hidden`, `border: var(--border-default)`. Desktop: `height: 400px`, flex grows to fill available width. |
+| **Map tiles** | OpenStreetMap tiles via Leaflet. Default center: Japan (35.6762, 139.6503) at zoom 5. If GPS available, center on user location at zoom 14. |
+| **Crosshair marker** | CSS overlay centered on map: 32px circle with crosshair lines extending 16px in each direction. `border: 2px solid var(--color-primary)`, `background: rgba(27, 107, 58, 0.2)`. Fixed position (does not move with map -- the map moves under it). |
+| **Pin marker** | After placement: Leaflet default marker at selected coordinates. Green tint via CSS filter to match primary color. |
+| **Zoom controls** | Leaflet default `L.control.zoom`, positioned bottom-left. Each button `40px x 40px`. |
+| **GPS button** | Custom control, bottom-right of map: `48px x 48px`, `border-radius: 50%`, `background: var(--color-surface)`, `box-shadow: var(--shadow-md)`, crosshair/location icon (24px), `color: var(--color-gray-700)`. Hover: `background: var(--color-gray-100)`. Active (GPS acquired): `color: var(--color-primary)`. |
+| **Instruction text** | Below map, `font-size: var(--font-size-sm)`, `color: var(--color-gray-500)`, `padding: var(--space-2) 0`. Hidden after pin is placed. |
+| **Coordinate preview card** | `padding: var(--space-4)`, `background: var(--color-surface)`, `border: var(--border-default)`, `border-radius: var(--radius-lg)`. Appears after pin placed. Desktop: side panel, fixed width 280px. |
+| **Coordinate values** | `font-family: monospace`, `font-size: var(--font-size-sm)`, `color: var(--color-gray-900)`. Labels: `font-size: var(--font-size-xs)`, `color: var(--color-gray-500)`. |
+| **Elevation row** | Value + "(auto)" badge. Badge: `font-size: var(--font-size-xs)`, `background: var(--color-primary-light)`, `color: var(--color-primary)`, `border-radius: var(--radius-full)`, `padding: 2px 8px`. Loading state: 16px spinner replacing value. |
+| **"Edit manually" link** | Desktop only (below coordinate card): `color: var(--color-link)`, `font-size: var(--font-size-sm)`. Expands to show lat/lon/elevation text inputs for manual override. |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Pan/zoom map | Standard Leaflet touch gestures. Crosshair stays centered. |
+| Tap map (mobile) | Places pin at tap point. Coordinate card appears/updates. Elevation fetch starts. |
+| Stop panning (alternative) | After pan ends, a "Set location here" floating button appears at center for 3 seconds. Tap to confirm. This avoids accidental pin placement from casual map exploration. |
+| Tap GPS button | Requests geolocation API. If granted: map centers on user position at zoom 16, pin auto-placed. If denied: toast "Location access denied. Tap the map to set manually." |
+| Elevation auto-fetch | On pin placement, calls Open-Meteo Elevation API: `GET https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lng}`. Shows spinner (max 3s timeout). On success: fills elevation. On failure: shows "-- m" with manual input field. |
+| Tap "Edit manually" | Reveals 3 text inputs (lat, lon, elevation) pre-filled with current values. Changes here update the map pin position. |
+| Keyboard (desktop) | Arrow keys pan map. +/- zoom. Enter confirms location at crosshair center. Tab to GPS button and coordinate fields. |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **No pin** | Map shows with crosshair. Instruction text visible. Coordinate card hidden. Wizard "Next" button disabled. |
+| **Pin placed** | Marker visible on map. Coordinate card shows lat/lon. Elevation loading. Instruction text hidden. |
+| **Elevation loaded** | Elevation value appears with "(auto)" badge. Wizard "Next" button enabled. |
+| **Elevation failed** | Shows "-- m" with editable text input below. Manual entry enables "Next" button. |
+| **GPS loading** | GPS button shows spinner. `aria-label="Detecting your location..."` |
+| **GPS denied** | Toast error. GPS button returns to default state. |
+| **Map failed to load** | Fallback: 3 text inputs (latitude, longitude, elevation) with helper text "Enter your farm coordinates manually." Uses existing SetupForm input pattern. |
+| **Offline** | Map tiles fail to load (gray squares). A banner above map: "Map unavailable offline. Enter coordinates manually." with text inputs below. |
+
+#### Accessibility
+
+| Element | ARIA | Keyboard |
+|---------|------|----------|
+| Map container | `role="application"`, `aria-label="Farm location map. Use arrow keys to pan, plus and minus to zoom, Enter to set location."` | Arrow keys pan, +/- zoom, Enter places pin |
+| GPS button | `<button aria-label="Detect my location using GPS">` | Tab-focusable, Enter activates |
+| Crosshair | `aria-hidden="true"` (decorative) | -- |
+| Coordinate card | `aria-live="polite"`, `aria-label="Selected location"` | Auto-announced on pin change |
+| Elevation loading | `aria-busy="true"` on elevation row | -- |
+| Manual inputs | Standard form input pattern (Section 5.7) with `aria-label` | Tab-focusable |
+
+---
+
+### 14.2 Farm Creation Wizard
+
+**Purpose**: Guided multi-step flow for creating a new farm. Accessed from Profile page [+] button.
+
+**Steps**: 3 steps -- Name/Description, Location (map picker), Confirmation.
+
+**Design Principle P3**: Each step has a single focus. Progressive disclosure -- do not show all fields at once.
+
+#### Wireframe -- Step Indicator + Step 1 (Name)
+
+```
++------------------------------------------+
+| [<- Back]     New Farm      [Cancel]     |  <- Header
++------------------------------------------+
+| Step 1 of 3   [*] [o] [o]               |  <- Step dots
++------------------------------------------+
+|                                          |
+| Farm Name *                              |
+| +--------------------------------------+ |
+| | My Farm                              | |
+| +--------------------------------------+ |
+|                                          |
+| Description                              |
+| +--------------------------------------+ |
+| | Small vegetable farm in Nagano       | |
+| | Prefecture.                          | |
+| +--------------------------------------+ |
+|                                          |
+|                                          |
+|           [     Next     ]               |  <- Primary button
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Step 2 (Location)
+
+```
++------------------------------------------+
+| [<- Back]     New Farm      [Cancel]     |
++------------------------------------------+
+| Step 2 of 3   [*] [*] [o]               |
++------------------------------------------+
+|                                          |
+| [ MAP PICKER COMPONENT (Section 14.1) ] |
+|                                          |
+| Lat: 36.0  Lon: 138.3         |
+| Elevation: 760m (auto)                  |
+|                                          |
+|           [     Next     ]               |
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Step 3 (Confirm)
+
+```
++------------------------------------------+
+| [<- Back]     New Farm      [Cancel]     |
++------------------------------------------+
+| Step 3 of 3   [*] [*] [*]               |
++------------------------------------------+
+|                                          |
+| Review your farm                         |
+|                                          |
+| +--------------------------------------+ |
+| | Name:        My Farm                 | |
+| | Description: Small vegetable farm... | |
+| | Location:    36.03, 138.26           | |
+| | Elevation:   760m                    | |
+| +--------------------------------------+ |
+|                                          |
+|        [   Create Farm   ]               |  <- Primary button
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Post-Create Prompt
+
+```
++------------------------------------------+
+|                                          |
+|       Farm created successfully!         |
+|                                          |
+|   You're currently viewing "Demo Farm".  |
+|   Switch to "My Farm" now?              |
+|                                          |
+|   [  Stay on Demo  ]  [ Switch Now ]     |
+|                                          |
++------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Wizard container** | Full-screen modal on mobile (`position: fixed`, `inset: 0`, `z-index: 500`, `background: var(--color-background)`). Desktop: centered card, `max-width: 640px`, `margin: var(--space-8) auto`, `padding: var(--space-8)`, `border-radius: var(--radius-lg)`, `box-shadow: var(--shadow-lg)`. |
+| **Header** | 56px height, `padding: 0 var(--space-4)`. Back arrow left (returns to previous step or closes on Step 1). "New Farm" title centered. "Cancel" text button right (`color: var(--color-gray-700)`). |
+| **Step indicator** | `padding: var(--space-3) var(--space-4)`. "Step N of 3" label + 3 dots. Active dot: `12px` circle, `background: var(--color-primary)`. Completed dot: same, with checkmark overlay. Future dot: `12px` circle, `border: 2px solid var(--color-gray-300)`. Dots gap: `var(--space-2)`. |
+| **Form content** | `padding: var(--space-4)`. Vertical stack, `gap: var(--space-5)`. |
+| **Name input** | Standard Form Input (Section 5.7), `maxlength: 100`. Required indicator: `*` in red. |
+| **Description textarea** | `min-height: 96px`, `resize: vertical`, same border/focus styles as Form Input. `maxlength: 500`. |
+| **"Next" / "Create Farm" button** | Primary Button (Section 5.9), full width, `margin-top: var(--space-6)`. Disabled until step requirements met. |
+| **Review card** | Step 3: `background: var(--color-gray-100)`, `border-radius: var(--radius-lg)`, `padding: var(--space-4)`. Key-value pairs in `<dl>` layout. |
+| **Post-create dialog** | Centered within wizard area. Two buttons side by side: secondary ("Stay on Demo") and primary ("Switch Now"). |
+| **Step transition** | Slide-left on forward, slide-right on back, 200ms. `prefers-reduced-motion`: instant. |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Tap "Next" (Step 1) | Validates name (required). If valid, slide to Step 2. |
+| Tap "Next" (Step 2) | Validates location (pin placed, lat/lon present). Slide to Step 3. |
+| Tap "Back" (any step) | Returns to previous step, preserving entered data. |
+| Tap "Cancel" | Confirmation dialog: "Discard this farm?" [Cancel] / [Discard]. If discard, returns to Profile. |
+| Tap "Create Farm" (Step 3) | Button enters loading state. POST /api/v1/farms. On success: post-create prompt appears. On error: toast with error message, button returns to default. |
+| Tap "Switch Now" | Sets new farm as active (`setLocalFarmId`), reloads page. |
+| Tap "Stay on Demo" | Closes wizard, returns to Profile. New farm appears in farm list. |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **Step 1 default** | Name empty, Next disabled. |
+| **Step 1 valid** | Name filled (1+ chars), Next enabled. |
+| **Step 2 no pin** | Map shown, Next disabled. |
+| **Step 2 pin placed** | Coordinates visible, Next enabled (even if elevation is loading -- elevation is optional). |
+| **Step 3 review** | All values displayed. "Create Farm" button enabled. |
+| **Creating** | Button spinner, form non-interactive. |
+| **Created** | Post-create prompt shown. |
+| **Error** | Toast error, button returns to default. User can retry. |
+
+#### Accessibility
+
+| Element | ARIA | Keyboard |
+|---------|------|----------|
+| Wizard container | `role="dialog"`, `aria-label="Create new farm"`, `aria-modal="true"` | Focus trapped within wizard |
+| Step indicator | `aria-label="Step {n} of 3: {step name}"`, `aria-live="polite"` | Auto-announced on step change |
+| Cancel button | `<button aria-label="Cancel farm creation">` | Tab-focusable |
+| Back button | `<button aria-label="Go back to step {n-1}">` | Tab-focusable |
+| Post-create dialog | `role="alertdialog"`, `aria-label="Farm created. Switch to new farm?"` | Focus on primary action |
+
+---
+
+### 14.3 Bed-Grid Editor (BED + CROP)
+
+**Purpose**: Create and manage a grid of beds (rows x cols, max 5x5) for the current farm. Each bed cell can be assigned one crop.
+
+**Entry point**: Crops page > "Layout" view mode (existing toggle). When no beds exist, shows empty state with "Create Bed Grid" CTA.
+
+**Design Principles applied**:
+- **P1 (Glanceable)**: Grid cells use status colors from existing tokens. Assigned cells show crop icon + name at a glance.
+- **P2 (Forgiving Touch)**: Minimum cell size 64px on mobile. Grid auto-scales based on dimensions.
+- **P3 (Progressive Depth)**: Grid overview first, tap cell for crop assignment detail.
+
+#### Wireframe -- Grid Size Selector (first-time setup)
+
+```
++------------------------------------------+
+| Bed Layout                               |
++------------------------------------------+
+|                                          |
+| Create your bed layout                   |
+|                                          |
+| Rows:   [1] [2] [3] [4] [5]            |  <- Pill selector
+| Columns: [1] [2] [3] [4] [5]            |
+|                                          |
+| Preview:                                 |
+| +--+ +--+ +--+                          |  <- Live preview grid
+| |  | |  | |  |                          |     (2 rows x 3 cols shown)
+| +--+ +--+ +--+                          |
+| +--+ +--+ +--+                          |
+| |  | |  | |  |                          |
+| +--+ +--+ +--+                          |
+|                                          |
+| 6 beds total                             |
+|                                          |
+|        [  Create Grid  ]                 |
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Bed Grid (populated, mobile 375px)
+
+```
++------------------------------------------+
+| Crops                     [List|Layout]  |
++------------------------------------------+
+|                                          |
+| Bed Layout (3x2)            [Edit Grid]  |
+|                                          |
+| +----------+ +----------+ +----------+  |
+| |  Tomato  | | Lettuce  | |          |  |  <- Row 1
+| |  [icon]  | | [icon]   | | [+ Add]  |  |
+| | Healthy  | | No Data  | |          |  |
+| +----------+ +----------+ +----------+  |
+|                                          |
+| +----------+ +----------+ +----------+  |
+| | Cucumber | |          | | Spinach  |  |  <- Row 2
+| |  [icon]  | | [+ Add]  | | [icon]   |  |
+| |  Issue   | |          | | Healthy  |  |
+| +----------+ +----------+ +----------+  |
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Bed Grid (desktop 1024px+)
+
+```
++--------------------------------------------------------------+
+| Crops                              [List | Layout]           |
++--------------------------------------------------------------+
+|                                                              |
+| Bed Layout (3x2)                             [Edit Grid]     |
+|                                                              |
+| +--------------+ +--------------+ +--------------+          |
+| |              | |              | |              |          |
+| |   Tomato     | |   Lettuce   | |              |          |
+| |   Cherry     | |   Romaine   | |   [+ Add]    |          |
+| |   Healthy    | |   No Data   | |              |          |
+| |  Feb 15      | |  Mar 01     | |              |          |
+| |              | |              | |              |          |
+| +--------------+ +--------------+ +--------------+          |
+|                                                              |
+| +--------------+ +--------------+ +--------------+          |
+| |              | |              | |              |          |
+| |   Cucumber   | |              | |   Spinach    |          |
+| |   Japanese   | |   [+ Add]    | |   Bloomsdale |          |
+| |   Issue      | |              | |   Healthy    |          |
+| |  Mar 05      | |              | |  Feb 20      |          |
+| |              | |              | |              |          |
+| +--------------+ +--------------+ +--------------+          |
+|                                                              |
++--------------------------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Grid container** | CSS Grid: `grid-template-columns: repeat({cols}, 1fr)`, `gap: var(--space-2)`. `padding: var(--space-4)`. Mobile: `min-width` per cell: 64px. If cols * 64px > viewport, horizontal scroll with `overflow-x: auto`. |
+| **Cell (assigned)** | `min-height: 80px` (mobile), `min-height: 120px` (desktop). `border-radius: var(--radius-lg)`, `padding: var(--space-3)`. `background: [status-bg-tint]` from status tokens. `border: 2px solid [status-color]`. Centered flex column layout. |
+| **Cell content (mobile)** | Crop name: `font-size: var(--font-size-sm)`, `font-weight: var(--font-weight-semibold)`, `color: var(--color-gray-900)`, truncate with ellipsis. Status badge: small pill (Section 5.2), 24px height. |
+| **Cell content (desktop)** | Adds: variety name (`font-size: var(--font-size-xs)`, `color: var(--color-gray-700)`), planting date (`font-size: var(--font-size-xs)`, `color: var(--color-gray-500)`). |
+| **Cell (empty)** | `background: var(--color-gray-100)`, `border: 2px dashed var(--color-gray-300)`, centered "+" icon (24px, `color: var(--color-gray-500)`) + "Add" text below (`font-size: var(--font-size-xs)`). |
+| **Grid size selector** | Row of 5 pill buttons (1-5) for each dimension. Each pill: `width: 40px`, `height: 40px`, `border-radius: 50%`, `font-size: var(--font-size-base)`, `font-weight: var(--font-weight-semibold)`. Default: `background: var(--color-surface)`, `border: 2px solid var(--color-gray-300)`. Selected: `background: var(--color-primary)`, `color: white`. |
+| **"Edit Grid" button** | Text button, `color: var(--color-link)`, `font-size: var(--font-size-sm)`. Opens grid size editor (same selector) as a sheet. Warns if resizing removes assigned beds. |
+| **Grid label** | "Bed Layout ({cols}x{rows})" -- `font-size: var(--font-size-lg)`, `font-weight: var(--font-weight-semibold)`. |
+| **Bed count** | Below preview grid in setup: "{N} beds total", `font-size: var(--font-size-sm)`, `color: var(--color-gray-500)`. |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Tap row/col pill (setup) | Updates grid dimension. Live preview updates immediately. |
+| Tap "Create Grid" | POST creates beds for current farm. Transitions to populated grid view. |
+| Tap assigned cell | Navigates to plot detail (existing behavior -- bed-as-plot). |
+| Tap empty cell | Opens Crop Assignment Sheet (Section 14.4). |
+| Long-press assigned cell | Opens context menu: "Change Crop" / "Remove Crop". |
+| Tap "Edit Grid" | Shows grid size selector. If reducing size would remove assigned beds, confirmation dialog: "Removing rows will delete {N} beds with crops. Continue?" |
+| Observer role | Empty cells show no "+" button. Long-press is disabled. "Edit Grid" hidden. Grid is read-only. |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **No grid** | Empty state: seedling icon, "No bed layout yet", "Create your first bed layout to start planting." body text, "Create Bed Grid" primary button. |
+| **Setup mode** | Grid size selector + live preview. "Create Grid" button. |
+| **Populated** | Grid cells with crop names and status colors. Tappable. |
+| **Loading** | Skeleton grid: gray cells matching grid dimensions. |
+| **Error** | Inline error with retry button. |
+
+#### Accessibility
+
+| Element | ARIA | Keyboard |
+|---------|------|----------|
+| Grid | `role="grid"`, `aria-label="Bed layout, {rows} rows by {cols} columns"` | Arrow keys navigate between cells |
+| Grid row | `role="row"` | -- |
+| Cell (assigned) | `role="gridcell"`, `aria-label="{crop name}, status: {status}, row {r} column {c}"` | Enter navigates to plot detail |
+| Cell (empty) | `role="gridcell"`, `aria-label="Empty bed, row {r} column {c}. Press Enter to assign a crop."` | Enter opens crop assignment |
+| Size selector pills | `role="radiogroup"`, `aria-label="Number of rows"` / `"Number of columns"`. Each pill: `role="radio"`, `aria-checked`. | Arrow keys cycle, Enter selects |
+| "Create Grid" | `<button aria-label="Create bed grid with {rows} rows and {cols} columns">` | Tab-focusable |
+
+---
+
+### 14.4 Crop Assignment Sheet (CROP)
+
+**Purpose**: Assign a crop to an empty bed cell. Bottom sheet on mobile, modal on desktop.
+
+**Design Principle P2**: Large touch targets for crop type selection. Bottom sheet slides up from thumb zone.
+
+#### Wireframe -- Mobile (bottom sheet)
+
+```
++------------------------------------------+
+|                                          |
+|   (dimmed grid behind)                   |
+|                                          |
++==========================================+
+| ----  Assign Crop to Bed R1C3  ----     |  <- Drag handle + title
+|                                          |
+| Crop Type *                              |
+| +--------------------------------------+ |
+| | Select crop...                   [v] | |  <- Dropdown / picker
+| +--------------------------------------+ |
+|                                          |
+| Variety                                  |
+| +--------------------------------------+ |
+| | Cherry Tomato                        | |  <- Text input
+| +--------------------------------------+ |
+|                                          |
+| Planting Date                            |
+| +--------------------------------------+ |
+| | 2026-02-15                       [c] | |  <- Date picker
+| +--------------------------------------+ |
+|                                          |
+|        [    Save Crop    ]               |  <- Primary button
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Desktop (modal)
+
+```
++------------------------------------------+
+|     Assign Crop to Bed R1C3       [x]   |
++------------------------------------------+
+|                                          |
+| Crop Type *         Variety              |
+| [Select crop... v]  [Cherry Tomato    ]  |  <- Side-by-side inputs
+|                                          |
+| Planting Date                            |
+| [2026-02-15     ]                        |
+|                                          |
+|  [Cancel]           [Save Crop]          |
+|                                          |
++------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Bottom sheet (mobile)** | `position: fixed`, `bottom: 0`, `left: 0`, `right: 0`, `background: var(--color-surface)`, `border-radius: var(--radius-xl) var(--radius-xl) 0 0`, `box-shadow: 0 -4px 16px rgba(0,0,0,0.12)`, `padding: var(--space-4) var(--space-4) var(--space-8)`, `z-index: 600`. |
+| **Drag handle** | Centered, `width: 40px`, `height: 4px`, `background: var(--color-gray-300)`, `border-radius: 2px`, `margin-bottom: var(--space-3)`. |
+| **Sheet title** | `font-size: var(--font-size-lg)`, `font-weight: var(--font-weight-semibold)`, `margin-bottom: var(--space-5)`. |
+| **Modal (desktop)** | Centered, `max-width: 480px`, `padding: var(--space-6)`, `border-radius: var(--radius-lg)`, `box-shadow: var(--shadow-lg)`. Backdrop: `var(--color-overlay)`. |
+| **Crop type dropdown** | Standard Form Input (Section 5.7), with chevron icon right. Options: common crop types (Tomato, Lettuce, Cucumber, Spinach, Daikon, Strawberry, Eggplant, Basil, Other). If "Other" selected, a freeform text input appears below. |
+| **Variety input** | Standard Form Input, optional, `placeholder: "e.g., Cherry, Roma..."`. |
+| **Date picker** | Standard Form Input with `type="date"`. Calendar icon right. Default: today. |
+| **"Save Crop" button** | Primary Button (Section 5.9). Disabled until crop type selected. |
+| **"Cancel" button** | Desktop only, secondary style: `background: transparent`, `border: 2px solid var(--color-gray-300)`, `color: var(--color-gray-700)`. |
+| **Backdrop** | Mobile: `background: rgba(0,0,0,0.3)`. Tap backdrop or swipe sheet down to dismiss. |
+
+#### Crop Type Options (with i18n)
+
+| EN | JA | Icon |
+|----|----|----- |
+| Tomato | トマト | -- |
+| Lettuce | レタス | -- |
+| Cucumber | きゅうり | -- |
+| Spinach | ほうれん草 | -- |
+| Daikon | 大根 | -- |
+| Strawberry | いちご | -- |
+| Eggplant | なす | -- |
+| Basil | バジル | -- |
+| Other | その他 | -- |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Tap empty cell in grid | Sheet slides up (mobile) or modal appears (desktop). |
+| Select crop type | Dropdown closes, type filled. If "Other", freeform input appears. |
+| Tap "Save Crop" | POST /api/v1/beds/{bedId}/crop. Optimistic UI: cell immediately shows crop name with "No Data" status. Sheet closes. Toast: "Crop assigned to bed R{r}C{c}". |
+| Tap backdrop / swipe down | Dismisses sheet without saving. If form has data, confirm: "Discard changes?" |
+| Save error | Toast error, sheet stays open for retry. |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **Default** | Crop type empty (required), variety empty, date = today. Save disabled. |
+| **Crop selected** | Save enabled. |
+| **Saving** | Button spinner, inputs disabled. |
+| **Success** | Sheet closes, grid cell updates. |
+
+#### Accessibility
+
+| Element | ARIA | Keyboard |
+|---------|------|----------|
+| Sheet / modal | `role="dialog"`, `aria-label="Assign crop to bed row {r} column {c}"`, `aria-modal="true"` | Focus trapped |
+| Drag handle | `aria-hidden="true"` | -- |
+| Crop type select | `<select aria-label="Crop type" aria-required="true">` or listbox pattern | Tab-focusable, arrows cycle options |
+| Close (desktop) | `<button aria-label="Close">` | Tab-focusable, ESC closes |
+| Backdrop dismiss | -- | ESC closes |
+
+---
+
+### 14.5 Profile Page Redesign (PROF)
+
+**Purpose**: Central hub for farm management and user identity. Two sections: "Farms" (farm list, switch, create) and "You" (user info from Cognito).
+
+**Route**: `/setup` (existing Profile route, redesigned content)
+
+**Replaces**: The current SetupForm component (farm setup wizard). Farm creation moves to the wizard (Section 14.2). The Profile page becomes a *management hub*.
+
+**Design Principle P3**: Farm list is the primary view. Member details are progressive (expandable per farm). User info is secondary (below farms).
+
+#### Wireframe -- Mobile (375px)
+
+```
++------------------------------------------+
+| Profile                                  |
++------------------------------------------+
+|                                          |
+| Farms                              [+]   |  <- Section heading + create button
+|                                          |
+| +--------------------------------------+ |
+| | Demo Farm                   [Active] | |  <- Active farm indicator
+| | Manager · 3 members                  | |
+| | [Switch]                     [v]     | |  <- Switch action + expand arrow
+| +--------------------------------------+ |
+|                                          |
+| +--------------------------------------+ |
+| | Tanaka Farm                          | |
+| | Observer · 2 members                 | |
+| | [Switch]                     [v]     | |
+| +--------------------------------------+ |
+|                                          |
++-- Members (expanded for Demo Farm) ------+
+| | Muk          Admin     Mar 15, 2026  | |
+| | Kiku         Manager   Mar 16, 2026  | |
+| | Yama         Observer  Mar 18, 2026  | |
++------------------------------------------+
+|                                          |
+| You                                      |  <- Section heading
+|                                          |
+| +--------------------------------------+ |
+| | Email:   kiku@example.com            | |
+| | Role:    Manager (Demo Farm)         | |
+| | Joined:  Mar 16, 2026               | |
+| +--------------------------------------+ |
+|                                          |
++------------------------------------------+
+```
+
+#### Wireframe -- Desktop (1024px+)
+
+```
++--------------------------------------------------------------+
+| Profile                                                      |
++--------------------------------------------------------------+
+| Farms                         [+]  |  Farm Detail            |
+|                                     |                         |
+| +-------------------------------+  |  Demo Farm              |
+| | Demo Farm          [Active]   |  |  Manager · 3 members    |
+| | Manager · 3 members           |  |                         |
+| +-------------------------------+  |  Members                |
+|                                     |  +--------------------+ |
+| +-------------------------------+  |  | Muk     Admin      | |
+| | Tanaka Farm                   |  |  | Kiku    Manager    | |
+| | Observer · 2 members          |  |  | Yama    Observer   | |
+| +-------------------------------+  |  +--------------------+ |
+|                                     |                         |
+|                                     |  Location               |
+| You                                 |  36.03, 138.26 · 760m  |
+| Email: kiku@example.com            |                         |
+| Joined: Mar 16, 2026               |  Description             |
+|                                     |  Pre-seeded demo farm   |
+|                                     |  for onboarding.        |
++--------------------------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Page container** | Mobile: single column, `padding: var(--space-4)`. Desktop: 2-column layout. Left: farm list (360px fixed). Right: selected farm detail (1fr). `gap: var(--space-6)`. |
+| **Section heading** | `font-size: var(--font-size-xl)`, `font-weight: var(--font-weight-bold)`, `color: var(--color-gray-900)`, `margin-bottom: var(--space-4)`. |
+| **[+] Create button** | Positioned right of "Farms" heading. `width: 40px`, `height: 40px`, `border-radius: 50%`, `background: var(--color-primary)`, `color: white`, `font-size: 24px`, `box-shadow: var(--shadow-sm)`. Hover: `background: var(--color-primary-dark)`. |
+| **Farm card** | `padding: var(--space-4)`, `background: var(--color-surface)`, `border: var(--border-default)`, `border-radius: var(--radius-lg)`, `margin-bottom: var(--space-3)`. |
+| **Active badge** | On current farm card: pill `background: var(--color-primary-light)`, `color: var(--color-primary)`, `font-size: var(--font-size-xs)`, `font-weight: var(--font-weight-semibold)`, `padding: 2px 10px`, `border-radius: var(--radius-full)`. Text: "Active". |
+| **Farm name** | `font-size: var(--font-size-base)`, `font-weight: var(--font-weight-semibold)`, `color: var(--color-gray-900)`. |
+| **Farm meta** | `font-size: var(--font-size-sm)`, `color: var(--color-gray-700)`. Format: "{role} . {N} members". |
+| **Switch button** | On non-active farms: text button, `color: var(--color-link)`, `font-size: var(--font-size-sm)`, `height: 36px`, `padding: 0 var(--space-3)`. On active farm: hidden (already active). |
+| **Expand arrow** | `48px x 48px` tap target, chevron icon (16px), rotates 180 degrees when expanded. `transition: var(--transition-fast)`. |
+| **Member list** | Collapsible section within farm card. `padding: var(--space-3)`, `background: var(--color-gray-100)`, `border-radius: var(--radius-md)`, `margin-top: var(--space-2)`. |
+| **Member row** | Flex row: name (1fr, `font-size: var(--font-size-sm)`, `font-weight: var(--font-weight-medium)`), role badge (pill, smaller variant), join date (`font-size: var(--font-size-xs)`, `color: var(--color-gray-500)`). Height: 40px. |
+| **Role badge (member list)** | `font-size: 11px`, `padding: 1px 8px`, `border-radius: var(--radius-full)`. Admin: `background: #FFF3E0`, `color: #D84315`. Manager: `background: var(--color-primary-light)`, `color: var(--color-primary)`. Observer: `background: var(--color-gray-100)`, `color: var(--color-gray-700)`. |
+| **"You" section** | `margin-top: var(--space-8)`. Card with `background: var(--color-surface)`, `border: var(--border-default)`, `border-radius: var(--radius-lg)`, `padding: var(--space-4)`. Key-value pairs in `<dl>`. All fields read-only (sourced from Cognito). |
+| **Desktop: Farm detail panel** | Right column shows full detail of the selected (or active) farm: name, description, location, elevation, member list. Clicking a farm card on the left selects it for detail view. |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Tap [+] | Opens Farm Creation Wizard (Section 14.2). |
+| Tap "Switch" on a farm | Sets farm as active (`setLocalFarmId(farmId)`), reloads page. All screens now show the new farm's data. Active badge moves. |
+| Tap expand arrow | Toggles member list visibility with slide animation (200ms). |
+| Tap farm card (desktop) | Selects farm, shows detail in right panel. Does not switch. "Switch" button in detail panel switches. |
+| Observer role | No [+] button. No "Switch" to farms they are not a member of. Member list is read-only. |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **Loading** | Skeleton: 2 card skeletons (farm list) + "You" card skeleton. |
+| **Single farm** | One farm card with "Active" badge. No "Switch" button. [+] button available (if Manager/Admin). |
+| **Multiple farms** | List of farm cards. Active farm has badge. Others have "Switch" button. |
+| **Empty (no farms)** | Only for Observers who have not been added to any farm: "You haven't been added to any farms yet. Ask a farm manager to add you." |
+| **Error** | Inline error with retry. |
+
+#### Accessibility
+
+| Element | ARIA | Keyboard |
+|---------|------|----------|
+| Page | `<main aria-label="Profile">` | -- |
+| Farms section | `<section aria-label="Your farms">` | -- |
+| [+] button | `<button aria-label="Create new farm">` | Tab-focusable, Enter activates |
+| Farm card | `<article aria-label="Demo Farm, Manager role, 3 members, currently active">` | -- |
+| Switch button | `<button aria-label="Switch to Tanaka Farm">` | Tab-focusable |
+| Expand arrow | `<button aria-expanded="false" aria-label="Show members of Demo Farm">` | Tab-focusable, Enter toggles |
+| Member list | `<ul role="list" aria-label="Members of Demo Farm">` | Tab through members |
+| "You" section | `<section aria-label="Your account information">` | -- |
+
+---
+
+### 14.6 Navigation Updates
+
+**Changes to existing navigation** (Section 4.1 and Section 11):
+
+#### Bottom Nav (Mobile) -- No Changes
+
+The existing 4-tab bottom nav remains unchanged:
+
+```
+🌾 Crops  |  ⛅ Weather  |  🌱 Profile  |  ⚙️ Settings
+```
+
+- **Crops** (`/`): Farm Overview with List/Layout toggle. Layout mode now shows the bed grid (Section 14.3).
+- **Weather** (`/weather`): Unchanged.
+- **Profile** (`/setup`): Redesigned content (Section 14.5). Farm list + "You" section.
+- **Settings** (`/settings`): Unchanged.
+
+The "Profile" tab label was already renamed from "My Farm" in MVP. No further nav label changes needed.
+
+#### Desktop Nav -- No Changes
+
+The desktop top nav (Section 11.4) uses the same 4 items. No structural changes.
+
+#### Crops Page: List/Layout Toggle Enhancement
+
+The existing toggle (`List | Layout`) gains new behavior in Layout mode:
+
+| View Mode | Before (Phase C) | After (Phase D) |
+|-----------|-------------------|-----------------|
+| **List** | Plot tile cards (stacked) | Unchanged |
+| **Layout** | Read-only spatial grid (Field > Bed > Plot) | **Editable bed grid** (rows x cols, tap to assign crop). For Observers: read-only as before. |
+
+The layout toggle is positioned in the page header, right-aligned:
+
+```
++------------------------------------------+
+| Crops                   [List | Layout]  |
++------------------------------------------+
+```
+
+Toggle spec (unchanged from existing):
+
+| Element | Spec |
+|---------|------|
+| Container | `height: 36px`, `border-radius: var(--radius-md)`, `border: var(--border-default)`, `background: var(--color-gray-100)`, inline-flex |
+| Button | `padding: 0 var(--space-3)`, `font-size: var(--font-size-sm)`, `font-weight: var(--font-weight-medium)` |
+| Active | `background: var(--color-surface)`, `color: var(--color-gray-900)`, `box-shadow: var(--shadow-sm)` |
+| Inactive | `background: transparent`, `color: var(--color-gray-700)` |
+
+#### Updated Screen Flow Diagram
+
+```mermaid
+graph TD
+    %% Auth Gate
+    L[Login] -->|Login success| CROPS
+    L -->|Sign up| REG[Registration]
+    REG -->|Verify + login| CROPS
+    L -->|Forgot password| PWR[Password Reset]
+    PWR -->|Reset complete| L
+
+    %% Main Hub (Bottom Nav)
+    CROPS[Crops] <-->|Bottom nav| WEATHER[Weather]
+    CROPS <-->|Bottom nav| PROFILE[Profile]
+    CROPS <-->|Bottom nav| SETTINGS[Settings]
+
+    %% Crops Flows
+    CROPS -->|List mode: tap tile| PLOT[Plot Detail]
+    CROPS -->|Layout mode: tap assigned cell| PLOT
+    CROPS -->|Layout mode: tap empty cell| ASSIGN[Crop Assignment Sheet]
+    CROPS -->|Layout mode: no grid yet| GRIDSETUP[Bed Grid Setup]
+    PLOT -->|Back| CROPS
+    PLOT -->|Tap history thumb| IMG[Image Viewer]
+    PLOT -->|Play time-lapse| TL[Time-Lapse Player]
+    IMG -->|Tap image| LB[Lightbox]
+    TL -->|Tap paused frame| LB
+
+    %% Profile Flows
+    PROFILE -->|Tap +| WIZARD[Farm Creation Wizard]
+    WIZARD -->|Step 2| MAP[Map Picker]
+    WIZARD -->|Created + Switch| CROPS
+    WIZARD -->|Created + Stay| PROFILE
+    PROFILE -->|Tap Switch| CROPS
+
+    %% Chat (from any screen)
+    CROPS -->|Tap chat icon| CHAT[AI Chat]
+    PLOT -->|Tap Ask AI| CHAT
+
+    %% Settings
+    SETTINGS -->|Log out| L
+
+    %% Styling
+    style WIZARD fill:#E8F5EC,stroke:#1B6B3A
+    style MAP fill:#E8F5EC,stroke:#1B6B3A
+    style ASSIGN fill:#E8F5EC,stroke:#1B6B3A
+    style GRIDSETUP fill:#E8F5EC,stroke:#1B6B3A
+```
+
+Green-highlighted nodes are new in Phase D.
+
+---
+
+### 14.7 Phase D New Design Tokens
+
+No new color tokens are introduced. Phase D reuses existing tokens. The following CSS custom properties are added for grid-specific layout:
+
+```css
+:root {
+  /* -- Bed Grid -- */
+  --bed-cell-min:       64px;    /* Minimum cell size on mobile */
+  --bed-cell-desktop:   120px;   /* Preferred cell size on desktop */
+  --bed-cell-gap:       var(--space-2);  /* 8px gap between cells */
+  --bed-cell-radius:    var(--radius-lg); /* 12px — matches card radius */
+
+  /* -- Farm Card (Profile) -- */
+  --farm-card-padding:  var(--space-4);  /* 16px */
+
+  /* -- Wizard -- */
+  --wizard-max-width:   640px;  /* Desktop wizard card */
+  --wizard-step-dot:    12px;   /* Step indicator dot size */
+}
+```
+
+---
+
+### 14.8 Phase D Accessibility Audit Checklist
+
+| Requirement | Component | Status |
+|-------------|-----------|--------|
+| Map is keyboard-navigable (arrows, +/-, Enter) | MapPicker | Required |
+| Map has `role="application"` with descriptive `aria-label` | MapPicker | Required |
+| GPS button has `aria-label` and loading state announcement | MapPicker | Required |
+| Coordinate card announced on pin change (`aria-live`) | MapPicker | Required |
+| Fallback to text inputs when map fails | MapPicker | Required |
+| Wizard has focus trap and step announcements | FarmWizard | Required |
+| Cancel and back buttons keyboard-accessible | FarmWizard | Required |
+| Bed grid uses `role="grid"` with arrow key navigation | BedGrid | Required |
+| Each cell has descriptive `aria-label` | BedGrid | Required |
+| Empty cells announce "press Enter to assign" | BedGrid | Required |
+| Grid size selector uses `role="radiogroup"` | BedGridSetup | Required |
+| Crop assignment sheet has focus trap | CropAssignment | Required |
+| ESC closes sheet/modal | CropAssignment | Required |
+| Focus returns to trigger cell on sheet close | CropAssignment | Required |
+| Profile farm cards have descriptive `aria-label` | Profile | Required |
+| Expand/collapse uses `aria-expanded` | Profile | Required |
+| All new interactive elements >= 48px touch target | All | Required |
+| Dark theme renders correctly | All | Required |
+| Earthy theme renders correctly | All | Required |
+| `prefers-reduced-motion` disables slide transitions | All | Required |
+
+---
+
+### 14.9 Phase D i18n Keys (EN/JA)
+
+New translation keys to add to `en.json` and `ja.json`:
+
+```json
+{
+  "map": {
+    "title": "Farm Location",
+    "instruction": "Tap the map to set your farm location.",
+    "gps_button": "Detect my location",
+    "gps_loading": "Detecting your location...",
+    "gps_denied": "Location access denied. Tap the map to set manually.",
+    "elevation_auto": "auto",
+    "elevation_failed": "Could not detect elevation. Enter manually.",
+    "offline_banner": "Map unavailable offline. Enter coordinates manually.",
+    "edit_manually": "Edit manually",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "elevation": "Elevation"
+  },
+  "wizard": {
+    "title": "New Farm",
+    "step_of": "Step {current} of {total}",
+    "step1_name": "Name",
+    "step2_location": "Location",
+    "step3_review": "Review",
+    "farm_name": "Farm Name",
+    "farm_name_required": "Farm name is required",
+    "description": "Description",
+    "description_placeholder": "Describe your farm (optional)",
+    "review_heading": "Review your farm",
+    "create_button": "Create Farm",
+    "creating": "Creating...",
+    "created_title": "Farm created successfully!",
+    "switch_prompt": "You're currently viewing \"{currentFarm}\". Switch to \"{newFarm}\" now?",
+    "switch_now": "Switch Now",
+    "stay_current": "Stay on {farm}",
+    "cancel": "Cancel",
+    "discard_confirm": "Discard this farm?",
+    "discard": "Discard",
+    "next": "Next",
+    "back": "Back"
+  },
+  "bed": {
+    "title": "Bed Layout",
+    "create_heading": "Create your bed layout",
+    "rows": "Rows",
+    "columns": "Columns",
+    "beds_total": "{count} beds total",
+    "create_button": "Create Grid",
+    "edit_grid": "Edit Grid",
+    "no_grid_heading": "No bed layout yet",
+    "no_grid_body": "Create your first bed layout to start planting.",
+    "add_crop": "Add",
+    "resize_warning": "Removing rows will delete {count} beds with crops. Continue?",
+    "cell_empty": "Empty bed",
+    "cell_label": "{crop}, status: {status}, row {row} column {col}"
+  },
+  "crop_assign": {
+    "title": "Assign Crop to Bed R{row}C{col}",
+    "crop_type": "Crop Type",
+    "crop_type_required": "Select a crop type",
+    "select_crop": "Select crop...",
+    "variety": "Variety",
+    "variety_placeholder": "e.g., Cherry, Roma...",
+    "planting_date": "Planting Date",
+    "save": "Save Crop",
+    "saving": "Saving...",
+    "saved_toast": "Crop assigned to bed R{row}C{col}",
+    "discard_confirm": "Discard changes?",
+    "crop_tomato": "Tomato",
+    "crop_lettuce": "Lettuce",
+    "crop_cucumber": "Cucumber",
+    "crop_spinach": "Spinach",
+    "crop_daikon": "Daikon",
+    "crop_strawberry": "Strawberry",
+    "crop_eggplant": "Eggplant",
+    "crop_basil": "Basil",
+    "crop_other": "Other"
+  },
+  "profile": {
+    "title": "Profile",
+    "farms_heading": "Farms",
+    "create_farm": "Create new farm",
+    "active_badge": "Active",
+    "switch_farm": "Switch",
+    "show_members": "Show members",
+    "hide_members": "Hide members",
+    "members_count": "{count} members",
+    "role_admin": "Admin",
+    "role_manager": "Manager",
+    "role_observer": "Observer",
+    "joined_date": "Joined {date}",
+    "you_heading": "You",
+    "email_label": "Email",
+    "role_label": "Role",
+    "joined_label": "Joined",
+    "no_farms_heading": "No farms yet",
+    "no_farms_body": "You haven't been added to any farms yet. Ask a farm manager to add you."
+  }
+}
+```
+
+Japanese translations:
+
+```json
+{
+  "map": {
+    "title": "農場の場所",
+    "instruction": "地図をタップして農場の場所を設定してください。",
+    "gps_button": "現在地を取得",
+    "gps_loading": "現在地を検出中...",
+    "gps_denied": "位置情報へのアクセスが拒否されました。地図をタップして手動で設定してください。",
+    "elevation_auto": "自動",
+    "elevation_failed": "標高を検出できませんでした。手動で入力してください。",
+    "offline_banner": "オフラインのため地図を利用できません。座標を手動で入力してください。",
+    "edit_manually": "手動で編集",
+    "lat": "緯度",
+    "lon": "経度",
+    "elevation": "標高"
+  },
+  "wizard": {
+    "title": "新しい農場",
+    "step_of": "ステップ {current} / {total}",
+    "step1_name": "名前",
+    "step2_location": "場所",
+    "step3_review": "確認",
+    "farm_name": "農場名",
+    "farm_name_required": "農場名は必須です",
+    "description": "説明",
+    "description_placeholder": "農場の説明（任意）",
+    "review_heading": "農場の確認",
+    "create_button": "農場を作成",
+    "creating": "作成中...",
+    "created_title": "農場が作成されました！",
+    "switch_prompt": "現在「{currentFarm}」を表示中です。「{newFarm}」に切り替えますか？",
+    "switch_now": "切り替える",
+    "stay_current": "「{farm}」のまま",
+    "cancel": "キャンセル",
+    "discard_confirm": "この農場を破棄しますか？",
+    "discard": "破棄",
+    "next": "次へ",
+    "back": "戻る"
+  },
+  "bed": {
+    "title": "畝レイアウト",
+    "create_heading": "畝レイアウトを作成",
+    "rows": "行",
+    "columns": "列",
+    "beds_total": "合計 {count} 畝",
+    "create_button": "グリッドを作成",
+    "edit_grid": "グリッドを編集",
+    "no_grid_heading": "畝レイアウトがありません",
+    "no_grid_body": "最初の畝レイアウトを作成して、栽培を始めましょう。",
+    "add_crop": "追加",
+    "resize_warning": "行を削除すると、作物が割り当てられた {count} 畝が削除されます。続行しますか？",
+    "cell_empty": "空の畝",
+    "cell_label": "{crop}、状態：{status}、{row}行{col}列"
+  },
+  "crop_assign": {
+    "title": "畝 R{row}C{col} に作物を割り当て",
+    "crop_type": "作物の種類",
+    "crop_type_required": "作物の種類を選択してください",
+    "select_crop": "作物を選択...",
+    "variety": "品種",
+    "variety_placeholder": "例：チェリー、ロマ...",
+    "planting_date": "植付日",
+    "save": "作物を保存",
+    "saving": "保存中...",
+    "saved_toast": "畝 R{row}C{col} に作物を割り当てました",
+    "discard_confirm": "変更を破棄しますか？",
+    "crop_tomato": "トマト",
+    "crop_lettuce": "レタス",
+    "crop_cucumber": "きゅうり",
+    "crop_spinach": "ほうれん草",
+    "crop_daikon": "大根",
+    "crop_strawberry": "いちご",
+    "crop_eggplant": "なす",
+    "crop_basil": "バジル",
+    "crop_other": "その他"
+  },
+  "profile": {
+    "title": "プロフィール",
+    "farms_heading": "農場",
+    "create_farm": "新しい農場を作成",
+    "active_badge": "アクティブ",
+    "switch_farm": "切替",
+    "show_members": "メンバーを表示",
+    "hide_members": "メンバーを非表示",
+    "members_count": "{count} メンバー",
+    "role_admin": "管理者",
+    "role_manager": "管理者",
+    "role_observer": "閲覧者",
+    "joined_date": "{date} 参加",
+    "you_heading": "あなた",
+    "email_label": "メールアドレス",
+    "role_label": "役割",
+    "joined_label": "参加日",
+    "no_farms_heading": "農場がありません",
+    "no_farms_body": "まだ農場に追加されていません。農場管理者に追加を依頼してください。"
+  }
+}
+```
+
+---
+
+### 14.10 Phase D Implementation Notes for my-builder
+
+#### Astro + Preact Island Boundaries
+
+| Component | Rendering | Island? | Rationale |
+|-----------|-----------|---------|-----------|
+| MapPicker | Preact island (`client:load`) | Yes | Leaflet requires DOM access, GPS API, elevation fetch |
+| FarmWizard | Preact island (`client:load`) | Yes | Multi-step form state, API calls, dialog management |
+| BedGridEditor | Preact island (`client:load`) | Yes | Grid state, cell interactions, API calls |
+| CropAssignSheet | Preact island (`client:load`) | Yes | Bottom sheet / modal, form state |
+| ProfilePage | Preact island (`client:load`) | Yes | Farm list fetch, expand/collapse, switch actions |
+
+#### CSS Organization (additions)
+
+```
+src/frontend/src/styles/
+  components/
+    map-picker.css     -- Map container, crosshair, GPS button, coordinate card
+    bed-grid.css       -- Grid layout, cell states, size selector
+    crop-sheet.css     -- Bottom sheet (mobile), modal (desktop)
+    farm-card.css      -- Profile farm card, member list, role badges
+    wizard.css         -- Step indicator, wizard container, transitions
+```
+
+#### Key Dependencies
+
+| Package | Purpose | Size |
+|---------|---------|------|
+| `leaflet` | Map rendering | ~40KB gzip |
+| `leaflet` CSS | Map tile styles | ~15KB |
+
+Leaflet should be dynamically imported only when MapPicker mounts (code-splitting). Do not include in main bundle.
+
+#### Elevation API
+
+```
+GET https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lng}
+Response: { "elevation": [760.0] }
+```
+
+No API key required. Rate limit: 10,000 requests/day (sufficient for MVP+).
+
+#### Fallback Strategy
+
+1. **Leaflet CDN fails**: Show text inputs for lat/lon/elevation (same as current SetupForm).
+2. **Elevation API fails**: Show manual elevation input with helper text.
+3. **GPS denied/unavailable**: GPS button disabled with tooltip, map tap still works.
+
+---
+
+### 14.11 Phase D Component State Matrix
+
+| Component | Default | Loading | Error | Empty | Active/Selected | Disabled |
+|-----------|---------|---------|-------|-------|-----------------|----------|
+| **MapPicker** | Map with crosshair, no pin | GPS spinner | "Map unavailable" + fallback inputs | -- | Pin placed, coordinates showing | -- |
+| **FarmWizard** | Step 1, name field empty | "Creating..." spinner on button | Toast error, button returns | -- | Step active (dot filled) | "Next" disabled until step valid |
+| **BedGrid cell (assigned)** | Status-tinted bg, crop name, badge | Skeleton cell | -- | -- | -- | Observer: no tap action |
+| **BedGrid cell (empty)** | Dashed border, "+" icon | -- | -- | -- | -- | Observer: no "+" icon |
+| **CropAssignSheet** | Crop type empty, Save disabled | "Saving..." spinner | Toast error, sheet stays | -- | Crop selected, Save enabled | -- |
+| **ProfileFarmCard** | Card with name, role, count | Skeleton cards | Inline error + retry | "No farms yet" message | "Active" badge on current farm | Observer: no [+], no edit |
+| **GridSizeSelector** | All pills unselected | -- | -- | -- | Selected pill: green fill | -- |
+
+---
+
+### 14.12 Phase D Responsive Behavior Summary
+
+| Screen/Component | Mobile (375px) | Tablet (768px) | Desktop (1024px+) |
+|------------------|---------------|----------------|-------------------|
+| **Map Picker** | Full-width, 300px height. Coordinate card below. | Same, wider card. | Map + side panel (coordinate card 280px fixed right). 400px height. |
+| **Farm Wizard** | Full-screen modal. | Full-screen modal. | Centered card, max-width 640px, backdrop overlay. |
+| **Bed Grid** | `min 64px` cells, horizontal scroll if 5 cols > viewport. | Cells expand, no scroll needed. | `120px` cells with variety + date shown. |
+| **Crop Assignment** | Bottom sheet slides up. | Bottom sheet. | Centered modal, max-width 480px. |
+| **Profile** | Single column: farm cards stacked, "You" below. | Same. | 2-column: farm list left (360px), farm detail right (1fr). |
+| **List/Layout toggle** | In header, right-aligned. | Same. | Same. |
