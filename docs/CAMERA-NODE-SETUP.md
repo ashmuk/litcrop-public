@@ -71,32 +71,42 @@ sudo apt update && sudo apt install -y rpicam-apps-lite
 
 ---
 
-## 3. Install Capture Script
+## 3. Install LitCrop on the Pi
+
+### Quick install (recommended)
+
+From your dev machine, copy the installer to the Pi and run it:
 
 ```bash
-# Create directories
-sudo mkdir -p /etc/litcrop
-sudo mkdir -p /var/spool/litcrop
-sudo mkdir -p /opt/litcrop
+# From your dev machine (in the litcrop repo root)
+scp -r scripts/camera-node litcrop@litcrop-cam-01.local:/tmp/litcrop-install
 
-# Copy the capture script (from your computer)
-# Option A: SCP from your dev machine
-scp scripts/camera-node/capture.sh litcrop@litcrop-cam-01.local:/tmp/
-scp scripts/camera-node/node.conf.example litcrop@litcrop-cam-01.local:/tmp/
+# SSH into the Pi
+ssh litcrop@litcrop-cam-01.local
 
-# On the Pi:
-sudo cp /tmp/capture.sh /opt/litcrop/capture.sh
-sudo chmod +x /opt/litcrop/capture.sh
-sudo cp /tmp/node.conf.example /etc/litcrop/node.conf
-
-# Option B: Create directly on the Pi
-# Copy the contents of scripts/camera-node/capture.sh into /opt/litcrop/capture.sh
-# Copy scripts/camera-node/node.conf.example into /etc/litcrop/node.conf
+# Run the installer
+cd /tmp/litcrop-install
+sudo bash install.sh
 ```
 
-Install `curl` (usually pre-installed):
+The install script will:
+- Create `/opt/litcrop/`, `/etc/litcrop/`, `/var/spool/litcrop/`
+- Install `capture.sh` and `refresh-token.sh`
+- Create config from template (if not exists)
+- Install `curl` if missing
+- Check camera detection
+- Optionally set up systemd timer for scheduled capture
+- Optionally set up token refresh cron
+
+### Manual install (if you prefer)
 
 ```bash
+# On the Pi
+sudo mkdir -p /opt/litcrop /etc/litcrop /var/spool/litcrop
+sudo cp /tmp/litcrop-install/capture.sh /opt/litcrop/capture.sh
+sudo cp /tmp/litcrop-install/refresh-token.sh /opt/litcrop/refresh-token.sh
+sudo chmod +x /opt/litcrop/capture.sh /opt/litcrop/refresh-token.sh
+sudo cp /tmp/litcrop-install/node.conf.example /etc/litcrop/node.conf
 sudo apt install -y curl
 ```
 

@@ -344,6 +344,7 @@ The system remains extensible for LTE/SIM, solar power, and multi-node deploymen
 
 | File | Purpose |
 |------|---------|
+| `scripts/camera-node/install.sh` | Automated installer (run on Pi with `sudo`) |
 | `scripts/camera-node/capture.sh` | Capture + upload script (run on Pi) |
 | `scripts/camera-node/refresh-token.sh` | Cognito token refresh (cron every 50 min) |
 | `scripts/camera-node/node.conf.example` | Configuration template |
