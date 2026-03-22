@@ -1,12 +1,59 @@
-# MVP+ Stats & Metrics
+# LitCrop Stats & Metrics (v0.1–v0.15)
 
 > Generated: 2026-03-22
-> Scope: MVP+ (v0.10–v0.15) — 6 phases, PoC baseline at v0.9
-> Purpose: Raw data for post-mortem analysis of the MVP+ pipeline
+> Scope: Full project history — PoC (v0.1–v0.9) + MVP+ (v0.10–v0.15)
+> Purpose: Raw data for post-mortem analysis of the full development pipeline
 
 ---
 
-## 1. Timeline
+## 0. Full Version History
+
+### Per-Version Summary
+
+| Ver | Date | Scope | Commits | +Lines | -Lines | Net | Cumul Lines | Cumul Commits | Tests |
+|-----|------|-------|---------|--------|--------|-----|-------------|---------------|-------|
+| v0.1 | 2026-03-17 | PoC init | 26 | — | — | 11,286 | 11,286 | 26 | — |
+| v0.2 | 2026-03-17 | PoC features | 7 | +6,260 | -37 | +6,223 | 17,545 | 33 | — |
+| v0.3 | 2026-03-17 | PoC patch | 2 | +29 | 0 | +29 | 17,574 | 35 | — |
+| v0.4 | 2026-03-18 | PoC features | 8 | +17,660 | -1 | +17,659 | 35,234 | 43 | — |
+| v0.5 | 2026-03-18 | PoC features | 8 | +3,807 | -271 | +3,536 | 38,770 | 51 | 168 |
+| v0.6 | 2026-03-18 | PoC features | 6 | +1,160 | 0 | +1,160 | 39,930 | 57 | — |
+| v0.7 | 2026-03-19 | PoC deploy | 18 | +33,500 | -508 | +32,992 | 72,927 | 75 | — |
+| v0.8 | 2026-03-20 | PoC refinement | 23 | +14,625 | -2,325 | +12,300 | 85,241 | 98 | 262 |
+| v0.9 | 2026-03-21 | PoC→MVP bridge | 20 | +4,444 | -92 | +4,352 | 89,593 | 118 | 288 |
+| | | **PoC subtotal** | **118** | | | | **89,593** | **118** | **288** |
+| v0.10 | 2026-03-22 | Phase A CI/CD | 13 | +9,789 | -4,143 | +1,543 | 91,136 | 131 | 303 |
+| v0.11 | 2026-03-22 | Phase B Multi-Farm | 3 | +1,275 | -114 | +1,161 | 92,297 | 134 | 303 |
+| v0.12 | 2026-03-22 | Phase C Vision | 4 | +2,492 | -73 | +2,419 | 94,716 | 138 | 303 |
+| v0.13 | 2026-03-22 | Phase D UX | 11 | +7,739 | -3,042 | +4,697 | 99,413 | 149 | 287 |
+| v0.14 | 2026-03-22 | Phase E+F Sec+Qual | 7 | +697 | -79 | +618 | 100,031 | 156 | 321 |
+| v0.15 | 2026-03-22 | Camera Node | 6 | +1,130 | -18 | +1,112 | 101,143 | 162 | 321 |
+| | | **MVP+ subtotal** | **44** | **+23,122** | **-7,469** | | **+11,550** | **44** | **321** |
+| | | **Grand total** | **162** | | | | **101,143** | **162** | **321** |
+
+### Timeline (calendar days)
+
+| Period | Days | Versions | Commits | Scope |
+|--------|------|----------|---------|-------|
+| 2026-03-17 | Day 1 | v0.1–v0.3 | 35 | PoC init + features |
+| 2026-03-18 | Day 2 | v0.4–v0.6 | 22 | PoC features + tests |
+| 2026-03-19 | Day 3 | v0.7 | 18 | PoC deploy + CDK |
+| 2026-03-20 | Day 4 | v0.8 | 23 | PoC refinement |
+| 2026-03-21 | Day 5 | v0.9 | 20 | PoC→MVP bridge |
+| 2026-03-22 | Day 6 | v0.10–v0.15 | 44 | All 6 MVP+ phases + camera |
+| **Total** | **6 days** | **15 versions** | **162** | |
+
+### Scope Totals
+
+| Scope | Versions | Commits | Days | Net Lines | Tests (final) |
+|-------|----------|---------|------|-----------|---------------|
+| PoC (v0.1–v0.9) | 9 | 118 | 5 | 89,593 | 288 |
+| MVP+ (v0.10–v0.15) | 6 | 44 | 1 | +11,550 | 321 |
+| **Total** | **15** | **162** | **6** | **101,143** | **321** |
+
+---
+
+## 1. MVP+ Phase Timeline
 
 | Phase | Version | Session | Date | Commits | Key Deliverable |
 |-------|---------|---------|------|---------|-----------------|
