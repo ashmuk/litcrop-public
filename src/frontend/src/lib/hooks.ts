@@ -1,5 +1,40 @@
+import type { FarmRole } from '@litcrop/shared';
+
 export function useLocalFarmId(defaultId: string): string {
   return (typeof window !== 'undefined' && localStorage.getItem('litcrop-farmId')) || defaultId;
+}
+
+/** Persist the active farm ID to localStorage. */
+export function setLocalFarmId(farmId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('litcrop-farmId', farmId);
+  }
+}
+
+interface FarmListItem {
+  id: string;
+  name: string;
+  role: FarmRole;
+}
+
+/** Read cached farm list from localStorage. Returns empty array if none. */
+export function useLocalFarmList(): FarmListItem[] {
+  if (typeof window === 'undefined') return [];
+  const raw = localStorage.getItem('litcrop-farmList');
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as FarmListItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Persist farm list to localStorage. */
+export function setLocalFarmList(farms: FarmListItem[]): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('litcrop-farmList', JSON.stringify(farms));
+  }
 }
 
 type TempUnit = 'C' | 'F';

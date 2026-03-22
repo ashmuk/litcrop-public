@@ -32,6 +32,8 @@ export const LocaleSchema = z.enum(['en', 'ja']);
 
 export const ThemeSchema = z.enum(['light', 'dark', 'earthy', 'system']);
 
+export const FarmRoleSchema = z.enum(['admin', 'manager', 'observer']);
+
 // ── Farm schemas ─────────────────────────────────────────────────
 
 /** farmToResponse() shape — base farm fields without nested relations */
@@ -79,6 +81,21 @@ export const FarmResponseSchema = FarmBaseSchema.extend({
 
 /** POST /api/v1/farms and PATCH /api/v1/farms/:farmId */
 export const FarmWriteResponseSchema = FarmBaseSchema;
+
+/** FarmMember — represents a user's membership in a farm */
+export const FarmMemberSchema = z.object({
+  user_id: z.string(),
+  farm_id: z.string(),
+  role: FarmRoleSchema,
+  joined_at: z.string(),
+});
+
+/** GET /api/v1/farms — list of farm summaries with role */
+export const FarmsListResponseSchema = z.object({
+  data: z.array(FarmBaseSchema.extend({
+    role: FarmRoleSchema,
+  })),
+});
 
 // ── Plot list schemas ─────────────────────────────────────────────
 

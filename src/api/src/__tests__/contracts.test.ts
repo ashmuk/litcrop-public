@@ -38,6 +38,10 @@ import {
 vi.mock('../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
+    getFarmsForUser: vi.fn(),
+    getFarmForUser: vi.fn(),
+    getFarmMembership: vi.fn(),
+    addFarmMember: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
     getFieldsForFarm: vi.fn(),
@@ -51,7 +55,6 @@ vi.mock('../services/dynamodb', () => ({
     createImage: vi.fn(),
     getImageById: vi.fn(),
     createTag: vi.fn(),
-    getFarmForUser: vi.fn(),
     getConversationHistory: vi.fn().mockResolvedValue([]),
     saveConversationHistory: vi.fn().mockResolvedValue(undefined),
   },
@@ -133,14 +136,23 @@ const tagSeed = {
   created_at: '2026-03-17T11:00:00.000Z',
 };
 
+const membershipSeed = {
+  user_id: TEST_USER_ID,
+  farm_id: FARM_ID,
+  role: 'manager' as const,
+  joined_at: '2026-01-01T00:00:00.000Z',
+  farm_name: 'Contract Test Farm',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://cdn.example.com/signed-url');
   vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://cdn.example.com/thumb-signed-url');
   vi.mocked(uploadImage).mockResolvedValue(`images/${FARM_ID}/${PLOT_ID}/2026/03/17/${IMAGE_ID}.jpg`);
-  // Ownership chain defaults (farm.user_id matches TEST_USER_ID from auth token)
+  // Ownership chain defaults (membership check + farm.user_id matches TEST_USER_ID)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed as any);
+  vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipSeed);
   vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotSeed);
 });
 

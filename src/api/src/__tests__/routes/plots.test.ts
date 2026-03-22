@@ -15,8 +15,9 @@ vi.mock('../../services/dynamodb', () => ({
     getTagsForImage: vi.fn(),
     createImage: vi.fn(),
     getLatestImageForPlot: vi.fn(),
-    // Ownership chain: plot → farm
+    // Ownership chain: plot → farm → membership
     getFarm: vi.fn(),
+    getFarmMembership: vi.fn(),
   },
 }));
 
@@ -81,8 +82,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
   vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://example.com/thumb-signed');
-  // Ownership chain default: plot → farm
+  // Ownership chain default: plot → farm → membership
   vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmForOwnership);
+  vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+    user_id: TEST_USER_ID,
+    farm_id: FARM_ID,
+    role: 'manager' as const,
+    joined_at: '2026-03-17T00:00:00.000Z',
+  });
 });
 
 // ── GET /api/v1/plots/:plotId ─────────────────────────────────────
@@ -276,6 +283,50 @@ describe('POST /api/v1/plots/:plotId/images', () => {
 
   it('returns 404 when plot not found', async () => {
     vi.mocked(dynamoRepo.getPlotById).mockRejectedValue(new NotFoundError('Plot not found'));
+    const res = await app.request(makeImageRequest(jpegBytes));
+    expect(res.status).toBe(404);
+  });
+});
+
+// ── Observer role access control ──────────────────────────────────
+
+describe('Observer role — read allowed, writes blocked', () => {
+  function makeImageRequest(imageBytes: Uint8Array): Request {
+    const formData = new FormData();
+    formData.append('image', new Blob([imageBytes as BlobPart], { type: 'image/jpeg' }), 'capture.jpg');
+    formData.append('captured_at', '2026-03-17T10:00:00.000Z');
+    formData.append('node_id', 'cam-001');
+    formData.append('trigger', 'scheduled');
+    return new Request(`http://localhost/api/v1/plots/${PLOT_ID}/images`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData,
+    });
+  }
+
+  beforeEach(() => {
+    // Override default membership to observer role
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'observer' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+  });
+
+  it('observer can GET plot detail → 200', async () => {
+    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+    vi.mocked(dynamoRepo.getFieldsForFarm).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getLatestImageForPlot).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/plots/${PLOT_ID}`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+  });
+
+  it('observer cannot POST image upload → 404', async () => {
+    vi.mocked(dynamoRepo.getPlotById).mockResolvedValue(plotFixture);
+
+    const jpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...Array(100).fill(0)]);
     const res = await app.request(makeImageRequest(jpegBytes));
     expect(res.status).toBe(404);
   });

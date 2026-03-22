@@ -8,7 +8,10 @@ import { NotFoundError } from '../../errors';
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
+    getFarmsForUser: vi.fn(),
     getFarmForUser: vi.fn(),
+    getFarmMembership: vi.fn(),
+    addFarmMember: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
     getFieldsForFarm: vi.fn(),
@@ -42,16 +45,29 @@ const farmFixture = {
   created_at: '2026-03-17T00:00:00.000Z',
 };
 
+const membershipFixture = {
+  user_id: TEST_USER_ID,
+  farm_id: FARM_ID,
+  role: 'manager' as const,
+  joined_at: '2026-03-17T00:00:00.000Z',
+  farm_name: 'Test Farm',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
+  // Default: user is a member of the test farm
+  vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
 });
 
 // ── GET /api/v1/farms ─────────────────────────────────────────────
 
 describe('GET /api/v1/farms', () => {
   it('returns 200 with array containing the farm when found', async () => {
-    vi.mocked(dynamoRepo.getFarmForUser).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([
+      { user_id: TEST_USER_ID, farm_id: FARM_ID, role: 'manager', joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
 
     const res = await app.request('/api/v1/farms', { headers: authHeaders() });
     expect(res.status).toBe(200);
@@ -60,8 +76,8 @@ describe('GET /api/v1/farms', () => {
     expect((body.data[0] as Record<string, unknown>)['id']).toBe(FARM_ID);
   });
 
-  it('returns 200 with empty array when user has no farm', async () => {
-    vi.mocked(dynamoRepo.getFarmForUser).mockResolvedValue(null);
+  it('returns 200 with empty array when user has no farms', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
 
     const res = await app.request('/api/v1/farms', { headers: authHeaders() });
     expect(res.status).toBe(200);
@@ -444,5 +460,92 @@ describe('POST /api/v1/farms/:farmId/plots', () => {
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ── POST /api/v1/farms/:farmId/members ───────────────────────────
+
+describe('POST /api/v1/farms/:farmId/members', () => {
+  const NEW_USER_ID = 'new-user-00000000000000000002';
+
+  const addedMemberFixture = {
+    user_id: NEW_USER_ID,
+    farm_id: FARM_ID,
+    role: 'observer' as const,
+    joined_at: '2026-03-22T00:00:00.000Z',
+  };
+
+  it('adds a member with valid body → 201', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.addFarmMember).mockResolvedValue(addedMemberFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json() as { user_id: string; role: string };
+    expect(body.user_id).toBe(NEW_USER_ID);
+    expect(body.role).toBe('observer');
+  });
+
+  it('returns 409 when user is already a member', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    const err = new Error('TransactionCanceledException');
+    err.name = 'TransactionCanceledException';
+    vi.mocked(dynamoRepo.addFarmMember).mockRejectedValue(err);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+    });
+    expect(res.status).toBe(409);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('CONFLICT');
+  });
+
+  it('returns 400 when role is invalid', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'superuser' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 404 when caller is not a member of the farm', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    // getFarmMembership returns null → caller is not a member
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when caller has observer role (read-only, cannot add members)', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'observer' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+    });
+    expect(res.status).toBe(404);
   });
 });

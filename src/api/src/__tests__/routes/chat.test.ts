@@ -14,6 +14,7 @@ vi.mock('@anthropic-ai/sdk', () => createSdkMock(mockCreate));
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
+    getFarmMembership: vi.fn(),
     getPlotsForFarm: vi.fn(),
     getConversationHistory: vi.fn().mockResolvedValue([]),
     saveConversationHistory: vi.fn().mockResolvedValue(undefined),
@@ -41,6 +42,13 @@ delete process.env['LLM_API_KEY'];
 beforeEach(() => {
   vi.clearAllMocks();
   rateLimitStore.clear();
+  // Default: user is a member of any farm they access
+  vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+    user_id: TEST_USER_ID,
+    farm_id: FARM_ID,
+    role: 'manager' as const,
+    joined_at: '2026-03-17T00:00:00.000Z',
+  });
 });
 
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';

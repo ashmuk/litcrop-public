@@ -11,6 +11,7 @@ import {
   MESSAGES_PER_HOUR_LIMIT,
   CHAT_MODEL,
 } from '../services/budget';
+import { assertFarmAccess } from './_helpers';
 import type { Farm, Plot } from '@litcrop/shared';
 
 const router = new Hono();
@@ -205,18 +206,6 @@ const TOOLS: Tool[] = [
   },
 ];
 
-// ── Ownership-checked farm lookup ─────────────────────────────────
-
-async function getOwnedFarm(farmId: string, userId: string): Promise<Farm | null> {
-  try {
-    const farm = await dynamoRepo.getFarm(farmId);
-    if (farm.user_id !== userId) return null;
-    return farm;
-  } catch {
-    return null;
-  }
-}
-
 // ── Tool executor ─────────────────────────────────────────────────
 
 async function executeTool(
@@ -227,8 +216,12 @@ async function executeTool(
   if (toolName === TOOL_NAMES.FARM_DATA) {
     const farmId = input['farm_id'];
     if (typeof farmId !== 'string') return 'Error: farm_id is required';
-    const farm = await getOwnedFarm(farmId, userId);
-    if (!farm) return 'Error: Farm not found';
+    let farm: Farm;
+    try {
+      ({ farm } = await assertFarmAccess(farmId, userId));
+    } catch {
+      return 'Error: Farm not found';
+    }
     try {
       const plots = await dynamoRepo.getPlotsForFarm(farmId);
       return JSON.stringify({ farm, plots });
@@ -240,8 +233,12 @@ async function executeTool(
   if (toolName === TOOL_NAMES.WEATHER) {
     const farmId = input['farm_id'];
     if (typeof farmId !== 'string') return 'Error: farm_id is required';
-    const farm = await getOwnedFarm(farmId, userId);
-    if (!farm) return 'Error: Farm not found';
+    let farm: Farm;
+    try {
+      ({ farm } = await assertFarmAccess(farmId, userId));
+    } catch {
+      return 'Error: Farm not found';
+    }
     try {
       const params = new URLSearchParams({
         latitude: farm.latitude.toString(),
@@ -411,13 +408,15 @@ router.post('/', async (c) => {
 
   const farmId = body['farm_id'];
   if (farmId && typeof farmId === 'string') {
-    farm = await getOwnedFarm(farmId, userId);
-    if (farm) {
+    try {
+      ({ farm } = await assertFarmAccess(farmId, userId));
       try {
         plots = await dynamoRepo.getPlotsForFarm(farmId);
       } catch {
         // Non-fatal: proceed with farm but no plots
       }
+    } catch {
+      // Non-fatal: proceed without farm context if not a member
     }
   }
 

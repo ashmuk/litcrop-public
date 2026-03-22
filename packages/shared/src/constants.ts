@@ -78,4 +78,7 @@ export const DDB_KEY_PREFIXES = {
   TAG: 'TAG#',
   CONV: 'CONV#',
   META: '#META',
+  USER: 'USER#',
+  FARM_MEMBER: 'FARM_MEMBER#',
+  MEMBER: 'MEMBER#',
 } as const;

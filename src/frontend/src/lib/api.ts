@@ -15,6 +15,8 @@ import { getAccessToken } from './auth';
 import type {
   Farm,
   Plot,
+  FarmRole,
+  FarmMember,
   FarmResponse,
   FarmPlotItem,
   PlotDetailResponse,
@@ -136,10 +138,24 @@ async function request<T>(
 
 // ── Farm Endpoints ────────────────────────────────────────────────
 
-/** GET /api/v1/farms — returns the caller's own farm, or null if not set up yet */
+/** GET /api/v1/farms — returns all farms the caller belongs to (with role), or empty array */
+export async function getMyFarms(): Promise<Array<Farm & { role: FarmRole }>> {
+  const res = await request<{ data: Array<Farm & { role: FarmRole }> }>('GET', '/farms');
+  return res.data;
+}
+
+/** GET /api/v1/farms — returns the caller's first farm, or null if not set up yet */
 export async function getMyFarm(): Promise<Farm | null> {
-  const res = await request<{ data: Farm[] }>('GET', '/farms');
-  return res.data[0] ?? null;
+  const farms = await getMyFarms();
+  return farms[0] ?? null;
+}
+
+/** POST /api/v1/farms/:farmId/members — add a member to a farm */
+export async function addFarmMember(
+  farmId: string,
+  data: { user_id: string; role: FarmRole },
+): Promise<FarmMember> {
+  return request<FarmMember>('POST', `/farms/${farmId}/members`, data);
 }
 
 /** GET /api/v1/farms/{farmId} */

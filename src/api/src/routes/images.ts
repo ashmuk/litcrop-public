@@ -9,27 +9,41 @@ import {
 import { getAuthContext } from '../middleware/auth';
 import { TAG_VALUES, isValidTagValue } from '@litcrop/shared';
 import type { Image } from '@litcrop/shared';
+import { assertFarmAccess } from './_helpers';
 
-/** Verify caller owns the farm that contains this image (plot → farm chain). */
-async function assertImageOwnership(image: Image, userId: string): Promise<void> {
-  // Image → Plot (has farm_id denormalized)
-  let farmId: string;
+/** Resolve farm_id for an image via its plot. */
+async function getImageFarmId(image: Image): Promise<string> {
   try {
     const plot = await dynamoRepo.getPlotById(image.plot_id);
-    farmId = plot.farm_id;
+    return plot.farm_id;
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
-  // Farm → check user_id
-  let farm;
+}
+
+/** Verify caller is a member of the farm that contains this image (plot → farm chain). */
+async function assertImageOwnership(image: Image, userId: string): Promise<void> {
+  const farmId = await getImageFarmId(image);
   try {
-    farm = await dynamoRepo.getFarm(farmId);
+    await assertFarmAccess(farmId, userId);
   } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Image not found: ${image.id}`);
+    }
+    throw err;
   }
-  if (farm.user_id !== userId) {
-    throw new NotFoundError(`Image not found: ${image.id}`);
+}
+
+/** Verify caller has admin or manager role for the farm containing this image (write operations). */
+async function assertImageWriteAccess(image: Image, userId: string): Promise<void> {
+  const farmId = await getImageFarmId(image);
+  try {
+    await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Image not found: ${image.id}`);
+    }
+    throw err;
   }
 }
 
@@ -111,7 +125,7 @@ router.post('/:imageId/tags', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  await assertImageOwnership(image, userId);
+  await assertImageWriteAccess(image, userId);
 
   const tag = await dynamoRepo.createTag(
     imageId,

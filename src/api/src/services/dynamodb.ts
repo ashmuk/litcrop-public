@@ -9,7 +9,7 @@ import {
   TransactWriteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import type { Farm, Field, Bed, Plot, Image, Tag, TagValue, PlotStatus } from '@litcrop/shared';
+import type { Farm, Field, Bed, Plot, Image, Tag, TagValue, PlotStatus, FarmRole, FarmMember } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
@@ -45,6 +45,7 @@ const pk = {
   plot: (plotId: string) => `${DDB_KEY_PREFIXES.PLOT}${plotId}`,
   image: (imageId: string) => `${DDB_KEY_PREFIXES.IMG}${imageId}`,
   tag: (tagId: string) => `${DDB_KEY_PREFIXES.TAG}${tagId}`,
+  user: (userId: string) => `${DDB_KEY_PREFIXES.USER}${userId}`,
 };
 
 const sk = {
@@ -54,6 +55,8 @@ const sk = {
   plot: (plotId: string) => `${DDB_KEY_PREFIXES.PLOT}${plotId}`,
   image: (capturedAt: string, imageId: string) => `${DDB_KEY_PREFIXES.IMG}${capturedAt}#${imageId}`,
   tag: (createdAt: string, tagId: string) => `${DDB_KEY_PREFIXES.TAG}${createdAt}#${tagId}`,
+  farmMember: (farmId: string) => `${DDB_KEY_PREFIXES.FARM_MEMBER}${farmId}`,
+  member: (userId: string) => `${DDB_KEY_PREFIXES.MEMBER}${userId}`,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────
@@ -151,6 +154,44 @@ function itemToTag(item: Record<string, unknown>, tagId: string): Tag {
     note: item['note'] as string | undefined,
     created_at: item['created_at'] as string,
   };
+}
+
+function itemToFarmMember(userId: string, item: Record<string, unknown>): FarmMember {
+  return {
+    user_id: userId,
+    farm_id: item['farm_id'] as string,
+    role: item['role'] as FarmRole,
+    joined_at: item['joined_at'] as string,
+  };
+}
+
+function buildMembershipItems(userId: string, farmId: string, role: FarmRole, joinedAt: string) {
+  return [
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.user(userId),
+          SK: sk.farmMember(farmId),
+          farm_id: farmId,
+          role,
+          joined_at: joinedAt,
+        },
+      },
+    },
+    {
+      Put: {
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.farm(farmId),
+          SK: sk.member(userId),
+          user_id: userId,
+          role,
+          joined_at: joinedAt,
+        },
+      },
+    },
+  ];
 }
 
 // Extract entity ID from a composite key, e.g. "FIELD#pos#<id>" → "<id>"
@@ -391,8 +432,9 @@ export class DynamoRepository {
   ): Promise<Farm> {
     const createdAt = new Date().toISOString();
     const farm: Farm = { id: farmId, user_id: userId, ...data, created_at: createdAt };
+    const joinedAt = createdAt;
 
-    // Atomic write: farm item + user→farm index (one farm per user constraint)
+    // Atomic write: farm item + user membership record (both directions)
     await ddb.send(
       new TransactWriteCommand({
         TransactItems: [
@@ -407,18 +449,7 @@ export class DynamoRepository {
               ConditionExpression: 'attribute_not_exists(PK)',
             },
           },
-          {
-            Put: {
-              TableName: TABLE_NAME,
-              Item: {
-                PK: `USER#${userId}`,
-                SK: '#FARM',
-                farm_id: farmId,
-              },
-              // Ensures only one farm per Cognito user
-              ConditionExpression: 'attribute_not_exists(PK)',
-            },
-          },
+          ...buildMembershipItems(userId, farmId, 'manager', joinedAt),
         ],
       }),
     );
@@ -426,12 +457,85 @@ export class DynamoRepository {
     return farm;
   }
 
-  /** Look up the farm owned by a Cognito user. Returns null if none. */
-  async getFarmForUser(userId: string): Promise<Farm | null> {
+  /** Look up all farms a Cognito user belongs to. Returns empty array if none. */
+  async getFarmsForUser(userId: string): Promise<FarmMember[]> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: {
+          ':pk': pk.user(userId),
+          ':sk': DDB_KEY_PREFIXES.FARM_MEMBER,
+        },
+      }),
+    );
+    return (result.Items ?? []).map((item) => itemToFarmMember(userId, item));
+  }
+
+  /** Check if a user has membership access to a specific farm. Returns null if not a member. */
+  async getFarmMembership(userId: string, farmId: string): Promise<FarmMember | null> {
     const result = await ddb.send(
       new GetCommand({
         TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: '#FARM' },
+        Key: {
+          PK: pk.user(userId),
+          SK: sk.farmMember(farmId),
+        },
+      }),
+    );
+    if (!result.Item) return null;
+    return itemToFarmMember(userId, result.Item);
+  }
+
+  /** Add a member to a farm (both USER# and FARM# directions). */
+  async addFarmMember(userId: string, farmId: string, role: FarmRole): Promise<FarmMember> {
+    const joinedAt = new Date().toISOString();
+    const [userItem, farmItem] = buildMembershipItems(userId, farmId, role, joinedAt);
+    await ddb.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              ...userItem.Put,
+              ConditionExpression: 'attribute_not_exists(PK)',
+            },
+          },
+          farmItem,
+        ],
+      }),
+    );
+    return { user_id: userId, farm_id: farmId, role, joined_at: joinedAt };
+  }
+
+  /** List all members of a farm. */
+  async getFarmMembers(farmId: string): Promise<Array<{ user_id: string; role: FarmRole; joined_at: string }>> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: {
+          ':pk': pk.farm(farmId),
+          ':sk': DDB_KEY_PREFIXES.MEMBER,
+        },
+      }),
+    );
+    return (result.Items ?? []).map((item) => ({
+      user_id: item['user_id'] as string,
+      role: item['role'] as FarmRole,
+      joined_at: item['joined_at'] as string,
+    }));
+  }
+
+  /**
+   * @deprecated Use getFarmsForUser() which supports the multi-farm membership model.
+   * Retained for backward compatibility with existing records using the old `#FARM` SK pattern.
+   */
+  async getFarmForUser(userId: string): Promise<Farm | null> {
+    // Check legacy single-farm record first
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.user(userId), SK: '#FARM' },
       }),
     );
     if (!result.Item) return null;
