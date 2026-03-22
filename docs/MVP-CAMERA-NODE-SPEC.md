@@ -219,7 +219,7 @@ image_width: 1920
 image_height: 1080
 jpeg_quality: 75
 trigger: scheduled
-api_base_url: https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com
+api_base_url: https://<your-api-gateway-url>
 spool_dir: /var/spool/litcrop
 max_retry_count: 5
 ```

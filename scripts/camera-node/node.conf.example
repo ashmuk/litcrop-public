@@ -14,7 +14,8 @@ NODE_ID="field-01-camera-01"
 BED_ID=""
 
 # LitCrop API base URL (no trailing slash)
-API_BASE_URL="https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com"
+# Find your API URL in the CDK stack outputs or CloudFormation console.
+API_BASE_URL="https://<your-api-gateway-url>"
 
 # Cognito JWT access token (see docs/CAMERA-NODE-SETUP.md §4 for how to obtain)
 AUTH_TOKEN=""
@@ -42,3 +43,14 @@ MAX_RETRY="3"
 
 # Log file path
 LOG_FILE="/var/log/litcrop-node.log"
+
+# ── Token refresh (optional) ──────────────────────────────────────
+
+# Cognito refresh token (used by refresh-token.sh to renew AUTH_TOKEN every 50 min)
+REFRESH_TOKEN=""
+
+# Cognito app client ID (from CDK stack outputs)
+COGNITO_CLIENT_ID=""
+
+# AWS region (default: ap-northeast-1)
+AWS_REGION="ap-northeast-1"

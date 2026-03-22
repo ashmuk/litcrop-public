@@ -32,10 +32,23 @@ SPOOL_DIR="${SPOOL_DIR:-/var/spool/litcrop}"
 MAX_RETRY="${MAX_RETRY:-3}"
 LOG_FILE="${LOG_FILE:-/var/log/litcrop-node.log}"
 
-# Load config file if it exists
+# Load config file if it exists (safe key=value parser — no arbitrary code execution)
 if [ -f "$CONFIG_FILE" ]; then
-    # shellcheck source=/dev/null
-    source "$CONFIG_FILE"
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+        # Strip surrounding quotes
+        value="${value%\"}"
+        value="${value#\"}"
+        # Only set known config keys
+        case "$key" in
+            NODE_ID|BED_ID|API_BASE_URL|AUTH_TOKEN|TRIGGER|\
+            CAPTURE_WIDTH|CAPTURE_HEIGHT|JPEG_QUALITY|INTERVAL_SECONDS|\
+            SPOOL_DIR|MAX_RETRY|LOG_FILE|REFRESH_TOKEN|COGNITO_CLIENT_ID|AWS_REGION)
+                export "$key=$value"
+                ;;
+        esac
+    done < "$CONFIG_FILE"
 fi
 
 # ── Validation ───────────────────────────────────────────────────
@@ -108,14 +121,23 @@ upload() {
     local attempt=0
     local delay=1
 
+    # Write auth header to a temp file so the token is not visible in the process list
+    local curl_config response_file
+    curl_config=$(mktemp)
+    chmod 600 "$curl_config"
+    printf 'header = "Authorization: Bearer %s"\n' "$AUTH_TOKEN" > "$curl_config"
+
+    response_file=$(mktemp)
+    chmod 600 "$response_file"
+
     while [ $attempt -lt "$MAX_RETRY" ]; do
         attempt=$((attempt + 1))
         log "[UPLOAD] Attempt ${attempt}/${MAX_RETRY} → ${UPLOAD_URL}"
 
         local http_code
-        http_code=$(curl -s -o /tmp/litcrop-upload-response.json -w "%{http_code}" \
+        http_code=$(curl -s -o "$response_file" -w "%{http_code}" \
+            -K "$curl_config" \
             -X POST "$UPLOAD_URL" \
-            -H "Authorization: Bearer ${AUTH_TOKEN}" \
             -F "image=@${filepath}" \
             -F "captured_at=${captured_at}" \
             -F "node_id=${NODE_ID}" \
@@ -126,13 +148,14 @@ upload() {
 
         if [ "$http_code" = "201" ]; then
             log "[UPLOAD] OK — HTTP 201"
+            rm -f "$curl_config" "$response_file"
             rm -f "$filepath"
             rm -f "${filepath%.jpg}.ts"  # Remove sidecar timestamp file
             return 0
         else
             log "[UPLOAD] FAILED — HTTP ${http_code}"
-            if [ -f /tmp/litcrop-upload-response.json ]; then
-                cat /tmp/litcrop-upload-response.json >> "$LOG_FILE"
+            if [ -s "$response_file" ]; then
+                cat "$response_file" >> "$LOG_FILE"
                 echo "" >> "$LOG_FILE"
             fi
 
@@ -143,6 +166,8 @@ upload() {
             fi
         fi
     done
+
+    rm -f "$curl_config" "$response_file"
 
     log "[UPLOAD] FAILED after ${MAX_RETRY} attempts — file kept in spool: ${filepath}"
     return 1

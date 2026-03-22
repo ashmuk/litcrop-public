@@ -125,8 +125,7 @@ Run this on **your dev machine** (not the Pi) if the AWS CLI is not already inst
 brew install awscli
 
 # Debian/Ubuntu (including Raspberry Pi OS if running commands on the Pi)
-sudo apt install -y python3-pip
-pip3 install awscli --break-system-packages
+sudo apt install -y awscli
 
 # Set the region (ap-northeast-1 for LitCrop)
 aws configure set region ap-northeast-1
@@ -162,29 +161,18 @@ Replace `<COGNITO_CLIENT_ID>` with the app client ID from the CDK stack outputs,
 
 - ID tokens expire after **1 hour** (Cognito default)
 - For the field evaluation (~2 weeks), you'll need to refresh the token periodically
-- **Quick workaround**: Create a helper script that refreshes the token using the refresh token:
+- **Automated refresh**: The installer optionally sets this up for you via `scripts/camera-node/refresh-token.sh`.
 
-```bash
-# scripts/camera-node/refresh-token.sh
-#!/usr/bin/env bash
-REFRESH_TOKEN="<your-refresh-token>"
-CLIENT_ID="<cognito-client-id>"
+  The script reads `REFRESH_TOKEN` and `COGNITO_CLIENT_ID` from `/etc/litcrop/node.conf` — set them there,
+  not in the script itself. To set up manually:
 
-TOKEN=$(aws cognito-idp initiate-auth \
-  --client-id "$CLIENT_ID" \
-  --auth-flow REFRESH_TOKEN_AUTH \
-  --auth-parameters REFRESH_TOKEN="$REFRESH_TOKEN" \
-  --region ap-northeast-1 \
-  --query 'AuthenticationResult.IdToken' \
-  --output text 2>/dev/null)
-
-if [ -n "$TOKEN" ]; then
-    sed -i "s|AUTH_TOKEN=.*|AUTH_TOKEN=\"${TOKEN}\"|" /etc/litcrop/node.conf
-    echo "[$(date -Iseconds)] Token refreshed" >> /var/log/litcrop-node.log
-fi
-```
-
-Add to cron (refresh every 50 minutes, before the 60-minute expiry):
+  1. Add to `/etc/litcrop/node.conf`:
+     ```
+     REFRESH_TOKEN="<your-cognito-refresh-token>"
+     COGNITO_CLIENT_ID="<cognito-app-client-id>"
+     ```
+  2. Ensure the config file is protected: `sudo chmod 600 /etc/litcrop/node.conf`
+  3. Add to cron (refresh every 50 minutes, before the 60-minute expiry):
 
 ```bash
 # On the Pi
@@ -210,7 +198,7 @@ Required values to set:
 ```bash
 NODE_ID="field-01-camera-01"          # Unique name for this camera
 BED_ID="<bed-uuid>"                    # From LitCrop app (see below)
-API_BASE_URL="https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com"
+API_BASE_URL="<YOUR_API_URL>"          # Find in CDK stack outputs or CloudFormation console
 AUTH_TOKEN="<jwt-token>"               # From Step 4
 ```
 

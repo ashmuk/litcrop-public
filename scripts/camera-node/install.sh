@@ -59,15 +59,17 @@ mkdir -p /etc/litcrop
 mkdir -p /var/spool/litcrop
 mkdir -p /var/log
 
+chmod 700 /opt/litcrop /etc/litcrop /var/spool/litcrop
+
 # ── Step 2: Install scripts ──────────────────────────────────────
 
 info "Installing capture script → /opt/litcrop/capture.sh"
 cp "${SCRIPT_DIR}/capture.sh" /opt/litcrop/capture.sh
-chmod +x /opt/litcrop/capture.sh
+chmod 700 /opt/litcrop/capture.sh
 
 info "Installing refresh script → /opt/litcrop/refresh-token.sh"
 cp "${SCRIPT_DIR}/refresh-token.sh" /opt/litcrop/refresh-token.sh
-chmod +x /opt/litcrop/refresh-token.sh
+chmod 700 /opt/litcrop/refresh-token.sh
 
 # ── Step 3: Create config ────────────────────────────────────────
 
@@ -76,6 +78,8 @@ if [ -f /etc/litcrop/node.conf ]; then
 else
     info "Creating config → /etc/litcrop/node.conf"
     cp "${SCRIPT_DIR}/node.conf.example" /etc/litcrop/node.conf
+    chown root:root /etc/litcrop/node.conf
+    chmod 600 /etc/litcrop/node.conf
     warn "You MUST edit /etc/litcrop/node.conf before first run!"
     warn "  Required: BED_ID, API_BASE_URL, AUTH_TOKEN"
 fi
@@ -117,6 +121,11 @@ read -rp "Set up systemd timer for scheduled capture? [y/N] " setup_timer
 if [[ "$setup_timer" =~ ^[Yy]$ ]]; then
     read -rp "Capture interval in minutes [10]: " interval_min
     interval_min="${interval_min:-10}"
+
+    if ! [[ "$interval_min" =~ ^[0-9]+$ ]] || [ "$interval_min" -lt 1 ] || [ "$interval_min" -gt 1440 ]; then
+        error "Invalid interval: must be 1-1440"
+        exit 1
+    fi
 
     info "Creating systemd service..."
     cat > /etc/systemd/system/litcrop-capture.service << 'EOF'
@@ -162,9 +171,7 @@ if [[ "$setup_refresh" =~ ^[Yy]$ ]]; then
         info "AWS CLI is installed"
     else
         warn "AWS CLI not found. Installing..."
-        apt-get install -y -qq python3-pip
-        pip3 install awscli --break-system-packages --quiet 2>/dev/null || \
-            pip3 install awscli --quiet
+        apt-get install -y -qq awscli
         info "AWS CLI installed"
     fi
 
