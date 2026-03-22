@@ -1697,6 +1697,334 @@ All auth screen strings must be localized (EN/JA). Key translations:
 
 ---
 
+## 13. Phase C: Vision Closure — UX Designs (MVP+ v0.12)
+
+> Added 2026-03-22 — UX specifications for F-14, FR-3.5, SF-4.
+> Follows existing Design Principles P1-P4.
+
+### 13.1 Time-Lapse Player (F-14) — Vision MVP Deliverable #3
+
+**Purpose**: Animate a plot's image history as a time-lapse, showing crop growth over days/weeks. This is the last missing Vision MVP deliverable.
+
+**Entry point**: New "Play" button on Plot Detail page, below hero image, above image history grid.
+
+**Design Principles applied**:
+- **P1 (Glanceable)**: Time-lapse answers "How has this crop been growing?" in seconds
+- **P2 (Forgiving Touch)**: Large playback controls (56px), bottom-positioned
+- **P3 (Progressive Depth)**: Play button on detail page → fullscreen player on demand
+
+#### Camera Capture Context
+
+Images are captured 5:00-20:00 daily with variable frequency:
+- **Morning golden hour** (6:00-9:00): 1 pic / 15 min → 12/day
+- **Afternoon golden hour** (15:00-18:00): 1 pic / 15 min → 12/day
+- **Other active hours** (5-6, 9-15, 18-20): 1 pic / 30 min → 18/day
+- **Night** (20:00-5:00): no capture
+- **Daily total**: ~42 pics. **Weekly total**: ~294 pics (~5.7 MB thumbnails).
+
+Time-lapse operates as a **weekly compilation**: a full week of images plays as one sequence. Incomplete weeks (current week in progress) show a progress indicator but are not yet playable.
+
+#### Wireframe — Inline Player (default)
+
+```
++------------------------------------------+
+| [<-]  Plot A1 - Cherry Tomato    [Edit]  |
++------------------------------------------+
+|                                          |
+|         HERO IMAGE (current)             |
+|                                          |
++------------------------------------------+
+| Time-lapse                               |  <- NEW section
+| [< Week]  Mar 15 - Mar 21  [Week >]     |  <- Week selector
+| 294 images · 7 days                      |
+| [▶ Play This Week]                       |  <- Play button
++------------------------------------------+
+| Tag this image                           |
+| [Healthy] [Slow] [Issue] [Animal]        |
++------------------------------------------+
+| Image History                  [Upload]  |
+| [thumb] [thumb] [thumb] [thumb] ...      |
++------------------------------------------+
+```
+
+#### Wireframe — Active Playback (replaces hero area)
+
+```
++------------------------------------------+
+| [<-]  Time-lapse: Cherry Tomato  [×]     |  <- Close returns to normal view
++------------------------------------------+
+|                                          |
+|        ANIMATED FRAME (300x300)          |  <- Thumbnail images, cycling
+|                                          |
++------------------------------------------+
+| Mar 15          ████████░░     Mar 21    |  <- Time-proportional progress bar
+| Mon 06:15                                |  <- Current frame timestamp
++------------------------------------------+
+|  [|<]  [<]   [▶/⏸]   [>]   [>|]       |  <- Transport controls
+|                                          |
+|  Speed: [0.5x] [1x] [2x]                |  <- Speed selector (1x=30fps default)
+|  Frame: 147 of 294                       |  <- Frame counter
++------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Week selector** | Horizontal row: `[<]` prev-week button + "Mar 15 - Mar 21" label + `[>]` next-week button. Each arrow `48px × 48px`. Date range: `font-size: var(--font-size-base)`, `font-weight: var(--font-weight-medium)`. Disabled arrows when no prev/next week available. |
+| **Week summary** | Below week selector: "{N} images, {days} days", `font-size: var(--font-size-sm)`, `color: var(--color-gray-500)` |
+| **Play button** | `height: 48px`, `border-radius: var(--radius-md)`, secondary button style, full width, icon `▶` + "Play This Week" text |
+| **Frame display** | `width: 100%`, `aspect-ratio: 1/1` (square, matches thumbnail crop), `object-fit: cover`, `background: var(--color-gray-900)` |
+| **Date bar** | Below frame. **Time-proportional**: bar width maps to real clock time (5:00-20:00 per day, Mon-Sun). Morning/afternoon dense clusters are visually compact; midday gaps are wider. `height: 4px`, `background: var(--color-gray-300)`, filled portion `var(--color-primary)`. Start/end date labels `font-size: var(--font-size-xs)`. |
+| **Frame timestamp** | Below date bar: "Mon 06:15", `font-size: var(--font-size-xs)`, `color: var(--color-gray-700)`. Updates per frame. |
+| **Transport controls** | Centered row, each button `48px × 48px`, gap `var(--space-3)`. Icons: `\|<` (first), `<` (prev), `▶/⏸` (play/pause, 56px), `>` (next), `>\|` (last) |
+| **Speed selector** | Row of 3 pill buttons: 0.5x, 1x, 2x. `height: 32px`, `padding: 0 var(--space-3)`, active state: `background: var(--color-primary)`, `color: white`. **Default: 1x** (30fps, ~10s for 294 frames). 0.5x=15fps (~20s), 2x=skip every 2nd frame at 30fps (~5s). |
+| **Frame counter** | `font-size: var(--font-size-xs)`, `color: var(--color-gray-500)`, centered below speed selector |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Tap week `[<]` / `[>]` | Navigate to previous/next available week. Updates summary count. |
+| Tap "Play This Week" | Starts playback if 50+ frames preloaded (preloading starts on week select). Default 1x (30fps, ~10s). |
+| Play/Pause toggle | Toggles animation. Pause freezes on current frame. |
+| Speed buttons | 0.5x=15fps (~20s), 1x=30fps (~10s, default), 2x=skip every 2nd frame (~5s). Active speed highlighted. |
+| Tap frame (during pause) | Opens Lightbox (FR-3.5) for full-size view of that image |
+| First/Last buttons | Jump to first/last frame, pause playback |
+| Prev/Next buttons | Step one frame, pause playback |
+| Close (×) | Exit time-lapse, return to normal PlotDetail view |
+| Loop | Auto-loops: when last frame reached, wraps to first frame |
+| `prefers-reduced-motion` | Auto-play disabled. Manual stepping only (prev/next). Speed selector hidden. |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **No complete weeks** | Section shows "Time-lapse available after first full week of captures" with progress: "This week: 126/294 images (3 of 7 days)" |
+| **Preloading** | On week select, thumbnails preload in background. Progress bar fills: "Loading... (150/294)". Play button enables after 50 frames. |
+| **Playing** | Frame animates, play button shows ⏸, transport active |
+| **Paused** | Frame frozen, play button shows ▶, transport active |
+| **Error** | "Could not load images" with retry button |
+
+#### Accessibility
+
+| Element | ARIA |
+|---------|------|
+| Week selector | `role="group"`, `aria-label="Select week"`, arrows `aria-label="Previous week"` / `"Next week"` |
+| Play button | `aria-label="Play time-lapse for Cherry Tomato, 294 images, March 15 to 21"` |
+| Frame image | `alt="Cherry Tomato - Monday March 17, 06:15"` (updates per frame) |
+| Date progress | `role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`, `aria-label="Time-lapse progress"` |
+| Play/Pause | `aria-label="Pause time-lapse"` / `"Resume time-lapse"` |
+| Speed buttons | `role="radiogroup"`, `aria-label="Playback speed"`, each button `aria-checked` |
+| Frame counter | `aria-live="polite"` — announces frame changes (debounced: every 10th frame to avoid flooding at 8fps) |
+
+---
+
+### 13.2 Image Lightbox (FR-3.5)
+
+**Purpose**: Full-screen image viewing with zoom capability, triggered from thumbnails and the image viewer.
+
+**Entry points**:
+1. Tap thumbnail in PlotDetail image history grid → lightbox with that image
+2. Tap frame in TimeLapsePlayer (when paused) → lightbox with that frame's full-size image
+3. Tap main image in ImageViewer → lightbox with current full-size image
+
+**Design Principle P2**: Close button is 48px, top-right corner, always visible. Backdrop tap also closes (large target).
+
+#### Wireframe
+
+```
++------------------------------------------+
+|                                    [×]   |  <- Close button (48px, top-right)
+|                                          |
+|                                          |
+|         FULL-SIZE IMAGE                  |  <- Centered, object-fit: contain
+|         (pinch to zoom)                  |     max-width: 100vw
+|                                          |     max-height: 100vh
+|                                          |
+|                                          |
++------------------------------------------+
+|  Mar 17, 2026 2:00 PM  [Scheduled]      |  <- Optional: date + trigger badge
++------------------------------------------+
+```
+
+#### Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Overlay backdrop** | `position: fixed`, `inset: 0`, `background: rgba(0,0,0,0.92)`, `z-index: 1000` |
+| **Close button** | `position: absolute`, `top: var(--space-3)`, `right: var(--space-3)`, `width: 48px`, `height: 48px`, `border-radius: 50%`, `background: rgba(255,255,255,0.15)`, `color: white`, `font-size: 24px` |
+| **Image** | `max-width: calc(100vw - 32px)`, `max-height: calc(100vh - 80px)`, `object-fit: contain`, centered with flexbox |
+| **Metadata bar** | `position: absolute`, `bottom: 0`, `width: 100%`, `padding: var(--space-3)`, `background: linear-gradient(transparent, rgba(0,0,0,0.6))`, `color: white`, `font-size: var(--font-size-sm)` |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| Tap close button | Close lightbox, restore scroll |
+| Tap backdrop (outside image) | Close lightbox |
+| Press ESC | Close lightbox |
+| Press Back button | Close lightbox (via `history.pushState` guard) |
+| Pinch to zoom (mobile) | CSS `transform: scale()` with touch event handling, min 1x max 3x |
+| Double-tap (mobile) | Toggle between 1x and 2x zoom |
+| Body scroll | Locked while lightbox open (`overflow: hidden` on `<body>`) |
+
+#### States
+
+| State | Behavior |
+|-------|----------|
+| **Loading** | Dark overlay with centered spinner while full-size image loads |
+| **Loaded** | Image displayed, metadata visible |
+| **Zoomed** | Image scaled, pan enabled via touch-move |
+| **Error** | "Image could not be loaded" text, retry button |
+
+#### Accessibility
+
+| Element | ARIA |
+|---------|------|
+| Overlay | `role="dialog"`, `aria-modal="true"`, `aria-label="Image lightbox"` |
+| Close button | `aria-label="Close lightbox"` |
+| Image | `alt="Cherry Tomato - captured March 17, 2026 at 2:00 PM"` |
+| Focus trap | Focus contained within lightbox while open; on close, focus returns to trigger element |
+
+---
+
+### 13.3 Chat Markdown Rendering (SF-4)
+
+**Purpose**: Render AI assistant responses with proper formatting (bold, lists, code blocks, headings) instead of plain text.
+
+**Scope**: Assistant messages only. User messages remain plain text.
+
+**Design Principle P3 (Progressive Depth)**: Markdown enables the AI to provide structured, scannable responses — numbered recommendations, bold key terms, code snippets for farm configuration.
+
+#### Before/After
+
+```
+BEFORE (plain text):
++--------------------------------------+
+| Here are my recommendations:          |
+| 1. Check soil drainage around the     |
+| tomato bed 2. Add mulch to retain     |
+| moisture 3. Consider shade cloth if   |
+| temperature exceeds 35C               |
++--------------------------------------+
+
+AFTER (rendered markdown):
++--------------------------------------+
+| Here are my recommendations:          |
+|                                       |
+| 1. Check **soil drainage** around     |
+|    the tomato bed                     |
+| 2. Add **mulch** to retain moisture   |
+| 3. Consider shade cloth if            |
+|    temperature exceeds 35°C           |
+|                                       |
+| > Tip: Water early morning to reduce  |
+| > evaporation.                        |
++--------------------------------------+
+```
+
+#### Styling Specifications
+
+Markdown HTML rendered inside assistant message bubbles. Styles scoped with `.chat-markdown` wrapper class.
+
+| Element | Style |
+|---------|-------|
+| **Wrapper** | `.chat-markdown` — inherits bubble font-size (`var(--font-size-sm)`) and line-height (`var(--line-height-relaxed)`) |
+| **Paragraphs** | `margin: 0 0 var(--space-2) 0` (compact spacing within bubbles) |
+| **Bold** | `font-weight: var(--font-weight-bold)` |
+| **Italic** | `font-style: italic` |
+| **Lists (ol, ul)** | `margin: var(--space-2) 0`, `padding-left: var(--space-5)`, `list-style: decimal / disc` |
+| **List items** | `margin-bottom: var(--space-1)` |
+| **Code inline** | `background: var(--color-gray-200)`, `padding: 1px 4px`, `border-radius: 3px`, `font-family: monospace`, `font-size: 0.9em` |
+| **Code block** | `background: var(--color-gray-900)`, `color: var(--color-gray-100)`, `padding: var(--space-3)`, `border-radius: var(--radius-md)`, `overflow-x: auto`, `font-size: var(--font-size-xs)` |
+| **Blockquote** | `border-left: 3px solid var(--color-primary)`, `padding-left: var(--space-3)`, `color: var(--color-gray-700)`, `margin: var(--space-2) 0` |
+| **Headings (h3, h4)** | `font-weight: var(--font-weight-bold)`, `margin: var(--space-3) 0 var(--space-1) 0`. Ignore h1/h2 (too large for chat bubbles). |
+| **Links** | `color: var(--color-link)`, `text-decoration: underline`. Open in new tab (`target="_blank"`, `rel="noopener"`). |
+| **Dark theme** | Code inline uses `var(--color-gray-700)` bg. Code block inverts. All other elements inherit theme colors. |
+
+#### Interaction
+
+| Action | Behavior |
+|--------|----------|
+| User sends message | Rendered as plain text (no markdown processing) |
+| Assistant responds | `marked.parse()` → `DOMPurify.sanitize()` → rendered HTML |
+| Tap link in response | Opens in new tab |
+| Copy text | Standard browser text selection works on rendered HTML |
+
+#### marked Configuration
+
+```typescript
+const markedOptions = {
+  breaks: true,       // GFM line breaks (single \n → <br>)
+  gfm: true,          // GitHub-flavored markdown (tables, task lists)
+  headerIds: false,    // No auto-generated IDs on headings
+  mangle: false,       // Don't mangle email addresses
+};
+```
+
+---
+
+### 13.4 Phase C Accessibility Audit Checklist
+
+| Requirement | Component | Status |
+|-------------|-----------|--------|
+| Time-lapse controls keyboard-accessible | TimeLapsePlayer | Required |
+| Play/pause announced to screen reader | TimeLapsePlayer | Required — `aria-live="polite"` on frame counter |
+| Speed change announced | TimeLapsePlayer | Required — radiogroup pattern |
+| `prefers-reduced-motion` disables auto-play | TimeLapsePlayer | Required |
+| Lightbox traps focus | Lightbox | Required — focus on close button, tab cycles within |
+| ESC closes lightbox | Lightbox | Required |
+| Lightbox image has descriptive alt | Lightbox | Required |
+| Focus returns to trigger on close | Lightbox | Required |
+| Markdown links have `rel="noopener"` | ChatMarkdown | Required |
+| Markdown content readable by screen reader | ChatMarkdown | Required — semantic HTML from marked |
+| All new interactive elements ≥ 48px touch target | All | Required |
+| Dark theme renders correctly | All | Required |
+| Earthy theme renders correctly | All | Required |
+
+---
+
+### 13.5 Phase C i18n Keys (EN/JA)
+
+New translation keys to add to `en.json` and `ja.json`:
+
+```json
+{
+  "timelapse": {
+    "title": "Time-lapse",
+    "play": "Play This Week",
+    "pause": "Pause",
+    "resume": "Resume",
+    "close": "Close time-lapse",
+    "loading": "Loading...",
+    "loading_progress": "Loading... ({current}/{total})",
+    "frame_of": "{current} of {total}",
+    "images_days": "{images} images · {days} days",
+    "no_complete_weeks": "Time-lapse available after first full week of captures",
+    "week_progress": "This week: {current}/{expected} images ({days} of 7 days)",
+    "error": "Could not load images",
+    "speed": "Speed",
+    "first": "First frame",
+    "last": "Last frame",
+    "prev": "Previous frame",
+    "next": "Next frame",
+    "prev_week": "Previous week",
+    "next_week": "Next week",
+    "week_range": "{start} - {end}"
+  },
+  "lightbox": {
+    "close": "Close",
+    "loading": "Loading image...",
+    "error": "Image could not be loaded",
+    "zoom_in": "Zoom in",
+    "zoom_out": "Zoom out"
+  }
+}
+```
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Full requirements specification (87+ FRs including FR-11 through FR-14, 24+ NFRs)
@@ -1713,3 +2041,4 @@ All auth screen strings must be localized (EN/JA). Key translations:
 
 > Updated 2026-03-17 after Step 4 mockup feedback consolidation.
 > Updated 2026-03-20 for MVP scope: +3 auth screens, desktop layout promotion, auth flows, nav renaming.
+> Updated 2026-03-22 for Phase C: +time-lapse player, +lightbox, +chat markdown rendering.

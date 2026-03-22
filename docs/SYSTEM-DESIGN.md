@@ -2269,6 +2269,226 @@ A state library (Redux, Zustand, Jotai) would add bundle size and complexity wit
 
 ---
 
+## 9. Phase C: Vision Closure — System Design (MVP+ v0.12)
+
+> Added 2026-03-22 — detailed component design for F-14, FR-3.5, SF-4.
+
+### 9.1 TimeLapsePlayer Component
+
+**File**: `src/frontend/src/components/TimeLapsePlayer.tsx`
+**Hydration**: `client:load` — renders within PlotDetail page
+**Entry**: Rendered conditionally when images.length >= 2
+
+#### Props Interface
+
+```typescript
+interface TimeLapsePlayerProps {
+  plotId: string;
+  plotLabel: string;
+  cropType: string;
+}
+```
+
+#### State Shape
+
+```typescript
+interface TimeLapseState {
+  status: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'error';
+  allImages: ImageListItem[];     // All images for this plot (all pages)
+  weeks: WeekGroup[];             // Images grouped by ISO week
+  selectedWeekIndex: number;      // Currently selected week
+  frames: TimeLapseFrame[];       // Frames for selected week, oldest-first
+  currentIndex: number;
+  speed: 0.5 | 1 | 2;            // Multiplier (1x=30fps default)
+  loadProgress: { loaded: number; total: number };
+  error: string | null;
+}
+
+interface WeekGroup {
+  weekStart: string;              // ISO date (Monday)
+  weekEnd: string;                // ISO date (Sunday)
+  images: ImageListItem[];        // Images in this week, oldest-first
+  complete: boolean;              // true if 7 days of data exist
+}
+
+interface TimeLapseFrame {
+  id: string;
+  thumbnailUrl: string;           // 300x300 thumbnail for playback
+  capturedAt: string;             // ISO 8601
+  trigger: TriggerType;
+  preloaded: boolean;             // true after Image() onload fires
+}
+```
+
+#### Data Loading Strategy
+
+```
+1. On component mount (not on play tap):
+   - Fetch all pages of GET /plots/{plotId}/images
+   - Accumulate all ImageListItem[]
+   - Group by ISO week (Mon-Sun), sort each group oldest-first
+   - Mark complete weeks (7 unique days)
+   - Show week selector with available weeks
+
+2. User selects a week (preloading starts immediately):
+   - Map selected week's images to TimeLapseFrame[]
+   - Batch-preload all thumbnails (6 parallel via new Image().src)
+   - Play button enables after 50 frames preloaded
+
+3. User taps "Play This Week":
+   - Start playback at 30fps (1x) after 50+ frames ready
+   - Continue preloading remaining frames in background
+```
+
+**Why thumbnails**: 300x300 JPEGs are ~15-30KB each. A full week (~294 frames) = ~5.7MB. Full-size images would be ~441MB — impossible on LTE in the field.
+
+**Week grouping**: Uses `getISOWeek()` from captured_at timestamp. Camera schedule produces ~42 images/day. Complete weeks have all 7 days represented. Current (incomplete) week shows progress but is not playable.
+
+#### Animation Loop
+
+```typescript
+// Speed mapping:
+//   0.5x → 15fps (show every frame, 33ms interval)
+//   1x   → 30fps (show every frame, 33ms interval) — DEFAULT
+//   2x   → 30fps (skip every 2nd frame, 33ms interval)
+const BASE_FPS = 30;
+const frameInterval = state.speed >= 1 ? 1000 / BASE_FPS : 1000 / 15;
+const frameStep = state.speed === 2 ? 2 : 1;
+let lastFrameTime = 0;
+
+function animate(timestamp: number) {
+  if (state.status !== 'playing') return;
+  if (timestamp - lastFrameTime >= frameInterval) {
+    lastFrameTime = timestamp;
+    setCurrentIndex(prev => {
+      let next = prev + frameStep;
+      if (next >= frames.length) next = 0;  // Loop
+      // If next frame not preloaded, pause with buffering indicator
+      if (!frames[next].preloaded) {
+        setStatus('buffering');
+        return prev;
+      }
+      return next;
+    });
+  }
+  rafId = requestAnimationFrame(animate);
+}
+```
+
+**Preload strategy**: Preloading starts on week selection (not play tap). 6 parallel `new Image()` requests. Play button enables after 50 frames. At 30fps, 50 frames = 1.7s of headroom — typically enough for the remaining ~244 frames to finish loading (~4.8MB at ~5Mbps LTE = ~8s, well within the 10s playback window).
+
+**`prefers-reduced-motion`**: If true, auto-play disabled; manual stepping only.
+
+#### Time-Proportional Progress Bar
+
+The progress bar maps frame position to real clock time, not frame index. This means morning/afternoon dense capture windows (15-min intervals) compress visually, while midday sparse windows (30-min intervals) expand.
+
+```typescript
+function getProgressPercent(frame: TimeLapseFrame, weekStart: Date, weekEnd: Date): number {
+  const frameTime = new Date(frame.capturedAt).getTime();
+  const start = weekStart.getTime();
+  const end = weekEnd.getTime();
+  return ((frameTime - start) / (end - start)) * 100;
+}
+```
+
+#### Integration with PlotDetail
+
+TimeLapsePlayer manages its own data fetching and week grouping. It does NOT share image state with PlotDetail. The week selector and play controls render inline below the hero image.
+
+---
+
+### 9.2 Lightbox Component
+
+**File**: `src/frontend/src/components/Lightbox.tsx`
+**Pattern**: Portal-rendered overlay (appended to `document.body`)
+
+#### Props Interface
+
+```typescript
+interface LightboxProps {
+  src: string;
+  alt: string;
+  caption?: string;
+  onClose: () => void;
+}
+```
+
+#### Lifecycle
+
+```
+1. Mount: push history state, lock body scroll, trap focus
+2. Image load: set loaded=true, show image
+3. Dismiss (ESC/backdrop/close/popstate): restore scroll, return focus
+4. Unmount: cleanup event listeners
+```
+
+#### Zoom: Pinch gesture (touchstart/touchmove/touchend), double-tap toggle 1x/2x, pan when zoomed. CSS transform: scale() + translate().
+
+#### Trigger Points
+
+| Source Component | Trigger | src value |
+|-----------------|---------|-----------|
+| PlotDetail thumbnails | Tap thumbnail | item.thumbnail_url |
+| TimeLapsePlayer (paused) | Tap frame | frame.thumbnailUrl |
+| ImageViewer main image | Tap image | image.url (full-size) |
+
+---
+
+### 9.3 ChatMarkdown Rendering
+
+**New utility**: `src/frontend/src/lib/markdown.ts`
+
+```typescript
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+
+marked.setOptions({ breaks: true, gfm: true });
+
+export function renderMarkdown(text: string): string {
+  const rawHtml = marked.parse(text) as string;
+  return DOMPurify.sanitize(rawHtml, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'code', 'pre', 'blockquote',
+      'ul', 'ol', 'li', 'h3', 'h4', 'h5', 'h6', 'a', 'table',
+      'thead', 'tbody', 'tr', 'th', 'td', 'del', 'hr',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+  });
+}
+```
+
+**ChatAssistant change**: Assistant messages render via `renderMarkdown()` with sanitized HTML output. User messages remain plain text. CSS scoped under `.chat-markdown` class.
+
+**Security**: All HTML is sanitized through DOMPurify before rendering, providing defense-in-depth against prompt injection producing malicious HTML.
+
+---
+
+### 9.4 Phase C State Management Updates
+
+| Screen | Island | State Shape | Data Source |
+|--------|--------|-------------|-------------|
+| Plot Detail | `TimeLapsePlayer` | `{ status, frames, currentIndex, speed, loadProgress }` | `GET /plots/{id}/images` (all pages) |
+| Plot Detail | `Lightbox` | `{ loaded, error, zoom, panX, panY }` | Props (image URL) |
+| Image Timeline | `Lightbox` | Same as above | Props (image URL) |
+
+### 9.5 Phase C New File Summary
+
+| File | Action |
+|------|--------|
+| `src/frontend/src/components/TimeLapsePlayer.tsx` | **Create** |
+| `src/frontend/src/components/Lightbox.tsx` | **Create** |
+| `src/frontend/src/lib/markdown.ts` | **Create** |
+| `src/frontend/src/components/ChatAssistant.tsx` | **Modify** — use renderMarkdown() |
+| `src/frontend/src/components/PlotDetail.tsx` | **Modify** — add TimeLapsePlayer + Lightbox |
+| `src/frontend/src/components/ImageViewer.tsx` | **Modify** — add Lightbox trigger |
+| `src/frontend/src/styles/components.css` | **Modify** — add timelapse, lightbox, chat-markdown styles |
+| `src/frontend/src/i18n/en.json` | **Modify** — add timelapse + lightbox i18n keys |
+| `src/frontend/src/i18n/ja.json` | **Modify** — add timelapse + lightbox i18n keys |
+| `package.json` (frontend) | **Modify** — add `marked`, `dompurify`, `@types/dompurify` |
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Functional and non-functional requirements (expanded for MVP)
@@ -2279,3 +2499,5 @@ A state library (Redux, Zustand, Jotai) would add bundle size and complexity wit
 - [ADR-007](decisions/ADR-20260320-authentication-provider.md) -- Cognito User Pools + JWT
 - [ADR-008](decisions/ADR-20260320-iac-tool-selection.md) -- AWS CDK (TypeScript)
 - [ADR-009](decisions/ADR-20260320-ai-llm-framework.md) -- Anthropic SDK
+
+> Updated 2026-03-22 for Phase C: +time-lapse player, +lightbox, +chat markdown system design.

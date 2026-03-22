@@ -138,3 +138,22 @@ All deployed via IaC (CDK), reproducible and CI/CD-ready.
 - **Design validity**: PoC architecture carries forward; 3 new ADRs (auth, IaC, AI framework) extend it for MVP
 - **Recommendation**: Proceed with MVP scope (Phase D: /cc-define)
 - **User decision**: Approved
+
+### Phase C Design (cc-design re-entry) — 2026-03-22
+- **Trigger**: Phase A+B complete (v0.11), Phase C next per MVP+ pipeline
+- **Entry point**: Step 2 (Architecture) — re-entry with existing artifacts
+- **What changed**:
+  - ARCHITECTURE.md §11: Phase C architecture delta (new deps: marked+dompurify, component tree, data flows, bundle impact +24KB)
+  - UX-DESIGNS.md §13: TimeLapsePlayer UX (transport controls, speed selector, date bar, accessibility), Lightbox UX (overlay, zoom, dismiss), ChatMarkdown styling specs, i18n keys, accessibility audit
+  - SYSTEM-DESIGN.md §9: Component interfaces (props, state shapes), animation loop (rAF), portal rendering, markdown utility, new file summary (3 create, 7 modify)
+  - TASK-BREAKDOWN.md: 6 tasks (T-FE-C1..C6), ~6h estimated, dependency DAG with parallelism
+- **What preserved**: Steps 1-7 artifacts from PoC and MVP phases. No API/DynamoDB/CDK changes needed.
+- **Key design decisions**:
+  - **Weekly compilation model**: Camera captures ~42 pics/day (variable 15/30-min intervals, 5am-8pm). Time-lapse groups images by ISO week (~294 frames/week). Incomplete weeks show progress but aren't playable.
+  - Thumbnails (300x300) for playback frames — ~5.7MB/week vs ~441MB full-size. Critical for LTE in the field.
+  - Progressive preloading: play starts after 10 frames, streams rest in background. No blocking on 294 images.
+  - Time-proportional progress bar: reflects real clock time, not frame index (morning/afternoon dense, midday sparse)
+  - Default 30fps (1x) — entire week plays in ~10s like a smooth video. Speed options: 0.5x/1x/2x. At 2x, skip every 2nd frame to maintain 30fps render rate.
+  - DOMPurify mandatory for markdown output — defense-in-depth against prompt injection
+  - Custom Preact components for time-lapse and lightbox — no external UI libraries, keeps bundle small
+  - `requestAnimationFrame` for animation — smoother than `setInterval`, respects browser tab visibility
