@@ -1,9 +1,10 @@
 /**
  * LitCrop API response and error types
  * Source of truth: docs/SYSTEM-DESIGN.md §2.2 and docs/API-CONTRACTS.md
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
-import type { Farm, Field, Bed, Plot, Image, Tag, PlotStatus, TriggerType, TagValue } from './domain';
+import type { Farm, Bed, Image, Tag, BedStatus, TriggerType, TagValue } from './domain';
 
 // ── Response Envelopes ───────────────────────────────────────────
 
@@ -45,51 +46,55 @@ export type ErrorCode =
 
 // ── Endpoint-Specific Response Types ────────────────────────────
 
-/** GET /api/v1/farms/{farmId} */
-export interface FarmResponse extends Farm {
-  fields: (Field & {
-    beds: Bed[];
-  })[];
+/** Bed summary within GET /api/v1/farms/{farmId} response */
+export interface FarmBed {
+  id: string;
+  row: number;
+  col: number;
+  name: string;
+  crop_type: string | null;
+  crop_variety: string | null;
+  latest_status: BedStatus;
 }
 
-/** GET /api/v1/farms/{farmId}/plots — each item */
-export interface FarmPlotItem {
-  id: string;
-  label: string;
-  bed_id: string;
-  field_id: string;
-  crop_type: string;
-  crop_variety: string;
-  latest_status: PlotStatus;
+/** GET /api/v1/farms/{farmId} */
+export interface FarmResponse extends Farm {
+  beds: FarmBed[];
+}
+
+/** GET /api/v1/farms/{farmId}/beds — each item */
+export interface FarmBedItem extends FarmBed {
   latest_image: {
     id: string;
     captured_at: string;
     trigger: TriggerType;
-    thumbnail_url: string;
+    thumbnail_url: string | null;
   } | null;
 }
 
-/** GET /api/v1/plots/{plotId} */
-export interface PlotDetailResponse extends Plot {
+/** GET /api/v1/beds/{bedId} */
+export interface BedDetailResponse extends Bed {
   latest_image: {
     id: string;
     captured_at: string;
     trigger: TriggerType;
     url: string;
+    thumbnail_url: string | null;
     tags: Tag[];
   } | null;
 }
 
-/** GET /api/v1/plots/{plotId}/images — each item */
+/** GET /api/v1/beds/{bedId}/images — each item */
 export interface ImageListItem {
   id: string;
   captured_at: string;
   trigger: TriggerType;
-  thumbnail_url: string;
+  thumbnail_url: string | null;
+  size_bytes: number;
   latest_tag: TagValue | null;
 }
 
-/** POST /api/v1/plots/{plotId}/images */
+/** POST /api/v1/beds/{bedId}/images */
 export interface ImageUploadResponse {
   id: string;
   url: string;
@@ -102,13 +107,14 @@ export interface ImageUploadResponse {
 /** GET /api/v1/images/{imageId} */
 export interface ImageDetailResponse extends Omit<Image, 'storage_key'> {
   url: string;
+  thumbnail_url: string | null;
   tags: Tag[];
 }
 
 /** POST /api/v1/images/{imageId}/tags */
 export interface TagCreateResponse extends Tag {
   image_id: string;
-  plot_status_updated: boolean;
+  bed_status_updated: boolean;
 }
 
 // ── Weather Types ────────────────────────────────────────────────
@@ -167,7 +173,7 @@ export interface CropImpactCard {
   severity: 'danger' | 'warning' | 'good' | 'info';
   title: string;
   description: string;
-  affected_plots: { id: string; label: string; crop_type: string }[];
+  affected_beds: { id: string; name: string; crop_type: string }[];
 }
 
 // ── Chat Types ───────────────────────────────────────────────────

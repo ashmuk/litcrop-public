@@ -1,18 +1,22 @@
 /**
  * LitCrop domain entity types and enums
- * Source of truth: docs/SYSTEM-DESIGN.md §2.1
+ * Source of truth: docs/SYSTEM-DESIGN.md §2.1, §10.3
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
 // ── Enums ────────────────────────────────────────────────────────
 
-/** Plot health status, derived from the most recent tag */
-export type PlotStatus = 'healthy' | 'slow_growth' | 'issue' | 'animal_intrusion' | 'no_data';
+/** Bed health status, derived from the most recent tag */
+export type BedStatus = 'healthy' | 'slow_growth' | 'issue' | 'animal_intrusion' | 'no_data';
+
+/** @deprecated Use BedStatus — alias kept for one version */
+export type PlotStatus = BedStatus;
 
 /** Image capture trigger type */
 export type TriggerType = 'scheduled' | 'motion';
 
-/** Tag values — subset of PlotStatus, excludes 'no_data' */
-export type TagValue = Exclude<PlotStatus, 'no_data'>;
+/** Tag values — subset of BedStatus, excludes 'no_data' */
+export type TagValue = Exclude<BedStatus, 'no_data'>;
 
 /** Supported locales */
 export type Locale = 'en' | 'ja';
@@ -47,40 +51,29 @@ export interface Farm {
   climate_zone?: string;
   locale: Locale;
   theme: Theme;
+  grid_rows: number; // 1-5, bed grid dimensions
+  grid_cols: number; // 1-5, bed grid dimensions
   created_at: string; // ISO 8601
 }
 
-export interface Field {
-  id: string;
-  farm_id: string;
-  name: string;
-  position: number;
-}
-
+/** Bed — primary crop unit (replaces Field + Bed + Plot from PoC) */
 export interface Bed {
   id: string;
-  field_id: string;
-  name: string;
-  position: number;
-}
-
-export interface Plot {
-  id: string;
-  bed_id: string;
-  label: string;
-  crop_type: string;
-  crop_variety: string;
-  planted_at: string;       // ISO 8601 date
-  expected_harvest: string; // ISO 8601 date
+  farm_id: string;
+  row: number;      // 1-based grid row (1-5)
+  col: number;      // 1-based grid column (1-5)
+  name: string;     // auto-generated: "A1", "B2", etc.
+  crop_type?: string;
+  crop_variety?: string;
+  planted_at?: string;       // ISO 8601 date
+  expected_harvest?: string; // ISO 8601 date
   notes?: string;
-  latest_status: PlotStatus;
-  farm_id: string; // denormalized for DynamoDB GSI2
+  latest_status: BedStatus;
 }
 
 export interface Image {
   id: string;
-  plot_id: string;
-  bed_id: string;    // SF-4: denormalized at write time to avoid GSI lookup in createTag
+  bed_id: string;
   node_id: string;
   captured_at: string;  // ISO 8601
   uploaded_at: string;  // ISO 8601

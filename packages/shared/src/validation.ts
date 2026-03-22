@@ -1,12 +1,13 @@
 /**
  * LitCrop shared validation utilities
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
 import {
   ACCEPTED_IMAGE_CONTENT_TYPE,
   MAX_IMAGE_SIZE_BYTES,
   TAG_VALUES,
-  PLOT_STATUS_VALUES,
+  BED_STATUS_VALUES,
   TRIGGER_TYPES,
 } from './constants';
 
@@ -24,9 +25,12 @@ export function isValidTagValue(tag: string): boolean {
   return (TAG_VALUES as readonly string[]).includes(tag);
 }
 
-export function isValidPlotStatus(status: string): boolean {
-  return (PLOT_STATUS_VALUES as readonly string[]).includes(status);
+export function isValidBedStatus(status: string): boolean {
+  return (BED_STATUS_VALUES as readonly string[]).includes(status);
 }
+
+/** @deprecated Use isValidBedStatus */
+export const isValidPlotStatus = isValidBedStatus;
 
 export function isValidTriggerType(type: string): boolean {
   return (TRIGGER_TYPES as readonly string[]).includes(type);
@@ -42,5 +46,8 @@ function isValidUuid(id: string): boolean {
 }
 
 export const isValidFarmId = isValidUuid;
-export const isValidPlotId = isValidUuid;
+export const isValidBedId = isValidUuid;
 export const isValidImageId = isValidUuid;
+
+/** @deprecated Use isValidBedId */
+export const isValidPlotId = isValidBedId;

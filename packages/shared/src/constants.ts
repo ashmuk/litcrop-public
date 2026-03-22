@@ -1,26 +1,32 @@
 /**
  * LitCrop shared constants
+ * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
-import type { PlotStatus, TriggerType, TagValue, Theme, Locale } from './types/domain';
+import type { BedStatus, TriggerType, TagValue, Theme, Locale } from './types/domain';
 
-// ── Plot Status ──────────────────────────────────────────────────
+// ── Bed Status ──────────────────────────────────────────────────
 
-export const PLOT_STATUS: Record<PlotStatus, PlotStatus> = {
+export const BED_STATUS = {
   healthy: 'healthy',
   slow_growth: 'slow_growth',
   issue: 'issue',
   animal_intrusion: 'animal_intrusion',
   no_data: 'no_data',
-} as const;
+} as const satisfies Record<BedStatus, BedStatus>;
 
-export const PLOT_STATUS_VALUES: PlotStatus[] = [
+export const BED_STATUS_VALUES: BedStatus[] = [
   'healthy',
   'slow_growth',
   'issue',
   'animal_intrusion',
   'no_data',
 ];
+
+/** @deprecated Use BED_STATUS */
+export const PLOT_STATUS = BED_STATUS;
+/** @deprecated Use BED_STATUS_VALUES */
+export const PLOT_STATUS_VALUES = BED_STATUS_VALUES;
 
 // ── Tag Values ───────────────────────────────────────────────────
 
@@ -67,13 +73,16 @@ export const WEATHER_CACHE_TTL_SECONDS = 15 * 60;
 /** S3 signed URL expiry: 15 minutes */
 export const SIGNED_URL_EXPIRY_SECONDS = 15 * 60;
 
+// ── Grid Limits ──────────────────────────────────────────────────
+
+export const MIN_GRID_SIZE = 1;
+export const MAX_GRID_SIZE = 5;
+
 // ── DynamoDB Key Prefixes ────────────────────────────────────────
 
 export const DDB_KEY_PREFIXES = {
   FARM: 'FARM#',
-  FIELD: 'FIELD#',
   BED: 'BED#',
-  PLOT: 'PLOT#',
   IMG: 'IMG#',
   TAG: 'TAG#',
   CONV: 'CONV#',

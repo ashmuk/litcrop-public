@@ -1,18 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PLOT_STATUS_VALUES,
+  BED_STATUS_VALUES,
   TAG_VALUES,
   MAX_IMAGE_SIZE_BYTES,
   DDB_KEY_PREFIXES,
   TRIGGER_TYPES,
   LOCALE_OPTIONS,
   THEME_OPTIONS,
+  MIN_GRID_SIZE,
+  MAX_GRID_SIZE,
 } from '../constants';
 
-describe('PLOT_STATUS_VALUES', () => {
-  it('is non-empty', () => expect(PLOT_STATUS_VALUES.length).toBeGreaterThan(0));
-  it('contains no_data', () => expect(PLOT_STATUS_VALUES).toContain('no_data'));
-  it('contains healthy', () => expect(PLOT_STATUS_VALUES).toContain('healthy'));
+describe('BED_STATUS_VALUES', () => {
+  it('is non-empty', () => expect(BED_STATUS_VALUES.length).toBeGreaterThan(0));
+  it('contains no_data', () => expect(BED_STATUS_VALUES).toContain('no_data'));
+  it('contains healthy', () => expect(BED_STATUS_VALUES).toContain('healthy'));
 });
 
 describe('TAG_VALUES', () => {
@@ -36,12 +38,21 @@ describe('MAX_IMAGE_SIZE_BYTES', () => {
 
 describe('DDB_KEY_PREFIXES', () => {
   it('has FARM key', () => expect(DDB_KEY_PREFIXES.FARM).toBe('FARM#'));
-  it('has PLOT key', () => expect(DDB_KEY_PREFIXES.PLOT).toBe('PLOT#'));
+  it('has BED key', () => expect(DDB_KEY_PREFIXES.BED).toBe('BED#'));
   it('has IMG key', () => expect(DDB_KEY_PREFIXES.IMG).toBe('IMG#'));
   it('has TAG key', () => expect(DDB_KEY_PREFIXES.TAG).toBe('TAG#'));
-  it('has FIELD key', () => expect(DDB_KEY_PREFIXES.FIELD).toBe('FIELD#'));
-  it('has BED key', () => expect(DDB_KEY_PREFIXES.BED).toBe('BED#'));
   it('has META key', () => expect(DDB_KEY_PREFIXES.META).toBe('#META'));
+  it('does not have PLOT key (removed Phase D)', () => {
+    expect(DDB_KEY_PREFIXES).not.toHaveProperty('PLOT');
+  });
+  it('does not have FIELD key (removed Phase D)', () => {
+    expect(DDB_KEY_PREFIXES).not.toHaveProperty('FIELD');
+  });
+});
+
+describe('Grid limits', () => {
+  it('MIN_GRID_SIZE is 1', () => expect(MIN_GRID_SIZE).toBe(1));
+  it('MAX_GRID_SIZE is 5', () => expect(MAX_GRID_SIZE).toBe(5));
 });
 
 describe('LOCALE_OPTIONS', () => {
