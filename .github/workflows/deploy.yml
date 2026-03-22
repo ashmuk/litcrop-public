@@ -1,10 +1,9 @@
-name: Deploy
-
-# TODO: Rename this workflow to match your deployment target,
-#       e.g. "Deploy to AWS S3", "Deploy to Vercel", "Deploy to Fly.io".
+name: Deploy to Production
 
 on:
-  # Manual trigger — useful for testing and rollbacks.
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -14,142 +13,67 @@ on:
         type: choice
         options:
           - production
-          # - staging   # TODO: Uncomment and configure staging if needed.
 
-  # Automatic trigger on push to main.
-  push:
-    branches:
-      - main
+permissions:
+  id-token: write   # Required for OIDC token exchange
+  contents: read
 
 jobs:
   deploy:
-    name: Build and Deploy
+    name: Deploy
     runs-on: ubuntu-latest
-
-    # TODO: Configure environment protection rules in GitHub repo settings
-    #       (Settings > Environments) to require manual approval before production deploys.
-    # environment: production
+    environment: production   # CI-4: Triggers GitHub Environment approval gate
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Detect project type
-        id: detect
-        run: |
-          if [ -f package.json ]; then
-            echo "has_nodejs=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_nodejs=false" >> "$GITHUB_OUTPUT"
-          fi
-          # TODO: Add detection for other runtimes as needed, e.g.:
-          #   [ -f requirements.txt ] && echo "has_python=true" >> "$GITHUB_OUTPUT"
-          #   [ -f go.mod ] && echo "has_go=true" >> "$GITHUB_OUTPUT"
-
-      # TODO: Replace with your language/runtime setup.
-      # Examples:
-      #   Node.js:   actions/setup-node@v4
-      #   Python:    actions/setup-python@v5
-      #   Go:        actions/setup-go@v5
-      - name: Set up runtime
-        if: steps.detect.outputs.has_nodejs == 'true'
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
-        if: steps.detect.outputs.has_nodejs == 'true'
-        # TODO: Replace with your package manager command.
         run: npm ci
 
-      - name: Build
-        if: steps.detect.outputs.has_nodejs == 'true'
-        # TODO: Replace with your build command and inject any required build-time env vars.
-        # Example env vars:
-        #   PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
-        #   SOME_SECRET:    ${{ secrets.SOME_SECRET }}
+      - name: Build all workspaces
         run: npm run build
+        env:
+          PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
 
-      # ---------------------------------------------------------------------------
-      # DEPLOYMENT — pick ONE of the blocks below and delete the others.
-      # ---------------------------------------------------------------------------
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      # --- Option A: AWS S3 + CloudFront (static sites) -------------------------
-      # Required secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME
-      # Optional secrets: CLOUDFRONT_DISTRIBUTION_ID
-      #
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: us-east-1   # TODO: Set your target region
-      #
-      # - name: Sync to S3
-      #   run: |
-      #     aws s3 sync dist/ s3://${{ secrets.S3_BUCKET_NAME }}/ --delete
-      #     # TODO: Tune --cache-control headers for your asset strategy
-      #
-      # - name: Invalidate CloudFront cache
-      #   run: |
-      #     aws cloudfront create-invalidation \
-      #       --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-      #       --paths "/*"
+      - name: Install infra dependencies
+        run: npm ci
+        working-directory: infra
 
-      # --- Option B: Vercel ------------------------------------------------------
-      # Required secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-      #
-      # - name: Deploy to Vercel
-      #   uses: amondnet/vercel-action@v25
-      #   with:
-      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
-      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-      #     vercel-args: '--prod'
+      - name: CDK deploy
+        run: npx cdk deploy --require-approval never
+        working-directory: infra
 
-      # --- Option C: Fly.io ------------------------------------------------------
-      # Required secrets: FLY_API_TOKEN
-      #
-      # - name: Deploy to Fly.io
-      #   uses: superfly/flyctl-actions/setup-flyctl@master
-      # - run: flyctl deploy --remote-only
-      #   env:
-      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Sync frontend to S3
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+        run: aws s3 sync src/frontend/dist/ "s3://${FRONTEND_BUCKET}/" --delete
 
-      # --- Option D: SSH / rsync (VPS or bare server) ----------------------------
-      # Required secrets: SSH_PRIVATE_KEY, SSH_HOST, SSH_USER
-      #
-      # - name: Deploy via rsync
-      #   run: |
-      #     echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/deploy_key
-      #     chmod 600 /tmp/deploy_key
-      #     rsync -avz --delete dist/ \
-      #       -e "ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no" \
-      #       ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/html/
-      #     rm /tmp/deploy_key
-
-      # --- Option E: Docker / container registry ---------------------------------
-      # Required secrets: REGISTRY_USERNAME, REGISTRY_PASSWORD
-      #
-      # - name: Log in to container registry
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ghcr.io   # TODO: Change to your registry (docker.io, ECR, etc.)
-      #     username: ${{ secrets.REGISTRY_USERNAME }}
-      #     password: ${{ secrets.REGISTRY_PASSWORD }}
-      #
-      # - name: Build and push image
-      #   uses: docker/build-push-action@v5
-      #   with:
-      #     push: true
-      #     tags: ghcr.io/${{ github.repository }}:latest
-
-      # ---------------------------------------------------------------------------
+      - name: Invalidate CloudFront cache
+        env:
+          CLOUDFRONT_DIST_ID: ${{ vars.CLOUDFRONT_DIST_ID }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_DIST_ID" \
+            --paths "/*"
 
       - name: Deployment summary
+        env:
+          GH_SHA: ${{ github.sha }}
+          GH_ACTOR: ${{ github.actor }}
         run: |
           echo "Deployment completed."
-          echo "Commit: ${{ github.sha }}"
-          echo "Actor:  ${{ github.actor }}"
-          # TODO: Print any URLs or relevant post-deploy info here.
+          echo "Commit: ${GH_SHA}"
+          echo "Actor:  ${GH_ACTOR}"
