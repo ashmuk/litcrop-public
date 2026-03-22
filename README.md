@@ -12,9 +12,9 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 
 ## Project Status
 
-**Current Stage**: PoC — Design complete (Steps 1–7), implementation next
+**Current Stage**: MVP+ — Phase C complete (v0.12), Phase D next
 
-**Scope Level**: PoC → MVP → Production ([PLANS.md](PLANS.md))
+**Scope Level**: ~~PoC~~ → **MVP+** → Production ([PLANS.md](PLANS.md))
 
 ### Design Artifacts Completed
 - Requirements: 54 functional, 24 non-functional ([REQUIREMENTS.md](REQUIREMENTS.md))

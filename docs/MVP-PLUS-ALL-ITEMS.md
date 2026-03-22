@@ -136,8 +136,8 @@
 | --- | ---- | --------------------------------------------------------------- | --- | ------ | ----------------- | --- | ------- |
 | 48  | F-09 | Map picker for farm location (visual pin instead of lat/lng)    | P1  | M      | FEEDBACK          | #55 | Omitted |
 | 49  | F-10 | Elevation auto-fetch from Open-Meteo Elevation API              | P2  | S      | FEEDBACK          | #56 | Omitted |
-| 50  | F-14 | Time-lapse playback — sequential image player with speed slider | P1  | M      | FEEDBACK / Vision | #59 | Omitted |
-| 51  | SF-4 | Chat renders Markdown as plain text (no formatting in bubble)   | P2  | S      | REPORT_POC        | —   | Omitted |
+| 50  | F-14 | Time-lapse playback — weekly compilation, 30fps, 0.5x/1x/2x    | P1  | M      | FEEDBACK / Vision | #59 | **Done** (v0.12) |
+| 51  | SF-4 | Chat Markdown rendering (marked + DOMPurify)                    | P2  | S      | REPORT_POC        | #119 | **Done** (v0.12) |
 
 
 ---
@@ -233,13 +233,17 @@
 ### Open GitHub Issues
 
 
-| #   | Title                               | Labels      | Scope      |
-| --- | ----------------------------------- | ----------- | ---------- |
-| #55 | Map picker for farm location (F-09) | —           | v1.0       |
-| #56 | Elevation auto-fetch (F-10)         | —           | v1.0       |
-| #58 | Soil pH monitoring (F-13)           | —           | Production |
-| #59 | Time-lapse playback (F-14)          | —           | v1.0       |
-| #90 | Settings cross-device sync          | enhancement | v1.0       |
+| #   | Title                               | Labels      | Scope      | Status |
+| --- | ----------------------------------- | ----------- | ---------- | ------ |
+| #55 | Map picker for farm location (F-09) | —           | v1.0       | Open (Phase D) |
+| #56 | Elevation auto-fetch (F-10)         | —           | v1.0       | Open (Phase D) |
+| #58 | Soil pH monitoring (F-13)           | —           | Production | Open |
+| #59 | Time-lapse playback (F-14)          | —           | v1.0       | **Closed** (v0.12) |
+| #90 | Settings cross-device sync          | enhancement | v1.0       | Open (PROD-1) |
+| #119 | Image lightbox + chat markdown     | —           | v1.0       | **Closed** (v0.12) |
+| #120 | Bed-grid + crop + profile          | —           | v1.0       | Open (Phase D) |
+| #121 | Security hardening (S3/S4/S6/S10)  | —           | v1.0       | Open (Phase E) |
+| #122 | Quality fixes (Q6/SG-3/Q12/T8-T9) | —           | v1.0       | Open (Phase F) |
 
 
 ---
@@ -259,5 +263,6 @@
 
 ---
 
-> Generated 2026-03-21 | Consolidated from 6 source documents | 72 total items tracked
+> Generated 2026-03-21 | Updated 2026-03-22 (Phase C items marked done, issues updated)
+> Consolidated from 6 source documents | 72 total items tracked
 

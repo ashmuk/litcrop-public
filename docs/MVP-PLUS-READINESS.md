@@ -15,34 +15,38 @@ This document is the **entry point** for resuming work on LitCrop. Read this fir
 
 ## 1. Current State
 
-### What's Deployed (v0.9)
+### Latest (v0.12 on develop, pending PR to main)
 
 | Item | Value |
 |------|-------|
-| Frontend | https://dpj8a3mk3tzkq.cloudfront.net |
+| Frontend | https://dpj8a3mk3tzkq.cloudfront.net (v0.9 deployed; v0.12 not yet deployed) |
 | API | https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/ |
-| Tag | v0.9 (307296a on develop) |
-| PR | #116 merged to main (bd22c1a) |
-| Tests | 288/288 pass (17 test files) |
-| GH Issues | 12 closed (#104-115), 5 open (#55, #56, #58, #59, #90) |
+| Branch | develop at `e59e4eb` (3 commits ahead of origin/main) |
+| Tag | v0.11 (latest on main); v0.12 pending |
+| Tests | 303/303 pass (17 test files) |
+| GH Issues | #59 (time-lapse), #119 (lightbox+markdown) — Refs'd, pending close |
 | AWS Resources | 46 (CDK-managed LitCropStack) |
 | Cost | ~$0.01-1.18/month |
 
-### What Was Done in v0.9
+### Phase Progress
 
-5 batches of security, bug, robustness, UX, and test fixes:
-- B1: C6, S11, S7, S8 (security hardening)
-- B2: N3, Q7 (bug fixes)
-- B3: Q4, Q5, Q9, Q10, N5 (robustness)
-- B4: Q8, S5 (UX + docs)
-- B5: T3, T4, T5, T6 (+8 edge-case tests)
+| Phase | Status | Version | Key Deliverable |
+|-------|--------|---------|-----------------|
+| A — CI/CD Foundation | **DONE** | v0.10 | pr-checks.yml + deploy.yml, OIDC, 4 parallel jobs |
+| B — Multi-Farm Foundation | **DONE** | v0.11 | FARM_MEMBER records, roles, farm switching, demo seed |
+| C — Vision Closure | **DONE** | v0.12 | Time-lapse (30fps weekly), lightbox, chat markdown |
+| D — UX Restructure | **NEXT** | — | Map picker, bed-grid, profile redesign |
+| E — Security Hardening | TODO | — | S3/S4/S6/S10 |
+| F — Quality | TODO | — | Q6/SG-3/Q12/T8-T9/FR-3.6 |
 
 ### What's NOT Done
 
-- CI/CD pipeline (4 items — carry into MVP+)
-- Time-lapse playback (Vision MVP deliverable #3)
-- 9 omitted items found during scope review (security, UX, code quality)
-- Multi-farm architecture (PRODUCTION-1)
+- Bed-grid layout + crop-per-bed model (Phase D)
+- Map picker for farm location (Phase D)
+- Profile page redesign (Phase D)
+- Security hardening: S3/S4/S6/S10 (Phase E)
+- Quality fixes: Q6/SG-3/Q12/T8-T9 (Phase F)
+- Side-by-side comparison FR-3.6 (Phase F, if time)
 - 14 Production-scope features
 - 7 Vision categories (V-01..V-07)
 
@@ -97,10 +101,10 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 > See `docs/REVIEW-FOR-MVP-PLUS-BY-ULTRATHINK.md` for deep alignment review, pros/cons, tech feasibility.
 
 ```
- PHASE A — CI/CD Foundation (~1h)
+ PHASE A — CI/CD Foundation (~1h)                    ✅ DONE (v0.10)
    CI-1..CI-4: Pipeline setup
 
- PHASE B — Multi-Farm Foundation (~5-7h)  ← NEW (pulled from PROD-1)
+ PHASE B — Multi-Farm Foundation (~5-7h)             ✅ DONE (v0.11)
    N1-ADR: ADR for multi-farm support
    N1-BE:  DynamoDB schema — SK=FARM#<farmId>, FARM_MEMBER records
    N1-API: GET /farms returns Farm[], POST /farms creates farm
@@ -109,12 +113,12 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
    ROLE:   Role model (admin / manager / observer) via membership
    DEMO:   Demo farm seed data for onboarding
 
- PHASE C — Vision Closure (~4h)
-   F-14:   Time-lapse playback           ← THE missing Vision deliverable
-   FR-3.5: Image lightbox
-   SF-4:   Chat Markdown rendering
+ PHASE C — Vision Closure (~4h → ~6h actual)         ✅ DONE (v0.12)
+   F-14:   Time-lapse playback (weekly compilation, 30fps, 0.5x/1x/2x)
+   FR-3.5: Image lightbox (portal, zoom, focus trap)
+   SF-4:   Chat Markdown rendering (marked + DOMPurify)
 
- PHASE D — UX Restructure (~5-6h)  ← EXPANDED
+ PHASE D — UX Restructure (~5-6h)  ← NEXT
    F-09:   Map picker for farm location (integrated into farm creation wizard)
    F-10:   Elevation auto-fetch
    BED:    Bed-grid layout (rows × cols, 5 max) — replaces freeform plot wizard
@@ -135,11 +139,13 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 
 ```
 Vision MVP deliverables:
-1. Farm layout creation/editing    ✅ Done (bed-grid replaces freeform wizard)
+1. Farm layout creation/editing    ✅ Done (bed-grid in Phase D will enhance)
 2. Camera nodes uploading images   ✅ Done (simulator + phone + bed association)
-3. Time-lapse growth per plot      ← MVP+ closes this gap (F-14, Phase C)
+3. Time-lapse growth per plot      ✅ Done (Phase C — weekly compilation, 30fps)
 4. Manual observation and tagging  ✅ Done
 ```
+
+All 4 Vision MVP deliverables are now implemented.
 
 ---
 
@@ -227,21 +233,21 @@ Present consolidated execution preview to user
 | Criterion | Source | Status |
 |-----------|--------|--------|
 | 3 user accounts created (A/B/C roles) | USE-CASES.md §7 | Planned |
-| Demo farm pre-seeded with sample data | MVP-PLUS-SCENARIO §Step 1 | **NOT DONE** — MVP+ Phase B |
-| B can create own farm via wizard + map | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — MVP+ Phase B+D |
-| Farm switching works (Demo ↔ user farm) | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — MVP+ Phase B |
-| Bed-grid layout creation (5×5 max) | MVP-PLUS-SCENARIO §Step 3 | **NOT DONE** — MVP+ Phase D |
+| Demo farm pre-seeded with sample data | MVP-PLUS-SCENARIO §Step 1 | ✅ Done (v0.11 Phase B) |
+| B can create own farm via wizard + map | MVP-PLUS-SCENARIO §Step 2 | Farm creation ✅ (v0.11); map picker **Phase D** |
+| Farm switching works (Demo ↔ user farm) | MVP-PLUS-SCENARIO §Step 2 | ✅ Done (v0.11 FarmSwitcher) |
+| Bed-grid layout creation (5×5 max) | MVP-PLUS-SCENARIO §Step 3 | **NOT DONE** — Phase D |
 | Camera images associate to beds | MVP-PLUS-SCENARIO §Step 4 | Partially (simulator exists) |
-| Admin-managed farm membership (A adds C) | MVP-PLUS-SCENARIO §Step 5 | **NOT DONE** — MVP+ Phase B |
-| Time-lapse playback working | Vision.md MVP #3 | **NOT DONE** — MVP+ Phase C |
+| Admin-managed farm membership (A adds C) | MVP-PLUS-SCENARIO §Step 5 | ✅ Done (v0.11 POST /farms/:id/members) |
+| Time-lapse playback working | Vision.md MVP #3 | ✅ Done (v0.12 — weekly 30fps player) |
 | 1-2 camera nodes uploading images | Vision.md | Camera sim running; real Pi TBD |
-| Weather + crop impact functional | REQUIREMENTS FR-7 | Done |
-| AI chat responsive (stub or live) | REQUIREMENTS FR-9 | Done (stub) |
-| Japanese UI complete (no English leaks) | REQUIREMENTS NFR-6 | Done (v0.9 N3 fix) |
-| Mobile UX usable outdoors | REQUIREMENTS NFR-3 | Done |
-| Desktop layout for advisor | REQUIREMENTS FR-12 | Done |
-| CI/CD pipeline operational | MVP-POST-PLAN | **NOT DONE** — MVP+ Phase A |
-| Profile page shows farm list + switch | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — MVP+ Phase D |
+| Weather + crop impact functional | REQUIREMENTS FR-7 | ✅ Done |
+| AI chat responsive (stub or live) | REQUIREMENTS FR-9 | ✅ Done (stub + markdown rendering v0.12) |
+| Japanese UI complete (no English leaks) | REQUIREMENTS NFR-6 | ✅ Done (v0.9 N3 fix) |
+| Mobile UX usable outdoors | REQUIREMENTS NFR-3 | ✅ Done |
+| Desktop layout for advisor | REQUIREMENTS FR-12 | ✅ Done |
+| CI/CD pipeline operational | MVP-POST-PLAN | ✅ Done (v0.10 Phase A) |
+| Profile page shows farm list + switch | MVP-PLUS-SCENARIO §Step 2 | **NOT DONE** — Phase D |
 
 ---
 
@@ -257,5 +263,32 @@ Present consolidated execution preview to user
 
 ---
 
-> Generated 2026-03-21 | Updated 2026-03-22 (scope revision: +multi-farm, +bed-grid, +roles, +demo seed)
-> Entry point for MVP+ pipeline. Resume here. Read this file first. Follow Steps 1-4.
+## 9. Next Step: Phase D — UX Restructure
+
+**Status**: Ready to start. Phases A+B+C complete. 11/16 readiness criteria met.
+
+**Phase D scope** (5 items, ~5-6h):
+- **F-09**: Map picker for farm location (Leaflet ~40KB, lazy-loaded, integrated into farm creation wizard)
+- **F-10**: Elevation auto-fetch (Open-Meteo Elevation API, same provider as weather)
+- **BED**: Bed-grid layout — rows x cols (5 max each), replaces freeform plot wizard
+- **CROP**: Crop-per-bed model — one crop per bed, tied to bed record
+- **PROF**: Profile page redesign — farm list + switch + member list
+
+**Gate**: Scenario Steps 2-3 (farm creation + crop setup) work end-to-end.
+
+**Pipeline**: `/cc-design` → `/cc-implement` → `/simplify` → `/cc-review` → `/cc-remediate`
+
+**Tech stack notes** (from MVP-PLUS-REVISE-PLAN.md):
+- Leaflet (~40KB gzip, BSD-2) for map picker — best size/feature balance, free tiles, no API key
+- Open-Meteo Elevation API (free, no key) for elevation auto-fetch
+- CSS Grid + Preact for bed-grid — no external library
+- New Astro page for profile — separates farm management from user preferences
+
+**Issues**: #55 (map picker), #56 (elevation), #120 (bed-grid + crop + profile)
+
+**Working constraints**: Work solo, always ask before /simplify, run /cc-review after implementation.
+
+---
+
+> Generated 2026-03-21 | Updated 2026-03-22 (Phases A+B+C complete, Phase D next)
+> Entry point for MVP+ pipeline. Resume here. Read this file first.
