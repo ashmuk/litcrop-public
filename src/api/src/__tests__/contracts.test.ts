@@ -50,6 +50,7 @@ vi.mock('../services/dynamodb', () => ({
     getLatestImageForBed: vi.fn(),
     getImagesForBed: vi.fn(),
     getTagsForImage: vi.fn(),
+    getLatestTagForImage: vi.fn(),
     createImage: vi.fn(),
     getImageById: vi.fn(),
     createTag: vi.fn(),
@@ -477,7 +478,7 @@ describe('zod contract: GET /api/v1/beds/:bedId/images', () => {
   it('response parses against ImageListResponseSchema', async () => {
     vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedSeed);
     vi.mocked(dynamoRepo.getImagesForBed).mockResolvedValue({ items: [imageSeed], nextCursor: null });
-    vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([tagSeed]);
+    vi.mocked(dynamoRepo.getLatestTagForImage).mockResolvedValue(tagSeed);
 
     const res = await app.request(`/api/v1/beds/${BED_ID}/images`, { headers: authHeaders() });
     expect(res.status).toBe(200);

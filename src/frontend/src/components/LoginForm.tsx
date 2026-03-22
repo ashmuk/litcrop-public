@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { signIn, getAccessToken, CognitoError } from '../lib/auth';
 import { getMyFarm } from '../lib/api';
+import { LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 
 function mapError(err: unknown): string {
@@ -85,8 +86,8 @@ export default function LoginForm() {
         return;
       }
       try {
-        localStorage.setItem('litcrop-farmId', farm.id);
-        localStorage.setItem('litcrop-farmName', farm.name);
+        localStorage.setItem(LS_FARM_ID, farm.id);
+        localStorage.setItem(LS_FARM_NAME, farm.name);
       } catch { /* ignore */ }
       let returnUrl = '/';
       try {

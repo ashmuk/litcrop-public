@@ -13,6 +13,7 @@ vi.mock('../../services/dynamodb', () => ({
     getImagesForBed: vi.fn(),
     getLatestImageForBed: vi.fn(),
     getTagsForImage: vi.fn(),
+    getLatestTagForImage: vi.fn(),
     createImage: vi.fn(),
     getFarm: vi.fn(),
     getFarmMembership: vi.fn(),
@@ -248,7 +249,7 @@ describe('GET /api/v1/beds/:bedId/images', () => {
       items: [imageFixture],
       nextCursor: null,
     });
-    vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([tagFixture]);
+    vi.mocked(dynamoRepo.getLatestTagForImage).mockResolvedValue(tagFixture);
 
     const res = await app.request(`/api/v1/beds/${BED_ID}/images`, { headers: authHeaders() });
     expect(res.status).toBe(200);

@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { showToast } from './Toast';
 import { createFarm, updateFarm, ApiError } from '../lib/api';
+import { LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 
 interface FarmConfig {
@@ -72,7 +73,7 @@ export default function SetupForm() {
     }
     setSaving(true);
     try {
-      const existingFarmId = localStorage.getItem('litcrop-farmId');
+      const existingFarmId = localStorage.getItem(LS_FARM_ID);
       const payload = {
         name: form.name.trim(),
         latitude: lat,
@@ -87,8 +88,8 @@ export default function SetupForm() {
       } else {
         // Create new farm
         const farm = await createFarm(payload);
-        localStorage.setItem('litcrop-farmId', farm.id);
-        localStorage.setItem('litcrop-farmName', farm.name);
+        localStorage.setItem(LS_FARM_ID, farm.id);
+        localStorage.setItem(LS_FARM_NAME, farm.name);
       }
       localStorage.setItem('litcrop-setup', JSON.stringify(form));
       showToast(t('setup.save_success'), 'success');

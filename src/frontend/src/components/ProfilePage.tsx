@@ -9,7 +9,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS } from '@litcrop/shared';
 import { getMyFarms } from '../lib/api';
-import { useLocalFarmId, setLocalFarmId, setLocalFarmList } from '../lib/hooks';
+import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
@@ -33,8 +33,7 @@ export default function ProfilePage() {
   const [locale, setLocale] = useState<Locale>('en');
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
 
-  useEffect(() => {
-    // Load farms
+  function refreshFarms(): void {
     getMyFarms()
       .then((list) => {
         setFarms(list as FarmWithRole[]);
@@ -42,6 +41,11 @@ export default function ProfilePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    // Load farms
+    refreshFarms();
 
     // Load user
     const user = getCurrentUser();
@@ -65,7 +69,7 @@ export default function ProfilePage() {
     setLocalFarmId(farmId);
     try {
       const farm = farms.find((f) => f.id === farmId);
-      if (farm) localStorage.setItem('litcrop-farmName', farm.name);
+      if (farm) localStorage.setItem(LS_FARM_NAME, farm.name);
     } catch {}
     window.location.reload();
   }
@@ -78,11 +82,7 @@ export default function ProfilePage() {
       setLocalFarmId(farmId);
       window.location.reload();
     } else {
-      // Refresh farm list
-      getMyFarms().then((list) => {
-        setFarms(list as FarmWithRole[]);
-        setLocalFarmList(list);
-      }).catch(() => {});
+      refreshFarms();
     }
   }
 

@@ -191,19 +191,17 @@ router.get('/:bedId/images', async (c) => {
 
   const data = await Promise.all(
     result.items.map(async (image) => {
-      const [thumbnail_url, tags] = await Promise.all([
+      const [thumbnail_url, latestTag] = await Promise.all([
         image.thumbnail_key ? getSignedThumbnailUrl(image.thumbnail_key) : Promise.resolve(null),
-        dynamoRepo.getTagsForImage(image.id),
+        dynamoRepo.getLatestTagForImage(image.id),
       ]);
-      // Tags are sorted ascending by createdAt; last entry is the most recent
-      const latest_tag = tags.length > 0 ? tags[tags.length - 1].tag : null;
       return {
         id: image.id,
         thumbnail_url,
         captured_at: image.captured_at,
         trigger: image.trigger,
         size_bytes: image.size_bytes,
-        latest_tag,
+        latest_tag: latestTag?.tag ?? null,
       };
     }),
   );

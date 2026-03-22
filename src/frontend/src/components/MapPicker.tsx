@@ -122,7 +122,11 @@ export default function MapPicker({
     }
 
     loadLeaflet();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (leafletMap.current) (leafletMap.current as { remove: () => void }).remove();
+      if (elevTimer.current) clearTimeout(elevTimer.current);
+    };
   }, []);
 
   function handleGPS() {

@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
-import { TAG_VALUES } from '@litcrop/shared';
+import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import { getBed, getImages, createTag, uploadImage } from '../lib/api';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
@@ -113,7 +113,7 @@ export default function BedDetail() {
   async function handleImageUpload(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
       showToast(t('upload.too_large'), 'error');
       return;
     }

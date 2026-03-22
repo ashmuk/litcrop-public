@@ -287,64 +287,13 @@ export class DynamoRepository {
 
   // 5. Create beds for a farm grid
   async createBedsForFarm(farmId: string, gridRows: number, gridCols: number): Promise<Bed[]> {
-    const beds: Bed[] = [];
-    const items: Array<{ PutRequest: { Item: Record<string, unknown> } }> = [];
-
+    const positions: Array<{ row: number; col: number }> = [];
     for (let row = 1; row <= gridRows; row++) {
       for (let col = 1; col <= gridCols; col++) {
-        const bedId = crypto.randomUUID();
-        const name = bedName(row, col);
-        const bed: Bed = {
-          id: bedId,
-          farm_id: farmId,
-          row,
-          col,
-          name,
-          latest_status: 'no_data',
-        };
-        beds.push(bed);
-        items.push({
-          PutRequest: {
-            Item: {
-              PK: pk.farm(farmId),
-              SK: sk.bed(row, col, bedId),
-              // GSI1 for direct bed lookup
-              GSI1PK: pk.bed(bedId),
-              GSI1SK: sk.meta(),
-              ...bed,
-            },
-          },
-        });
+        positions.push({ row, col });
       }
     }
-
-    // BatchWrite in chunks of 25, with one retry for unprocessed items
-    for (let i = 0; i < items.length; i += 25) {
-      const chunk = items.slice(i, i + 25);
-      const result = await ddb.send(
-        new BatchWriteCommand({
-          RequestItems: {
-            [TABLE_NAME]: chunk,
-          },
-        }),
-      );
-
-      // Check for unprocessed items and retry once
-      const unprocessed = result.UnprocessedItems?.[TABLE_NAME];
-      if (unprocessed && unprocessed.length > 0) {
-        const retryResult = await ddb.send(
-          new BatchWriteCommand({
-            RequestItems: { [TABLE_NAME]: unprocessed },
-          }),
-        );
-        const stillUnprocessed = retryResult.UnprocessedItems?.[TABLE_NAME];
-        if (stillUnprocessed && stillUnprocessed.length > 0) {
-          console.warn(`[createBedsForFarm] ${stillUnprocessed.length} items still unprocessed after retry for farm ${farmId}`);
-        }
-      }
-    }
-
-    return beds;
+    return this.createBedsForPositions(farmId, positions);
   }
 
   // 5b. Create beds for specific positions (used when expanding grid)
@@ -506,6 +455,26 @@ export class DynamoRepository {
     });
   }
 
+  // 9b. Get the most recent tag for an image (null if none)
+  async getLatestTagForImage(imageId: string): Promise<Tag | null> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': pk.image(imageId),
+          ':prefix': DDB_KEY_PREFIXES.TAG,
+        },
+        ScanIndexForward: false,
+        Limit: 1,
+      }),
+    );
+    const item = result.Items?.[0];
+    if (!item) return null;
+    const tagId = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.TAG);
+    return itemToTag(item, tagId);
+  }
+
   // 10. Write tag + update bed status
   async createTag(
     imageId: string,
@@ -527,32 +496,33 @@ export class DynamoRepository {
       created_at: createdAt,
     };
 
-    // PutItem for the tag
-    await ddb.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          PK: pk.image(imageId),
-          SK: sk.tag(createdAt, tagId),
-          ...tag,
-        },
-      }),
-    );
-
-    // Update bed status on the FARM# partition
-    await ddb.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          PK: pk.farm(farmId),
-          SK: sk.bed(row, col, bedId),
-        },
-        UpdateExpression: 'SET latest_status = :status',
-        ExpressionAttributeValues: {
-          ':status': tagValue as BedStatus,
-        },
-      }),
-    );
+    await Promise.all([
+      // PutItem for the tag
+      ddb.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: pk.image(imageId),
+            SK: sk.tag(createdAt, tagId),
+            ...tag,
+          },
+        }),
+      ),
+      // Update bed status on the FARM# partition
+      ddb.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: pk.farm(farmId),
+            SK: sk.bed(row, col, bedId),
+          },
+          UpdateExpression: 'SET latest_status = :status',
+          ExpressionAttributeValues: {
+            ':status': tagValue as BedStatus,
+          },
+        }),
+      ),
+    ]);
 
     return tag;
   }

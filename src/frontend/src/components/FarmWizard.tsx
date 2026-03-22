@@ -8,7 +8,7 @@
 
 import { useState } from 'preact/hooks';
 import { createFarm, ApiError } from '../lib/api';
-import { setLocalFarmId } from '../lib/hooks';
+import { setLocalFarmId, LS_FARM_NAME } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import MapPicker from './MapPicker';
@@ -54,7 +54,7 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
       });
       // Persist as active farm
       setLocalFarmId(farm.id);
-      try { localStorage.setItem('litcrop-farmName', farm.name); } catch {}
+      try { localStorage.setItem(LS_FARM_NAME, farm.name); } catch {}
       showToast(t('wizard.success'), 'success');
       onComplete?.(farm.id);
     } catch (err) {

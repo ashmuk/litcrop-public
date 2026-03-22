@@ -26,6 +26,7 @@ vi.mock('../../services/dynamodb', () => ({
     getBedById: vi.fn(),
     getImagesForBed: vi.fn(),
     getTagsForImage: vi.fn(),
+    getLatestTagForImage: vi.fn(),
     createImage: vi.fn(),
     getImageById: vi.fn(),
     createTag: vi.fn(),

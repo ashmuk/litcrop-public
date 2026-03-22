@@ -9,7 +9,7 @@ import type { FarmBedItem, WeatherResponse, BedStatus } from '@litcrop/shared';
 import { getFarm, getBeds, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
-import { useLocalFarmId, formatTemp } from '../lib/hooks';
+import { useLocalFarmId, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { translateCondition, formatRelativeTime } from '../lib/format';
 
 // Most critical first
@@ -57,8 +57,8 @@ export default function FarmOverview({ farmId }: Props) {
         if (farmData) {
           // Store farmId + name for other islands and page headers
           try {
-            localStorage.setItem('litcrop-farmId', farmData.id);
-            localStorage.setItem('litcrop-farmName', farmData.name);
+            localStorage.setItem(LS_FARM_ID, farmData.id);
+            localStorage.setItem(LS_FARM_NAME, farmData.name);
           } catch {}
           // Patch page title in case localStorage was empty on first load
           const titleEl = document.getElementById('page-title');
