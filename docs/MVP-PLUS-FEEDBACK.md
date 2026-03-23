@@ -255,11 +255,19 @@ End-users (readers/observers) can join up to 3 farms. Demo farm exempt (not coun
 
 ## Priority Summary — Round 2 (2026-03-23)
 
-| Priority | Issues | Action |
+| Priority | Issues | Status |
 |----------|--------|--------|
-| **P0** (blocker) | F-15 | Debug upload — check console errors |
-| **P1** (must fix) | F-10, F-12, F-14, F-16 | Fix in next session |
-| **P2** (should fix) | F-11, F-13 | Fix in next session |
+| **P0** (blocker) | F-15 | ✅ Fixed (PR #146) — client-side JPEG conversion |
+| **P1** (must fix) | F-10, F-12, F-14, F-16 | ✅ Fixed (PRs #146, #147) |
+| **P2** (should fix) | F-11, F-13 | ✅ Fixed (PRs #147, #148) |
+
+## Additional Items (2026-03-23)
+
+| Item | Source | Status | PR |
+|------|--------|--------|----|
+| F-04 | Round 1 P3 | ✅ Fixed — farm card elevation + grid subtitle | #149 |
+| F-08 | Round 1 P3 | ✅ Fixed — weather location via Nominatim reverse geocode | #149 |
+| #90 | PROD-1 backlog | ⚠️ Partial — locale sync done, temp_unit/theme deferred | #149 |
 
 ---
 
@@ -269,15 +277,24 @@ End-users (readers/observers) can join up to 3 farms. Demo farm exempt (not coun
 - Farm creation wizard flow is intuitive
 - Map picker loads and GPS detection works (marker icon now shows correctly)
 - Farm switching works correctly
-- Weather data loads with emoji icons (F-07 fix working)
+- Weather data loads with emoji icons and location name (F-07 + F-08)
 - Japanese locale is complete (nav, labels, weather terms)
-- Desktop layout renders properly (hourly scroll contained — F-09 fix working)
+- Desktop layout renders properly (hourly scroll contained — F-09)
 - Bed grid displays correctly with the demo farm
-- Manage page shows camera node list (F-01 working)
-- Step dots visible on all wizard steps (F-02 fix working)
+- Manage page shows camera node list (F-01)
+- Step dots visible on all wizard steps (F-02)
+- Crop assignment/edit form works on bed detail (F-14)
+- Farm deletion with confirmation dialog (F-10)
+- Photo upload converts any image format to JPEG (F-15)
+- Farm creation limited to 2 per user (F-12)
+- Farm cards show elevation + grid size (F-04)
+- Expandable farm context pane with member list (F-13)
+- Locale syncs across devices via farm settings (#90 partial)
 
 ---
 
-> Filed: 2026-03-22 (round 1) | Updated: 2026-03-23 (round 2)
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-23 (rounds 2+3)
 > Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
-> Round 2: 7 new items filed (issues #139–#145)
+> Round 2: 7 items fixed (PRs #146–#148, issues #139–#145 closed)
+> Round 3: 3 items (F-04, F-08, #90 partial) fixed (PR #149)
+> All feedback resolved — v0.19 deployed for April field evaluation

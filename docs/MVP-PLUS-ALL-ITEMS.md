@@ -197,13 +197,13 @@
 
 | Scope                        | Total  | Done   | Remaining |
 | ---------------------------- | ------ | ------ | --------- |
-| v0.9                         | 29     | 25     | 4 (CI/CD) |
-| v1.0 Phase 4                 | 5      | 0      | 5         |
-| v1.0 Phase 5 (listed)        | 8      | 0      | 8         |
-| v1.0 Omitted (need slotting) | 9      | 0      | 9         |
+| v0.9                         | 29     | 29     | 0         |
+| v1.0 Phases A–F              | 28     | 28     | 0         |
+| Post-deploy feedback (R1+R2) | 16     | 16     | 0         |
+| #90 Settings sync            | 1      | 0.5    | 0.5 (temp_unit, theme) |
 | Production                   | 14     | 0      | 14        |
 | Vision                       | 7      | 0      | 7         |
-| **Total**                    | **72** | **25** | **47**    |
+| **Total**                    | **95** | **73.5** | **21.5** |
 
 
 ### By Priority (remaining only)
