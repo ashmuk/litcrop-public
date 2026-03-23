@@ -573,6 +573,25 @@ export class DynamoRepository {
     return farm;
   }
 
+  /** Count farm memberships for a user, excluding demo farm. */
+  async countUserMemberships(userId: string, excludeFarmId?: string): Promise<number> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+        ExpressionAttributeValues: {
+          ':pk': pk.user(userId),
+          ':sk': DDB_KEY_PREFIXES.FARM_MEMBER,
+          ...(excludeFarmId ? { ':excl': excludeFarmId } : {}),
+        },
+        ...(excludeFarmId
+          ? { FilterExpression: 'farm_id <> :excl', Select: 'ALL_ATTRIBUTES' }
+          : { Select: 'COUNT' }),
+      }),
+    );
+    return excludeFarmId ? (result.Items?.length ?? 0) : (result.Count ?? 0);
+  }
+
   /** Look up all farms a Cognito user belongs to. Returns empty array if none. */
   async getFarmsForUser(userId: string): Promise<FarmMember[]> {
     const result = await ddb.send(

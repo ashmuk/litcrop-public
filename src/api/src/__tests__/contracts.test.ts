@@ -147,6 +147,7 @@ beforeEach(() => {
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://cdn.example.com/signed-url');
   vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://cdn.example.com/thumb-signed-url');
   vi.mocked(uploadImage).mockResolvedValue(`images/${FARM_ID}/${BED_ID}/2026/03/17/${IMAGE_ID}.jpg`);
+  vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
   // Ownership chain defaults
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmSeed as any);

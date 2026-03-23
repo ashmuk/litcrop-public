@@ -11,6 +11,7 @@ vi.mock('../../services/dynamodb', () => ({
     getFarmsForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
+    countUserMemberships: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
     getBedsForFarm: vi.fn(),
@@ -64,6 +65,10 @@ beforeEach(() => {
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
   // Default: user is a member of the test farm
   vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+  // Default: user has no farms (under free plan limit)
+  vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+  // Default: target user has 0 memberships (under free plan limit)
+  vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
 });
 
 // ── GET /api/v1/farms ─────────────────────────────────────────────
@@ -193,6 +198,22 @@ describe('POST /api/v1/farms', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('returns 400 when user is at farm creation limit', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([
+      { user_id: TEST_USER_ID, farm_id: 'farm-1', role: 'admin', joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, farm_id: 'farm-2', role: 'admin', joined_at: '2026-03-18T00:00:00.000Z' },
+    ]);
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'Third Farm', latitude: 36.0, longitude: 138.0 }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
 });
 
 // ── PATCH /api/v1/farms/:farmId ───────────────────────────────────
@@ -311,6 +332,20 @@ describe('POST /api/v1/farms/:farmId/members', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ user_id: NEW_USER_ID, role: 'superuser' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when target user is at membership limit', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(3);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };

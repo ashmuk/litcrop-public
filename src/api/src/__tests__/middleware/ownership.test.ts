@@ -100,6 +100,7 @@ const ownerMembershipFixture = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
+  vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
   // Default: mock getFarmMembership to return membership for owner, null for others
   vi.mocked(dynamoRepo.getFarmMembership).mockImplementation(
     async (userId: string, _farmId: string) => {
