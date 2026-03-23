@@ -200,6 +200,7 @@ router.get('/:bedId/images', async (c) => {
         thumbnail_url,
         captured_at: image.captured_at,
         trigger: image.trigger,
+        node_id: image.node_id,
         size_bytes: image.size_bytes,
         latest_tag: latestTag?.tag ?? null,
       };

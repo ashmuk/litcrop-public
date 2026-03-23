@@ -334,10 +334,12 @@
 
   .weather-col-left {
     border-right: var(--border-default);
+    min-width: 0; /* prevent flex/grid children from expanding beyond column */
   }
 
   .weather-col-right {
     overflow-y: auto;
+    min-width: 0;
   }
 }
 

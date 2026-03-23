@@ -1,0 +1,22 @@
+---
+/**
+ * Manage (IoT) Page — F-01
+ * Read-only camera node monitoring: nodes that have uploaded to the current farm.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ManagePage from '../../components/ManagePage';
+
+const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
+---
+
+<BaseLayout title="LitCrop — Manage" activeTab="manage" farmNameTitleId="manage-title" farmNamePrefix="📡 Manage — ">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 id="manage-title" style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      📡 Manage
+    </h1>
+  </div>
+
+  <ManagePage farmId={farmId} client:load />
+</BaseLayout>

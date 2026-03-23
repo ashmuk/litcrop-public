@@ -10,7 +10,7 @@ import { getFarm, getBeds, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
 import { useLocalFarmId, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
-import { translateCondition, formatRelativeTime } from '../lib/format';
+import { translateCondition, conditionToEmoji, formatRelativeTime } from '../lib/format';
 
 // Most critical first
 const STATUS_SEVERITY: Record<BedStatus, number> = {
@@ -129,11 +129,11 @@ export default function FarmOverview({ farmId }: Props) {
             style="background-color:var(--color-primary-light);color:var(--color-primary-dark);border-bottom-color:var(--color-primary)"
             aria-label="Current weather summary"
           >
-            <span aria-hidden="true">{weather.current.condition_icon}</span>
+            <span aria-hidden="true">{conditionToEmoji(weather.current.condition_icon)}</span>
             <span style="font-weight:var(--font-weight-semibold)">
               {formatTemp(weather.current.temperature)}
             </span>
-            <span>{translateCondition(weather.current.condition_icon)}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{translateCondition(weather.current.condition_icon)}</span>
             <span style="margin-left:auto;font-size:var(--font-size-xs)">
               💧{weather.current.humidity}% · 💨{Math.round(weather.current.wind_speed)} km/h
             </span>
@@ -230,7 +230,7 @@ export default function FarmOverview({ farmId }: Props) {
             <div class="farm-sidebar-card__title">{t('weather.temperature')}</div>
             <div class="farm-sidebar-current">
               <span class="farm-sidebar-current__icon" aria-hidden="true">
-                {weather.current.condition_icon}
+                {conditionToEmoji(weather.current.condition_icon)}
               </span>
               <div>
                 <div class="farm-sidebar-current__temp">
@@ -290,7 +290,7 @@ export default function FarmOverview({ farmId }: Props) {
                     : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
                 </span>
                 <span class="farm-sidebar-day-row__icon" aria-hidden="true">
-                  {day.condition_icon}
+                  {conditionToEmoji(day.condition_icon)}
                 </span>
                 <div class="farm-sidebar-day-row__temps">
                   <span class="farm-sidebar-day-row__high">{formatTemp(day.high)}</span>

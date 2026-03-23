@@ -91,6 +91,7 @@ export interface ImageListItem {
   id: string;
   captured_at: string;
   trigger: TriggerType;
+  node_id: string;
   thumbnail_url: string | null;
   size_bytes: number;
   latest_tag: TagValue | null;
