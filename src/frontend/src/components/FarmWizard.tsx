@@ -74,12 +74,12 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
       {[1, 2, 3].map((s) => (
         <div
           key={s}
-          style={`width:10px;height:10px;border-radius:50%;${
+          style={`width:10px;height:10px;border-radius:50%;box-sizing:border-box;${
             s === step
               ? 'background:var(--color-primary)'
               : s < step
                 ? 'background:var(--color-primary-light);border:2px solid var(--color-primary)'
-                : 'background:var(--color-gray-200)'
+                : 'background:transparent;border:2px solid var(--color-gray-400)'
           }`}
           aria-label={`Step ${s} of 3${s === step ? ' (current)' : ''}`}
         />

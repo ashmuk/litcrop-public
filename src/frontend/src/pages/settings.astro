@@ -1,7 +1,7 @@
 ---
 /**
- * Settings — Redirects to /profile/ (Phase D consolidation)
- * Kept for backwards compatibility.
+ * Settings — Redirects to /manage/ (F-01: Settings tab replaced by Manage)
+ * Kept for backwards compatibility with bookmarks.
  */
 ---
 
@@ -9,13 +9,13 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0;url=/profile/" />
-    <title>Redirecting to Profile...</title>
+    <meta http-equiv="refresh" content="0;url=/manage/" />
+    <title>Redirecting to Manage...</title>
     <script is:inline>
-      window.location.replace('/profile/');
+      window.location.replace('/manage/');
     </script>
   </head>
   <body>
-    <p>Redirecting to <a href="/profile/">Profile</a>...</p>
+    <p>Redirecting to <a href="/manage/">Manage</a>...</p>
   </body>
 </html>

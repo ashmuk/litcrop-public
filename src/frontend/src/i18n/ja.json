@@ -3,7 +3,7 @@
     "farm": "作物",
     "weather": "天気",
     "setup": "プロフィール",
-    "settings": "設定"
+    "manage": "管理"
   },
   "status": {
     "healthy": "健全",
@@ -240,6 +240,16 @@
     "switch": "切替",
     "active": "アクティブ",
     "no_farms": "まだ農場に所属していません。"
+  },
+  "manage": {
+    "title": "管理",
+    "camera_nodes": "カメラノード",
+    "no_nodes": "カメラノードが見つかりません",
+    "no_nodes_body": "カメラノードが画像をアップロードすると、ここに表示されます。",
+    "node_id": "ノード",
+    "last_upload": "最終アップロード",
+    "image_count": "画像数",
+    "target_bed": "対象ベッド"
   },
   "bed": {
     "empty": "空",

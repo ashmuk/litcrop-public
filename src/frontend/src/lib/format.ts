@@ -24,10 +24,33 @@ export function formatFrameTime(iso: string): string {
   return `${day} ${time}`;
 }
 
+/** Map a weather condition slug to an emoji icon. */
+const CONDITION_EMOJI: Record<string, string> = {
+  clear_sky: '☀️',
+  mainly_clear: '🌤️',
+  partly_cloudy: '⛅',
+  overcast: '☁️',
+  fog: '🌫️',
+  drizzle: '🌦️',
+  freezing_drizzle: '🌧️',
+  rain: '🌧️',
+  freezing_rain: '🌧️',
+  snow: '🌨️',
+  snow_grains: '🌨️',
+  rain_showers: '🌦️',
+  snow_showers: '🌨️',
+  thunderstorm: '⛈️',
+  thunderstorm_hail: '⛈️',
+};
+
+export function conditionToEmoji(condition: string): string {
+  return CONDITION_EMOJI[condition] ?? '🌡️';
+}
+
 /** Translate a weather condition slug (e.g. 'clear_sky') via i18n, with title-case fallback. */
-export function translateCondition(condition: string): string {
+export function translateCondition(condition: string, translator: (key: string) => string = t): string {
   const key = `weather_conditions.${condition}`;
-  const translated = t(key);
+  const translated = translator(key);
   return translated === key ? condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : translated;
 }
 

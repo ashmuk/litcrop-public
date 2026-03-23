@@ -293,9 +293,8 @@ export default function BedDetail() {
           >
             <input
               type="file"
-              accept="image/jpeg"
-              capture="environment"
-              style="display:none"
+              accept="image/*"
+              class="sr-only"
               disabled={uploading}
               onChange={handleImageUpload}
             />

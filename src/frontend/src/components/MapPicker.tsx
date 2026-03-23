@@ -21,6 +21,8 @@ export interface MapPickerProps {
   onElevationChange?: (elevation: number) => void;
 }
 
+const LEAFLET_CDN = 'https://unpkg.com/leaflet@1.9.4/dist';
+
 /** Fetch elevation from Open-Meteo given lat/lng */
 async function fetchElevation(lat: number, lng: number): Promise<number | null> {
   try {
@@ -79,7 +81,7 @@ export default function MapPicker({
         if (!document.querySelector('link[href*="leaflet"]')) {
           const link = document.createElement('link');
           link.rel = 'stylesheet';
-          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.href = `${LEAFLET_CDN}/leaflet.css`;
           document.head.appendChild(link);
         }
 
@@ -95,8 +97,17 @@ export default function MapPicker({
           maxZoom: 19,
         }).addTo(map);
 
-        // Center crosshair marker
-        const marker = L.marker([defaultLat, defaultLng]).addTo(map);
+        // Fix default marker icon (Leaflet CDN CSS doesn't resolve icon paths in bundled builds)
+        const DefaultIcon = L.icon({
+          iconUrl: `${LEAFLET_CDN}/images/marker-icon.png`,
+          iconRetinaUrl: `${LEAFLET_CDN}/images/marker-icon-2x.png`,
+          shadowUrl: `${LEAFLET_CDN}/images/marker-shadow.png`,
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          shadowSize: [41, 41],
+        });
+
+        const marker = L.marker([defaultLat, defaultLng], { icon: DefaultIcon }).addTo(map);
 
         // On map move, update the marker and notify parent
         map.on('moveend', () => {

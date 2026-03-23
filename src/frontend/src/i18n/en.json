@@ -3,7 +3,7 @@
     "farm": "Crops",
     "weather": "Weather",
     "setup": "Profile",
-    "settings": "Settings"
+    "manage": "Manage"
   },
   "status": {
     "healthy": "Healthy",
@@ -240,6 +240,16 @@
     "switch": "Switch",
     "active": "Active",
     "no_farms": "You don't belong to any farms yet."
+  },
+  "manage": {
+    "title": "Manage",
+    "camera_nodes": "Camera Nodes",
+    "no_nodes": "No camera nodes found",
+    "no_nodes_body": "Camera nodes will appear here once they upload images to this farm.",
+    "node_id": "Node",
+    "last_upload": "Last Upload",
+    "image_count": "Images",
+    "target_bed": "Target Bed"
   },
   "bed": {
     "empty": "Empty",

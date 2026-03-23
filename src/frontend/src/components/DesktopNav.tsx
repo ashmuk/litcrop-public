@@ -2,7 +2,7 @@
  * Desktop Navigation Bar Island — T-DESK-06
  *
  * Displayed only at 1024px+ via CSS (display:none → display:flex).
- * Shows: LitCrop brand | Crops · Weather · Profile · Settings | user email + logout
+ * Shows: LitCrop brand | Crops · Weather · Manage · Profile | user email + logout
  *
  * Reads the active tab from `activeTab` prop (passed from BaseLayout).
  * User email is read from localStorage on mount.
@@ -14,14 +14,14 @@ import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 
 export interface Props {
-  activeTab?: 'farm' | 'weather' | 'setup' | 'settings';
+  activeTab?: 'farm' | 'weather' | 'manage' | 'setup';
 }
 
 const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey: string }[] = [
   { tab: 'farm',     href: '/',         icon: '🌾', labelKey: 'nav.farm' },
   { tab: 'weather',  href: '/weather',  icon: '⛅', labelKey: 'nav.weather' },
-  { tab: 'setup',    href: '/profile/',  icon: '🌱', labelKey: 'nav.setup' },
-  { tab: 'settings', href: '/profile/',  icon: '⚙️', labelKey: 'nav.settings' },
+  { tab: 'manage',   href: '/manage/',  icon: '📡', labelKey: 'nav.manage' },
+  { tab: 'setup',    href: '/profile/', icon: '🌱', labelKey: 'nav.setup' },
 ];
 
 export default function DesktopNav({ activeTab = 'farm' }: Props) {

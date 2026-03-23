@@ -8,7 +8,7 @@ import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
-import { degreeToCardinal } from '../lib/format';
+import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
 
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
@@ -59,11 +59,7 @@ export default function WeatherView({ farmId }: Props) {
     return () => { cancelled = true; };
   }, [effectiveFarmId]);
 
-  const xlat = (cond: string) => {
-    const key = `weather_conditions.${cond}`;
-    const s = tl(key);
-    return s === key ? cond.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : s;
-  };
+  const xlat = (cond: string) => translateCondition(cond, tl);
 
   if (loading) {
     return (
@@ -120,7 +116,7 @@ export default function WeatherView({ farmId }: Props) {
           >
             <div style="display:flex;align-items:center;gap:var(--space-4)">
               <span style="font-size:64px;line-height:1" aria-hidden="true">
-                {current.condition_icon}
+                {conditionToEmoji(current.condition_icon)}
               </span>
               <div>
                 <div
@@ -168,7 +164,7 @@ export default function WeatherView({ farmId }: Props) {
           {/* Hourly forecast */}
           <div class="section-heading">{tl('weather.hourly')}</div>
           <div
-            style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:var(--space-3) var(--space-4)"
+            style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:var(--space-3) var(--space-4);max-width:100%"
           >
             <div style="display:flex;gap:var(--space-3)" role="list" aria-label="Hourly forecast">
               {hourly.slice(0, 24).map((h, i) => (
@@ -180,7 +176,7 @@ export default function WeatherView({ farmId }: Props) {
                   <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">
                     {formatHour(h.time)}
                   </div>
-                  <div style="font-size:24px" aria-hidden="true">{h.condition_icon}</div>
+                  <div style="font-size:24px" aria-hidden="true">{conditionToEmoji(h.condition_icon)}</div>
                   <div style="font-weight:var(--font-weight-semibold)">{formatTemp(h.temperature)}</div>
                   {h.rain_probability > 20 && (
                     <div style="font-size:var(--font-size-xs);color:#1565C0">
@@ -213,7 +209,7 @@ export default function WeatherView({ farmId }: Props) {
                 >
                   {i === 0 ? tl('weather.today') : formatWeekday(day.date)}
                 </div>
-                <span style="font-size:24px" aria-hidden="true">{day.condition_icon}</span>
+                <span style="font-size:24px" aria-hidden="true">{conditionToEmoji(day.condition_icon)}</span>
                 <div style="flex:1;font-size:var(--font-size-sm);color:var(--color-gray-700)">
                   {xlat(day.condition_icon)}
                 </div>

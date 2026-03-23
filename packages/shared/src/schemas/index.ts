@@ -164,6 +164,7 @@ const ImageListItemSchema = z.object({
   thumbnail_url: z.string().nullable(),
   captured_at: z.string(),
   trigger: TriggerTypeSchema,
+  node_id: z.string(),
   size_bytes: z.number(),
   latest_tag: TagValueSchema.nullable(),
 });

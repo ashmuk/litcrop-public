@@ -18,7 +18,7 @@ export interface Props {
   locale?: 'en' | 'ja';
   theme?: 'light' | 'dark' | 'earthy' | 'system';
   /** Marks the active tab bar item. Defaults to 'farm'. */
-  activeTab?: 'farm' | 'weather' | 'setup' | 'settings';
+  activeTab?: 'farm' | 'weather' | 'manage' | 'setup';
   /** If set, the element with this ID gets its textContent patched with the farm name from localStorage. */
   farmNameTitleId?: string;
   /** Prefix before the farm name (e.g. '🌾 ' or '⛅ Weather — '). */
@@ -74,7 +74,7 @@ const {
           // Inline translation map for nav + common static labels (ja only for PoC)
           var JA = {
             'nav.farm': '作物', 'nav.weather': '天気',
-            'nav.setup': 'プロフィール', 'nav.settings': '設定'
+            'nav.setup': 'プロフィール', 'nav.manage': '管理'
           };
           if (locale === 'ja') XHR_TRANSLATIONS = JA;
         } catch(e) {}
@@ -135,6 +135,16 @@ const {
       </a>
 
       <a
+        href="/manage/"
+        class={`tab-bar__item${activeTab === 'manage' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Manage devices"
+        aria-current={activeTab === 'manage' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">📡</span>
+        <span class="tab-bar__label" data-i18n="nav.manage">Manage</span>
+      </a>
+
+      <a
         href="/profile/"
         class={`tab-bar__item${activeTab === 'setup' ? ' tab-bar__item--active' : ''}`}
         aria-label="Farm profile"
@@ -142,16 +152,6 @@ const {
       >
         <span class="tab-bar__icon" aria-hidden="true">🌱</span>
         <span class="tab-bar__label" data-i18n="nav.setup">Profile</span>
-      </a>
-
-      <a
-        href="/profile/"
-        class={`tab-bar__item${activeTab === 'settings' ? ' tab-bar__item--active' : ''}`}
-        aria-label="App settings"
-        aria-current={activeTab === 'settings' ? 'page' : undefined}
-      >
-        <span class="tab-bar__icon" aria-hidden="true">⚙️</span>
-        <span class="tab-bar__label" data-i18n="nav.settings">Settings</span>
       </a>
     </nav>
   </body>
