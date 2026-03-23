@@ -6,8 +6,8 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
-import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
-import { getBed, getImages, createTag, uploadImage } from '../lib/api';
+import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES, CROP_TYPES } from '@litcrop/shared';
+import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '../lib/api';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
@@ -30,6 +30,32 @@ const TAG_THUMB_CSS: Record<TagValue, string> = {
   animal_intrusion: 'animal',
 };
 
+const MAX_IMAGE_DIM = 4096;
+
+async function toJpegBlob(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const objUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not supported')); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('JPEG conversion failed')),
+        'image/jpeg',
+        0.85,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('Image load failed')); };
+    img.src = objUrl;
+  });
+}
+
 export default function BedDetail() {
   const [bed, setBed] = useState<BedDetailResponse | null>(null);
   const [images, setImages] = useState<ImageListItem[]>([]);
@@ -41,6 +67,15 @@ export default function BedDetail() {
   const [tagging, setTagging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [cropForm, setCropForm] = useState({
+    crop_type: '',
+    crop_variety: '',
+    planted_at: '',
+    expected_harvest: '',
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
 
   const bedId =
     typeof window !== 'undefined'
@@ -118,23 +153,60 @@ export default function BedDetail() {
       return;
     }
     setUploading(true);
-    const formData = new FormData();
-    formData.append('image', file);
-    formData.append('captured_at', new Date().toISOString());
-    formData.append('node_id', 'phone-camera');
-    formData.append('trigger', 'scheduled');
     try {
+      const jpegBlob = await toJpegBlob(file);
+      if (jpegBlob.size > MAX_IMAGE_SIZE_BYTES) {
+        showToast(t('upload.too_large'), 'error');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('image', jpegBlob, 'photo.jpg');
+      formData.append('captured_at', new Date().toISOString());
+      formData.append('node_id', 'phone-camera');
+      formData.append('trigger', 'scheduled');
       await uploadImage(bedId, formData);
       showToast(t('upload.success'), 'success');
       const imagesData = await getImages(bedId);
       setImages(imagesData.data);
       setNextCursor(imagesData.meta.next_cursor);
-    } catch {
-      showToast(t('upload.error'), 'error');
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : t('upload.error');
+      showToast(msg, 'error');
     } finally {
       setUploading(false);
       // Reset input so the same file can be re-selected if needed
       (e.target as HTMLInputElement).value = '';
+    }
+  }
+
+  function startEditing() {
+    setCropForm({
+      crop_type: bed?.crop_type ?? '',
+      crop_variety: bed?.crop_variety ?? '',
+      planted_at: bed?.planted_at ?? '',
+      expected_harvest: bed?.expected_harvest ?? '',
+      notes: bed?.notes ?? '',
+    });
+    setEditing(true);
+  }
+
+  async function handleSaveCrop() {
+    setSaving(true);
+    try {
+      const data: Record<string, string | null> = {};
+      data.crop_type = cropForm.crop_type.trim() || null;
+      data.crop_variety = cropForm.crop_variety.trim() || null;
+      data.planted_at = cropForm.planted_at || null;
+      data.expected_harvest = cropForm.expected_harvest || null;
+      data.notes = cropForm.notes.trim() || null;
+      const updated = await updateBed(bedId, data);
+      setBed(updated);
+      setEditing(false);
+      showToast(t('bed.crop_saved'), 'success');
+    } catch {
+      showToast(t('bed.save_error'), 'error');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -222,44 +294,82 @@ export default function BedDetail() {
       />
 
       {/* -- Island 2: Bed/Crop Metadata -- */}
-      <div class="crop-info">
-        <h1 class="crop-info__title">{bed.name} — {cropLabel}</h1>
-        <dl>
-          {bed.crop_type && (
-            <>
-              <dt>{t('plot.crop_type')}</dt>
-              <dd>{bed.crop_type}</dd>
-            </>
-          )}
-          {bed.crop_variety && (
-            <>
-              <dt>{t('plot.crop_variety')}</dt>
-              <dd>{bed.crop_variety}</dd>
-            </>
-          )}
-          {bed.planted_at && (
-            <>
-              <dt>{t('plot.planted')}</dt>
-              <dd>{formatDateShort(bed.planted_at)}</dd>
-            </>
-          )}
-          {bed.expected_harvest && (
-            <>
-              <dt>{t('plot.harvest')}</dt>
-              <dd>{formatDateShort(bed.expected_harvest)}</dd>
-            </>
-          )}
-          {bed.notes && (
-            <>
-              <dt>{t('plot.notes')}</dt>
-              <dd>{bed.notes}</dd>
-            </>
-          )}
-          {!bed.crop_type && (
-            <dd style="color:var(--color-gray-500);font-style:italic">{t('bed.no_crop')}</dd>
-          )}
-        </dl>
-      </div>
+      {editing ? (
+        <div class="crop-info" style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold)">{bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}</h2>
+          <div class="form-group">
+            <label class="form-label" for="crop-type">{t('plot.crop_type')}</label>
+            <select id="crop-type" class="form-input" value={cropForm.crop_type} onChange={(e) => setCropForm({ ...cropForm, crop_type: (e.target as HTMLSelectElement).value })}>
+              <option value="">—</option>
+              {CROP_TYPES.map((c) => (
+                <option key={c} value={c}>{t(`add_plot.crop_types.${c}`)}</option>
+              ))}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crop-variety">{t('plot.crop_variety')}</label>
+            <input id="crop-variety" type="text" class="form-input" value={cropForm.crop_variety} onInput={(e) => setCropForm({ ...cropForm, crop_variety: (e.target as HTMLInputElement).value })} placeholder="e.g. Cherry, Roma" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="planted-at">{t('plot.planted')}</label>
+            <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => setCropForm({ ...cropForm, planted_at: (e.target as HTMLInputElement).value })} />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="expected-harvest">{t('plot.harvest')}</label>
+            <input id="expected-harvest" type="date" class="form-input" value={cropForm.expected_harvest} onInput={(e) => setCropForm({ ...cropForm, expected_harvest: (e.target as HTMLInputElement).value })} />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crop-notes">{t('plot.notes')}</label>
+            <input id="crop-notes" type="text" class="form-input" value={cropForm.notes} onInput={(e) => setCropForm({ ...cropForm, notes: (e.target as HTMLInputElement).value })} maxLength={500} />
+          </div>
+          <div style="display:flex;gap:var(--space-3)">
+            <button class="btn-secondary" style="flex:1" onClick={() => setEditing(false)} disabled={saving}>{t('buttons.cancel')}</button>
+            <button class="btn-primary" style="flex:2" onClick={handleSaveCrop} disabled={saving}>{saving ? '...' : t('buttons.save')}</button>
+          </div>
+        </div>
+      ) : (
+        <div class="crop-info">
+          <h1 class="crop-info__title">{bed.name} — {cropLabel}</h1>
+          <dl>
+            {bed.crop_type && (
+              <>
+                <dt>{t('plot.crop_type')}</dt>
+                <dd>{bed.crop_type}</dd>
+              </>
+            )}
+            {bed.crop_variety && (
+              <>
+                <dt>{t('plot.crop_variety')}</dt>
+                <dd>{bed.crop_variety}</dd>
+              </>
+            )}
+            {bed.planted_at && (
+              <>
+                <dt>{t('plot.planted')}</dt>
+                <dd>{formatDateShort(bed.planted_at)}</dd>
+              </>
+            )}
+            {bed.expected_harvest && (
+              <>
+                <dt>{t('plot.harvest')}</dt>
+                <dd>{formatDateShort(bed.expected_harvest)}</dd>
+              </>
+            )}
+            {bed.notes && (
+              <>
+                <dt>{t('plot.notes')}</dt>
+                <dd>{bed.notes}</dd>
+              </>
+            )}
+            {!bed.crop_type && (
+              <dd style="color:var(--color-gray-500);font-style:italic">{t('bed.no_crop')}</dd>
+            )}
+          </dl>
+          <button class="btn-secondary" style="margin-top:var(--space-2);font-size:var(--font-size-sm)" onClick={startEditing}>
+            {bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}
+          </button>
+        </div>
+      )}
 
       {/* -- Island 3: Tag Buttons -- */}
       {bed.latest_image && (

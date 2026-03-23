@@ -78,6 +78,15 @@ export const SIGNED_URL_EXPIRY_SECONDS = 15 * 60;
 export const MIN_GRID_SIZE = 1;
 export const MAX_GRID_SIZE = 5;
 
+// ── Demo Farm ───────────────────────────────────────────────────
+
+export const DEMO_FARM_ID = 'demo-farm';
+
+// ── Crop Types ──────────────────────────────────────────────────
+
+export const CROP_TYPES = ['rice', 'tomato', 'cucumber', 'eggplant', 'lettuce', 'daikon', 'cabbage', 'other'] as const;
+export type CropType = typeof CROP_TYPES[number];
+
 // ── DynamoDB Key Prefixes ────────────────────────────────────────
 
 export const DDB_KEY_PREFIXES = {

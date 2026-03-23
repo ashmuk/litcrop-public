@@ -64,7 +64,7 @@ export class ApiError extends Error {
  * fails the user is redirected to /login.
  */
 async function request<T>(
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
   isFormData = false,
@@ -172,6 +172,11 @@ export async function createFarm(data: CreateFarmRequest): Promise<Farm> {
 /** PATCH /api/v1/farms/{farmId} — returns flat Farm (no beds array) */
 export async function updateFarm(farmId: string, data: UpdateFarmRequest): Promise<Farm> {
   return request<Farm>('PATCH', `/farms/${farmId}`, data);
+}
+
+/** DELETE /api/v1/farms/{farmId} — admin only, cascades to beds and members */
+export async function deleteFarm(farmId: string): Promise<void> {
+  await request<void>('DELETE', `/farms/${farmId}`);
 }
 
 // ── Bed Endpoints ────────────────────────────────────────────────

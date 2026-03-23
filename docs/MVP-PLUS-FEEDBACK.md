@@ -158,29 +158,108 @@ The hourly forecast section extends beyond the browser viewport width, creating 
 
 ---
 
-## Priority Summary
+## Priority Summary — Round 1 (2026-03-22)
+
+| Priority | Issues | Status |
+|----------|--------|--------|
+| **P1** (must fix) | F-01, F-03, F-06, F-07 | ✅ Fixed (PR #138) |
+| **P2** (should fix) | F-02, F-09 | ✅ Fixed (PR #138) |
+| **P3** (nice to have) | F-04, F-05, F-08 | Deferred to PROD-1 |
+
+---
+
+## Round 2 Findings (2026-03-23)
+
+> Tester: Muk (Site Admin)
+> Environment: Desktop Chrome + Mobile, Nagano location
+> Version: v0.15 + PR #138 deployed
+
+### F-10: No UI to delete crops or farms
+
+**Page**: Bed Detail, Profile
+**Severity**: Feature gap
+**Priority**: P1
+**GH**: #139
+
+Managers cannot delete a crop assignment from a bed or delete a farm. Both require UI with confirmation dialog.
+
+---
+
+### F-11: Hourly weather scroll not intuitive
+
+**Page**: Weather → Hourly forecast
+**Severity**: UX
+**Priority**: P2
+**GH**: #140
+
+The hourly forecast has `scrollbar-width:none` — users cannot tell the pane is scrollable to see later hours. Need visible scrollbar or visual scroll indicators.
+
+---
+
+### F-12: Restrict farm creation to 2 per user (free plan)
+
+**Page**: Profile → New Farm
+**Severity**: Feature
+**Priority**: P1
+**GH**: #141
+
+Limit user-created farms to 2 (e.g. "Main" + "Experimental"). Demo farm exempt (not counted, everyone belongs to it for onboarding). Gray out "New Farm" button at limit with guidance text.
+
+---
+
+### F-13: Profile page needs farm context pane
+
+**Page**: Profile → Farm list
+**Severity**: Feature gap
+**Priority**: P2
+**GH**: #142
+
+Selected farm card should expand to show: members list, elevation, coordinates/area, grid size. Currently only shows name and role badge.
+
+---
+
+### F-14: No UI to assign/edit crops on beds
+
+**Page**: Crops → Bed Detail
+**Severity**: Feature gap
+**Priority**: P1
+**GH**: #143
+
+No frontend form to assign or edit crop data on a bed. The `updateBed` API and `assign_crop` i18n key exist but are unused. Users cannot add crops other than via upload or seed data.
+
+**Note**: Current model is 1 crop per bed (ADR-20260322). The edit UI should work within this constraint.
+
+---
+
+### F-15: Photo upload still failing
+
+**Page**: Crops → Bed Detail → Upload
+**Severity**: Bug
+**Priority**: P0
+**GH**: #144
+
+Upload still fails after F-06 fix. Previous fix addressed frontend (`capture`, `accept`, `.sr-only`). Root cause likely API-side — needs browser console investigation (auth? endpoint? validation?).
+
+---
+
+### F-16: Restrict farm membership to 3 per user (free plan)
+
+**Page**: Profile → Farm list / Join flow
+**Severity**: Feature
+**Priority**: P1
+**GH**: #145
+
+End-users (readers/observers) can join up to 3 farms. Demo farm exempt (not counted). Related to F-12 (creation limit for managers). Both limits should be defined as shared constants for future API enforcement.
+
+---
+
+## Priority Summary — Round 2 (2026-03-23)
 
 | Priority | Issues | Action |
 |----------|--------|--------|
-| **P1** (must fix) | F-01, F-03, F-06, F-07 | Fix in next session |
-| **P2** (should fix) | F-02, F-09 | Fix in next session |
-| **P3** (nice to have) | F-04, F-05, F-08 | Defer to PROD-1 |
-
-### P1 Quick Fixes (estimated ~2h total)
-
-| # | Fix | Effort |
-|---|-----|--------|
-| F-01 | Replace Settings tab with Manage (IoT) page | M |
-| F-03 | Set explicit Leaflet marker icon with bundled images | S |
-| F-07 | Call `translateCondition()` on FarmOverview + CSS overflow fix | S |
-| F-06 | Debug upload flow — check console errors, endpoint path, auth | M |
-
-### P2 Quick Fixes
-
-| # | Fix | Effort |
-|---|-----|--------|
-| F-02 | Fix step indicator to always render total dots | S |
-| F-09 | Add `overflow-x: auto; max-width: 100%` to hourly container | S |
+| **P0** (blocker) | F-15 | Debug upload — check console errors |
+| **P1** (must fix) | F-10, F-12, F-14, F-16 | Fix in next session |
+| **P2** (should fix) | F-11, F-13 | Fix in next session |
 
 ---
 
@@ -188,14 +267,17 @@ The hourly forecast section extends beyond the browser viewport width, creating 
 
 - Login works (after deploy fix)
 - Farm creation wizard flow is intuitive
-- Map picker loads and GPS detection works
+- Map picker loads and GPS detection works (marker icon now shows correctly)
 - Farm switching works correctly
-- Weather data loads for the farm's actual location
+- Weather data loads with emoji icons (F-07 fix working)
 - Japanese locale is complete (nav, labels, weather terms)
-- Desktop layout renders properly (aside from overflow issues)
+- Desktop layout renders properly (hourly scroll contained — F-09 fix working)
 - Bed grid displays correctly with the demo farm
+- Manage page shows camera node list (F-01 working)
+- Step dots visible on all wizard steps (F-02 fix working)
 
 ---
 
-> Filed: 2026-03-22 | Next action: Fix P1+P2 items in next session
-> Reference: Memory file `feedback_mvp_plus_post_deploy.md`
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-23 (round 2)
+> Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
+> Round 2: 7 new items filed (issues #139–#145)
