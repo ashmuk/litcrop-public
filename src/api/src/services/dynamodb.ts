@@ -562,7 +562,7 @@ export class DynamoRepository {
               ConditionExpression: 'attribute_not_exists(PK)',
             },
           },
-          ...buildMembershipItems(userId, farmId, 'manager', joinedAt),
+          ...buildMembershipItems(userId, farmId, 'admin', joinedAt),
         ],
       }),
     );
@@ -767,6 +767,73 @@ export class DynamoRepository {
         },
       }),
     );
+  }
+
+  /**
+   * Delete a farm and all its associated data:
+   * - All bed records (stored under FARM# partition with BED# SK prefix)
+   * - All FARM_MEMBER reverse-index records (stored under FARM# partition with MEMBER# SK prefix)
+   * - All USER# → FARM_MEMBER# forward-index records for each member
+   * - The farm metadata record itself
+   *
+   * Images are NOT deleted (kept for data retention).
+   */
+  async deleteFarm(farmId: string): Promise<void> {
+    // 1. Query all items under FARM# partition (beds + member reverse records + meta)
+    let farmItems: Array<{ PK: string; SK: string }> = [];
+    let lastKey: Record<string, unknown> | undefined;
+    do {
+      const result = await ddb.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk',
+          ExpressionAttributeValues: { ':pk': pk.farm(farmId) },
+          ProjectionExpression: 'PK, SK',
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      farmItems = farmItems.concat(
+        (result.Items ?? []).map((i) => ({ PK: i['PK'] as string, SK: i['SK'] as string })),
+      );
+      lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastKey);
+
+    // 2. Collect member userIds from MEMBER# SK records so we can remove USER# forward records
+    const memberUserIds: string[] = farmItems
+      .filter((i) => i.SK.startsWith(DDB_KEY_PREFIXES.MEMBER))
+      .map((i) => i.SK.slice(DDB_KEY_PREFIXES.MEMBER.length));
+
+    // 3. Build delete requests for all FARM# partition items
+    const deleteRequests: Array<{ DeleteRequest: { Key: { PK: string; SK: string } } }> = farmItems.map(
+      (item) => ({ DeleteRequest: { Key: { PK: item.PK, SK: item.SK } } }),
+    );
+
+    // 4. Add delete requests for USER# → FARM_MEMBER# forward records
+    for (const userId of memberUserIds) {
+      deleteRequests.push({
+        DeleteRequest: {
+          Key: { PK: pk.user(userId), SK: sk.farmMember(farmId) },
+        },
+      });
+    }
+
+    // 5. BatchWrite in chunks of 25 with one retry for unprocessed items
+    for (let i = 0; i < deleteRequests.length; i += 25) {
+      const chunk = deleteRequests.slice(i, i + 25);
+      const result = await ddb.send(
+        new BatchWriteCommand({ RequestItems: { [TABLE_NAME]: chunk } }),
+      );
+      const unprocessed = result.UnprocessedItems?.[TABLE_NAME];
+      if (unprocessed && unprocessed.length > 0) {
+        const retryResult = await ddb.send(
+          new BatchWriteCommand({ RequestItems: { [TABLE_NAME]: unprocessed } }),
+        );
+        const stillUnprocessed = retryResult.UnprocessedItems?.[TABLE_NAME];
+        if (stillUnprocessed && stillUnprocessed.length > 0) {
+          console.warn(`[deleteFarm] ${stillUnprocessed.length} items still unprocessed after retry for farm ${farmId}`);
+        }
+      }
+    }
   }
 
   /**

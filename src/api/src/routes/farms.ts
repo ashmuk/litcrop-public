@@ -16,6 +16,7 @@ import {
   FarmRoleSchema,
   MIN_GRID_SIZE,
   MAX_GRID_SIZE,
+  DEMO_FARM_ID,
 } from '@litcrop/shared';
 import type { Farm, Bed, FarmRole } from '@litcrop/shared';
 import { makeLatestImage, assertFarmAccess } from './_helpers';
@@ -325,6 +326,27 @@ router.patch('/:farmId', async (c) => {
 
   const farm = await dynamoRepo.getFarm(farmId);
   return c.json(farmToResponse(farm));
+});
+
+// ── DELETE /api/v1/farms/:farmId ────────────────────────────────
+
+router.delete('/:farmId', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  if (farmId === DEMO_FARM_ID) {
+    throw new ValidationError('The demo farm cannot be deleted');
+  }
+
+  await assertFarmAccess(farmId, userId, ['admin']);
+
+  try {
+    await dynamoRepo.deleteFarm(farmId);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  return c.body(null, 204);
 });
 
 // ── POST /api/v1/farms/:farmId/members ───────────────────────────

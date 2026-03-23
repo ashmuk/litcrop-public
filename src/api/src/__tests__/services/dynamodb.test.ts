@@ -316,14 +316,14 @@ describe('createFarm', () => {
     expect(userItem['PK']).toBe(`USER#${USER_ID}`);
     expect(typeof userItem['SK']).toBe('string');
     expect((userItem['SK'] as string).startsWith('FARM_MEMBER#')).toBe(true);
-    expect(userItem['role']).toBe('manager');
+    expect(userItem['role']).toBe('admin');
     // Item 2: farm→member index record (FARM# PK, MEMBER# SK)
     const memberPut = items[2]['Put'] as Record<string, unknown>;
     const memberItem = memberPut['Item'] as Record<string, unknown>;
     expect((memberItem['PK'] as string).startsWith('FARM#')).toBe(true);
     expect((memberItem['SK'] as string).startsWith('MEMBER#')).toBe(true);
     expect(memberItem['user_id']).toBe(USER_ID);
-    expect(memberItem['role']).toBe('manager');
+    expect(memberItem['role']).toBe('admin');
   });
 
   it('calls createBedsForFarm after the TransactWrite', async () => {

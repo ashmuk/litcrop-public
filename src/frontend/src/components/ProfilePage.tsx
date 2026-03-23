@@ -7,8 +7,8 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
-import { LOCALE_OPTIONS } from '@litcrop/shared';
-import { getMyFarms } from '../lib/api';
+import { LOCALE_OPTIONS, DEMO_FARM_ID } from '@litcrop/shared';
+import { getMyFarms, deleteFarm } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [farms, setFarms] = useState<FarmWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const activeFarmId = useLocalFarmId('');
 
@@ -86,6 +87,22 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleDeleteFarm(farmId: string) {
+    try {
+      await deleteFarm(farmId);
+      const remaining = farms.filter(f => f.id !== farmId);
+      setFarms(remaining);
+      setConfirmDelete(null);
+      if (activeFarmId === farmId && remaining.length > 0) {
+        setLocalFarmId(remaining[0].id);
+      }
+      showToast(t('profile.farm_deleted'), 'success');
+    } catch {
+      setConfirmDelete(null);
+      showToast(t('profile.delete_error'), 'error');
+    }
+  }
+
   function applyLocale(next: Locale) {
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
@@ -137,37 +154,77 @@ export default function ProfilePage() {
           <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-3)">
             {farms.map((farm) => {
               const isActive = farm.id === activeFarmId;
+              const isAdmin = farm.role === 'admin';
+              const isDemoFarm = farm.id === DEMO_FARM_ID;
+              const isConfirming = confirmDelete === farm.id;
               return (
                 <div
                   key={farm.id}
-                  style={`display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);border:2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-gray-200)'};background:${isActive ? 'var(--color-primary-light)' : 'var(--color-surface)'}`}
+                  style={`border-radius:var(--radius-md);border:2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-gray-200)'};background:${isActive ? 'var(--color-primary-light)' : 'var(--color-surface)'};overflow:hidden`}
                 >
-                  <div style="flex:1;min-width:0">
-                    <div style="font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                      {farm.name}
-                    </div>
-                    <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:2px">
-                      <span
-                        class="badge status-healthy"
-                        style="font-size:var(--font-size-xs);padding:1px 6px"
-                      >
-                        {farm.role}
-                      </span>
-                      {isActive && (
-                        <span style="font-size:var(--font-size-xs);color:var(--color-primary);font-weight:var(--font-weight-semibold)">
-                          {t('profile.active')}
+                  <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        {farm.name}
+                      </div>
+                      <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:2px">
+                        <span
+                          class="badge status-healthy"
+                          style="font-size:var(--font-size-xs);padding:1px 6px"
+                        >
+                          {farm.role}
                         </span>
+                        {isActive && (
+                          <span style="font-size:var(--font-size-xs);color:var(--color-primary);font-weight:var(--font-weight-semibold)">
+                            {t('profile.active')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-2)">
+                      {!isActive && (
+                        <button
+                          class="btn-secondary"
+                          style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
+                          onClick={() => handleSwitchFarm(farm.id)}
+                        >
+                          {t('profile.switch')}
+                        </button>
+                      )}
+                      {isAdmin && !isDemoFarm && (
+                        <button
+                          type="button"
+                          style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
+                          onClick={() => setConfirmDelete(isConfirming ? null : farm.id)}
+                        >
+                          {t('profile.delete_farm')}
+                        </button>
                       )}
                     </div>
                   </div>
-                  {!isActive && (
-                    <button
-                      class="btn-secondary"
-                      style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
-                      onClick={() => handleSwitchFarm(farm.id)}
-                    >
-                      {t('profile.switch')}
-                    </button>
+                  {isConfirming && (
+                    <div style="padding:var(--space-2) var(--space-3) var(--space-3);border-top:var(--border-default);background:var(--color-surface)">
+                      <div style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);margin-bottom:var(--space-2)">
+                        {t('profile.confirm_delete')}
+                      </div>
+                      <div style="display:flex;gap:var(--space-2)">
+                        <button
+                          type="button"
+                          class="btn-secondary"
+                          style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
+                          onClick={() => setConfirmDelete(null)}
+                        >
+                          {t('buttons.cancel')}
+                        </button>
+                        <button
+                          type="button"
+                          style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);background:var(--color-error,#dc2626);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer"
+                          onClick={() => handleDeleteFarm(farm.id)}
+                        >
+                          {t('profile.delete_farm')}
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               );
