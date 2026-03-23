@@ -75,6 +75,8 @@ export {
   SIGNED_URL_EXPIRY_SECONDS,
   MIN_GRID_SIZE,
   MAX_GRID_SIZE,
+  DEMO_FARM_ID,
+  CROP_TYPES,
   DDB_KEY_PREFIXES,
 } from './constants';
 
