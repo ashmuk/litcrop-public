@@ -10,6 +10,9 @@ import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
 
+// Cache reverse geocode results across mount/unmount cycles
+const geocodeCache = new Map<string, string | null>();
+
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
   warning: 'status-slow',
@@ -46,6 +49,7 @@ export default function WeatherView({ farmId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locale] = useState<'en' | 'ja'>(getInitialLocale);
+  const [locationName, setLocationName] = useState<string | null>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);
   const tl = createTranslator(locale);
@@ -58,6 +62,33 @@ export default function WeatherView({ farmId }: Props) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [effectiveFarmId]);
+
+  // Reverse geocode when weather data (with coordinates) is available
+  useEffect(() => {
+    if (!weather) return;
+    const { latitude, longitude } = weather;
+    const cacheKey = `${latitude},${longitude},${locale}`;
+    if (geocodeCache.has(cacheKey)) {
+      setLocationName(geocodeCache.get(cacheKey)!);
+      return;
+    }
+    const controller = new AbortController();
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`;
+    fetch(url, {
+      headers: { 'Accept-Language': locale, 'User-Agent': 'LitCrop/1.0' },
+      signal: controller.signal,
+    })
+      .then((r) => r.json())
+      .then((data: Record<string, unknown>) => {
+        const addr = data['address'] as Record<string, string> | undefined;
+        const name =
+          (addr?.['state'] ?? addr?.['county'] ?? addr?.['city'] ?? addr?.['town'] ?? addr?.['village']) || null;
+        geocodeCache.set(cacheKey, name);
+        setLocationName(name);
+      })
+      .catch(() => {/* non-fatal */});
+    return () => { controller.abort(); };
+  }, [weather?.latitude, weather?.longitude, locale]);
 
   const xlat = (cond: string) => translateCondition(cond, tl);
 
@@ -127,6 +158,11 @@ export default function WeatherView({ farmId }: Props) {
                 <div style="font-size:var(--font-size-base);color:var(--color-gray-700)">
                   {xlat(current.condition_icon)}
                 </div>
+                {locationName && (
+                  <div style="font-size:var(--font-size-sm);color:var(--color-gray-500);margin-top:2px">
+                    📍 {locationName}
+                  </div>
+                )}
               </div>
             </div>
             <div

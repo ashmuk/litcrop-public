@@ -84,6 +84,8 @@ function getCropTolerance(cropType: string): CropTolerance {
 // ── Response types ────────────────────────────────────────────────
 
 interface WeatherData {
+  latitude: number;
+  longitude: number;
   current: {
     temperature: number;
     apparent_temperature: number;
@@ -134,7 +136,7 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<Record<string, 
 
 // ── Transform Open-Meteo response ─────────────────────────────────
 
-function transformWeather(raw: Record<string, unknown>, beds: Bed[], cachedAt: string): WeatherData {
+function transformWeather(raw: Record<string, unknown>, beds: Bed[], cachedAt: string, lat: number, lng: number): WeatherData {
   const current = raw['current'] as Record<string, unknown>;
   const hourly = raw['hourly'] as Record<string, unknown[]>;
   const daily = raw['daily'] as Record<string, unknown[]>;
@@ -190,6 +192,8 @@ function transformWeather(raw: Record<string, unknown>, beds: Bed[], cachedAt: s
   const { impacts, alerts } = computeCropImpact(beds, dailyForecasts);
 
   return {
+    latitude: lat,
+    longitude: lng,
     current: currentWeather,
     today,
     hourly: hourlyForecasts,
@@ -325,7 +329,7 @@ router.get('/:farmId/weather', async (c) => {
   }
 
   const cachedAt = new Date().toISOString();
-  const weatherData = transformWeather(rawWeather, beds, cachedAt);
+  const weatherData = transformWeather(rawWeather, beds, cachedAt, farm.latitude, farm.longitude);
 
   // Store in cache — evict oldest entry if at capacity
   if (weatherCache.size >= WEATHER_CACHE_MAX_SIZE) {

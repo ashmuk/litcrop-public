@@ -124,6 +124,8 @@ export interface TagCreateResponse extends Tag {
 
 /** GET /api/v1/farms/{farmId}/weather */
 export interface WeatherResponse {
+  latitude: number;
+  longitude: number;
   current: {
     temperature: number;
     apparent_temperature: number;
