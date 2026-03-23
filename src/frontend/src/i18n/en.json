@@ -239,7 +239,11 @@
     "new_farm": "New Farm",
     "switch": "Switch",
     "active": "Active",
-    "no_farms": "You don't belong to any farms yet."
+    "no_farms": "You don't belong to any farms yet.",
+    "delete_farm": "Delete",
+    "confirm_delete": "Are you sure? This cannot be undone.",
+    "farm_deleted": "Farm deleted",
+    "delete_error": "Could not delete farm"
   },
   "manage": {
     "title": "Manage",
@@ -256,6 +260,9 @@
     "no_crop": "No crop assigned",
     "no_selection": "No bed selected",
     "assign_crop": "Assign crop",
+    "edit_crop": "Edit Crop",
+    "crop_saved": "Crop updated",
+    "save_error": "Could not save changes",
     "grid_rows": "Rows",
     "grid_cols": "Columns"
   },

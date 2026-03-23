@@ -239,7 +239,11 @@
     "new_farm": "新しい農場",
     "switch": "切替",
     "active": "アクティブ",
-    "no_farms": "まだ農場に所属していません。"
+    "no_farms": "まだ農場に所属していません。",
+    "delete_farm": "削除",
+    "confirm_delete": "本当に削除しますか？この操作は取り消せません。",
+    "farm_deleted": "農場を削除しました",
+    "delete_error": "農場を削除できませんでした"
   },
   "manage": {
     "title": "管理",
@@ -256,6 +260,9 @@
     "no_crop": "作物が割り当てられていません",
     "no_selection": "ベッドが選択されていません",
     "assign_crop": "作物を割り当て",
+    "edit_crop": "作物を編集",
+    "crop_saved": "作物を更新しました",
+    "save_error": "変更を保存できませんでした",
     "grid_rows": "行数",
     "grid_cols": "列数"
   },
