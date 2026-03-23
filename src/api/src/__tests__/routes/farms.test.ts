@@ -11,6 +11,7 @@ vi.mock('../../services/dynamodb', () => ({
     getFarmsForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
+    countUserMemberships: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
     getBedsForFarm: vi.fn(),
@@ -64,6 +65,8 @@ beforeEach(() => {
   vi.mocked(getSignedImageUrl).mockResolvedValue('https://example.com/signed');
   // Default: user is a member of the test farm
   vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+  // Default: target user has 0 memberships (under free plan limit)
+  vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
 });
 
 // ── GET /api/v1/farms ─────────────────────────────────────────────

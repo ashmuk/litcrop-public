@@ -243,7 +243,8 @@
     "delete_farm": "削除",
     "confirm_delete": "本当に削除しますか？この操作は取り消せません。",
     "farm_deleted": "農場を削除しました",
-    "delete_error": "農場を削除できませんでした"
+    "delete_error": "農場を削除できませんでした",
+    "farm_limit": "フリープラン: 農場は2つまで"
   },
   "manage": {
     "title": "管理",

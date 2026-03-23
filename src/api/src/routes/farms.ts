@@ -17,6 +17,7 @@ import {
   MIN_GRID_SIZE,
   MAX_GRID_SIZE,
   DEMO_FARM_ID,
+  FREE_PLAN_MAX_MEMBERSHIPS,
 } from '@litcrop/shared';
 import type { Farm, Bed, FarmRole } from '@litcrop/shared';
 import { makeLatestImage, assertFarmAccess } from './_helpers';
@@ -369,6 +370,19 @@ router.post('/:farmId/members', async (c) => {
   const parsedRole = FarmRoleSchema.safeParse(role);
   if (!parsedRole.success) {
     throw new ValidationError(`Invalid 'role': must be one of ${FarmRoleSchema.options.join(', ')}`);
+  }
+
+  // Free plan: check target user's membership count (excluding demo farm)
+  if (farmId !== DEMO_FARM_ID) {
+    let membershipCount: number;
+    try {
+      membershipCount = await dynamoRepo.countUserMemberships(newUserId.trim());
+    } catch {
+      throw new ServiceUnavailableError('Storage service unavailable');
+    }
+    if (membershipCount >= FREE_PLAN_MAX_MEMBERSHIPS) {
+      throw new ValidationError('User has reached the maximum number of farm memberships (free plan limit)');
+    }
   }
 
   let member;

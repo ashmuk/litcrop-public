@@ -82,6 +82,11 @@ export const MAX_GRID_SIZE = 5;
 
 export const DEMO_FARM_ID = 'demo-farm';
 
+// ── Free Plan Limits ────────────────────────────────────────────
+
+export const FREE_PLAN_MAX_OWNED_FARMS = 2;
+export const FREE_PLAN_MAX_MEMBERSHIPS = 3;
+
 // ── Crop Types ──────────────────────────────────────────────────
 
 export const CROP_TYPES = ['rice', 'tomato', 'cucumber', 'eggplant', 'lettuce', 'daikon', 'cabbage', 'other'] as const;

@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
-import { LOCALE_OPTIONS, DEMO_FARM_ID } from '@litcrop/shared';
+import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
 import { getMyFarms, deleteFarm } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -125,6 +125,10 @@ export default function ProfilePage() {
   // Determine if user is observer on all farms (no create permission)
   const isObserverOnly = farms.length > 0 && farms.every((f) => f.role === 'observer');
 
+  // Free plan: count owned farms (excluding demo), gate "New Farm" button
+  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
+  const atFarmLimit = ownedCount >= FREE_PLAN_MAX_OWNED_FARMS;
+
   if (showWizard) {
     return (
       <FarmWizard
@@ -233,13 +237,21 @@ export default function ProfilePage() {
         )}
 
         {!isObserverOnly && (
-          <button
-            class="btn-primary"
-            style="width:100%"
-            onClick={() => setShowWizard(true)}
-          >
-            + {t('profile.new_farm')}
-          </button>
+          <>
+            <button
+              class="btn-primary"
+              style={`width:100%${atFarmLimit ? ';opacity:0.5;cursor:not-allowed' : ''}`}
+              disabled={atFarmLimit}
+              onClick={() => !atFarmLimit && setShowWizard(true)}
+            >
+              + {t('profile.new_farm')}
+            </button>
+            {atFarmLimit && (
+              <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
+                {t('profile.farm_limit')}
+              </div>
+            )}
+          </>
         )}
       </section>
 
