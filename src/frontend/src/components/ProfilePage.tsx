@@ -8,9 +8,9 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, getFarmMembers } from '../lib/api';
+import { getMyFarms, deleteFarm, getFarmMembers, updateFarm } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
-import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME } from '../lib/hooks';
+import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
@@ -43,20 +43,30 @@ export default function ProfilePage() {
       .then((list) => {
         setFarms(list as FarmWithRole[]);
         setLocalFarmList(list);
+        // Sync settings from the active farm (server wins)
+        const currentFarmId = localStorage.getItem(LS_FARM_ID) ?? '';
+        const activeFarm = list.find((f) => f.id === currentFarmId) as FarmWithRole | undefined;
+        if (activeFarm) {
+          if (activeFarm.locale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(activeFarm.locale)) {
+            setLocale(activeFarm.locale);
+            try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
+            document.documentElement.setAttribute('data-locale', activeFarm.locale);
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
-    // Load farms
+    // Load farms (also syncs settings from active farm)
     refreshFarms();
 
     // Load user
     const user = getCurrentUser();
     if (user) setUserEmail(user.email);
 
-    // Load settings
+    // Load settings from localStorage as initial state (will be overridden by server sync)
     try {
       const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
       if (storedLocale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(storedLocale)) {
@@ -129,6 +139,10 @@ export default function ProfilePage() {
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
+    // Sync to server (fire-and-forget)
+    if (activeFarmId) {
+      updateFarm(activeFarmId, { locale: next }).catch(() => {});
+    }
     showToast(t('settings.save_success'), 'success');
   }
 
@@ -206,6 +220,11 @@ export default function ProfilePage() {
                             {t('profile.active')}
                           </span>
                         )}
+                      </div>
+                      <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">
+                        {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m`}
+                        {farm.elevation_m != null && ' · '}
+                        {farm.grid_rows}×{farm.grid_cols}
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-2)">

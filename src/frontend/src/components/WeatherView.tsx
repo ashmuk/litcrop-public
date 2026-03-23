@@ -10,6 +10,9 @@ import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
 
+// Cache reverse geocode results across mount/unmount cycles
+const geocodeCache = new Map<string, string | null>();
+
 const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   danger: 'status-issue',
   warning: 'status-slow',
@@ -63,23 +66,28 @@ export default function WeatherView({ farmId }: Props) {
   // Reverse geocode when weather data (with coordinates) is available
   useEffect(() => {
     if (!weather) return;
-    let cancelled = false;
     const { latitude, longitude } = weather;
+    const cacheKey = `${latitude},${longitude},${locale}`;
+    if (geocodeCache.has(cacheKey)) {
+      setLocationName(geocodeCache.get(cacheKey)!);
+      return;
+    }
+    const controller = new AbortController();
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`;
     fetch(url, {
       headers: { 'Accept-Language': locale, 'User-Agent': 'LitCrop/1.0' },
-      signal: AbortSignal.timeout(5_000),
+      signal: controller.signal,
     })
       .then((r) => r.json())
       .then((data: Record<string, unknown>) => {
-        if (cancelled) return;
         const addr = data['address'] as Record<string, string> | undefined;
         const name =
           (addr?.['state'] ?? addr?.['county'] ?? addr?.['city'] ?? addr?.['town'] ?? addr?.['village']) || null;
-        setLocationName(name as string | null);
+        geocodeCache.set(cacheKey, name);
+        setLocationName(name);
       })
       .catch(() => {/* non-fatal */});
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [weather?.latitude, weather?.longitude, locale]);
 
   const xlat = (cond: string) => translateCondition(cond, tl);
