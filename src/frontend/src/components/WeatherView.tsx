@@ -164,7 +164,7 @@ export default function WeatherView({ farmId }: Props) {
           {/* Hourly forecast */}
           <div class="section-heading">{tl('weather.hourly')}</div>
           <div
-            style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:var(--space-3) var(--space-4);max-width:100%"
+            style="overflow-x:auto;scrollbar-width:thin;padding:var(--space-3) var(--space-4);max-width:100%"
           >
             <div style="display:flex;gap:var(--space-3)" role="list" aria-label="Hourly forecast">
               {hourly.slice(0, 24).map((h, i) => (
