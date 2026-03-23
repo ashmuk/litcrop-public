@@ -18,6 +18,7 @@ import {
   MAX_GRID_SIZE,
   DEMO_FARM_ID,
   FREE_PLAN_MAX_MEMBERSHIPS,
+  FREE_PLAN_MAX_OWNED_FARMS,
 } from '@litcrop/shared';
 import type { Farm, Bed, FarmRole } from '@litcrop/shared';
 import { makeLatestImage, assertFarmAccess } from './_helpers';
@@ -246,6 +247,19 @@ router.post('/:farmId/plots', async (c) => {
 
 router.post('/', async (c) => {
   const { userId } = getAuthContext(c);
+
+  // Free plan: check owned farm count (admin role, excluding demo)
+  let ownedCount: number;
+  try {
+    const farms = await dynamoRepo.getFarmsForUser(userId);
+    ownedCount = farms.filter(f => f.farm_id !== DEMO_FARM_ID && f.role === 'admin').length;
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (ownedCount >= FREE_PLAN_MAX_OWNED_FARMS) {
+    throw new ValidationError(`Free plan allows up to ${FREE_PLAN_MAX_OWNED_FARMS} farms`);
+  }
+
   const body = await c.req.json<Record<string, unknown>>();
 
   validateFarmFields(body, ['name', 'latitude', 'longitude']);
@@ -376,7 +390,7 @@ router.post('/:farmId/members', async (c) => {
   if (farmId !== DEMO_FARM_ID) {
     let membershipCount: number;
     try {
-      membershipCount = await dynamoRepo.countUserMemberships(newUserId.trim());
+      membershipCount = await dynamoRepo.countUserMemberships(newUserId.trim(), DEMO_FARM_ID);
     } catch {
       throw new ServiceUnavailableError('Storage service unavailable');
     }

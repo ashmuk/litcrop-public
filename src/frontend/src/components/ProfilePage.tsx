@@ -126,7 +126,7 @@ export default function ProfilePage() {
   const isObserverOnly = farms.length > 0 && farms.every((f) => f.role === 'observer');
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
-  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
+  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && f.role === 'admin').length;
   const atFarmLimit = ownedCount >= FREE_PLAN_MAX_OWNED_FARMS;
 
   if (showWizard) {
@@ -242,7 +242,7 @@ export default function ProfilePage() {
               class="btn-primary"
               style={`width:100%${atFarmLimit ? ';opacity:0.5;cursor:not-allowed' : ''}`}
               disabled={atFarmLimit}
-              onClick={() => !atFarmLimit && setShowWizard(true)}
+              onClick={() => setShowWizard(true)}
             >
               + {t('profile.new_farm')}
             </button>

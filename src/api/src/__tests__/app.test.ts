@@ -6,6 +6,7 @@ import { dynamoRepo } from '../services/dynamodb';
 vi.mock('../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
+    getFarmsForUser: vi.fn().mockResolvedValue([]),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
     getBedsForFarm: vi.fn(),
