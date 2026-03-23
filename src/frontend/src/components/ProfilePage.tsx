@@ -8,7 +8,8 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm } from '../lib/api';
+import { getMyFarms, deleteFarm, getFarmMembers } from '../lib/api';
+import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
@@ -27,6 +28,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [expandedFarm, setExpandedFarm] = useState<string | null>(null);
+  const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const activeFarmId = useLocalFarmId('');
 
@@ -103,6 +107,24 @@ export default function ProfilePage() {
     }
   }
 
+  async function toggleFarmDetail(farmId: string) {
+    if (expandedFarm === farmId) {
+      setExpandedFarm(null);
+      setFarmMembers(null);
+      return;
+    }
+    setExpandedFarm(farmId);
+    setFarmMembers(null);
+    setDetailLoading(true);
+    try {
+      setFarmMembers(await getFarmMembers(farmId));
+    } catch {
+      setFarmMembers([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
   function applyLocale(next: Locale) {
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
@@ -162,9 +184,10 @@ export default function ProfilePage() {
               const isDemoFarm = farm.id === DEMO_FARM_ID;
               const isConfirming = confirmDelete === farm.id;
               return (
+                <div key={farm.id}>
                 <div
-                  key={farm.id}
-                  style={`border-radius:var(--radius-md);border:2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-gray-200)'};background:${isActive ? 'var(--color-primary-light)' : 'var(--color-surface)'};overflow:hidden`}
+                  style={`cursor:pointer;border-radius:${expandedFarm === farm.id ? 'var(--radius-md) var(--radius-md) 0 0' : 'var(--radius-md)'};border:2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-gray-200)'};background:${isActive ? 'var(--color-primary-light)' : 'var(--color-surface)'};overflow:hidden`}
+                  onClick={() => toggleFarmDetail(farm.id)}
                 >
                   <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
                     <div style="flex:1;min-width:0">
@@ -190,7 +213,7 @@ export default function ProfilePage() {
                         <button
                           class="btn-secondary"
                           style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
-                          onClick={() => handleSwitchFarm(farm.id)}
+                          onClick={(e) => { e.stopPropagation(); handleSwitchFarm(farm.id); }}
                         >
                           {t('profile.switch')}
                         </button>
@@ -199,7 +222,7 @@ export default function ProfilePage() {
                         <button
                           type="button"
                           style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
-                          onClick={() => setConfirmDelete(isConfirming ? null : farm.id)}
+                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(isConfirming ? null : farm.id); }}
                         >
                           {t('profile.delete_farm')}
                         </button>
@@ -216,20 +239,61 @@ export default function ProfilePage() {
                           type="button"
                           class="btn-secondary"
                           style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
-                          onClick={() => setConfirmDelete(null)}
+                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
                         >
                           {t('buttons.cancel')}
                         </button>
                         <button
                           type="button"
                           style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);background:var(--color-error,#dc2626);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer"
-                          onClick={() => handleDeleteFarm(farm.id)}
+                          onClick={(e) => { e.stopPropagation(); void handleDeleteFarm(farm.id); }}
                         >
                           {t('profile.delete_farm')}
                         </button>
                       </div>
                     </div>
                   )}
+                </div>
+                {expandedFarm === farm.id && (
+                  <div style="padding:var(--space-3);border:var(--border-default);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--color-surface);display:flex;flex-direction:column;gap:var(--space-2);font-size:var(--font-size-sm)">
+                    {detailLoading ? (
+                      <div class="skeleton" style="height:60px;border-radius:var(--radius-sm)" />
+                    ) : (
+                      <>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+                          <div>
+                            <div style="color:var(--color-gray-500);font-size:var(--font-size-xs)">{t('profile.location')}</div>
+                            <div>{farm.latitude.toFixed(4)}, {farm.longitude.toFixed(4)}</div>
+                          </div>
+                          {farm.elevation_m !== undefined && farm.elevation_m !== null && (
+                            <div>
+                              <div style="color:var(--color-gray-500);font-size:var(--font-size-xs)">{t('profile.elevation')}</div>
+                              <div>{Math.round(farm.elevation_m)} m</div>
+                            </div>
+                          )}
+                          <div>
+                            <div style="color:var(--color-gray-500);font-size:var(--font-size-xs)">{t('profile.grid')}</div>
+                            <div>{farm.grid_rows} x {farm.grid_cols} ({farm.grid_rows * farm.grid_cols} {t('profile.beds')})</div>
+                          </div>
+                          <div>
+                            <div style="color:var(--color-gray-500);font-size:var(--font-size-xs)">{t('profile.members')}</div>
+                            <div>{farmMembers?.length ?? '—'}</div>
+                          </div>
+                        </div>
+                        {farmMembers && farmMembers.length > 0 && (
+                          <div style="border-top:var(--border-default);padding-top:var(--space-2);display:flex;flex-direction:column;gap:var(--space-1)">
+                            {farmMembers.map((m) => (
+                              <div key={m.user_id} style="display:flex;justify-content:space-between;align-items:center">
+                                <span style="font-size:var(--font-size-xs);color:var(--color-gray-600);overflow:hidden;text-overflow:ellipsis">{m.user_id.slice(0, 8)}...</span>
+                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">{m.role}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
                 </div>
               );
             })}

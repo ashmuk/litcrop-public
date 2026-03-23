@@ -151,6 +151,14 @@ export async function getMyFarm(): Promise<Farm | null> {
   return farms[0] ?? null;
 }
 
+export type FarmMemberItem = Omit<FarmMember, 'farm_id'>;
+
+/** GET /api/v1/farms/:farmId/members — list members of a farm */
+export async function getFarmMembers(farmId: string): Promise<FarmMemberItem[]> {
+  const res = await request<{ data: FarmMemberItem[] }>('GET', `/farms/${farmId}/members`);
+  return res.data;
+}
+
 /** POST /api/v1/farms/:farmId/members — add a member to a farm */
 export async function addFarmMember(
   farmId: string,

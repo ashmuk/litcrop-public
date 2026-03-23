@@ -191,6 +191,24 @@ router.get('/:farmId', async (c) => {
   });
 });
 
+// ── GET /api/v1/farms/:farmId/members ─────────────────────────────────────────
+
+router.get('/:farmId/members', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  await assertFarmAccess(farmId, userId);
+
+  let members;
+  try {
+    members = await dynamoRepo.getFarmMembers(farmId);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  return c.json({ data: members });
+});
+
 // ── GET /api/v1/farms/:farmId/beds ───────────────────────────────
 
 router.get('/:farmId/beds', async (c) => {

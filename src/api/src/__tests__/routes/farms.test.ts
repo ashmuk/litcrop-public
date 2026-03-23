@@ -11,6 +11,7 @@ vi.mock('../../services/dynamodb', () => ({
     getFarmsForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
+    getFarmMembers: vi.fn(),
     countUserMemberships: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
@@ -380,5 +381,55 @@ describe('POST /api/v1/farms/:farmId/members', () => {
       body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+// ── GET /api/v1/farms/:farmId/members ─────────────────────────────
+
+describe('GET /api/v1/farms/:farmId/members', () => {
+  it('returns 200 with members array for any member', async () => {
+    const membersList = [
+      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+    ];
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue(membersList);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: unknown[] };
+    expect(body.data).toHaveLength(1);
+    expect((body.data[0] as Record<string, unknown>)['role']).toBe('manager');
+  });
+
+  it('returns 200 for observer role (any member can view)', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'observer' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 404 when caller is not a member', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 503 when storage fails', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembers).mockRejectedValue(new Error('DynamoDB down'));
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
+    expect(res.status).toBe(503);
   });
 });

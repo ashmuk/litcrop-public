@@ -244,7 +244,12 @@
     "confirm_delete": "Are you sure? This cannot be undone.",
     "farm_deleted": "Farm deleted",
     "delete_error": "Could not delete farm",
-    "farm_limit": "Free plan: up to 2 farms"
+    "farm_limit": "Free plan: up to 2 farms",
+    "location": "Location",
+    "elevation": "Elevation",
+    "grid": "Grid",
+    "beds": "beds",
+    "members": "Members"
   },
   "manage": {
     "title": "Manage",
