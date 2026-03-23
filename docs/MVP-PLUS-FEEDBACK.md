@@ -16,16 +16,30 @@
 
 ## Findings
 
-### F-01: Profile and Settings tabs show same content
+### F-01: Replace Settings tab with Manage (IoT) page
 
 **Page**: Navigation bar
-**Severity**: UX
+**Severity**: UX → Feature upgrade
 **Priority**: P1
 
-Both "Profile" (プロフィール) and "Settings" (設定) tabs in the top nav lead to the same content. Settings was supposed to redirect to Profile, but both tabs remain visible, confusing the user.
+Both "Profile" (プロフィール) and "Settings" (設定) tabs in the top nav lead to the same content. Instead of simply removing the Settings tab, **repurpose it as a "Manage" (管理) page** for IoT camera node monitoring.
 
-**Expected**: Only one tab ("Profile") in navigation. Settings tab removed or hidden.
-**Root cause**: Phase D merged settings into profile but kept both nav items in `BaseLayout.astro` and `DesktopNav.tsx`.
+**Proposed nav**:
+```
+作物(Crops) | 天気(Weather) | 管理(Manage) | プロフィール(Profile)
+```
+
+**Manage page scope (MVP+)**:
+- Read-only list of camera nodes that have uploaded to the current farm
+- Per node: `node_id`, last upload time, image count, target bed name
+- Data derived from existing Image records (group by `node_id`) — no new API endpoint needed
+
+**Manage page scope (PROD-1)**:
+- Device registration and configuration
+- Health monitoring (online/offline status)
+- Camera settings (interval, resolution)
+
+**Root cause**: Phase D merged settings into profile but kept both nav items. IoT device management page was already planned for PROD-1 ("IOT-UI" in MVP-PLUS-REVISE-PLAN.md). Repurposing the nav slot avoids adding a 5th tab later.
 
 ---
 
@@ -156,7 +170,7 @@ The hourly forecast section extends beyond the browser viewport width, creating 
 
 | # | Fix | Effort |
 |---|-----|--------|
-| F-01 | Remove Settings tab from nav | S |
+| F-01 | Replace Settings tab with Manage (IoT) page | M |
 | F-03 | Set explicit Leaflet marker icon with bundled images | S |
 | F-07 | Call `translateCondition()` on FarmOverview + CSS overflow fix | S |
 | F-06 | Debug upload flow — check console errors, endpoint path, auth | M |
