@@ -3,7 +3,7 @@
  * Current conditions, hourly forecast, 7-day forecast, crop impact, alerts.
  */
 
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
@@ -50,7 +50,6 @@ export default function WeatherView({ farmId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [locale] = useState<'en' | 'ja'>(getInitialLocale);
   const [locationName, setLocationName] = useState<string | null>(null);
-  const hourlyRef = useRef<HTMLDivElement>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);
   const tl = createTranslator(locale);
@@ -93,19 +92,13 @@ export default function WeatherView({ farmId }: Props) {
 
   // Auto-scroll hourly pane to center the current hour
   useEffect(() => {
-    if (!weather || !hourlyRef.current) return;
-    const el = hourlyRef.current;
+    if (!weather) return;
     const timer = setTimeout(() => {
-      if (!el.firstElementChild) return;
       const currentHour = new Date().getHours();
-      const cards = el.firstElementChild.children;
-      if (currentHour >= cards.length) return;
-      const card = cards[currentHour] as HTMLElement;
-      // Use getBoundingClientRect for accurate position regardless of CSS layout
-      const containerRect = el.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-      const scrollOffset = cardRect.left - containerRect.left + el.scrollLeft;
-      el.scrollLeft = Math.max(0, scrollOffset - el.clientWidth / 2 + card.offsetWidth / 2);
+      const card = document.getElementById(`hourly-card-${currentHour}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [weather]);
@@ -220,13 +213,13 @@ export default function WeatherView({ farmId }: Props) {
           {/* Hourly forecast */}
           <div class="section-heading">{tl('weather.hourly')}</div>
           <div
-            ref={hourlyRef}
             style="overflow-x:auto;scrollbar-width:thin;padding:var(--space-3) var(--space-4);max-width:100%"
           >
             <div style="display:flex;gap:var(--space-3)" role="list" aria-label="Hourly forecast">
               {hourly.slice(0, 24).map((h, i) => (
                 <div
                   key={i}
+                  id={`hourly-card-${i}`}
                   role="listitem"
                   style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px;padding:var(--space-2);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md);flex-shrink:0"
                 >
