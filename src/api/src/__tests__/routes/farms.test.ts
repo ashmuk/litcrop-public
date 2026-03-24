@@ -11,6 +11,7 @@ vi.mock('../../services/dynamodb', () => ({
     getFarmsForUser: vi.fn(),
     getFarmMembership: vi.fn(),
     addFarmMember: vi.fn(),
+    removeFarmMember: vi.fn(),
     getFarmMembers: vi.fn(),
     countUserMemberships: vi.fn(),
     createFarm: vi.fn(),
@@ -384,6 +385,88 @@ describe('POST /api/v1/farms/:farmId/members', () => {
       body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+// ── DELETE /api/v1/farms/:farmId/members/me ──────────────────────
+
+describe('DELETE /api/v1/farms/:farmId/members/me', () => {
+  const DEMO_FARM_ID = 'demo-farm';
+
+  it('removes membership and returns 204', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+    vi.mocked(dynamoRepo.removeFarmMember).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(204);
+  });
+
+  it('returns 404 when caller is not a member', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('returns 400 when trying to leave the demo farm', async () => {
+    const res = await app.request(`/api/v1/farms/${DEMO_FARM_ID}/members/me`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when admin is the only admin', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      ...membershipFixture,
+      role: 'admin' as const,
+    });
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TEST_USER_ID, role: 'admin' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('allows admin to leave when another admin exists', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      ...membershipFixture,
+      role: 'admin' as const,
+    });
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TEST_USER_ID, role: 'admin' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: 'other-admin-id', role: 'admin' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+    vi.mocked(dynamoRepo.removeFarmMember).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(204);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
+      method: 'DELETE',
+    });
+    expect(res.status).toBe(401);
   });
 });
 

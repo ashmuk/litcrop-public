@@ -187,6 +187,11 @@ export async function deleteFarm(farmId: string): Promise<void> {
   await request<void>('DELETE', `/farms/${farmId}`);
 }
 
+/** DELETE /api/v1/farms/{farmId}/members/me — leave a farm you are a member of */
+export async function leaveFarm(farmId: string): Promise<void> {
+  await request<void>('DELETE', `/farms/${farmId}/members/me`);
+}
+
 // ── Bed Endpoints ────────────────────────────────────────────────
 
 /** GET /api/v1/farms/{farmId}/beds */

@@ -445,4 +445,36 @@ router.post('/:farmId/members', async (c) => {
   return c.json(member, 201);
 });
 
+// ── DELETE /api/v1/farms/:farmId/members/me ─────────────────────
+
+router.delete('/:farmId/members/me', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  // Cannot leave demo farm
+  if (farmId === DEMO_FARM_ID) {
+    throw new ValidationError('Cannot leave the demo farm');
+  }
+
+  // Check membership exists
+  const membership = await dynamoRepo.getFarmMembership(userId, farmId);
+  if (!membership) {
+    throw new NotFoundError('Not a member of this farm');
+  }
+
+  // If admin, check there are other admins
+  if (membership.role === 'admin') {
+    const members = await dynamoRepo.getFarmMembers(farmId);
+    const otherAdmins = members.filter(m => m.role === 'admin' && m.user_id !== userId);
+    if (otherAdmins.length === 0) {
+      throw new ValidationError('Cannot leave: you are the only admin. Delete the farm or transfer ownership first.');
+    }
+  }
+
+  // Remove membership (both USER# forward and FARM# reverse records)
+  await dynamoRepo.removeFarmMember(userId, farmId);
+
+  return c.body(null, 204);
+});
+
 export default router;

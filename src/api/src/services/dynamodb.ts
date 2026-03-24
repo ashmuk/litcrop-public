@@ -632,6 +632,15 @@ export class DynamoRepository {
     return itemToFarmMember(userId, result.Item);
   }
 
+  /** Remove a member from a farm (deletes both USER# forward and FARM# reverse records). */
+  async removeFarmMember(userId: string, farmId: string): Promise<void> {
+    const deleteRequests = [
+      { DeleteRequest: { Key: { PK: pk.user(userId), SK: sk.farmMember(farmId) } } },
+      { DeleteRequest: { Key: { PK: pk.farm(farmId), SK: sk.member(userId) } } },
+    ];
+    await ddb.send(new BatchWriteCommand({ RequestItems: { [TABLE_NAME]: deleteRequests } }));
+  }
+
   /** Add a member to a farm (both USER# and FARM# directions). */
   async addFarmMember(userId: string, farmId: string, role: FarmRole): Promise<FarmMember> {
     const joinedAt = new Date().toISOString();
