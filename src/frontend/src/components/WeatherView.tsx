@@ -92,7 +92,6 @@ export default function WeatherView({ farmId }: Props) {
   }, [weather?.latitude, weather?.longitude, locale]);
 
   // Auto-scroll hourly pane to center the current hour
-  // Delayed to ensure CSS Grid layout is fully settled on desktop
   useEffect(() => {
     if (!weather || !hourlyRef.current) return;
     const el = hourlyRef.current;
@@ -102,8 +101,12 @@ export default function WeatherView({ farmId }: Props) {
       const cards = el.firstElementChild.children;
       if (currentHour >= cards.length) return;
       const card = cards[currentHour] as HTMLElement;
-      el.scrollTo({ left: card.offsetLeft - el.clientWidth / 2 + card.offsetWidth / 2, behavior: 'instant' });
-    }, 200);
+      // Use getBoundingClientRect for accurate position regardless of CSS layout
+      const containerRect = el.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const scrollOffset = cardRect.left - containerRect.left + el.scrollLeft;
+      el.scrollLeft = Math.max(0, scrollOffset - el.clientWidth / 2 + card.offsetWidth / 2);
+    }, 300);
     return () => clearTimeout(timer);
   }, [weather]);
 
