@@ -247,6 +247,7 @@
     "farm_limit": "Free plan: up to 2 farms",
     "location": "Location",
     "elevation": "Elevation",
+    "elevation_short": "elev",
     "grid": "Grid",
     "beds": "beds",
     "members": "Members"

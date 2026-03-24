@@ -247,8 +247,9 @@
     "farm_limit": "フリープラン: 農場は2つまで",
     "location": "位置",
     "elevation": "標高",
+    "elevation_short": "標高",
     "grid": "グリッド",
-    "beds": "ベッド",
+    "beds": "畝",
     "members": "メンバー"
   },
   "manage": {

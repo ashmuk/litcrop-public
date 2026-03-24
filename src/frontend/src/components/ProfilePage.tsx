@@ -222,9 +222,9 @@ export default function ProfilePage() {
                         )}
                       </div>
                       <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">
-                        {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m`}
+                        {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m ${t('profile.elevation_short')}`}
                         {farm.elevation_m != null && ' · '}
-                        {farm.grid_rows}×{farm.grid_cols}
+                        {farm.grid_rows}×{farm.grid_cols} {t('profile.beds')}
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-2)">
