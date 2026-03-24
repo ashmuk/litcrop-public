@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
   const [expandedFarm, setExpandedFarm] = useState<string | null>(null);
   const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -139,6 +140,28 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleLeaveFarm(farmId: string) {
+    try {
+      await leaveFarm(farmId);
+      const remaining = farms.filter(f => f.id !== farmId);
+      setFarms(remaining);
+      setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+      setConfirmLeave(null);
+      if (activeFarmId === farmId) {
+        if (remaining.length > 0) {
+          setLocalFarmId(remaining[0].id);
+          try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
+        } else {
+          try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
+        }
+      }
+      showToast(t('profile.farm_left'), 'success');
+    } catch {
+      setConfirmLeave(null);
+      showToast(t('profile.leave_error'), 'error');
+    }
+  }
+
   async function toggleFarmDetail(farmId: string) {
     if (expandedFarm === farmId) {
       setExpandedFarm(null);
@@ -232,6 +255,7 @@ export default function ProfilePage() {
               const isAdmin = farm.role === 'admin' || farm.role === 'manager';
               const isDemoFarm = farm.id === DEMO_FARM_ID;
               const isConfirming = confirmDelete === farm.id;
+              const isConfirmingLeave = confirmLeave === farm.id;
               return (
                 <div key={farm.id}>
                 <div
@@ -281,6 +305,15 @@ export default function ProfilePage() {
                           {t('profile.delete_farm')}
                         </button>
                       )}
+                      {!isDemoFarm && (
+                        <button
+                          type="button"
+                          style="font-size:var(--font-size-sm);color:var(--color-gray-600);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
+                          onClick={(e) => { e.stopPropagation(); setConfirmLeave(isConfirmingLeave ? null : farm.id); }}
+                        >
+                          {t('profile.leave_farm')}
+                        </button>
+                      )}
                     </div>
                   </div>
                   {isConfirming && (
@@ -303,6 +336,23 @@ export default function ProfilePage() {
                           onClick={(e) => { e.stopPropagation(); void handleDeleteFarm(farm.id); }}
                         >
                           {t('profile.delete_farm')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {isConfirmingLeave && (
+                    <div style="padding:var(--space-2) var(--space-3) var(--space-3);border-top:var(--border-default);background:var(--color-surface)">
+                      <div style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-bottom:var(--space-2)">
+                        {t('profile.confirm_leave')}
+                      </div>
+                      <div style="display:flex;gap:var(--space-2)">
+                        <button type="button" class="btn-secondary" style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
+                          onClick={(e) => { e.stopPropagation(); setConfirmLeave(null); }}>
+                          {t('buttons.cancel')}
+                        </button>
+                        <button type="button" class="btn-primary" style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
+                          onClick={(e) => { e.stopPropagation(); void handleLeaveFarm(farm.id); }}>
+                          {t('profile.leave_farm')}
                         </button>
                       </div>
                     </div>
