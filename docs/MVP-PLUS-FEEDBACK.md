@@ -378,18 +378,90 @@ No per-user profile data exists. Need:
 | **P1** (must fix) | R-02 (role at registration) | R-07 |
 | **P2** (should fix) | R-05 (card labels), R-06 (names in members) | R-04 |
 
-### Execution Order
+### Round 4 Status
 
-```
-R-05 (labels, quick fix) → R-07 (profile store) → R-01 (observer) →
-R-03 (admin) → R-04 (display name) → R-02 (registration role) →
-R-06 (names in members)
-```
+All 7 items implemented and merged (PR #158, issues #151–#157 closed).
 
 ---
 
-> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 4)
+## Round 5 Findings (2026-03-24) — UX Polish & Bug Fixes
+
+> Tester: Muk (Site Admin)
+> Context: Post R-01..R-07 deployment, testing with cache disabled
+
+### F-17: Add locale + temp unit to registration flow
+
+**Severity**: Feature
+**Priority**: P2
+**GH**: #159
+
+Registration should include language and temperature preferences, not just role. Currently only settable on Profile page after login.
+
+---
+
+### F-18: Profile picture support
+
+**Severity**: Feature
+**Priority**: P2
+**GH**: #160
+
+No profile picture exists. Evaluate: reuse S3 pipeline, small avatars (128x128), display in profile/member list/nav.
+
+---
+
+### F-19: Farm deletion not working
+
+**Severity**: Bug
+**Priority**: P0
+**GH**: #161
+
+Delete UI exists but: page doesn't refresh, deleted farm still shows, switching to it still works. Appears farm is not actually deleted. Needs browser console investigation.
+
+---
+
+### F-20: Hourly weather auto-scroll to current time
+
+**Severity**: Feature
+**Priority**: P2
+**GH**: #162
+
+Hourly pane always starts at 00:00. Should auto-scroll to center current hour on page load.
+
+---
+
+### F-21: "Layout" menu not translated to Japanese
+
+**Severity**: Bug
+**Priority**: P2
+**GH**: #163
+
+"Layout" text shows in English when locale is ja on both Crops and Layout pages.
+
+---
+
+### F-22: Locale not persisting across logout/login
+
+**Severity**: Bug
+**Priority**: P1
+**GH**: #164
+
+Language reverts to English after logout→login. Root cause: signOut() may clear localStorage prefs, and server sync runs after initial render. With cache disabled, the flash is more visible. Need clear design boundary for localStorage vs server persistence.
+
+---
+
+## Priority Summary — Round 5 (2026-03-24)
+
+| Priority | Items | Action |
+|----------|-------|--------|
+| **P0** (blocker) | F-19 (delete broken) | Debug — check API call, DynamoDB |
+| **P1** (must fix) | F-22 (locale persistence) | Fix signOut + sync timing |
+| **P2** (should fix) | F-17 (reg prefs), F-20 (scroll), F-21 (i18n), F-18 (avatar) | UX polish |
+
+---
+
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 5)
 > Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
 > Round 2: 7 items fixed (PRs #146–#148, issues #139–#145 closed)
 > Round 3: 3 items (F-04, F-08, #90 partial) fixed (PR #149)
-> Round 4: 7 items filed (R-01..R-07) — user roles & profile enrichment
+> Round 4: 7 items fixed (PR #158, issues #151–#157 closed)
+> Round 5: 6 items filed (issues #159–#164)
