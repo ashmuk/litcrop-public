@@ -93,6 +93,9 @@ export default function RegisterForm() {
   const [step1ServerError, setStep1ServerError] = useState('');
   const [step1Loading, setStep1Loading] = useState(false);
 
+  // Role state
+  const [role, setRole] = useState<'manager' | 'observer'>('observer');
+
   // Step 2 state
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState('');
@@ -200,6 +203,8 @@ export default function RegisterForm() {
     setStep2Loading(true);
     try {
       await confirmSignUp(email, code.trim());
+      // Store role for sync on first authenticated login (no auth token available post-confirm)
+      try { localStorage.setItem('litcrop-pendingRole', role); } catch {}
       setStep(3);
       // Auto-redirect to login after 2s
       setTimeout(() => {
@@ -465,6 +470,20 @@ export default function RegisterForm() {
             <span aria-hidden="true">⚠</span> {confirmError}
           </span>
         )}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{t('auth.register.role_label')}</label>
+        <div style="display:flex;gap:var(--space-3)">
+          <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
+            <input type="radio" name="role" value="manager" checked={role === 'manager'} onChange={() => setRole('manager')} />
+            {t('auth.register.role_manager')}
+          </label>
+          <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
+            <input type="radio" name="role" value="observer" checked={role === 'observer'} onChange={() => setRole('observer')} />
+            {t('auth.register.role_reader')}
+          </label>
+        </div>
       </div>
 
       <button

@@ -17,6 +17,7 @@ vi.mock('../../services/dynamodb', () => ({
     updateFarm: vi.fn(),
     getBedsForFarm: vi.fn(),
     getLatestImageForBed: vi.fn(),
+    getUserProfile: vi.fn(),
   },
 }));
 
@@ -70,6 +71,8 @@ beforeEach(() => {
   vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
   // Default: target user has 0 memberships (under free plan limit)
   vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+  // Default: user has no profile stored
+  vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue(null);
 });
 
 // ── GET /api/v1/farms ─────────────────────────────────────────────
@@ -398,6 +401,36 @@ describe('GET /api/v1/farms/:farmId/members', () => {
     const body = await res.json() as { data: unknown[] };
     expect(body.data).toHaveLength(1);
     expect((body.data[0] as Record<string, unknown>)['role']).toBe('manager');
+    expect((body.data[0] as Record<string, unknown>)['display_name']).toBe('');
+  });
+
+  it('enriches members with display_name from user profile', async () => {
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Tanaka',
+      preferred_role: 'manager',
+      created_at: '2026-03-17T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ display_name: string }> };
+    expect(body.data[0].display_name).toBe('Tanaka');
+  });
+
+  it('returns empty display_name when profile lookup fails', async () => {
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+    vi.mocked(dynamoRepo.getUserProfile).mockRejectedValue(new Error('DynamoDB down'));
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ display_name: string }> };
+    expect(body.data[0].display_name).toBe('');
   });
 
   it('returns 200 for observer role (any member can view)', async () => {

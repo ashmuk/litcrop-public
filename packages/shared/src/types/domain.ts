@@ -103,6 +103,6 @@ export interface Tag {
 export interface UserProfile {
   user_id: string;
   display_name: string;
-  preferred_role: FarmRole;
+  preferred_role: 'manager' | 'observer';
   created_at: string; // ISO 8601
 }
