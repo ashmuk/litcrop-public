@@ -459,9 +459,54 @@ Language reverts to English after logout→login. Root cause: signOut() may clea
 
 ---
 
-> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 5)
+## Round 6 Findings (2026-03-24) — Deletion Design + Leave Farm
+
+> Tester: Muk (Site Admin)
+> Context: Post deletion fix verification (CORS resolved, Test3 confirmed deleted)
+
+### F-23: Soft delete pattern for farm deletion
+
+**Severity**: Design improvement
+**Priority**: P2 (PROD-1)
+**GH**: #168
+
+Current farm deletion is hard-delete (immediate, irreversible). Should be a two-phase process:
+1. **Soft delete** — mark farm as deleted in UI, hide from listings, but retain in DynamoDB
+2. **Hard delete** — after configurable retention period (e.g., 30 days), permanently remove from database
+
+Benefits: undo capability, accidental deletion recovery, audit trail. The soft-deleted farm should be restorable by admin within the retention window.
+
+---
+
+### F-24: "Leave" farm UI for members
+
+**Severity**: Feature
+**Priority**: P1
+**GH**: #169
+
+Users should be able to leave a farm they belong to (remove their own membership). Currently only farm deletion exists — no way to simply leave. This is a non-destructive action (only removes the user's FARM_MEMBER record, farm continues to exist for other members).
+
+**Implementation**:
+- Profile page: "Leave" button on each farm card (except demo farm, except if user is the sole admin)
+- API: `DELETE /api/v1/farms/:farmId/members/me` — removes caller's own membership
+- Guard: cannot leave if sole admin (would orphan the farm)
+- Quick fix — simpler than soft delete, safe for eval
+
+---
+
+## Priority Summary — Round 6 (2026-03-24)
+
+| Priority | Items | Scope |
+|----------|-------|-------|
+| **P1** | F-24 (leave farm) | MVP+ quick fix — needed for eval |
+| **P2** | F-23 (soft delete) | PROD-1 — design + retention policy |
+
+---
+
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 6)
 > Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
 > Round 2: 7 items fixed (PRs #146–#148, issues #139–#145 closed)
 > Round 3: 3 items (F-04, F-08, #90 partial) fixed (PR #149)
 > Round 4: 7 items fixed (PR #158, issues #151–#157 closed)
-> Round 5: 6 items filed (issues #159–#164)
+> Round 5: 5 items fixed (PR #165, issues #159,#161-#164 closed) + 2 CORS hotfixes (#166,#167)
+> Round 6: 2 items filed (F-23 soft delete, F-24 leave farm)
