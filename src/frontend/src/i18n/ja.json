@@ -3,7 +3,8 @@
     "farm": "作物",
     "weather": "天気",
     "setup": "プロフィール",
-    "manage": "管理"
+    "manage": "管理",
+    "layout": "レイアウト"
   },
   "status": {
     "healthy": "健全",
@@ -293,7 +294,9 @@
       "step3": "完了",
       "role_label": "利用形態",
       "role_manager": "農場管理者",
-      "role_reader": "農場閲覧者"
+      "role_reader": "農場閲覧者",
+      "language": "言語",
+      "temp_unit": "温度単位"
     },
     "reset": {
       "title": "パスワードをリセット",

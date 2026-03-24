@@ -3,7 +3,8 @@
     "farm": "Crops",
     "weather": "Weather",
     "setup": "Profile",
-    "manage": "Manage"
+    "manage": "Manage",
+    "layout": "Layout"
   },
   "status": {
     "healthy": "Healthy",
@@ -293,7 +294,9 @@
       "step3": "Done",
       "role_label": "I am a...",
       "role_manager": "Farm Manager",
-      "role_reader": "Farm Reader"
+      "role_reader": "Farm Reader",
+      "language": "Language",
+      "temp_unit": "Temperature"
     },
     "reset": {
       "title": "Reset your password",

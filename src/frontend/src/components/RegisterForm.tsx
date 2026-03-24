@@ -93,8 +93,12 @@ export default function RegisterForm() {
   const [step1ServerError, setStep1ServerError] = useState('');
   const [step1Loading, setStep1Loading] = useState(false);
 
-  // Role state
+  // Preference state
   const [role, setRole] = useState<'manager' | 'observer'>('observer');
+  const [regLocale, setRegLocale] = useState<'en' | 'ja'>(() => {
+    try { const s = localStorage.getItem('litcrop-locale'); return s === 'ja' ? 'ja' : 'en'; } catch { return 'en'; }
+  });
+  const [regTempUnit, setRegTempUnit] = useState<'C' | 'F'>('C');
 
   // Step 2 state
   const [code, setCode] = useState('');
@@ -204,7 +208,11 @@ export default function RegisterForm() {
     try {
       await confirmSignUp(email, code.trim());
       // Store role for sync on first authenticated login (no auth token available post-confirm)
-      try { localStorage.setItem('litcrop-pendingRole', role); } catch {}
+      try {
+        localStorage.setItem('litcrop-pendingRole', role);
+        localStorage.setItem('litcrop-locale', regLocale);
+        localStorage.setItem('litcrop-temp-unit', regTempUnit);
+      } catch {}
       setStep(3);
       // Auto-redirect to login after 2s
       setTimeout(() => {
@@ -483,6 +491,23 @@ export default function RegisterForm() {
             <input type="radio" name="role" value="observer" checked={role === 'observer'} onChange={() => setRole('observer')} />
             {t('auth.register.role_reader')}
           </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:var(--space-3)">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">{t('auth.register.language')}</label>
+          <select class="form-input" value={regLocale} onChange={(e) => setRegLocale((e.target as HTMLSelectElement).value as 'en' | 'ja')}>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">{t('auth.register.temp_unit')}</label>
+          <select class="form-input" value={regTempUnit} onChange={(e) => setRegTempUnit((e.target as HTMLSelectElement).value as 'C' | 'F')}>
+            <option value="C">°C</option>
+            <option value="F">°F</option>
+          </select>
         </div>
       </div>
 

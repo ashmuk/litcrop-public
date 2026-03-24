@@ -46,10 +46,11 @@ export default function ProfilePage() {
       .then((list) => {
         setFarms(list as FarmWithRole[]);
         setLocalFarmList(list);
-        // Sync settings from the active farm (server wins)
+        // Sync locale from server only when no local preference exists (first login / cleared cache)
         const currentFarmId = localStorage.getItem(LS_FARM_ID) ?? '';
         const activeFarm = list.find((f) => f.id === currentFarmId) as FarmWithRole | undefined;
-        if (activeFarm) {
+        const existingLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+        if (activeFarm && !existingLocale) {
           if (activeFarm.locale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(activeFarm.locale)) {
             setLocale(activeFarm.locale);
             try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
@@ -121,9 +122,15 @@ export default function ProfilePage() {
       await deleteFarm(farmId);
       const remaining = farms.filter(f => f.id !== farmId);
       setFarms(remaining);
+      setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
       setConfirmDelete(null);
-      if (activeFarmId === farmId && remaining.length > 0) {
-        setLocalFarmId(remaining[0].id);
+      if (activeFarmId === farmId) {
+        if (remaining.length > 0) {
+          setLocalFarmId(remaining[0].id);
+          try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
+        } else {
+          try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
+        }
       }
       showToast(t('profile.farm_deleted'), 'success');
     } catch {

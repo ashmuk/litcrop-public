@@ -3,7 +3,7 @@
  * Current conditions, hourly forecast, 7-day forecast, crop impact, alerts.
  */
 
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
 import { getWeather } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
@@ -50,6 +50,7 @@ export default function WeatherView({ farmId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [locale] = useState<'en' | 'ja'>(getInitialLocale);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const hourlyRef = useRef<HTMLDivElement>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);
   const tl = createTranslator(locale);
@@ -89,6 +90,17 @@ export default function WeatherView({ farmId }: Props) {
       .catch(() => {/* non-fatal */});
     return () => { controller.abort(); };
   }, [weather?.latitude, weather?.longitude, locale]);
+
+  // Auto-scroll hourly pane to center the current hour
+  useEffect(() => {
+    if (!weather || !hourlyRef.current) return;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const cardWidth = 72; // min-width:60px + gap:12px approx
+    const containerWidth = hourlyRef.current.clientWidth;
+    const scrollTarget = currentHour * cardWidth - containerWidth / 2 + cardWidth / 2;
+    hourlyRef.current.scrollLeft = Math.max(0, scrollTarget);
+  }, [weather]);
 
   const xlat = (cond: string) => translateCondition(cond, tl);
 
@@ -200,6 +212,7 @@ export default function WeatherView({ farmId }: Props) {
           {/* Hourly forecast */}
           <div class="section-heading">{tl('weather.hourly')}</div>
           <div
+            ref={hourlyRef}
             style="overflow-x:auto;scrollbar-width:thin;padding:var(--space-3) var(--space-4);max-width:100%"
           >
             <div style="display:flex;gap:var(--space-3)" role="list" aria-label="Hourly forecast">
