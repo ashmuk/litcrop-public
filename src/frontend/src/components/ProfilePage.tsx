@@ -15,6 +15,7 @@ import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
 import FarmWizard from './FarmWizard';
+import ThemeSwitcher from './ThemeSwitcher';
 
 interface FarmWithRole extends Farm {
   role: FarmRole;
@@ -478,6 +479,8 @@ export default function ProfilePage() {
             Signed in as <strong>{userEmail}</strong>
           </div>
         )}
+
+        <ThemeSwitcher />
 
         <div class="form-group">
           <label class="form-label" for="profile-locale">
