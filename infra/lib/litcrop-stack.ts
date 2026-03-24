@@ -253,6 +253,8 @@ function handler(event) {
         CHAT_DAILY_USER_OUTPUT_LIMIT: '10000',
         CHAT_DAILY_GLOBAL_INPUT_LIMIT: '500000',
         CHAT_DAILY_GLOBAL_OUTPUT_LIMIT: '100000',
+        // Admin designation — comma-separated email list, empty by default
+        ADMIN_EMAILS: process.env['ADMIN_EMAILS'] ?? '',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });

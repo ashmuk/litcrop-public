@@ -29,6 +29,8 @@ interface LambdaEvent {
 export interface AuthContext {
   userId: string;
   userEmail: string;
+  /** True when userEmail appears in the ADMIN_EMAILS env var (comma-separated). */
+  isAdmin: boolean;
 }
 
 // ── Context accessor ─────────────────────────────────────────────
@@ -37,10 +39,17 @@ export interface AuthContext {
  * Read auth context from Hono context variables set by authMiddleware.
  * Uses `as never` to avoid threading generic type params through all routes.
  */
+// Cached at module level — env var never changes during Lambda lifecycle
+const ADMIN_EMAILS_SET: Set<string> = new Set(
+  (process.env['ADMIN_EMAILS'] ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
+);
+
 export function getAuthContext(c: Context): AuthContext {
+  const userEmail = c.get('userEmail' as never) as string;
   return {
     userId: c.get('userId' as never) as string,
-    userEmail: c.get('userEmail' as never) as string,
+    userEmail,
+    isAdmin: userEmail.length > 0 && ADMIN_EMAILS_SET.has(userEmail.toLowerCase()),
   };
 }
 

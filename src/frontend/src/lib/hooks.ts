@@ -47,19 +47,10 @@ export function setLocalFarmList(farms: FarmListItem[]): void {
  * so UI write controls are hidden until the list is loaded.
  */
 export function getLocalFarmRole(): FarmRole {
-  if (typeof window === 'undefined') return 'observer';
-  const farmId = localStorage.getItem(LS_FARM_ID);
+  const farmId = typeof window !== 'undefined' ? localStorage.getItem(LS_FARM_ID) : null;
   if (!farmId) return 'observer';
-  const raw = localStorage.getItem(LS_FARM_LIST);
-  if (!raw) return 'observer';
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return 'observer';
-    const match = (parsed as FarmListItem[]).find((f) => f.id === farmId);
-    return match?.role ?? 'observer';
-  } catch {
-    return 'observer';
-  }
+  const match = useLocalFarmList().find((f) => f.id === farmId);
+  return match?.role ?? 'observer';
 }
 
 type TempUnit = 'C' | 'F';

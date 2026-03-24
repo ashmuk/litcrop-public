@@ -92,6 +92,9 @@ export const FREE_PLAN_MAX_MEMBERSHIPS = 3;
 export const CROP_TYPES = ['rice', 'tomato', 'cucumber', 'eggplant', 'lettuce', 'daikon', 'cabbage', 'other'] as const;
 export type CropType = typeof CROP_TYPES[number];
 
+// ── Admin Designation ───────────────────────────────────────────
+export const ENV_ADMIN_EMAILS = 'ADMIN_EMAILS';
+
 // ── DynamoDB Key Prefixes ────────────────────────────────────────
 
 export const DDB_KEY_PREFIXES = {

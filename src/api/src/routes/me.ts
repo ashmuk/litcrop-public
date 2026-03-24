@@ -12,7 +12,7 @@ router.get('/profile', async (c) => {
   const profile = await dynamoRepo.getUserProfile(userId);
   if (!profile) {
     // Return a default profile shape when no record exists yet
-    return c.json({ user_id: userId, display_name: '', preferred_role: 'observer', created_at: '' });
+    return c.json({ user_id: userId, display_name: '', preferred_role: 'observer', created_at: null });
   }
   return c.json(profile);
 });
