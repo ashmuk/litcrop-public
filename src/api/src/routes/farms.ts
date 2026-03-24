@@ -270,7 +270,7 @@ router.post('/', async (c) => {
   let ownedCount: number;
   try {
     const farms = await dynamoRepo.getFarmsForUser(userId);
-    ownedCount = farms.filter(f => f.farm_id !== DEMO_FARM_ID && f.role === 'admin').length;
+    ownedCount = farms.filter(f => f.farm_id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
@@ -371,7 +371,7 @@ router.delete('/:farmId', async (c) => {
     throw new ValidationError('The demo farm cannot be deleted');
   }
 
-  await assertFarmAccess(farmId, userId, ['admin']);
+  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
 
   try {
     await dynamoRepo.deleteFarm(farmId);
