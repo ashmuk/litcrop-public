@@ -91,15 +91,20 @@ export default function WeatherView({ farmId }: Props) {
     return () => { controller.abort(); };
   }, [weather?.latitude, weather?.longitude, locale]);
 
-  // Auto-scroll hourly pane to center the current hour
+  // Auto-scroll hourly pane to center the current hour (deferred to after paint)
   useEffect(() => {
     if (!weather || !hourlyRef.current) return;
-    const now = new Date();
-    const currentHour = now.getHours();
-    const cardWidth = 72; // min-width:60px + gap:12px approx
-    const containerWidth = hourlyRef.current.clientWidth;
-    const scrollTarget = currentHour * cardWidth - containerWidth / 2 + cardWidth / 2;
-    hourlyRef.current.scrollLeft = Math.max(0, scrollTarget);
+    const el = hourlyRef.current;
+    requestAnimationFrame(() => {
+      if (!el.firstElementChild) return;
+      const currentHour = new Date().getHours();
+      // Measure actual card width from rendered DOM
+      const cards = el.firstElementChild.children;
+      if (currentHour >= cards.length) return;
+      const card = cards[currentHour] as HTMLElement;
+      const scrollTarget = card.offsetLeft - el.clientWidth / 2 + card.offsetWidth / 2;
+      el.scrollLeft = Math.max(0, scrollTarget);
+    });
   }, [weather]);
 
   const xlat = (cond: string) => translateCondition(cond, tl);
