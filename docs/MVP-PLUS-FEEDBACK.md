@@ -293,8 +293,103 @@ End-users (readers/observers) can join up to 3 farms. Demo farm exempt (not coun
 
 ---
 
-> Filed: 2026-03-22 (round 1) | Updated: 2026-03-23 (rounds 2+3)
+## Round 4 Findings (2026-03-24) — User Roles & Profile Enrichment
+
+> Tester: Muk (Site Admin)
+> Context: Role-based access control gaps found during eval prep
+
+### R-01: Observer role restrictions incomplete
+
+**Severity**: Feature gap
+**Priority**: P1
+
+Observers should NOT be able to: create farms, add/edit crops, upload photos, delete farms/beds. Currently `isObserverOnly` only hides the "New Farm" button. Need comprehensive UI disable + API middleware enforcement for observer role across all write operations.
+
+---
+
+### R-02: Role selection at registration
+
+**Severity**: Feature
+**Priority**: P1
+
+New users should choose "Manager" or "Reader" (observer) during account creation. Default = observer. This determines their permissions across the app. Needs R-07 (user profile store) first.
+
+---
+
+### R-03: Admin account designation
+
+**Severity**: Security/Feature
+**Priority**: P1
+
+Admin should be a hardcoded designation for `you@example.com` only. Store admin email as environment variable (not in source code). On login, auto-promote FARM_MEMBER records to admin role if email matches.
+
+**Implementation approach**:
+- MVP: `ADMIN_EMAILS` env var in `.env` (gitignored), passed to Lambda via CDK
+- PROD-1: Migrate to SSM Parameter Store (encrypted, auditable)
+- NOT hardcoded in source — reviewed with user before implementation
+
+---
+
+### R-04: Editable display name on profile
+
+**Severity**: Feature
+**Priority**: P1
+
+Profile page should have a display name field (usually read-only, editable via button). Currently only email is shown. Needs R-07 (user profile store) to persist the name.
+
+---
+
+### R-05: Farm card values need labels
+
+**Severity**: UX
+**Priority**: P2
+
+Farm card subtitle shows `350m · 3×2` but doesn't label what the values mean. Add labels like "350m elev · 3×2 beds" for clarity.
+
+---
+
+### R-06: Member list should show names with manager indicator
+
+**Severity**: UX
+**Priority**: P2
+
+Member list currently shows truncated user IDs + role badge for every member. Should show display names (from R-04) instead. Only indicate "Manager" role — other roles don't need labels. Needs R-04 first.
+
+---
+
+### R-07: User profile data store (foundation)
+
+**Severity**: Architecture
+**Priority**: P0 (prerequisite for R-02, R-04, R-06)
+
+No per-user profile data exists. Need:
+- DynamoDB: `USER#<userId> SK=#PROFILE` with `{ display_name, preferred_role, created_at }`
+- API: `GET/PATCH /api/v1/me/profile`
+- Frontend: Profile page integration
+
+---
+
+## Priority Summary — Round 4 (2026-03-24)
+
+| Priority | Items | Dependencies |
+|----------|-------|-------------|
+| **P0** (foundation) | R-07 (user profile store) | None |
+| **P1** (must fix) | R-01 (observer restrictions), R-03 (admin designation), R-04 (display name) | R-07 |
+| **P1** (must fix) | R-02 (role at registration) | R-07 |
+| **P2** (should fix) | R-05 (card labels), R-06 (names in members) | R-04 |
+
+### Execution Order
+
+```
+R-05 (labels, quick fix) → R-07 (profile store) → R-01 (observer) →
+R-03 (admin) → R-04 (display name) → R-02 (registration role) →
+R-06 (names in members)
+```
+
+---
+
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 4)
 > Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
 > Round 2: 7 items fixed (PRs #146–#148, issues #139–#145 closed)
 > Round 3: 3 items (F-04, F-08, #90 partial) fixed (PR #149)
-> All feedback resolved — v0.19 deployed for April field evaluation
+> Round 4: 7 items filed (R-01..R-07) — user roles & profile enrichment
