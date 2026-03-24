@@ -8,6 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
 import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES, CROP_TYPES } from '@litcrop/shared';
 import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '../lib/api';
+import { getLocalFarmRole } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
@@ -81,6 +82,8 @@ export default function BedDetail() {
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('id') ?? ''
       : '';
+
+  const isReadOnly = getLocalFarmRole() === 'observer';
 
   useEffect(() => {
     if (!bedId) return;
@@ -294,7 +297,7 @@ export default function BedDetail() {
       />
 
       {/* -- Island 2: Bed/Crop Metadata -- */}
-      {editing ? (
+      {editing && !isReadOnly ? (
         <div class="crop-info" style="display:flex;flex-direction:column;gap:var(--space-3)">
           <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold)">{bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}</h2>
           <div class="form-group">
@@ -365,14 +368,16 @@ export default function BedDetail() {
               <dd style="color:var(--color-gray-500);font-style:italic">{t('bed.no_crop')}</dd>
             )}
           </dl>
-          <button class="btn-secondary" style="margin-top:var(--space-2);font-size:var(--font-size-sm)" onClick={startEditing}>
-            {bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}
-          </button>
+          {!isReadOnly && (
+            <button class="btn-secondary" style="margin-top:var(--space-2);font-size:var(--font-size-sm)" onClick={startEditing}>
+              {bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}
+            </button>
+          )}
         </div>
       )}
 
       {/* -- Island 3: Tag Buttons -- */}
-      {bed.latest_image && (
+      {bed.latest_image && !isReadOnly && (
         <div class="tag-area">
           <div class="tag-area__heading">{t('plot.tag_this')}</div>
           <div class="tag-area__buttons" role="group" aria-label="Tag this image">
@@ -396,20 +401,22 @@ export default function BedDetail() {
       <div>
         <div class="section-heading" style="display:flex;align-items:center;justify-content:space-between">
           {t('plot.image_history')}
-          <label
-            class="btn-secondary"
-            style={`cursor:${uploading ? 'not-allowed' : 'pointer'};display:inline-flex;align-items:center;gap:var(--space-2);opacity:${uploading ? '0.6' : '1'}`}
-            aria-disabled={uploading}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              class="sr-only"
-              disabled={uploading}
-              onChange={handleImageUpload}
-            />
-            {uploading ? t('upload.uploading') : t('buttons.upload')}
-          </label>
+          {!isReadOnly && (
+            <label
+              class="btn-secondary"
+              style={`cursor:${uploading ? 'not-allowed' : 'pointer'};display:inline-flex;align-items:center;gap:var(--space-2);opacity:${uploading ? '0.6' : '1'}`}
+              aria-disabled={uploading}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                class="sr-only"
+                disabled={uploading}
+                onChange={handleImageUpload}
+              />
+              {uploading ? t('upload.uploading') : t('buttons.upload')}
+            </label>
+          )}
         </div>
         {images.length === 0 ? (
           <div class="empty-state" style="padding:var(--space-8)">

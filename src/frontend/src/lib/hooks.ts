@@ -2,6 +2,7 @@ import type { FarmRole } from '@litcrop/shared';
 
 export const LS_FARM_ID = 'litcrop-farmId';
 export const LS_FARM_NAME = 'litcrop-farmName';
+export const LS_FARM_LIST = 'litcrop-farmList';
 
 export function useLocalFarmId(defaultId: string): string {
   return (typeof window !== 'undefined' && localStorage.getItem(LS_FARM_ID)) || defaultId;
@@ -23,7 +24,7 @@ interface FarmListItem {
 /** Read cached farm list from localStorage. Returns empty array if none. */
 export function useLocalFarmList(): FarmListItem[] {
   if (typeof window === 'undefined') return [];
-  const raw = localStorage.getItem('litcrop-farmList');
+  const raw = localStorage.getItem(LS_FARM_LIST);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
@@ -36,7 +37,28 @@ export function useLocalFarmList(): FarmListItem[] {
 /** Persist farm list to localStorage. */
 export function setLocalFarmList(farms: FarmListItem[]): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('litcrop-farmList', JSON.stringify(farms));
+    localStorage.setItem(LS_FARM_LIST, JSON.stringify(farms));
+  }
+}
+
+/**
+ * Return the role the current user has for the active farm.
+ * Reads from the cached farm list. Defaults to 'observer' when unknown,
+ * so UI write controls are hidden until the list is loaded.
+ */
+export function getLocalFarmRole(): FarmRole {
+  if (typeof window === 'undefined') return 'observer';
+  const farmId = localStorage.getItem(LS_FARM_ID);
+  if (!farmId) return 'observer';
+  const raw = localStorage.getItem(LS_FARM_LIST);
+  if (!raw) return 'observer';
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return 'observer';
+    const match = (parsed as FarmListItem[]).find((f) => f.id === farmId);
+    return match?.role ?? 'observer';
+  } catch {
+    return 'observer';
   }
 }
 
