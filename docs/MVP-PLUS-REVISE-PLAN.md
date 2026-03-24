@@ -384,28 +384,25 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
    SF-4: Chat Markdown rendering (sanitized HTML)
    → Gate: PASSED — time-lapse plays weekly compilation (~294 frames)
 
- PHASE D — UX Restructure (~5-6h)  ← NEXT
-   F-09: Map picker (Leaflet ~40KB, lazy-loaded, integrated into wizard)
-   F-10: Elevation auto-fetch (Open-Meteo Elevation API)
-   BED: Bed-grid layout (CSS Grid + Preact, rows × cols, 5 max)
-   CROP: Crop-per-bed model
-   PROF: Profile page (new Astro page — farm list + switch + members)
-   → Gate: Scenario Steps 2-3 (farm creation + crop setup) work E2E
+ PHASE D — UX Restructure (~5-6h)                     ✅ DONE (v0.13)
+   F-09: Map picker, F-10: Elevation, BED: Grid, CROP, PROF
+   → Gate: PASSED
 
- PHASE E — Security Hardening (~2-3h)
-   S3, S4, S6: Security SHOULD-FIX (must work with membership middleware)
-   S10: RemovalPolicy RETAIN
-   AUDIT: rc-reviewer membership middleware security audit
-   → Gate: all P1 security items resolved, no auth bypass
+ PHASE E — Security Hardening (~2-3h)                  ✅ DONE (v0.14)
+   S3, S4, S6, S10: RemovalPolicy RETAIN
+   → Gate: PASSED
 
- PHASE F — Quality (~3-4h)
-   Includes test refactoring for membership model (existing tests may need updates)
-   Q6, SG-3, Q12: Code fixes
-   T8-T9: Schema tests
-   FR-3.6: Side-by-side comparison (if time)
-   → Gate: 300+ tests pass, tsc clean
+ PHASE F — Quality (~3-4h)                             ✅ DONE (v0.14)
+   Q6, SG-3, Q12, T8-T9, FR-3.6
+   → Gate: PASSED — 321 tests, tsc clean
 
- TAG v1.0 → merge → deploy (through CI/CD)
+ POST-DEPLOY FEEDBACK (v0.16–v0.19)                    ✅ DONE
+   Round 1: F-01..F-09 (6 fixed, PR #138)
+   Round 2: F-10..F-16 (7 fixed, PRs #146–#148)
+   Round 3: F-04, F-08, #90 locale sync (PR #149)
+   → 14 issues closed, 328 tests, 5 PRs merged
+
+ TAG v0.19 → deployed for April field evaluation
 
  ═══════════════════════════════════════════════════════════════
  PRODUCTION-1 — Target: Post April evaluation
