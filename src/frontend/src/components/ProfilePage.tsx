@@ -305,7 +305,7 @@ export default function ProfilePage() {
                           {t('profile.delete_farm')}
                         </button>
                       )}
-                      {!isDemoFarm && (
+                      {!isDemoFarm && farm.role !== 'admin' && (
                         <button
                           type="button"
                           style="font-size:var(--font-size-sm);color:var(--color-gray-600);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
