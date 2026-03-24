@@ -19,6 +19,7 @@ export type {
   Bed,
   Image,
   Tag,
+  UserProfile,
 } from './types/domain';
 
 // API response/error types
@@ -52,6 +53,7 @@ export type {
   UpdateBedRequest,
   CreateTagRequest,
   ChatMessageRequest,
+  UpdateProfileRequest,
 } from './types/requests';
 
 // Constants
@@ -80,6 +82,7 @@ export {
   FREE_PLAN_MAX_MEMBERSHIPS,
   CROP_TYPES,
   DDB_KEY_PREFIXES,
+  ENV_ADMIN_EMAILS,
 } from './constants';
 
 // Config
@@ -88,6 +91,7 @@ export type { AppConfig } from './config';
 
 // Zod schemas for contract tests and runtime validation
 export {
+  UpdateProfileRequestSchema,
   BedStatusSchema,
   PlotStatusSchema,     // deprecated alias
   TriggerTypeSchema,

@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, getFarmMembers, updateFarm } from '../lib/api';
+import { getMyFarms, deleteFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -32,6 +32,9 @@ export default function ProfilePage() {
   const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [savingName, setSavingName] = useState(false);
   const activeFarmId = useLocalFarmId('');
 
   // Settings state
@@ -65,6 +68,18 @@ export default function ProfilePage() {
     // Load user
     const user = getCurrentUser();
     if (user) setUserEmail(user.email);
+
+    // Load profile (non-blocking) + sync pending role from registration
+    getMyProfile().then(p => {
+      if (p.display_name) setDisplayName(p.display_name);
+      // Sync pending role from registration (no auth token was available post-confirm)
+      const pendingRole = localStorage.getItem('litcrop-pendingRole');
+      if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {
+        updateMyProfile({ preferred_role: pendingRole })
+          .then(() => { localStorage.removeItem('litcrop-pendingRole'); })
+          .catch(() => {});
+      }
+    }).catch(() => {});
 
     // Load settings from localStorage as initial state (will be overridden by server sync)
     try {
@@ -152,6 +167,19 @@ export default function ProfilePage() {
     showToast(t('settings.save_success'), 'success');
   }
 
+  async function handleSaveName() {
+    setSavingName(true);
+    try {
+      await updateMyProfile({ display_name: displayName.trim() });
+      setEditingName(false);
+      showToast(t('profile.name_saved'), 'success');
+    } catch {
+      showToast(t('profile.save_error'), 'error');
+    } finally {
+      setSavingName(false);
+    }
+  }
+
   function handleLogout() {
     signOut();
     showToast(t('auth.logout_confirm'), 'success');
@@ -222,9 +250,9 @@ export default function ProfilePage() {
                         )}
                       </div>
                       <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">
-                        {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m`}
+                        {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m ${t('profile.elevation_short')}`}
                         {farm.elevation_m != null && ' · '}
-                        {farm.grid_rows}×{farm.grid_cols}
+                        {farm.grid_rows}×{farm.grid_cols} {t('profile.beds')}
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-2)">
@@ -303,8 +331,15 @@ export default function ProfilePage() {
                           <div style="border-top:var(--border-default);padding-top:var(--space-2);display:flex;flex-direction:column;gap:var(--space-1)">
                             {farmMembers.map((m) => (
                               <div key={m.user_id} style="display:flex;justify-content:space-between;align-items:center">
-                                <span style="font-size:var(--font-size-xs);color:var(--color-gray-600);overflow:hidden;text-overflow:ellipsis">{m.user_id.slice(0, 8)}...</span>
-                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">{m.role}</span>
+                                <span style="font-size:var(--font-size-sm);color:var(--color-text);overflow:hidden;text-overflow:ellipsis">
+                                  {m.display_name || m.user_id.slice(0, 8) + '...'}
+                                </span>
+                                {m.role === 'manager' && (
+                                  <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">Manager</span>
+                                )}
+                                {m.role === 'admin' && (
+                                  <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">Admin</span>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -343,6 +378,41 @@ export default function ProfilePage() {
         <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);margin-bottom:var(--space-3);color:var(--color-text)">
           👤 {t('profile.you')}
         </h2>
+
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)">
+          {editingName ? (
+            <>
+              <input
+                type="text"
+                class="form-input"
+                style="flex:1"
+                value={displayName}
+                onInput={(e) => setDisplayName((e.target as HTMLInputElement).value)}
+                placeholder={t('profile.name_placeholder')}
+                maxLength={100}
+              />
+              <button class="btn-primary" style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3)" onClick={handleSaveName} disabled={savingName}>
+                {savingName ? '...' : t('buttons.save')}
+              </button>
+              <button class="btn-secondary" style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3)" onClick={() => setEditingName(false)}>
+                {t('buttons.cancel')}
+              </button>
+            </>
+          ) : (
+            <>
+              <span style="font-weight:var(--font-weight-semibold);font-size:var(--font-size-base)">
+                {displayName || t('profile.no_name')}
+              </span>
+              <button
+                type="button"
+                style="font-size:var(--font-size-xs);color:var(--color-primary);background:none;border:none;cursor:pointer;padding:var(--space-1)"
+                onClick={() => setEditingName(true)}
+              >
+                {t('profile.edit_name')}
+              </button>
+            </>
+          )}
+        </div>
 
         {userEmail && (
           <div

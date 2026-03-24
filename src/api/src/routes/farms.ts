@@ -206,7 +206,18 @@ router.get('/:farmId/members', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  return c.json({ data: members });
+  const enrichedMembers = await Promise.all(
+    members.map(async (m) => {
+      let displayName = '';
+      try {
+        const profile = await dynamoRepo.getUserProfile(m.user_id);
+        displayName = profile?.display_name ?? '';
+      } catch { /* graceful degradation — show member without name */ }
+      return { ...m, display_name: displayName };
+    }),
+  );
+
+  return c.json({ data: enrichedMembers });
 });
 
 // ── GET /api/v1/farms/:farmId/beds ───────────────────────────────

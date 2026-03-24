@@ -151,7 +151,7 @@ export async function getMyFarm(): Promise<Farm | null> {
   return farms[0] ?? null;
 }
 
-export type FarmMemberItem = Omit<FarmMember, 'farm_id'>;
+export type FarmMemberItem = Omit<FarmMember, 'farm_id'> & { display_name: string };
 
 /** GET /api/v1/farms/:farmId/members — list members of a farm */
 export async function getFarmMembers(farmId: string): Promise<FarmMemberItem[]> {
@@ -259,6 +259,28 @@ export async function sendChat(data: ChatMessageRequest): Promise<ChatResponse> 
 /** GET /api/v1/usage */
 export async function getUsage(): Promise<UsageResponse> {
   return request<UsageResponse>('GET', '/usage');
+}
+
+// ── Me / Profile Endpoint ─────────────────────────────────────────
+
+export interface UserProfileResponse {
+  user_id: string;
+  display_name: string;
+  preferred_role: 'manager' | 'observer';
+  created_at: string;
+}
+
+/** GET /api/v1/me/profile */
+export async function getMyProfile(): Promise<UserProfileResponse> {
+  return request<UserProfileResponse>('GET', '/me/profile');
+}
+
+/** PATCH /api/v1/me/profile */
+export async function updateMyProfile(data: {
+  display_name?: string;
+  preferred_role?: 'manager' | 'observer';
+}): Promise<UserProfileResponse> {
+  return request<UserProfileResponse>('PATCH', '/me/profile', data);
 }
 
 // ── Admin Endpoint ────────────────────────────────────────────────

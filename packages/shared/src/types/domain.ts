@@ -98,3 +98,11 @@ export interface Tag {
   note?: string;
   created_at: string; // ISO 8601
 }
+
+/** Per-user profile record — display preferences and role hint */
+export interface UserProfile {
+  user_id: string;
+  display_name: string;
+  preferred_role: 'manager' | 'observer';
+  created_at: string; // ISO 8601
+}

@@ -247,9 +247,15 @@
     "farm_limit": "Free plan: up to 2 farms",
     "location": "Location",
     "elevation": "Elevation",
+    "elevation_short": "elev",
     "grid": "Grid",
     "beds": "beds",
-    "members": "Members"
+    "members": "Members",
+    "name_placeholder": "Your name",
+    "no_name": "No name set",
+    "edit_name": "Edit",
+    "name_saved": "Name saved",
+    "save_error": "Could not save"
   },
   "manage": {
     "title": "Manage",
@@ -284,7 +290,10 @@
       "loading": "Creating account…",
       "step1": "Account details",
       "step2": "Verify email",
-      "step3": "Done"
+      "step3": "Done",
+      "role_label": "I am a...",
+      "role_manager": "Farm Manager",
+      "role_reader": "Farm Reader"
     },
     "reset": {
       "title": "Reset your password",

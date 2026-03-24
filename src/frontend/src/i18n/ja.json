@@ -247,9 +247,15 @@
     "farm_limit": "フリープラン: 農場は2つまで",
     "location": "位置",
     "elevation": "標高",
+    "elevation_short": "標高",
     "grid": "グリッド",
-    "beds": "ベッド",
-    "members": "メンバー"
+    "beds": "畝",
+    "members": "メンバー",
+    "name_placeholder": "名前を入力",
+    "no_name": "名前未設定",
+    "edit_name": "編集",
+    "name_saved": "名前を保存しました",
+    "save_error": "保存できませんでした"
   },
   "manage": {
     "title": "管理",
@@ -284,7 +290,10 @@
       "loading": "作成中…",
       "step1": "アカウント情報",
       "step2": "メール確認",
-      "step3": "完了"
+      "step3": "完了",
+      "role_label": "利用形態",
+      "role_manager": "農場管理者",
+      "role_reader": "農場閲覧者"
     },
     "reset": {
       "title": "パスワードをリセット",
