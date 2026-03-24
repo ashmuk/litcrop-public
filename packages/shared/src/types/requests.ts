@@ -53,3 +53,9 @@ export interface ChatMessageRequest {
   message: string;
   farm_id?: string;
 }
+
+/** PATCH /api/v1/me/profile */
+export interface UpdateProfileRequest {
+  display_name?: string;
+  preferred_role?: 'manager' | 'observer';
+}

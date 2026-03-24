@@ -310,6 +310,14 @@ export const ChatResponseSchema = z.object({
   })).optional(),
 });
 
+// ── Profile schema ────────────────────────────────────────────────
+
+/** PATCH /api/v1/me/profile — request body */
+export const UpdateProfileRequestSchema = z.object({
+  display_name: z.string().min(1).max(100).optional(),
+  preferred_role: z.enum(['manager', 'observer']).optional(),
+});
+
 // ── Usage schema (MVP: AI budget status) ─────────────────────────
 
 const UserBudgetSchema = z.object({

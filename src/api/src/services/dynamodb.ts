@@ -10,7 +10,7 @@ import {
   BatchWriteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember } from '@litcrop/shared';
+import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
@@ -48,6 +48,7 @@ const pk = {
 
 const sk = {
   meta: () => DDB_KEY_PREFIXES.META,
+  profile: () => '#PROFILE',
   bed: (row: number, col: number, bedId: string) =>
     `${DDB_KEY_PREFIXES.BED}${row.toString().padStart(2, '0')}#${col.toString().padStart(2, '0')}#${bedId}`,
   image: (capturedAt: string, imageId: string) => `${DDB_KEY_PREFIXES.IMG}${capturedAt}#${imageId}`,
@@ -173,6 +174,15 @@ function buildMembershipItems(userId: string, farmId: string, role: FarmRole, jo
       },
     },
   ];
+}
+
+function itemToUserProfile(item: Record<string, unknown>, userId: string): UserProfile {
+  return {
+    user_id: userId,
+    display_name: (item['display_name'] as string) ?? '',
+    preferred_role: (item['preferred_role'] as UserProfile['preferred_role']) ?? 'observer',
+    created_at: (item['created_at'] as string) ?? '',
+  };
 }
 
 // Extract entity ID from a composite key, e.g. "BED#01#01#<id>" → "<id>"
@@ -889,6 +899,57 @@ export class DynamoRepository {
     ]);
 
     return { farms, users, beds };
+  }
+
+  // ── User Profile ──────────────────────────────────────────────────
+
+  /** Get a user's profile record. Returns null if no profile exists yet. */
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.user(userId), SK: sk.profile() },
+      }),
+    );
+    if (!result.Item) return null;
+    return itemToUserProfile(result.Item, userId);
+  }
+
+  /** Create or update a user's profile record. */
+  async upsertUserProfile(
+    userId: string,
+    data: { display_name?: string; preferred_role?: string },
+  ): Promise<UserProfile> {
+    const now = new Date().toISOString();
+    const setExpressions: string[] = [
+      'created_at = if_not_exists(created_at, :now)',
+    ];
+    const values: Record<string, unknown> = { ':now': now };
+    const names: Record<string, string> = {};
+
+    if (data.display_name !== undefined) {
+      setExpressions.push('#display_name = :display_name');
+      names['#display_name'] = 'display_name';
+      values[':display_name'] = data.display_name;
+    }
+    if (data.preferred_role !== undefined) {
+      setExpressions.push('#preferred_role = :preferred_role');
+      names['#preferred_role'] = 'preferred_role';
+      values[':preferred_role'] = data.preferred_role;
+    }
+
+    const result = await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.user(userId), SK: sk.profile() },
+        UpdateExpression: `SET ${setExpressions.join(', ')}`,
+        ExpressionAttributeValues: values,
+        ...(Object.keys(names).length > 0 ? { ExpressionAttributeNames: names } : {}),
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+
+    return itemToUserProfile(result.Attributes as Record<string, unknown>, userId);
   }
 
 }

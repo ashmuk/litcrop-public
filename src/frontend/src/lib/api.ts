@@ -261,6 +261,28 @@ export async function getUsage(): Promise<UsageResponse> {
   return request<UsageResponse>('GET', '/usage');
 }
 
+// ── Me / Profile Endpoint ─────────────────────────────────────────
+
+export interface UserProfileResponse {
+  user_id: string;
+  display_name: string;
+  preferred_role: 'manager' | 'observer';
+  created_at: string;
+}
+
+/** GET /api/v1/me/profile */
+export async function getMyProfile(): Promise<UserProfileResponse> {
+  return request<UserProfileResponse>('GET', '/me/profile');
+}
+
+/** PATCH /api/v1/me/profile */
+export async function updateMyProfile(data: {
+  display_name?: string;
+  preferred_role?: string;
+}): Promise<UserProfileResponse> {
+  return request<UserProfileResponse>('PATCH', '/me/profile', data);
+}
+
 // ── Admin Endpoint ────────────────────────────────────────────────
 
 export interface AdminStatsResponse {

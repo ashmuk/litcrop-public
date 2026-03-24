@@ -11,6 +11,7 @@ import weatherRouter from './routes/weather';
 import chatRouter from './routes/chat';
 import usageRouter from './routes/usage';
 import adminRouter from './routes/admin';
+import meRouter from './routes/me';
 
 const CLOUDFRONT_ORIGIN = process.env.CLOUDFRONT_ORIGIN;
 
@@ -119,6 +120,8 @@ app.use('/api/v1/chat', authMiddleware);
 app.use('/api/v1/usage', authMiddleware);
 app.use('/api/v1/admin', authMiddleware);
 app.use('/api/v1/admin/*', authMiddleware);
+app.use('/api/v1/me', authMiddleware);
+app.use('/api/v1/me/*', authMiddleware);
 
 // ── Routes ───────────────────────────────────────────────────────
 
@@ -152,5 +155,8 @@ app.route('/api/v1/usage', usageRouter);
 
 // GET /api/v1/admin/stats
 app.route('/api/v1/admin', adminRouter);
+
+// GET|PATCH /api/v1/me/profile
+app.route('/api/v1/me', meRouter);
 
 export default app;
