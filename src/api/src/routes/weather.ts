@@ -293,10 +293,10 @@ function computeCropImpact(
 
 router.get('/:farmId/weather', async (c) => {
   const { farmId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
   // Verify farm exists and caller is a member
-  const { farm } = await assertFarmAccess(farmId, userId);
+  const { farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
   // Check cache
   const now = Date.now();

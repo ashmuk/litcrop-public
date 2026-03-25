@@ -12,7 +12,7 @@ import type { Image, Bed } from '@litcrop/shared';
 import { assertFarmAccess } from './_helpers';
 
 /** Resolve farm access for an image via its bed_id. */
-async function assertImageOwnership(image: Image, userId: string): Promise<void> {
+async function assertImageOwnership(image: Image, userId: string, isAdmin?: boolean): Promise<void> {
   let bed: Bed;
   try {
     bed = await dynamoRepo.getBedById(image.bed_id);
@@ -23,7 +23,7 @@ async function assertImageOwnership(image: Image, userId: string): Promise<void>
     throw new ServiceUnavailableError('Storage service unavailable');
   }
   try {
-    await assertFarmAccess(bed.farm_id, userId);
+    await assertFarmAccess(bed.farm_id, userId, undefined, isAdmin);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Image not found: ${image.id}`);
@@ -60,7 +60,7 @@ const router = new Hono();
 
 router.get('/:imageId', async (c) => {
   const { imageId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
   let image: Image;
   try {
@@ -70,7 +70,7 @@ router.get('/:imageId', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  await assertImageOwnership(image, userId);
+  await assertImageOwnership(image, userId, isAdmin);
 
   const [url, thumbnail_url, tags] = await Promise.all([
     getSignedImageUrl(image.storage_key),

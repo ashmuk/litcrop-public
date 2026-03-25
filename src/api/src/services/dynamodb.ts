@@ -213,6 +213,31 @@ export class DynamoRepository {
     return itemToFarm(result.Item, farmId);
   }
 
+  /** List all farms in the system (admin-only). Scan with PK prefix + SK filter. */
+  async getAllFarms(): Promise<Farm[]> {
+    const farms: Farm[] = [];
+    let lastKey: Record<string, unknown> | undefined;
+    do {
+      const result = await ddb.send(
+        new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: 'begins_with(PK, :prefix) AND SK = :meta',
+          ExpressionAttributeValues: {
+            ':prefix': DDB_KEY_PREFIXES.FARM,
+            ':meta': DDB_KEY_PREFIXES.META,
+          },
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      for (const item of result.Items ?? []) {
+        const farmId = (item['PK'] as string).slice(DDB_KEY_PREFIXES.FARM.length);
+        farms.push(itemToFarm(item, farmId));
+      }
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+    return farms;
+  }
+
   // 2. Get all beds for a farm (ordered by row/col via SK prefix sort)
   async getBedsForFarm(farmId: string): Promise<Bed[]> {
     const result = await ddb.send(
