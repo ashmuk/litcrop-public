@@ -22,7 +22,7 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 - UX/UI: 7 screens, 10 interactive HTML/CSS mockups ([docs/UX-DESIGNS.md](docs/UX-DESIGNS.md))
 - API: 11 endpoints with full request/response schemas ([docs/API-CONTRACTS.md](docs/API-CONTRACTS.md))
 - System design: Sequence diagrams, component interfaces ([docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md))
-- Execution plan: 39 tasks across 6 phases ([docs/EXECUTION-PLAN.md](docs/EXECUTION-PLAN.md))
+- Execution plan: 39 tasks across 6 phases ([docs/planning/EXECUTION-PLAN.md](docs/planning/EXECUTION-PLAN.md))
 
 ## Tech Stack
 

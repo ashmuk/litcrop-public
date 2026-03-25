@@ -46,7 +46,7 @@ This document is the **entry point** for resuming work on LitCrop. Read this fir
 - 13 other Production-scope features
 - 7 Vision categories (V-01..V-07)
 
-Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
+Full inventory: `docs/planning/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 
 ---
 
@@ -56,10 +56,10 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 |-------|----------|-----------------|
 | 1 | **This file** | Context, state, decisions, pipeline instructions |
 | 2 | `docs/USE-CASES.md` | 5 personas, 10 use cases, shared farm decision, templates |
-| 3 | `docs/MVP-PLUS-REVISE-PLAN.md` | Scope proposal (MVP+ / PROD-1 / PROD-2), user scenarios, execution phases |
-| 4 | `docs/MVP-PLUS-ALL-ITEMS.md` | Complete 72-item inventory with status tracking |
+| 3 | `docs/planning/MVP-PLUS-REVISE-PLAN.md` | Scope proposal (MVP+ / PROD-1 / PROD-2), user scenarios, execution phases |
+| 4 | `docs/planning/MVP-PLUS-ALL-ITEMS.md` | Complete 72-item inventory with status tracking |
 | 5 | `docs/decisions/ADR-20260322-phase-d-bed-grid-data-model.md` | Farm→Bed flattening decision |
-| 6 | `docs/CAMERA-NODE-SETUP.md` | Step-by-step Pi camera setup guide |
+| 6 | `docs/device/CAMERA-NODE-SETUP.md` | Step-by-step Pi camera setup guide |
 | 7 | `docs/designs/PHASE-D-ARCHITECTURE.md` | Phase D API contracts, DDB patterns |
 | 7 | `Vision.md` | Original product vision — 4 MVP deliverables, long-term direction |
 | 8 | `REQUIREMENTS.md` | FR-1 through FR-14, NFR-1 through NFR-8 |
@@ -99,7 +99,7 @@ Full inventory: `docs/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 ## 4. MVP+ Scope Summary (28 items, ~22-26h)
 
 > Revised 2026-03-22 — expanded from 18 items after evaluation scenario review.
-> See `docs/MVP-PLUS-SCENARIO.md` and `docs/USE-CASES.md` §7 for the scenario driving these changes.
+> See `docs/planning/MVP-PLUS-SCENARIO.md` and `docs/USE-CASES.md` §7 for the scenario driving these changes.
 > See `docs/REVIEW-FOR-MVP-PLUS-BY-ULTRATHINK.md` for deep alignment review.
 
 ```
@@ -181,7 +181,7 @@ When starting a new session for MVP+ work, follow this sequence:
 ### Starting PROD-1 (future session)
 ```
 1. Read this file (context + state)
-2. Review docs/MVP-PLUS-REVISE-PLAN.md §PRODUCTION-1
+2. Review docs/planning/MVP-PLUS-REVISE-PLAN.md §PRODUCTION-1
 3. /cc-design → architecture for PROD-1 scope
 4. /cc-implement → build in batches
 ```
@@ -231,13 +231,13 @@ When starting a new session for MVP+ work, follow this sequence:
 **Remaining operational steps**:
 1. Deploy via CI/CD (`deploy.yml` on push to main)
 2. Create 3 Cognito user accounts: Muk (admin), Kiku (manager), Yama (observer)
-3. Set up Pi camera node: follow `docs/CAMERA-NODE-SETUP.md`
+3. Set up Pi camera node: follow `docs/device/CAMERA-NODE-SETUP.md`
 4. Configure camera simulator: `--bed <bedId>` for target bed
 5. Pre-seed 14 days of simulator images for time-lapse demo
 
-**After deploy**: Begin April field evaluation per `docs/MVP-PLUS-SCENARIO.md`.
+**After deploy**: Begin April field evaluation per `docs/planning/MVP-PLUS-SCENARIO.md`.
 
-**Future work**: PROD-1 scope (#90 settings sync, invite workflow, IoT UI, SSE streaming) — see `docs/MVP-PLUS-REVISE-PLAN.md` §PRODUCTION-1.
+**Future work**: PROD-1 scope (#90 settings sync, invite workflow, IoT UI, SSE streaming) — see `docs/planning/MVP-PLUS-REVISE-PLAN.md` §PRODUCTION-1.
 
 ---
 
