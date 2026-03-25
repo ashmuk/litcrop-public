@@ -200,7 +200,7 @@
 | v0.9                         | 29      | 29     | 0         |
 | v1.0 Phases A–F              | 28      | 28     | 0         |
 | Post-deploy R1–R6 (F/R items)| 34      | 34     | 0         |
-| Post-deploy R7 (D items)     | 6       | 0      | 6 (2 quick, 4 PROD-1) |
+| Post-deploy R7 (D items)     | 6       | 0      | 6 (2 quick, 4 BETA) |
 | #90 Settings sync            | 1       | 0.5    | 0.5 (temp_unit, theme) |
 | Production (original)        | 14      | 0      | 14        |
 | Vision                       | 7       | 0      | 7         |
@@ -240,7 +240,7 @@
 | #56 | Elevation auto-fetch (F-10)         | —           | v1.0       | Open (Phase D) |
 | #58 | Soil pH monitoring (F-13)           | —           | Production | Open |
 | #59 | Time-lapse playback (F-14)          | —           | v1.0       | **Closed** (v0.12) |
-| #90 | Settings cross-device sync          | enhancement | v1.0       | Open (PROD-1) |
+| #90 | Settings cross-device sync          | enhancement | v1.0       | Open (BETA) |
 | #119 | Image lightbox + chat markdown     | —           | v1.0       | **Closed** (v0.12) |
 | #120 | Bed-grid + crop + profile          | —           | v1.0       | Open (Phase D) |
 | #121 | Security hardening (S3/S4/S6/S10)  | —           | v1.0       | Open (Phase E) |

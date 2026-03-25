@@ -24,7 +24,7 @@ This document is the **entry point** for resuming work on LitCrop. Read this fir
 | Branch | develop at `ec4c8cb` (4 commits ahead of origin/main) |
 | Tag | v0.13 (on main); v0.14 pending |
 | Tests | 321/321 pass (19 test files) |
-| GH Issues | 1 open (#90 — PROD-1) | 115 closed total |
+| GH Issues | 1 open (#90 — BETA) | 115 closed total |
 | AWS Resources | 46 (CDK-managed LitCropStack) |
 | Cost | ~$0.01-1.18/month |
 
@@ -39,10 +39,10 @@ This document is the **entry point** for resuming work on LitCrop. Read this fir
 | E — Security Hardening | **DONE** | v0.14 | S10 RemovalPolicy RETAIN (S3/S4/S6 already done) |
 | F — Quality | **DONE** | v0.14 | Q6 503→404, Q12 timezone, T8-T9 schema tests (+34) |
 
-### What's NOT Done (MVP+ scope complete — these are PROD-1+)
+### What's NOT Done (MVP+ scope complete — these are BETA+)
 
 - Side-by-side comparison FR-3.6 (deferred P2 — Phase F)
-- Settings cross-device sync #90 (PROD-1)
+- Settings cross-device sync #90 (BETA)
 - 13 other Production-scope features
 - 7 Vision categories (V-01..V-07)
 
@@ -56,7 +56,7 @@ Full inventory: `docs/planning/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 |-------|----------|-----------------|
 | 1 | **This file** | Context, state, decisions, pipeline instructions |
 | 2 | `docs/USE-CASES.md` | 5 personas, 10 use cases, shared farm decision, templates |
-| 3 | `docs/planning/MVP-PLUS-REVISE-PLAN.md` | Scope proposal (MVP+ / PROD-1 / PROD-2), user scenarios, execution phases |
+| 3 | `docs/planning/MVP-PLUS-REVISE-PLAN.md` | Scope proposal (MVP+ / BETA / PROD), user scenarios, execution phases |
 | 4 | `docs/planning/MVP-PLUS-ALL-ITEMS.md` | Complete 72-item inventory with status tracking |
 | 5 | `docs/decisions/ADR-20260322-phase-d-bed-grid-data-model.md` | Farm→Bed flattening decision |
 | 6 | `docs/device/CAMERA-NODE-SETUP.md` | Step-by-step Pi camera setup guide |
@@ -80,12 +80,12 @@ Full inventory: `docs/planning/MVP-PLUS-ALL-ITEMS.md` (72 items tracked)
 | 3 | F-14 priority | P0 for MVP+ | Vision MVP deliverable #3, used in 4/10 use cases |
 | 4 | Multi-farm timing | **MVP+ (revised)** | Evaluation scenario requires demo farm + user farm + switching |
 | 5 | MVP+ user model | **3 users, 2 farms, 3 roles** | Admin (Muk) + Manager (Kiku) + Observer (Yama); see `docs/USE-CASES.md` §7 |
-| 6 | Real AI chat | PRODUCTION-1 (SSM key fetch) | Stub mode fine for April; needs budget decision |
-| 7 | Shared farm access model | **Role-based membership** (FARM_MEMBER records) | Admin-managed for MVP+; invite/apply workflow deferred to PROD-1 |
+| 6 | Real AI chat | BETA (SSM key fetch) | Stub mode fine for April; needs budget decision |
+| 7 | Shared farm access model | **Role-based membership** (FARM_MEMBER records) | Admin-managed for MVP+; invite/apply workflow deferred to BETA |
 | 8 | FR-3.6 side-by-side | **MVP+ (Phase F)** | Include if time allows |
-| 9 | SSE streaming | **PROD-1** | Chat works without it (stub mode until SSM fetch) |
+| 9 | SSE streaming | **BETA** | Chat works without it (stub mode until SSM fetch) |
 | 10 | Bed-grid layout | **MVP+ — replaces freeform plot wizard** | Rows × cols (5 max each) is more intuitive; crop tied to bed |
-| 11 | IoT device web config | **PROD-1** | Camera configured locally for April; web UI deferred |
+| 11 | IoT device web config | **BETA** | Camera configured locally for April; web UI deferred |
 | 12 | Demo farm seed | **MVP+** | Pre-seeded data for onboarding new users |
 | 13 | **Data model flattening** | **Farm→Bed (ADR-20260322 Option B)** | Remove Field + Plot. 2 DDB queries vs N+1. Matches user mental model. |
 | 14 | **Map library** | **Leaflet (~40KB, BSD-2)** | Best size/feature balance. Free tiles. No API key. Lazy-loaded. |
@@ -178,11 +178,11 @@ When starting a new session for MVP+ work, follow this sequence:
 6. Configure camera simulator with bed IDs
 ```
 
-### Starting PROD-1 (future session)
+### Starting BETA (future session)
 ```
 1. Read this file (context + state)
-2. Review docs/planning/MVP-PLUS-REVISE-PLAN.md §PRODUCTION-1
-3. /cc-design → architecture for PROD-1 scope
+2. Review docs/planning/MVP-PLUS-REVISE-PLAN.md §BETA
+3. /cc-design → architecture for BETA scope
 4. /cc-implement → build in batches
 ```
 
@@ -219,7 +219,7 @@ When starting a new session for MVP+ work, follow this sequence:
 |------|-----------|--------|------------|
 | Camera node not ready for April | Medium | High | Use phone upload (UC-06) as fallback; camera sim for demos |
 | Time-lapse UX unclear without real data | Medium | Medium | Pre-seed 14 days of images from simulator before evaluation |
-| Leaflet CSS from CDN (unpkg) | Low | Low | Bundle locally in PROD-1; acceptable for MVP+ |
+| Leaflet CSS from CDN (unpkg) | Low | Low | Bundle locally in BETA; acceptable for MVP+ |
 | April weather delays planting | Low | Medium | Extend evaluation to May if needed; climate data still works |
 
 ---
@@ -237,7 +237,7 @@ When starting a new session for MVP+ work, follow this sequence:
 
 **After deploy**: Begin April field evaluation per `docs/planning/MVP-PLUS-SCENARIO.md`.
 
-**Future work**: PROD-1 scope (#90 settings sync, invite workflow, IoT UI, SSE streaming) — see `docs/planning/MVP-PLUS-REVISE-PLAN.md` §PRODUCTION-1.
+**Future work**: BETA scope (#90 settings sync, invite workflow, IoT UI, SSE streaming) — see `docs/planning/MVP-PLUS-REVISE-PLAN.md` §BETA.
 
 ---
 

@@ -181,7 +181,7 @@ sudo crontab -e
 */50 * * * * /opt/litcrop/refresh-token.sh
 ```
 
-> **Note**: For PROD-1, this should be replaced with a proper service account (Cognito machine-to-machine client credentials). See MVP-CAMERA-NODE-SPEC.md §6.6.
+> **Note**: For BETA, this should be replaced with a proper service account (Cognito machine-to-machine client credentials). See MVP-CAMERA-NODE-SPEC.md §6.6.
 
 ---
 

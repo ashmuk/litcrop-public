@@ -34,12 +34,12 @@ Both "Profile" (プロフィール) and "Settings" (設定) tabs in the top nav 
 - Per node: `node_id`, last upload time, image count, target bed name
 - Data derived from existing Image records (group by `node_id`) — no new API endpoint needed
 
-**Manage page scope (PROD-1)**:
+**Manage page scope (BETA)**:
 - Device registration and configuration
 - Health monitoring (online/offline status)
 - Camera settings (interval, resolution)
 
-**Root cause**: Phase D merged settings into profile but kept both nav items. IoT device management page was already planned for PROD-1 ("IOT-UI" in MVP-PLUS-REVISE-PLAN.md). Repurposing the nav slot avoids adding a 5th tab later.
+**Root cause**: Phase D merged settings into profile but kept both nav items. IoT device management page was already planned for BETA ("IOT-UI" in MVP-PLUS-REVISE-PLAN.md). Repurposing the nav slot avoids adding a 5th tab later.
 
 ---
 
@@ -88,11 +88,11 @@ The farm list cards show only the farm name and role badge. Location (lat/lon or
 
 **Page**: Crops → Layout view
 **Severity**: Design (future)
-**Priority**: P3 (PROD-1)
+**Priority**: P3 (BETA)
 
 Current model enforces one crop per bed. User clarifies this is acceptable for now but wants support for multiple crops per bed in the future. Additionally, existing PoC crop data is not visible — likely because the Field/Plot → Bed migration rewrote seed data without preserving user-created plots.
 
-**Note**: This is a design decision documented in ADR-20260322. The 1:1 model was chosen for MVP+ simplicity. Multi-crop per bed should be considered for PROD-1.
+**Note**: This is a design decision documented in ADR-20260322. The 1:1 model was chosen for MVP+ simplicity. Multi-crop per bed should be considered for BETA.
 
 ---
 
@@ -164,7 +164,7 @@ The hourly forecast section extends beyond the browser viewport width, creating 
 |----------|--------|--------|
 | **P1** (must fix) | F-01, F-03, F-06, F-07 | ✅ Fixed (PR #138) |
 | **P2** (should fix) | F-02, F-09 | ✅ Fixed (PR #138) |
-| **P3** (nice to have) | F-04, F-05, F-08 | Deferred to PROD-1 |
+| **P3** (nice to have) | F-04, F-05, F-08 | Deferred to BETA |
 
 ---
 
@@ -267,7 +267,7 @@ End-users (readers/observers) can join up to 3 farms. Demo farm exempt (not coun
 |------|--------|--------|----|
 | F-04 | Round 1 P3 | ✅ Fixed — farm card elevation + grid subtitle | #149 |
 | F-08 | Round 1 P3 | ✅ Fixed — weather location via Nominatim reverse geocode | #149 |
-| #90 | PROD-1 backlog | ⚠️ Partial — locale sync done, temp_unit/theme deferred | #149 |
+| #90 | BETA backlog | ⚠️ Partial — locale sync done, temp_unit/theme deferred | #149 |
 
 ---
 
@@ -325,7 +325,7 @@ Admin should be a hardcoded designation for `you@example.com` only. Store admin 
 
 **Implementation approach**:
 - MVP: `ADMIN_EMAILS` env var in `.env` (gitignored), passed to Lambda via CDK
-- PROD-1: Migrate to SSM Parameter Store (encrypted, auditable)
+- BETA: Migrate to SSM Parameter Store (encrypted, auditable)
 - NOT hardcoded in source — reviewed with user before implementation
 
 ---
@@ -467,7 +467,7 @@ Language reverts to English after logout→login. Root cause: signOut() may clea
 ### F-23: Soft delete pattern for farm deletion
 
 **Severity**: Design improvement
-**Priority**: P2 (PROD-1)
+**Priority**: P2 (BETA)
 **GH**: #168
 
 Current farm deletion is hard-delete (immediate, irreversible). Should be a two-phase process:
@@ -499,7 +499,7 @@ Users should be able to leave a farm they belong to (remove their own membership
 | Priority | Items | Scope |
 |----------|-------|-------|
 | **P1** | F-24 (leave farm) | MVP+ quick fix — needed for eval |
-| **P2** | F-23 (soft delete) | PROD-1 — design + retention policy |
+| **P2** | F-23 (soft delete) | BETA — design + retention policy |
 
 ---
 
@@ -541,10 +541,10 @@ Farm owners (admin/manager who created the farm) should NOT see "Leave" on their
 ### D-04: Observer onboarding — farm discovery + join request
 
 **Severity**: Feature
-**Priority**: P1 (PROD-1)
+**Priority**: P1 (BETA)
 **GH**: #181
 
-After initial login, observers see a list of available farms and can request to join. This is the APPLY workflow from PROD-1 scope. Essential for the multi-user evaluation flow.
+After initial login, observers see a list of available farms and can request to join. This is the APPLY workflow from BETA scope. Essential for the multi-user evaluation flow.
 
 ---
 
@@ -573,8 +573,8 @@ AI assistant is currently only accessible on the Farm Setup page. Should be avai
 | Priority | Items | Scope |
 |----------|-------|-------|
 | **P1** (quick) | D-01 (rename), D-03 (leave button) | MVP+ patch |
-| **P1** (design) | D-02 (admin menu), D-04 (observer join), D-05 (admin auto-assign) | PROD-1 |
-| **P2** | D-06 (AI chat everywhere) | PROD-1 |
+| **P1** (design) | D-02 (admin menu), D-04 (observer join), D-05 (admin auto-assign) | BETA |
+| **P2** | D-06 (AI chat everywhere) | BETA |
 
 ---
 

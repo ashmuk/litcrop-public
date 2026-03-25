@@ -204,7 +204,7 @@ The API is protected by Cognito JWT. For MVP+ field evaluation, we use **Option 
 | Storage | `/etc/litcrop/node.conf` (`AUTH_TOKEN` field) |
 | Refresh | `scripts/camera-node/refresh-token.sh` via cron every 50 minutes |
 | Expiry | Access tokens last 1 hour; refresh tokens last 30 days |
-| PROD-1 | Replace with Cognito machine-to-machine client credentials (no user account needed) |
+| BETA | Replace with Cognito machine-to-machine client credentials (no user account needed) |
 
 **Setup guide**: `docs/CAMERA-NODE-SETUP.md` §4
 

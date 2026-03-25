@@ -3,7 +3,7 @@
 > Date: 2026-03-21 | Updated: 2026-03-22
 > Status: REVISED — scope expanded after evaluation scenario review
 > Context: v0.9 deployed, 288 tests pass, 12 GH issues closed, PR #116 merged to main
-> Purpose: Realign remaining work into MVP+, PRODUCTION-1, PRODUCTION-2 scopes
+> Purpose: Realign remaining work into MVP+, BETA, PRODUCTION scopes
 > References: Vision.md, REQUIREMENTS.md, ARCHITECTURE.md, MVP-PLUS-ALL-ITEMS.md
 
 ---
@@ -54,13 +54,13 @@ The architecture supports all planned work — no structural changes needed for 
 > **User**: The farmer (primary persona from REQUIREMENTS.md) using their phone in the field.
 > **Question to answer**: "Can I use this daily for 2 weeks and get real value?"
 
-### PRODUCTION-1 — "Multi-User Ready"
+### BETA — "Multi-User Ready"
 
 > **Goal**: Support 5-10 users with proper infrastructure, security hardening, and operational visibility.
 > **User**: Multiple early adopters, each with their own farm.
 > **Question to answer**: "Can I invite others and trust it won't break or leak data?"
 
-### PRODUCTION-2 — "Platform Foundation"
+### PRODUCTION — "Platform Foundation"
 
 > **Goal**: Lay groundwork for IoT device ecosystem, AI-powered analysis, and growth toward a service.
 > **User**: Power users, potential service customers.
@@ -94,7 +94,7 @@ Tanaka-san wakes up at 6am in Nagano. It rained last night.
 
 **MVP+ features exercised**: F-14 (time-lapse), SF-4 (Markdown chat), existing weather/chat/tagging.
 
-### Scenario B: Setting Up a Second Farm (PRODUCTION-1 target)
+### Scenario B: Setting Up a Second Farm (BETA target)
 
 ```
 Tanaka-san has a second plot 2km away. Wants to monitor both.
@@ -108,9 +108,9 @@ Tanaka-san has a second plot 2km away. Wants to monitor both.
 7. Refresh token stored securely → NEW (S9): no XSS risk
 ```
 
-**PRODUCTION-1 features exercised**: N1 (multi-farm), F-09 (map), F-10 (elevation), #90 (settings sync), S9 (httpOnly cookies).
+**BETA features exercised**: N1 (multi-farm), F-09 (map), F-10 (elevation), #90 (settings sync), S9 (httpOnly cookies).
 
-### Scenario C: Inviting a Neighbor (PRODUCTION-2 target)
+### Scenario C: Inviting a Neighbor (PRODUCTION target)
 
 ```
 Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
@@ -124,7 +124,7 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 7. Admin (Tanaka-san) monitors both users via admin dashboard → NEW (F-09:Admin)
 ```
 
-**PRODUCTION-2 features exercised**: F-07 (IoT mgmt), V-03 (device dashboard), F-13 (sensors), enhanced admin.
+**PRODUCTION features exercised**: F-07 (IoT mgmt), V-03 (device dashboard), F-13 (sensors), enhanced admin.
 
 ---
 
@@ -149,7 +149,7 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 | 3 | CI-3 | GitHub Secrets (AWS credentials) | P0 | S |
 | 4 | CI-4 | GitHub Environment `production` with approval | P0 | S |
 
-#### Phase B: Multi-Farm Foundation (~5-7h) — NEW (pulled from PROD-1)
+#### Phase B: Multi-Farm Foundation (~5-7h) — NEW (pulled from BETA)
 
 > Driven by evaluation scenario Steps 1, 2, and 5. Required for demo farm + user farm + switching + membership.
 > **Pre-implementation actions**:
@@ -230,12 +230,12 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 
 ---
 
-### PRODUCTION-1 — "Multi-User Ready" (~12-16h)
+### BETA — "Multi-User Ready" (~12-16h)
 
 > **Theme**: Self-service membership, cross-device, operational hardening
 > **Deploy**: After April evaluation, incorporating field feedback
 > **Gate**: Invite/apply working, settings sync, IAM scoped, custom domain
-> **Note**: Multi-farm foundation (N1) moved to MVP+ — PROD-1 now builds on that foundation.
+> **Note**: Multi-farm foundation (N1) moved to MVP+ — BETA now builds on that foundation.
 
 #### Membership & Social (deferred from MVP+)
 
@@ -265,11 +265,11 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 | 40 | SSM-runtime | Runtime SSM fetch for LLM API key (enable real AI chat) | P1 | S | Unlocks live AI |
 | 41 | Desktop-polish | Full desktop layout optimization | P2 | M | FEEDBACK gap |
 
-**PRODUCTION-1 total: 13 items, ~12-16h estimated**
+**BETA total: 13 items, ~12-16h estimated**
 
 ---
 
-### PRODUCTION-2 — "Platform Foundation" (~30h+)
+### PRODUCTION — "Platform Foundation" (~30h+)
 
 > **Theme**: IoT ecosystem, AI intelligence, service readiness
 > **Deploy**: Rolling releases, feature-flagged
@@ -301,7 +301,7 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 | 40 | Live-stream | Realtime camera streaming (WebRTC/HLS) | P3 | XL | Requires Pi 4+ hardware |
 | 41 | Sprinkler | Actuator control (periodic/on-demand) | P3 | XL | Separate risk domain |
 
-**PRODUCTION-2 total: 11 items, ~30h+ estimated**
+**PRODUCTION total: 11 items, ~30h+ estimated**
 
 ---
 
@@ -311,12 +311,12 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 
 | ID | Category | Prerequisites | When to Plan |
 |----|----------|---------------|-------------|
-| V-01 | User Management | Auth (done), Multi-farm (PROD-1 N1) | After PROD-1 |
+| V-01 | User Management | Auth (done), Multi-farm (BETA N1) | After BETA |
 | V-02 | Farm Management | V-01 | After V-01 |
-| V-03 | IoT Device Management | F-07 (PROD-2) | With PROD-2 |
-| V-04 | Plans & Subscriptions | V-01, V-03 | After PROD-2 |
+| V-03 | IoT Device Management | F-07 (PROD) | With PROD |
+| V-04 | Plans & Subscriptions | V-01, V-03 | After PROD |
 | V-05 | Admin Menu Structure | V-01 through V-04 | After V-04 |
-| V-06 | Mobile App | All Production features | After PROD-2 |
+| V-06 | Mobile App | All Production features | After PROD |
 | V-07 | Service Landing Page | V-04 | With V-04 |
 
 ---
@@ -327,14 +327,14 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 
 | Vision Item | Status | Closes In |
 |-------------|--------|-----------|
-| Farm layout management (creation/editing) | Partial — creation works, editing is read-only | PROD-2 (layout editor) |
-| Camera nodes uploading images | Done (simulator + phone) | PROD-2 (real hardware F-07) |
+| Farm layout management (creation/editing) | Partial — creation works, editing is read-only | PROD (layout editor) |
+| Camera nodes uploading images | Done (simulator + phone) | PROD (real hardware F-07) |
 | **Time-lapse growth per plot** | **NOT DONE** | **MVP+ (F-14)** |
 | Manual observation and tagging | Done | — |
-| 2D layout editor | Deferred (read-only spatial view) | PROD-2 |
+| 2D layout editor | Deferred (read-only spatial view) | PROD |
 | Side-by-side comparison | Not done | MVP+ (FR-3.6) |
 | Crop impact analysis cards | Done | — |
-| AI chatbot (location-aware) | Done (stub mode) | PROD-1 (SSM → real AI) |
+| AI chatbot (location-aware) | Done (stub mode) | BETA (SSM → real AI) |
 
 ### REQUIREMENTS.md Gaps
 
@@ -343,23 +343,23 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 | FR-3.5 | Lightbox for full-size image viewing | MVP+ |
 | FR-3.6 | Side-by-side date comparison | MVP+ |
 | FR-8.1 | Map picker for location input | MVP+ (F-09) |
-| FR-9.4 | Chatbot-assisted layout creation | PROD-2 |
-| FR-9.8 | SSE streaming for chat | PROD-1 |
+| FR-9.4 | Chatbot-assisted layout creation | PROD |
+| FR-9.8 | SSE streaming for chat | BETA |
 
 ### ARCHITECTURE.md Gaps
 
 | Section | Gap | Closes In |
 |---------|-----|-----------|
-| API endpoints | No `/settings` endpoint | PROD-1 (#90) |
-| API endpoints | No `/admin/users` or `/admin/farms` | PROD-2 |
+| API endpoints | No `/settings` endpoint | BETA (#90) |
+| API endpoints | No `/admin/users` or `/admin/farms` | PROD |
 | Data flow | No time-lapse playback flow | MVP+ (F-14) |
-| Rate limiting | In-memory only, documented as caveat | PROD-1 (DynamoDB counter) |
+| Rate limiting | In-memory only, documented as caveat | BETA (DynamoDB counter) |
 
 ---
 
 ## 6. Recommended Execution Order
 
-> Updated 2026-03-22 — MVP+ expanded to 6 phases (A-F), PROD-1 phases renumbered.
+> Updated 2026-03-22 — MVP+ expanded to 6 phases (A-F), BETA phases renumbered.
 
 ```
  ═══════════════════════════════════════════════════════════════
@@ -405,7 +405,7 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
  TAG v0.19 → deployed for April field evaluation
 
  ═══════════════════════════════════════════════════════════════
- PRODUCTION-1 — Target: Post April evaluation
+ BETA — Target: Post April evaluation
  ═══════════════════════════════════════════════════════════════
 
  PHASE G — Membership & Social (~4h)
@@ -427,7 +427,7 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
  TAG v1.1 → deploy
 
  ═══════════════════════════════════════════════════════════════
- PRODUCTION-2 — Target: Ongoing, feature-flagged
+ PRODUCTION — Target: Ongoing, feature-flagged
  ═══════════════════════════════════════════════════════════════
 
  PHASE J — IoT + AI
@@ -450,14 +450,14 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 |---|----------|--------|-----------|
 | 1 | **F-14 priority** | MVP+ | Vision MVP deliverable #3, used in 4/10 use cases |
 | 2 | **F-09 map picker** | MVP+ | Integrated into farm creation wizard (Scenario Step 2) |
-| 3 | **SSE streaming** | PROD-1 | Chat works without it (stub mode until SSM fetch) |
+| 3 | **SSE streaming** | BETA | Chat works without it (stub mode until SSM fetch) |
 | 4 | **Multi-farm timing** | **MVP+ (revised)** | Evaluation scenario requires demo + user farm + switching |
 | 5 | **CI/CD in MVP+** | Yes, first | All subsequent work benefits from automated validation |
-| 6 | **Real AI chat** | PROD-1 | Need API key budget decision; stub is fine for April |
+| 6 | **Real AI chat** | BETA | Need API key budget decision; stub is fine for April |
 | 7 | **FR-3.6 side-by-side** | MVP+ if time | Phase F — nice-to-have for evaluation |
 | 8 | **Bed-grid layout** | **MVP+ (new)** | Replaces freeform plot wizard; more intuitive |
-| 9 | **Role-based membership** | **MVP+ (admin-managed)** | FARM_MEMBER records; invite/apply workflow deferred to PROD-1 |
-| 10 | **IoT device web config** | PROD-1 | Camera configured locally for April; web UI deferred |
+| 9 | **Role-based membership** | **MVP+ (admin-managed)** | FARM_MEMBER records; invite/apply workflow deferred to BETA |
+| 10 | **IoT device web config** | BETA | Camera configured locally for April; web UI deferred |
 | 11 | **Demo farm seed** | **MVP+ (new)** | Pre-seeded data enables onboarding without farm creation |
 
 ---
@@ -467,8 +467,8 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 | Scope | Items | Est. Hours | Target |
 |-------|-------|------------|--------|
 | MVP+ (v1.0) | 28 | ~22-26h | Before April field evaluation |
-| PRODUCTION-1 (v1.1) | 13 | ~12-16h | After April evaluation |
-| PRODUCTION-2 (v1.2+) | 11 | ~30h+ | Rolling releases |
+| BETA (v1.1) | 13 | ~12-16h | After April evaluation |
+| PRODUCTION (v1.2+) | 11 | ~30h+ | Rolling releases |
 | Vision (V-01..V-07) | 7 categories | TBD | Future /cc-define sessions |
 | **Total remaining** | **59** | **~64h+** | |
 
@@ -479,8 +479,8 @@ Tanaka-san's neighbor Suzuki-san wants to try LitCrop.
 | MVP+ item count | 18 | 28 (+10 new items) |
 | MVP+ hours | ~12-14h | ~22-26h (+10-12h, revised after ultrathink review) |
 | MVP+ phases | 4 (A-D) | 6 (A-F) |
-| Multi-farm (N1) | PROD-1 | MVP+ Phase B |
-| PROD-1 items | 12 | 13 (N1 removed, invite/apply/IoT-UI added) |
+| Multi-farm (N1) | BETA | MVP+ Phase B |
+| BETA items | 12 | 13 (N1 removed, invite/apply/IoT-UI added) |
 | New items added | — | ROLE, DEMO, BED, CROP, PROF, INVITE, APPLY, IOT-UI |
 | Decision D7 | Pending (Option D) | Resolved (role-based membership) |
 

@@ -158,7 +158,7 @@
 |--------|-------|
 | Total issues (all time) | 30+ (GitHub) |
 | Closed | 30 |
-| Open | 1 (#90 — PROD-1) |
+| Open | 1 (#90 — BETA) |
 | MVP+ issues created | ~15 |
 | MVP+ issues closed | ~15 |
 
