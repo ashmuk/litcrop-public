@@ -191,7 +191,7 @@ function UsersPanel({ users }: { users: AdminUserItem[] }) {
         <div key={user.user_id} style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md)">
           <div>
             <div style="font-weight:var(--font-weight-semibold)">{user.display_name || user.user_id.slice(0, 8) + '...'}</div>
-            <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('admin.preferred')}: {user.preferred_role}</div>
+            <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">{user.preferred_role}</span>
           </div>
           <div style="font-size:var(--font-size-xs);color:var(--color-gray-400)">
             {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}

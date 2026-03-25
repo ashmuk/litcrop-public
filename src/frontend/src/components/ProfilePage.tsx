@@ -31,25 +31,11 @@ function isValidLocale(value: string): value is Locale {
   return (LOCALE_OPTIONS as ReadonlyArray<string>).includes(value);
 }
 
-const JA_NAV: Record<string, string> = {
-  'nav.farm': '作物', 'nav.weather': '天気',
-  'nav.setup': 'プロフィール', 'nav.manage': 'デバイス', 'nav.admin': '管理',
-  'nav.layout': 'レイアウト',
-  'page.weather': '⛅ 天気', 'page.device': '📡 デバイス',
-};
-const EN_NAV: Record<string, string> = {
-  'nav.farm': 'Crops', 'nav.weather': 'Weather',
-  'nav.setup': 'Profile', 'nav.manage': 'Device', 'nav.admin': 'Admin',
-  'nav.layout': 'Layout',
-  'page.weather': '⛅ Weather', 'page.device': '📡 Device',
-};
-
-/** Re-translate static [data-i18n] nav labels after locale change. */
-function translateNavLabels(locale: Locale): void {
-  const map = locale === 'ja' ? JA_NAV : EN_NAV;
+/** Re-translate static [data-i18n] nav labels after locale change using the i18n system. */
+function translateNavLabels(): void {
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const key = el.getAttribute('data-i18n');
-    if (key && map[key]) el.textContent = map[key];
+    if (key) el.textContent = t(key);
   });
 }
 
@@ -240,7 +226,9 @@ export default function ProfilePage() {
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
     updateMySettings({ locale: next }).catch(() => {});
     // Re-translate static nav labels (data-i18n elements) immediately
-    translateNavLabels(next);
+    translateNavLabels();
+    // Notify Preact islands (DesktopNav) to re-render with new locale
+    window.dispatchEvent(new CustomEvent('litcrop:locale-changed'));
     showToast(t('settings.save_success'), 'success');
   }
 

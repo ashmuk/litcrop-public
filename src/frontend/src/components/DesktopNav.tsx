@@ -29,25 +29,30 @@ const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey
 export default function DesktopNav({ activeTab = 'farm' }: Props) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => getCachedIsAdmin());
+  const [, setLocaleVersion] = useState(0); // force re-render on locale change
 
   useEffect(() => {
     const user = getCurrentUser();
     if (user) setUserEmail(user.email);
 
-    // React to sign-out events from other islands
     function onSignout() {
       setUserEmail(null);
       setIsAdmin(false);
     }
-    // React to admin cache updates (fired by AuthGuard after profile fetch)
     function onAdminUpdate() {
       setIsAdmin(getCachedIsAdmin());
     }
+    function onLocaleChanged() {
+      // Increment counter to force re-render — t() reads data-locale dynamically
+      setLocaleVersion((v) => v + 1);
+    }
     window.addEventListener('litcrop:signout', onSignout);
     window.addEventListener('litcrop:admin-updated', onAdminUpdate);
+    window.addEventListener('litcrop:locale-changed', onLocaleChanged);
     return () => {
       window.removeEventListener('litcrop:signout', onSignout);
       window.removeEventListener('litcrop:admin-updated', onAdminUpdate);
+      window.removeEventListener('litcrop:locale-changed', onLocaleChanged);
     };
   }, []);
 
