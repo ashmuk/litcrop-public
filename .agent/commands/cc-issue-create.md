@@ -19,7 +19,7 @@ description: Command - Create GitHub Issues with labels and milestones from task
 Check the user's invocation for a mode flag:
 
 - **Single mode** (default): User provides a description of one task. Proceed to [Single Issue Creation](#single-issue-creation).
-- **Bulk mode** (`--bulk`): Read task boards from PLANS.md, BACKLOG.md, or docs/TASK_BREAKDOWN.md and create issues for tasks not yet tracked. Optionally filter by scope level with `--scope <level>`. Proceed to [Bulk Issue Creation](#bulk-issue-creation).
+- **Bulk mode** (`--bulk`): Read task boards from PLANS.md, BACKLOG.md, or docs/TASK-BREAKDOWN.md and create issues for tasks not yet tracked. Optionally filter by scope level with `--scope <level>`. Proceed to [Bulk Issue Creation](#bulk-issue-creation).
 
 ## Ensure Labels Exist
 

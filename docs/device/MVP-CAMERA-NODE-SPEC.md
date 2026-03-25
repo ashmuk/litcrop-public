@@ -206,7 +206,7 @@ The API is protected by Cognito JWT. For MVP+ field evaluation, we use **Option 
 | Expiry | Access tokens last 1 hour; refresh tokens last 30 days |
 | BETA | Replace with Cognito machine-to-machine client credentials (no user account needed) |
 
-**Setup guide**: `docs/CAMERA-NODE-SETUP.md` §4
+**Setup guide**: `docs/device/CAMERA-NODE-SETUP.md` §4
 
 ### 6.7 Configuration
 
@@ -348,4 +348,4 @@ The system remains extensible for LTE/SIM, solar power, and multi-node deploymen
 | `scripts/camera-node/capture.sh` | Capture + upload script (run on Pi) |
 | `scripts/camera-node/refresh-token.sh` | Cognito token refresh (cron every 50 min) |
 | `scripts/camera-node/node.conf.example` | Configuration template |
-| `docs/CAMERA-NODE-SETUP.md` | Step-by-step setup guide |
+| `docs/device/CAMERA-NODE-SETUP.md` | Step-by-step setup guide |

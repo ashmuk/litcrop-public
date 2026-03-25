@@ -142,13 +142,13 @@ Break down design into actionable tasks.
 2. Create task breakdowns using the model **Sonnet**
 3. Apply my-reviewer agent policy for validation of task breakdown
 4. Finalize outcome by this feedback loop
-5. Preserve all outcome in docs/TASK_BREAKDOWN.md
+5. Preserve all outcome in docs/TASK-BREAKDOWN.md
 6. Next: Proceed to Step 7 (Planning)
 
 ### Step 7: Planning (Model: Sonnet) — STOP gate
 Create scope-leveled execution plans respecting my-architect's scope progression (PoC → MVP → Production).
 
-1. Read docs/TASK_BREAKDOWN.md (if exists, from Step 6)
+1. Read docs/TASK-BREAKDOWN.md (if exists, from Step 6)
 2. Create plans using the model **Sonnet**, defining scope levels (PoC/MVP/Production) aligned with the scope progression recommended by my-architect
 3. Apply my-reviewer agent policy for validation of plans
 4. Finalize outcome by this feedback loop
@@ -195,7 +195,7 @@ Actions:
 7. Step 6: Task breakdown into implementable units
 8. Step 7: Scope-leveled execution plan — **STOP for user review**
 9. User resumes and proceeds to `/cc-test` then `/cc-implement`
-Result: docs/ARCHITECTURE.md, docs/PREREQUISITES.md, docs/UX-DESIGNS.md, docs/mockups/, docs/DESIGNS.md, docs/TASK_BREAKDOWN.md, PLANS.md
+Result: docs/ARCHITECTURE.md, docs/PREREQUISITES.md, docs/UX-DESIGNS.md, docs/mockups/, docs/DESIGNS.md, docs/TASK-BREAKDOWN.md, PLANS.md
 
 ### Example 2: API design only (backend)
 User says: "Design the REST API for the payment service"

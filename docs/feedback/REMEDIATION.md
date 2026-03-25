@@ -1,7 +1,7 @@
 # Remediation Report
 
 > Date: 2026-03-20
-> Review source: docs/REVIEW-FINDINGS.md
+> Review source: docs/feedback/REVIEW-FINDINGS-LEGACY.md
 > Branch: develop
 > Iterations: 1 of 3 max (residual fix applied within same iteration)
 > Status: **RESOLVED**
