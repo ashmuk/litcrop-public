@@ -516,13 +516,14 @@ router.patch('/:farmId', async (c) => {
 
 router.delete('/:farmId', async (c) => {
   const { farmId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
   if (farmId === DEMO_FARM_ID) {
     throw new ValidationError('The demo farm cannot be deleted');
   }
 
-  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  // System admin can delete any farm; farm admin/manager can delete their own
+  await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
 
   try {
     await dynamoRepo.deleteFarm(farmId);
