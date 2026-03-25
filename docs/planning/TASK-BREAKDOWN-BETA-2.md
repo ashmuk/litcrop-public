@@ -13,12 +13,12 @@
 |------|-------|------|--------|
 | Pre | Docs conflict resolution | 2/2 | **DONE** |
 | 0 | Quick wins | 7/7 | **DONE** |
-| 1 | Settings sync + tests | 1/3 | IN PROGRESS |
+| 1 | Settings sync + tests | 3/3 | **DONE** |
 | 2 | Admin dashboard | 0/1 | PLANNED |
 | 3 | Observer onboarding | 0/1 | PLANNED |
 | 4 | Admin notifications | 0/1 | PLANNED |
 | 5 | Security & quality | 0/10 | PLANNED |
-| **Total** | | **10/25** | |
+| **Total** | | **12/25** | |
 
 ---
 
@@ -47,7 +47,7 @@
 
 ## Wave 1 — Settings Sync + Tests (~2-3h)
 
-- [ ] **#90** Settings sync (cross-device) — ADR: [ADR-20260325-settings-sync.md](../decisions/ADR-20260325-settings-sync.md)
+- [x] **#90** Settings sync (cross-device) — ADR: [ADR-20260325-settings-sync.md](../decisions/ADR-20260325-settings-sync.md)
   - **Design**: Separate `#SETTINGS` DynamoDB item (not merged into profile)
   - Shared: add `SETTINGS` to `DDB_KEY_PREFIXES`, add `TempUnitSchema`, `UpdateSettingsRequestSchema`, `UserSettingsResponseSchema`
   - API: `GET /me/settings` + `PATCH /me/settings` on existing me router
@@ -57,7 +57,7 @@
   - ThemeSwitcher: add `updateMySettings({ theme })` on theme change
   - Tests: GET/PATCH /me/settings endpoint tests
   - **Files**: constants.ts, schemas/index.ts, types/api.ts, types/requests.ts, shared/index.ts, dynamodb.ts, me.ts, api.ts, ProfilePage.tsx, ThemeSwitcher.tsx
-- [ ] **C1** Admin bypass tests — in `farms.test.ts`
+- [x] **C1** Admin bypass tests — in `farms.test.ts` (6 tests, 342 total)
   - **Design**: Need `vi.stubEnv('ADMIN_EMAILS', ...)` before module import (ADMIN_EMAILS_SET cached at module level)
   - A1: Admin GET /farms returns all farms via getAllFarms
   - A2: Admin GET /farms returns empty array when no farms exist
@@ -168,6 +168,10 @@ Promoted from PROD backlog. Items from REVIEW-FINDINGS-V09.md.
 | `aa8d90d` | docs: add Beta-2 task breakdown + reshuffle scope | Pre |
 | `2a23187` | feat: Wave 0 — admin Leave, farm name edit, farm ID, guards | 0 |
 | `f80485d` | refactor: simplify ProfilePage + maxLength fix | 0 |
+| `642a383` | docs: add ADR for settings sync + update tracker with design | 1 |
+| `62bc4a9` | feat: cross-device settings sync (#90) | 1 |
+| `8880c32` | refactor: simplify settings sync + fix review findings | 1 |
+| `b5750a4` | test: add admin bypass tests for assertFarmAccess (C1) | 1 |
 
 ---
 
