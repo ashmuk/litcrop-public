@@ -82,9 +82,8 @@ export default function LoginForm() {
       // Fetch farm from API — reliable cross-device check (replaces localStorage isNewUser)
       const farm = await getMyFarm();
       if (!farm) {
-        // Observers go to Profile (to find/join farms), managers go to Setup (to create)
-        const pendingRole = localStorage.getItem('litcrop-pendingRole');
-        window.location.replace(pendingRole === 'observer' ? '/profile/' : '/setup/');
+        // All new users go to Profile — managers see New Farm button, observers see Farm Discovery
+        window.location.replace('/profile/');
         return;
       }
       try {
