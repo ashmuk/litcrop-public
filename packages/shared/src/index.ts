@@ -116,6 +116,9 @@ export {
   WeatherResponseSchema,
   ChatResponseSchema,
   UsageResponseSchema,
+  TempUnitSchema,
+  UpdateSettingsRequestSchema,
+  UserSettingsResponseSchema,
 } from './schemas/index';
 
 // Timezone utilities

@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -89,7 +89,7 @@ export default function ProfilePage() {
       }
     }).catch(() => {});
 
-    // Load settings from localStorage as initial state (will be overridden by server sync)
+    // Load settings from localStorage as initial state
     try {
       const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
       if (storedLocale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(storedLocale)) {
@@ -101,6 +101,24 @@ export default function ProfilePage() {
       const storedUnit = localStorage.getItem(TEMP_UNIT_STORAGE_KEY);
       if (storedUnit === 'C' || storedUnit === 'F') setTempUnit(storedUnit);
     } catch {}
+
+    // Sync settings from API (authoritative — overwrites localStorage)
+    getMySettings().then(s => {
+      if (s.locale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(s.locale)) {
+        setLocale(s.locale as Locale);
+        document.documentElement.setAttribute('data-locale', s.locale);
+        document.documentElement.setAttribute('lang', s.locale === 'ja' ? 'ja' : 'en');
+        try { localStorage.setItem(LOCALE_STORAGE_KEY, s.locale); } catch {}
+      }
+      if (s.temp_unit === 'C' || s.temp_unit === 'F') {
+        setTempUnit(s.temp_unit);
+        try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, s.temp_unit); } catch {}
+      }
+      if (s.theme) {
+        document.documentElement.setAttribute('data-theme', s.theme);
+        try { localStorage.setItem('litcrop-theme', s.theme); } catch {}
+      }
+    }).catch(() => {}); // non-blocking, localStorage fallback remains
   }, []);
 
   function handleSwitchFarm(farmId: string) {
@@ -185,16 +203,14 @@ export default function ProfilePage() {
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
-    // Sync to server (fire-and-forget)
-    if (activeFarmId) {
-      updateFarm(activeFarmId, { locale: next }).catch(() => {});
-    }
+    updateMySettings({ locale: next }).catch(() => {});
     showToast(t('settings.save_success'), 'success');
   }
 
   function applyTempUnit(next: 'C' | 'F') {
     setTempUnit(next);
     try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, next); } catch {}
+    updateMySettings({ temp_unit: next }).catch(() => {});
     showToast(t('settings.save_success'), 'success');
   }
 

@@ -281,6 +281,29 @@ export async function getMyProfile(): Promise<UserProfileResponse> {
   return request<UserProfileResponse>('GET', '/me/profile');
 }
 
+// ── Settings Endpoint ─────────────────────────────────────────────
+
+export interface UserSettingsResponse {
+  locale: Locale;
+  temp_unit: 'C' | 'F';
+  theme: string;
+  updated_at: string;
+}
+
+/** GET /api/v1/me/settings */
+export async function getMySettings(): Promise<UserSettingsResponse> {
+  return request<UserSettingsResponse>('GET', '/me/settings');
+}
+
+/** PATCH /api/v1/me/settings */
+export async function updateMySettings(data: {
+  locale?: Locale;
+  temp_unit?: 'C' | 'F';
+  theme?: string;
+}): Promise<UserSettingsResponse> {
+  return request<UserSettingsResponse>('PATCH', '/me/settings', data);
+}
+
 /** PATCH /api/v1/me/profile */
 export async function updateMyProfile(data: {
   display_name?: string;

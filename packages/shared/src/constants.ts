@@ -107,4 +107,5 @@ export const DDB_KEY_PREFIXES = {
   USER: 'USER#',
   FARM_MEMBER: 'FARM_MEMBER#',
   MEMBER: 'MEMBER#',
+  SETTINGS: '#SETTINGS',
 } as const;

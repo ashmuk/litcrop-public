@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
 import { ValidationError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
-import { UpdateProfileRequestSchema } from '@litcrop/shared';
+import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcrop/shared';
 
 const router = new Hono();
 
@@ -26,6 +26,28 @@ router.patch('/profile', async (c) => {
   }
   const profile = await dynamoRepo.upsertUserProfile(userId, parsed.data);
   return c.json(profile);
+});
+
+// GET /api/v1/me/settings
+router.get('/settings', async (c) => {
+  const { userId } = getAuthContext(c);
+  const settings = await dynamoRepo.getUserSettings(userId);
+  if (!settings) {
+    return c.json({ locale: 'en', temp_unit: 'C', theme: 'system', updated_at: '' });
+  }
+  return c.json(settings);
+});
+
+// PATCH /api/v1/me/settings
+router.patch('/settings', async (c) => {
+  const { userId } = getAuthContext(c);
+  const body = await c.req.json();
+  const parsed = UpdateSettingsRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ValidationError('Invalid settings data', { issues: parsed.error.issues });
+  }
+  const settings = await dynamoRepo.upsertUserSettings(userId, parsed.data);
+  return c.json(settings);
 });
 
 export default router;

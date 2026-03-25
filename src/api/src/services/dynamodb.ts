@@ -55,6 +55,7 @@ const sk = {
   tag: (createdAt: string, tagId: string) => `${DDB_KEY_PREFIXES.TAG}${createdAt}#${tagId}`,
   farmMember: (farmId: string) => `${DDB_KEY_PREFIXES.FARM_MEMBER}${farmId}`,
   member: (userId: string) => `${DDB_KEY_PREFIXES.MEMBER}${userId}`,
+  settings: () => DDB_KEY_PREFIXES.SETTINGS,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────
@@ -984,6 +985,76 @@ export class DynamoRepository {
     );
 
     return itemToUserProfile(result.Attributes as Record<string, unknown>, userId);
+  }
+
+  // ── User Settings ────────────────────────────────────────────────
+
+  /** Get a user's settings. Returns null if no settings saved yet. */
+  async getUserSettings(userId: string): Promise<{ locale: string; temp_unit: string; theme: string; updated_at: string } | null> {
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.user(userId), SK: sk.settings() },
+      }),
+    );
+    if (!result.Item) return null;
+    return {
+      locale: (result.Item['locale'] as string) ?? 'en',
+      temp_unit: (result.Item['temp_unit'] as string) ?? 'C',
+      theme: (result.Item['theme'] as string) ?? 'system',
+      updated_at: (result.Item['updated_at'] as string) ?? '',
+    };
+  }
+
+  /** Create or update a user's settings. */
+  async upsertUserSettings(
+    userId: string,
+    data: { locale?: string; temp_unit?: string; theme?: string },
+  ): Promise<{ locale: string; temp_unit: string; theme: string; updated_at: string }> {
+    const now = new Date().toISOString();
+    const setExpressions: string[] = [
+      'locale = if_not_exists(locale, :default_locale)',
+      'temp_unit = if_not_exists(temp_unit, :default_temp_unit)',
+      'theme = if_not_exists(theme, :default_theme)',
+      'updated_at = :now',
+    ];
+    const values: Record<string, unknown> = {
+      ':default_locale': 'en',
+      ':default_temp_unit': 'C',
+      ':default_theme': 'system',
+      ':now': now,
+    };
+
+    if (data.locale !== undefined) {
+      setExpressions[0] = 'locale = :locale';
+      values[':locale'] = data.locale;
+    }
+    if (data.temp_unit !== undefined) {
+      setExpressions[1] = 'temp_unit = :temp_unit';
+      values[':temp_unit'] = data.temp_unit;
+    }
+    if (data.theme !== undefined) {
+      setExpressions[2] = 'theme = :theme';
+      values[':theme'] = data.theme;
+    }
+
+    const result = await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.user(userId), SK: sk.settings() },
+        UpdateExpression: `SET ${setExpressions.join(', ')}`,
+        ExpressionAttributeValues: values,
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+
+    const item = result.Attributes as Record<string, unknown>;
+    return {
+      locale: (item['locale'] as string) ?? 'en',
+      temp_unit: (item['temp_unit'] as string) ?? 'C',
+      theme: (item['theme'] as string) ?? 'system',
+      updated_at: (item['updated_at'] as string) ?? '',
+    };
   }
 
 }

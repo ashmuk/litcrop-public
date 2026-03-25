@@ -318,6 +318,25 @@ export const UpdateProfileRequestSchema = z.object({
   preferred_role: z.enum(['manager', 'observer']).optional(),
 });
 
+// ── Settings schema ──────────────────────────────────────────────
+
+export const TempUnitSchema = z.enum(['C', 'F']);
+
+/** PATCH /api/v1/me/settings — request body */
+export const UpdateSettingsRequestSchema = z.object({
+  locale: LocaleSchema.optional(),
+  temp_unit: TempUnitSchema.optional(),
+  theme: ThemeSchema.optional(),
+});
+
+/** GET|PATCH /api/v1/me/settings — response */
+export const UserSettingsResponseSchema = z.object({
+  locale: LocaleSchema,
+  temp_unit: TempUnitSchema,
+  theme: ThemeSchema,
+  updated_at: z.string(),
+});
+
 // ── Usage schema (MVP: AI budget status) ─────────────────────────
 
 const UserBudgetSchema = z.object({
