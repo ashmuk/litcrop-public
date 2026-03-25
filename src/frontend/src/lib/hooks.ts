@@ -69,6 +69,10 @@ export function setCachedIsAdmin(value: boolean): void {
   try {
     localStorage.setItem(LS_IS_ADMIN, String(value));
   } catch {}
+  // Notify nav components to re-render with updated admin state
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('litcrop:admin-updated'));
+  }
 }
 
 type TempUnit = 'C' | 'F';

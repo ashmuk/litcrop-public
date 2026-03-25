@@ -3,7 +3,8 @@
  *
  * The mobile tab bar is static Astro HTML (.tab-bar), not a Preact component.
  * This island appends a 5th "Admin" tab using safe DOM methods when the
- * cached isAdmin flag is true.
+ * cached isAdmin flag is true. Listens for 'litcrop:admin-updated' to
+ * inject after AuthGuard caches the flag.
  */
 
 import { useEffect } from 'preact/hooks';
@@ -13,32 +14,62 @@ interface Props {
   active?: boolean;
 }
 
+function injectTab(active: boolean): void {
+  if (!getCachedIsAdmin()) return;
+  const tabBar = document.querySelector('.tab-bar');
+  if (!tabBar || tabBar.querySelector('[href="/admin/"]')) return;
+
+  const link = document.createElement('a');
+  link.href = '/admin/';
+  link.className = `tab-bar__item${active ? ' tab-bar__item--active' : ''}`;
+  link.setAttribute('aria-label', 'Admin dashboard');
+  if (active) link.setAttribute('aria-current', 'page');
+
+  const icon = document.createElement('span');
+  icon.className = 'tab-bar__icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '\u2699\uFE0F';
+
+  const label = document.createElement('span');
+  label.className = 'tab-bar__label';
+  label.setAttribute('data-i18n', 'nav.admin');
+  label.textContent = 'Admin';
+
+  link.appendChild(icon);
+  link.appendChild(label);
+  tabBar.appendChild(link);
+}
+
+function removeTab(): void {
+  const tabBar = document.querySelector('.tab-bar');
+  const adminLink = tabBar?.querySelector('[href="/admin/"]');
+  if (adminLink) adminLink.remove();
+}
+
 export default function AdminTabInjector({ active = false }: Props) {
   useEffect(() => {
-    if (!getCachedIsAdmin()) return;
-    const tabBar = document.querySelector('.tab-bar');
-    if (!tabBar || tabBar.querySelector('[href="/admin/"]')) return;
+    // Try immediately (cache may already be set from previous page)
+    injectTab(active);
 
-    const link = document.createElement('a');
-    link.href = '/admin/';
-    link.className = `tab-bar__item${active ? ' tab-bar__item--active' : ''}`;
-    link.setAttribute('aria-label', 'Admin dashboard');
-    if (active) link.setAttribute('aria-current', 'page');
+    // Listen for cache updates from AuthGuard
+    function onUpdate() {
+      if (getCachedIsAdmin()) {
+        injectTab(active);
+      } else {
+        removeTab();
+      }
+    }
+    function onSignout() {
+      removeTab();
+    }
 
-    const icon = document.createElement('span');
-    icon.className = 'tab-bar__icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = '\u2699\uFE0F';
-
-    const label = document.createElement('span');
-    label.className = 'tab-bar__label';
-    label.setAttribute('data-i18n', 'nav.admin');
-    label.textContent = 'Admin';
-
-    link.appendChild(icon);
-    link.appendChild(label);
-    tabBar.appendChild(link);
-  }, []);
+    window.addEventListener('litcrop:admin-updated', onUpdate);
+    window.addEventListener('litcrop:signout', onSignout);
+    return () => {
+      window.removeEventListener('litcrop:admin-updated', onUpdate);
+      window.removeEventListener('litcrop:signout', onSignout);
+    };
+  }, [active]);
 
   return null;
 }

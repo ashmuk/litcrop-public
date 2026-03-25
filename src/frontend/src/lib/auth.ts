@@ -94,6 +94,14 @@ function clearTokens(): void {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_EMAIL_KEY);
     localStorage.removeItem(USER_SUB_KEY);
+    // Clear all user-specific app state to prevent leaking between sessions
+    localStorage.removeItem('litcrop-isAdmin');
+    localStorage.removeItem('litcrop-locale');
+    localStorage.removeItem('litcrop-temp-unit');
+    localStorage.removeItem('litcrop-theme');
+    localStorage.removeItem('litcrop-farmId');
+    localStorage.removeItem('litcrop-farmName');
+    localStorage.removeItem('litcrop-farmList');
   } catch {
     // ignore
   }

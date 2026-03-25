@@ -28,7 +28,7 @@ const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey
 
 export default function DesktopNav({ activeTab = 'farm' }: Props) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const isAdmin = getCachedIsAdmin();
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => getCachedIsAdmin());
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -37,9 +37,18 @@ export default function DesktopNav({ activeTab = 'farm' }: Props) {
     // React to sign-out events from other islands
     function onSignout() {
       setUserEmail(null);
+      setIsAdmin(false);
+    }
+    // React to admin cache updates (fired by AuthGuard after profile fetch)
+    function onAdminUpdate() {
+      setIsAdmin(getCachedIsAdmin());
     }
     window.addEventListener('litcrop:signout', onSignout);
-    return () => window.removeEventListener('litcrop:signout', onSignout);
+    window.addEventListener('litcrop:admin-updated', onAdminUpdate);
+    return () => {
+      window.removeEventListener('litcrop:signout', onSignout);
+      window.removeEventListener('litcrop:admin-updated', onAdminUpdate);
+    };
   }, []);
 
   function handleLogout() {
