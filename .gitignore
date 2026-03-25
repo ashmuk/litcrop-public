@@ -144,6 +144,7 @@ venv.bak/
 
 # Node.js
 node_modules/
+*.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
