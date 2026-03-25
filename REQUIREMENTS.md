@@ -35,8 +35,8 @@ Onboard 1-5 early adopters matching this persona. Each must be able to register,
 | FR-1.3 | Farm Overview screen shows all plots as a grid with status indicators | Must | Single-column mobile layout; 2-column at desktop breakpoint [MVP] |
 | FR-1.4 | Plot tiles show: crop name, latest image thumbnail, status badge | Must | Status: Healthy / Slow Growth / Issue / No Data. Thumbnail = server-generated derivative at MVP (see FR-13). |
 | FR-1.5 | Tap a plot tile to navigate to Plot Detail screen | Must | Hub-and-spoke navigation |
-| FR-1.6 | `[MVP]` Each farm is associated with the authenticated user who created it | Must | `user_id` (Cognito `sub`) stored on Farm record; API enforces ownership via JWT claims |
-| FR-1.7 | `[MVP]` API endpoints for farm data enforce per-user ownership — a user can only access their own farm(s) | Must | JWT `sub` claim matched against Farm `user_id`; 403 returned for mismatches |
+| FR-1.6 | `[MVP+]` Each farm is associated with the authenticated user who created it (`user_id`). Users may own multiple farms (up to `FREE_PLAN_MAX_OWNED_FARMS`). | Must | `user_id` (Cognito `sub`) stored on Farm record. Multi-farm ownership added in Phase B (v0.11). |
+| FR-1.7 | `[MVP+]` API endpoints enforce per-membership access — a user can access farms they belong to (as owner or invited member) | Must | `FARM_MEMBER` records link users to farms with roles (`admin`, `manager`, `observer`). `assertFarmAccess()` checks membership; returns 404 for non-members. System admins (`ADMIN_EMAILS`) bypass membership for read-only access (v0.22). |
 
 ### FR-2: Image Upload (Camera Node -> Cloud)
 
@@ -114,7 +114,7 @@ Onboard 1-5 early adopters matching this persona. Each must be able to register,
 | FR-8.2 | Auto-detect climate profile from coordinates (hardiness zone, frost dates, growing season) | Should | Open-Meteo historical data or static lookup |
 | FR-8.3 | Farm name input | Must | User-defined label for their farm |
 | FR-8.4 | AI chatbot-guided farm setup option | Should | Conversational alternative to form-based setup |
-| FR-8.5 | `[MVP]` Farm setup flow begins after successful registration and first login | Must | New user is redirected to farm setup; cannot access dashboard without a farm |
+| FR-8.5 | `[MVP+]` Farm setup flow begins after successful registration and first login. Managers create farms; observers see a demo farm and can request to join existing farms. | Must | New managers are redirected to farm setup wizard. Demo farm (`DEMO_FARM_ID`) provides immediate dashboard access for all users. Observer onboarding (APPLY workflow) planned for Beta-2. |
 
 ### FR-9: AI Chatbot (Crop Planning & Advisory)
 
@@ -279,7 +279,7 @@ Based on ADR-008 (AWS CDK TypeScript).
 | NFR-7.5 | `[MVP]` JWT access tokens expire within 1 hour | -- | Cognito default; refresh tokens used for session continuity |
 | NFR-7.6 | `[MVP]` Refresh tokens expire within 30 days | -- | Cognito default; user must re-authenticate after 30 days of inactivity |
 | NFR-7.7 | `[MVP]` Access tokens stored in memory (not localStorage) | -- | Mitigates XSS token theft; refresh tokens in localStorage are lower risk |
-| NFR-7.8 | `[MVP]` Per-user data isolation: users cannot access other users' farm data | -- | JWT `sub` claim checked against Farm `user_id` in every data-access route |
+| NFR-7.8 | `[MVP+]` Per-membership data isolation: users can only access farms they are members of | -- | `assertFarmAccess()` checks `FARM_MEMBER` records. System admins bypass for read-only access. Non-members receive 404 (not 403) to prevent resource enumeration. |
 | NFR-7.9 | `[MVP]` Password hashing managed by Cognito (not custom implementation) | -- | Eliminates custom security code liability |
 | NFR-7.10 | `[MVP]` Rate limiting on authentication endpoints | -- | Cognito built-in throttling; prevents brute-force attacks |
 | NFR-7.11 | `[MVP]` CORS configuration updated for authenticated requests | -- | `credentials: true`; `Access-Control-Allow-Headers` includes `Authorization` |
@@ -530,7 +530,7 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | C-2 | Mobile-first design (320-480px primary viewport) | Vision.md | All screens designed for phone first; desktop is additive |
 | C-3 | Cloud cost < $5/month | PLANS.md exit criterion | Must use serverless/pay-per-use services |
 | C-4 | `[MVP]` Authentication via AWS Cognito User Pools | ADR-007 | API Gateway JWT Authorizer; `amazon-cognito-identity-js` on frontend |
-| C-5 | `[MVP]` Single farm per user (no multi-farm) | PLANS.md scope exclusion | Simplifies data model; multi-farm deferred to Production |
+| C-5 | `[MVP+]` Multi-farm per user with plan limits | Phase B (v0.11) | Users may own up to `FREE_PLAN_MAX_OWNED_FARMS` farms and join up to `FREE_PLAN_MAX_MEMBERSHIPS` farms. Membership model with roles (admin/manager/observer). |
 | C-6 | Git Flow branching (main <- develop <- feature/*) | RULES.md | All work on feature branches |
 | C-7 | Conventional commits required | RULES.md | feat:, fix:, docs:, etc. |
 | C-8 | `[MVP]` All infrastructure defined in CDK (TypeScript) | ADR-008 | Single stack; `cdk deploy` from CLI |
@@ -591,12 +591,12 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | Dark mode | Full (manual toggle + system preference) | FR-10.1 |
 | Desktop layout (1024px+) | `[MVP]` Implemented (promoted from PoC reference) | FR-12.x |
 | User authentication | `[MVP]` Cognito email/password, JWT authorization | FR-11.x, NFR-7.5-7.12 |
-| Per-user farm ownership | `[MVP]` JWT-based data isolation | FR-1.6, FR-1.7 |
+| Multi-farm membership | `[MVP+]` Membership-based access with roles | FR-1.6, FR-1.7, C-5 |
 | Infrastructure as Code | `[MVP]` CDK single stack, reproducible deployments | FR-14.x, NFR-8.x |
 | Image processing (thumbnails) | `[MVP]` Server-side thumbnail generation | FR-13.x |
 | Social login (Google, LINE) | Deferred to Production | -- |
 | Computer vision / AI image analysis | Deferred to Production | -- |
-| Multi-farm per user | Deferred to Production | -- |
+| Multi-farm per user | `[MVP+]` Implemented in Phase B (v0.11) | C-5, FR-1.6, FR-1.7 |
 | Custom domain | Deferred to Production | -- |
 | CI/CD pipeline | Deferred to Production | -- |
 

@@ -285,46 +285,44 @@ Standard HTTP status codes: 401 (unauthorized — API Gateway), 400 (validation)
 
 | Entity | PK | SK | Key Attributes |
 |--------|----|----|----------------|
-| Farm | `FARM#{farmId}` | `#META` | name, description, latitude, longitude, elevation_m, climate_zone, locale, theme, created_at, **user_id** |
-| Field | `FARM#{farmId}` | `FIELD#{position}#{fieldId}` | name, position |
-| Bed | `FIELD#{fieldId}` | `BED#{position}#{bedId}` | name, position |
-| Plot | `BED#{bedId}` | `PLOT#{plotId}` | label, crop_type, crop_variety, planted_at, expected_harvest, notes, latest_status, farm_id (denormalized for GSI2) |
-| Image | `PLOT#{plotId}` | `IMG#{capturedAt}#{imageId}` | node_id, trigger (scheduled/motion), uploaded_at, storage_key, **thumbnail_key** (MVP), content_type, size_bytes, **bed_id**, **field_id** (denormalized), metadata |
+| Farm | `FARM#{farmId}` | `#META` | name, description, latitude, longitude, elevation_m, climate_zone, locale, theme, grid_rows, grid_cols, created_at, **user_id** |
+| Bed | `FARM#{farmId}` | `BED#{row}#{col}#{bedId}` | name, row, col, crop_type, crop_variety, latest_status |
+| Image | `FARM#{farmId}` | `IMG#{capturedAt}#{imageId}` | node_id, trigger, uploaded_at, storage_key, **thumbnail_key**, content_type, size_bytes, **bed_id**, metadata |
 | Tag | `IMG#{imageId}` | `TAG#{createdAt}#{tagId}` | tag (enum), note |
 | **Conversation** | `CONV#{conversationId}` | `MSG#{timestamp}#{msgId}` | role (user/assistant), content, tool_use?, **TTL** (24h) |
+| **User Profile** | `USER#{userId}` | `#PROFILE` | display_name, preferred_role, created_at |
+| **Farm Member** (user→farm) | `USER#{userId}` | `FARM_MEMBER#{farmId}` | farm_id, role (admin/manager/observer), joined_at |
+| **Farm Member** (farm→user) | `FARM#{farmId}` | `MEMBER#{userId}` | user_id, role, joined_at |
 
-**MVP addition**: `user_id` (Cognito `sub`) on Farm records for per-user data isolation. Conversation history for multi-turn AI chatbot with TTL-based expiry.
+> **Data model evolution**: Phase D (v0.13) flattened Field→Bed→Plot (4 levels) to Farm→Bed (2 levels) per ADR-20260322. Phase B (v0.11) added multi-farm membership with roles. The `FARM_MEMBER` entity is stored as a dual record (user→farm and farm→user) for efficient bidirectional queries.
 
-> **Single-farm-per-user constraint (MVP)**: Each authenticated user may own at most one farm. `POST /api/v1/farms` enforces this by checking for an existing farm with the caller's `user_id` before creation, returning `409 CONFLICT` (`"Farm already exists"`) if one is found. This constraint simplifies the MVP data model and ownership checks; multi-farm support is deferred to Production.
+> **Multi-farm with plan limits**: Users may own up to `FREE_PLAN_MAX_OWNED_FARMS` farms and join up to `FREE_PLAN_MAX_MEMBERSHIPS` farms. `POST /api/v1/farms` enforces ownership limits. System admins (`ADMIN_EMAILS`) can read all farms without membership (v0.22).
 
 **Global Secondary Indexes**:
 
 | GSI | PK | SK | Purpose |
 |-----|----|----|---------|
-| GSI1 | `GSI1PK` | `GSI1SK` | Direct entity lookup by ID |
-| GSI2 | `FARM#{farmId}` | `PLOT#{plotId}` | All plots for a farm (Farm Overview) |
+| GSI1 | `GSI1PK` | `GSI1SK` | Direct entity lookup by ID (Bed, Image) |
 
 **GSI1 mappings**:
-- Plot: GSI1PK=`PLOT#{plotId}`, GSI1SK=`#META`
+- Bed: GSI1PK=`BED#{bedId}`, GSI1SK=`#META`
 - Image: GSI1PK=`IMG#{imageId}`, GSI1SK=`#META`
-
-**GSI2 mapping**:
-- Plot items include `farm_id` attribute; GSI2 flattens the hierarchy for the Farm Overview query
 
 ### Access Patterns
 
 | # | Screen | Query | DynamoDB Operation |
 |---|--------|-------|-------------------|
 | 1 | Farm Overview | Get farm metadata | Query PK=`FARM#{farmId}` SK=`#META` |
-| 2 | Farm Overview | Get all fields for farm (ordered by position) | Query PK=`FARM#{farmId}` SK begins_with `FIELD#` |
-| 2b | Farm hierarchy | Get all beds for a field (ordered by position) | Query PK=`FIELD#{fieldId}` SK begins_with `BED#` |
-| 3 | Farm Overview | Get all plots for farm | Query GSI2 PK=`FARM#{farmId}` |
-| 4 | Plot Detail | Get plot by ID | Query GSI1 PK=`PLOT#{plotId}` SK=`#META` |
-| 5 | Image Timeline | Get images for plot (paginated) | Query PK=`PLOT#{plotId}` SK begins_with `IMG#` (ScanIndexForward=false) |
-| 6 | Image View | Get image by ID | Query GSI1 PK=`IMG#{imageId}` SK=`#META` |
-| 7 | Image View | Get tags for image | Query PK=`IMG#{imageId}` SK begins_with `TAG#` |
-| 8 | Tagging | Write tag | PutItem PK=`IMG#{imageId}` SK=`TAG#{createdAt}#{tagId}` |
-| 9 | Tagging | Update plot status | UpdateItem on Plot (via GSI1 lookup first) |
+| 2 | Farm Overview | Get all beds for farm (ordered by row/col) | Query PK=`FARM#{farmId}` SK begins_with `BED#` |
+| 3 | Bed Detail | Get bed by ID | Query GSI1 PK=`BED#{bedId}` SK=`#META` |
+| 4 | Image Timeline | Get images for bed (paginated) | Query PK=`FARM#{farmId}` SK begins_with `IMG#` (filtered by bed_id) |
+| 5 | Image View | Get image by ID | Query GSI1 PK=`IMG#{imageId}` SK=`#META` |
+| 6 | Image View | Get tags for image | Query PK=`IMG#{imageId}` SK begins_with `TAG#` |
+| 7 | Tagging | Write tag | PutItem PK=`IMG#{imageId}` SK=`TAG#{createdAt}#{tagId}` |
+| 8 | Tagging | Update bed status | UpdateItem on Bed (via GSI1 lookup first) |
+| 9 | Profile | Get user's farms | Query PK=`USER#{userId}` SK begins_with `FARM_MEMBER#` |
+| 10 | Profile | Get farm members | Query PK=`FARM#{farmId}` SK begins_with `MEMBER#` |
+| 11 | Admin | Get all farms | Scan with FilterExpression PK begins_with `FARM#` AND SK=`#META` |
 
 ### Image Storage Key Convention
 
