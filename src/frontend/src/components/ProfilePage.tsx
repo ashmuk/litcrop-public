@@ -69,9 +69,8 @@ export default function ProfilePage() {
     // Load farms (also syncs settings from active farm)
     refreshFarms();
 
-    // Load user
-    const user = getCurrentUser();
-    if (user) setUserEmail(user.email);
+    // Load user email from already-resolved currentUser
+    if (currentUser) setUserEmail(currentUser.email);
 
     // Load profile (non-blocking) + sync pending role from registration
     getMyProfile().then(p => {
