@@ -31,7 +31,7 @@ export default function AuthGuard() {
         return;
       }
       setChecking(false);
-      // Cache admin flag on every page load (non-blocking)
+      // Cache admin flag for nav components (non-blocking, deduped by setCachedIsAdmin change guard)
       getMyProfile().then(p => setCachedIsAdmin(p.is_admin === true)).catch(() => {});
     }
     check();
