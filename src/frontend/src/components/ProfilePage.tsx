@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -57,6 +57,7 @@ export default function ProfilePage() {
   const [editingFarmName, setEditingFarmName] = useState<string | null>(null);
   const [farmNameDraft, setFarmNameDraft] = useState('');
   const [savingFarmName, setSavingFarmName] = useState(false);
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   const activeFarmId = useLocalFarmId('');
 
   // Settings state (settingsDirty prevents API overwriting user's in-flight changes)
@@ -78,6 +79,17 @@ export default function ProfilePage() {
           setLocale(activeFarm.locale);
           try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
           document.documentElement.setAttribute('data-locale', activeFarm.locale);
+        }
+        // Fetch pending join request counts for admin/manager farms (non-blocking)
+        const adminFarms = (list as FarmWithRole[]).filter((f) => f.role === 'admin' || f.role === 'manager');
+        if (adminFarms.length > 0) {
+          Promise.all(
+            adminFarms.map((f) => getJoinRequests(f.id).then((r) => [f.id, r.length] as const).catch(() => [f.id, 0] as const)),
+          ).then((counts) => {
+            const map: Record<string, number> = {};
+            for (const [id, count] of counts) map[id] = count;
+            setPendingCounts(map);
+          });
         }
       })
       .catch(() => {})
@@ -210,7 +222,12 @@ export default function ProfilePage() {
     setFarmMembers(null);
     setDetailLoading(true);
     try {
-      setFarmMembers(await getFarmMembers(farmId));
+      const [members, pending] = await Promise.all([
+        getFarmMembers(farmId),
+        getJoinRequests(farmId).catch(() => []),
+      ]);
+      setFarmMembers(members);
+      setPendingCounts((prev) => ({ ...prev, [farmId]: pending.length }));
     } catch {
       setFarmMembers([]);
     } finally {
@@ -384,6 +401,11 @@ export default function ProfilePage() {
                         {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m ${t('profile.elevation_short')}`}
                         {farm.elevation_m != null && ' · '}
                         {farm.grid_rows}×{farm.grid_cols} {t('profile.beds')}
+                        {isAdmin && pendingCounts[farm.id] > 0 && (
+                          <span style="color:var(--color-primary);font-weight:var(--font-weight-semibold)">
+                            {' · '}{pendingCounts[farm.id]} {t('join_requests.pending_count')}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-2)">
