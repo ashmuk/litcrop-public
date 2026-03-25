@@ -35,11 +35,13 @@ const JA_NAV: Record<string, string> = {
   'nav.farm': '作物', 'nav.weather': '天気',
   'nav.setup': 'プロフィール', 'nav.manage': 'デバイス', 'nav.admin': '管理',
   'nav.layout': 'レイアウト',
+  'page.weather': '⛅ 天気', 'page.device': '📡 デバイス',
 };
 const EN_NAV: Record<string, string> = {
   'nav.farm': 'Crops', 'nav.weather': 'Weather',
   'nav.setup': 'Profile', 'nav.manage': 'Device', 'nav.admin': 'Admin',
   'nav.layout': 'Layout',
+  'page.weather': '⛅ Weather', 'page.device': '📡 Device',
 };
 
 /** Re-translate static [data-i18n] nav labels after locale change. */

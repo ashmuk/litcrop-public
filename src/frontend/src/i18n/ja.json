@@ -7,6 +7,10 @@
     "layout": "レイアウト",
     "admin": "管理"
   },
+  "page": {
+    "weather": "⛅ 天気",
+    "device": "📡 デバイス"
+  },
   "status": {
     "healthy": "健全",
     "slow_growth": "生育不良",
@@ -81,7 +85,10 @@
     "no_alerts": "現在の警報はありません",
     "impact_frost_risk": "霜のリスク",
     "impact_heat_stress": "高温ストレス",
-    "impact_heavy_rain": "大雨"
+    "impact_heavy_rain": "大雨",
+    "alert_frost": "霜に弱い作物にリスクがあります。今後数日の気温にご注意ください。",
+    "alert_heat": "高温による作物へのストレスが予想されます。",
+    "alert_rain": "大雨の予報です。排水をご確認ください。"
   },
   "settings": {
     "theme": "テーマ",
@@ -302,7 +309,8 @@
     "no_farms": "ファームが見つかりません。",
     "joined": "参加日",
     "members": "メンバー",
-    "grid": "グリッド"
+    "grid": "グリッド",
+    "preferred": "希望ロール"
   },
   "bed": {
     "empty": "空",
