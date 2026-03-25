@@ -31,6 +31,20 @@ function translateImpactTitle(title: string, tl: (key: string) => string): strin
   return key ? tl(key) : title;
 }
 
+const ALERT_I18N: Record<string, string> = {
+  frost: 'weather.alert_frost',
+  heat: 'weather.alert_heat',
+  rain: 'weather.alert_rain',
+};
+
+function translateAlertMessage(alert: { type: string; message: string }, tl: (key: string) => string): string {
+  const key = ALERT_I18N[alert.type];
+  if (!key) return alert.message;
+  const translated = tl(key);
+  // If the i18n key returns the key itself (not found), fall back to original
+  return translated === key ? alert.message : translated;
+}
+
 function formatHour(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', hour12: false });
 }
@@ -157,7 +171,7 @@ export default function WeatherView({ farmId }: Props) {
           aria-live="assertive"
         >
           <span aria-hidden="true">{alert.severity === 'danger' ? '🚨' : '⚠️'}</span>
-          <span>{alert.message}</span>
+          <span>{translateAlertMessage(alert, tl)}</span>
         </div>
       ))}
 

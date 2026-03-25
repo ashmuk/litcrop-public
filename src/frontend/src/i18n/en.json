@@ -7,6 +7,10 @@
     "layout": "Layout",
     "admin": "Admin"
   },
+  "page": {
+    "weather": "⛅ Weather",
+    "device": "📡 Device"
+  },
   "status": {
     "healthy": "Healthy",
     "slow_growth": "Slow Growth",
@@ -81,7 +85,10 @@
     "no_alerts": "No active alerts",
     "impact_frost_risk": "Frost Risk",
     "impact_heat_stress": "Heat Stress",
-    "impact_heavy_rain": "Heavy Rain"
+    "impact_heavy_rain": "Heavy Rain",
+    "alert_frost": "Frost-sensitive crops may be at risk in the coming days.",
+    "alert_heat": "High temperatures may stress crops in the coming days.",
+    "alert_rain": "Heavy rain expected — check drainage."
   },
   "settings": {
     "theme": "Theme",
@@ -302,7 +309,8 @@
     "no_farms": "No farms found.",
     "joined": "Joined",
     "members": "members",
-    "grid": "grid"
+    "grid": "grid",
+    "preferred": "Preferred role"
   },
   "bed": {
     "empty": "Empty",
