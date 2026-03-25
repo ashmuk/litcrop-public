@@ -20,6 +20,17 @@ const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   info: 'status-nodata',
 };
 
+const IMPACT_TITLE_KEYS: Record<string, string> = {
+  'Frost Risk': 'weather.impact_frost_risk',
+  'Heat Stress': 'weather.impact_heat_stress',
+  'Heavy Rain': 'weather.impact_heavy_rain',
+};
+
+function translateImpactTitle(title: string, tl: (key: string) => string): string {
+  const key = IMPACT_TITLE_KEYS[title];
+  return key ? tl(key) : title;
+}
+
 function formatHour(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', hour12: false });
 }
@@ -289,7 +300,7 @@ export default function WeatherView({ farmId }: Props) {
                     role="region"
                     aria-label={card.title}
                   >
-                    <div style="font-weight:var(--font-weight-semibold)">{card.title}</div>
+                    <div style="font-weight:var(--font-weight-semibold)">{translateImpactTitle(card.title, tl)}</div>
                     <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
                       {card.description}
                     </div>

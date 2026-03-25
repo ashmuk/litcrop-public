@@ -78,7 +78,10 @@
     "weekly": "7-Day",
     "alerts": "Alerts",
     "crop_impact": "Crop Impact",
-    "no_alerts": "No active alerts"
+    "no_alerts": "No active alerts",
+    "impact_frost_risk": "Frost Risk",
+    "impact_heat_stress": "Heat Stress",
+    "impact_heavy_rain": "Heavy Rain"
   },
   "settings": {
     "theme": "Theme",
