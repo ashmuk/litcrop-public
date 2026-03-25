@@ -503,10 +503,86 @@ Users should be able to leave a farm they belong to (remove their own membership
 
 ---
 
-> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 6)
+## Round 7 Findings (2026-03-25) — Navigation Restructure & Role UX
+
+> Tester: Muk (Admin)
+> Context: Role-based navigation and onboarding flow design
+
+### D-01: Rename [Manage] → [Device] for IoT monitoring
+
+**Severity**: UX rename
+**Priority**: P1
+**GH**: #178
+
+[Manage] menu is specifically for device/camera monitoring profiles. Rename to [Device] (デバイス) to clarify purpose.
+
+---
+
+### D-02: Add admin-only [Manage] menu for admin dashboard
+
+**Severity**: Feature
+**Priority**: P1
+**GH**: #179
+
+New [Manage] menu at right end of nav, visible only to admin accounts. Serves as admin dashboard (user management, farm overview, system stats). Distinct from [Device] (camera monitoring).
+
+---
+
+### D-03: Hide "Leave" button for farm owners
+
+**Severity**: Bug
+**Priority**: P1
+**GH**: #180
+
+Farm owners (admin/manager who created the farm) should NOT see "Leave" on their own farm. Currently the check uses `farm.role !== 'admin'`, but managers who own farms should also not see Leave. The distinction is owner vs invited member.
+
+---
+
+### D-04: Observer onboarding — farm discovery + join request
+
+**Severity**: Feature
+**Priority**: P1 (PROD-1)
+**GH**: #181
+
+After initial login, observers see a list of available farms and can request to join. This is the APPLY workflow from PROD-1 scope. Essential for the multi-user evaluation flow.
+
+---
+
+### D-05: Admin auto-assigned to all farms
+
+**Severity**: Feature
+**Priority**: P1
+**GH**: #182
+
+Admin account is automatically a member of all farms with admin role. Can switch between farms and delete any farm. This enables admin monitoring and management without manual membership setup.
+
+---
+
+### D-06: AI chat visible on all pages, not just Farm Setup
+
+**Severity**: Feature
+**Priority**: P2
+**GH**: #183
+
+AI assistant is currently only accessible on the Farm Setup page. Should be available during daily monitoring (Crops page, Bed Detail) — the primary use case is asking about crop observations in the field.
+
+---
+
+## Priority Summary — Round 7 (2026-03-25)
+
+| Priority | Items | Scope |
+|----------|-------|-------|
+| **P1** (quick) | D-01 (rename), D-03 (leave button) | MVP+ patch |
+| **P1** (design) | D-02 (admin menu), D-04 (observer join), D-05 (admin auto-assign) | PROD-1 |
+| **P2** | D-06 (AI chat everywhere) | PROD-1 |
+
+---
+
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-25 (round 7)
 > Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
 > Round 2: 7 items fixed (PRs #146–#148, issues #139–#145 closed)
 > Round 3: 3 items (F-04, F-08, #90 partial) fixed (PR #149)
 > Round 4: 7 items fixed (PR #158, issues #151–#157 closed)
 > Round 5: 5 items fixed (PR #165, issues #159,#161-#164 closed) + 2 CORS hotfixes (#166,#167)
-> Round 6: 2 items filed (F-23 soft delete, F-24 leave farm)
+> Round 6: 2 items (F-23 soft delete deferred, F-24 leave farm fixed)
+> Round 7: 6 items filed (D-01..D-06) — navigation restructure + role UX
