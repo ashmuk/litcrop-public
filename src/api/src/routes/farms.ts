@@ -247,10 +247,10 @@ router.post('/:farmId/join', async (c) => {
     throw new ValidationError(`Membership limit reached (max ${FREE_PLAN_MAX_MEMBERSHIPS})`);
   }
 
-  // Check for existing pending request
-  const pendingRequest = await dynamoRepo.getJoinRequest(farmId, userId);
-  if (pendingRequest) {
-    throw new ConflictError(`Join request already ${pendingRequest.status}`);
+  // Check for existing pending/approved request (rejected requests allow re-apply)
+  const existingRequest = await dynamoRepo.getJoinRequest(farmId, userId);
+  if (existingRequest && existingRequest.status !== 'rejected') {
+    throw new ConflictError('Join request already pending or approved');
   }
 
   // Get display name for denormalization
@@ -296,6 +296,11 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
 
   try {
     if (action === 'approve') {
+      // Check target user's membership limit before approving
+      const membershipCount = await dynamoRepo.countUserMemberships(targetUserId);
+      if (membershipCount >= FREE_PLAN_MAX_MEMBERSHIPS) {
+        throw new ValidationError(`User has reached membership limit (max ${FREE_PLAN_MAX_MEMBERSHIPS})`);
+      }
       await dynamoRepo.approveJoinRequest(farmId, targetUserId, userId);
     } else {
       await dynamoRepo.rejectJoinRequest(farmId, targetUserId, userId);

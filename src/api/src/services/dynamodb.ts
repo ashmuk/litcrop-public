@@ -1177,7 +1177,7 @@ export class DynamoRepository {
               ExpressionAttributeValues: { ':approved': 'approved', ':pending': 'pending', ':now': now, ':by': resolvedBy },
             },
           },
-          ...membershipTransactItems(farmId, userId, 'observer', now),
+          ...buildMembershipItems(userId, farmId, 'observer', now),
         ],
       }),
     );
@@ -1218,7 +1218,11 @@ export class DynamoRepository {
     }));
   }
 
-  /** Get discoverable farms (where discoverable != false). Excludes demo farm. */
+  /**
+   * Get discoverable farms. Excludes demo farm.
+   * Beta-2: All non-demo farms are discoverable by default.
+   * PROD: Add `discoverable: boolean` flag to Farm entity for opt-out.
+   */
   async getDiscoverableFarms(): Promise<Farm[]> {
     const allFarms = await this.getAllFarms();
     return allFarms.filter((f) => f.id !== DEMO_FARM_ID);
