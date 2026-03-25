@@ -84,8 +84,10 @@
 
 ## Wave 3 — Observer Onboarding (~4-6h)
 
-- [ ] **#181** Observer onboarding (APPLY workflow)
-  - Needs `/cc-design` before implementation
+- [ ] **#181** Observer onboarding (APPLY workflow) — design: [UX-DESIGNS-observer-onboarding.md](../designs/UX-DESIGNS-observer-onboarding.md)
+  - Phase 1: Backend — JOIN_REQUEST entity, sk.joinRequest(), 5 API endpoints, tests
+  - Phase 2: Email — services/email.ts notifyAdmin(), CDK SES identity + IAM
+  - Phase 3: Frontend — FarmDiscovery.tsx, JoinRequestList.tsx, ProfilePage integration
   - Data model: join request entity in DynamoDB
   - API: POST join, GET join-requests, PATCH approve/reject, GET discoverable
   - Frontend: observer wizard farm picker (F4), approval UI in admin dashboard
@@ -95,8 +97,10 @@
 
 ## Wave 4 — Admin Notifications (~3-4h)
 
-- [ ] **#187** Admin email notifications
-  - Needs `/cc-design` alongside #179
+- [ ] **#187** Admin email notifications — designed with #181 in [UX-DESIGNS-observer-onboarding.md](../designs/UX-DESIGNS-observer-onboarding.md)
+  - services/email.ts with notifyAdmin() (fire-and-forget SES)
+  - CDK: EmailIdentity + ses:SendEmail IAM grant
+  - Events: account creation, farm CRUD, member join/leave, join request
   - Infra: SES/SNS in CDK stack
   - API: `notifyAdmin()` utility, hook into farm/member events
   - Events: account creation, farm CRUD, member join/leave
