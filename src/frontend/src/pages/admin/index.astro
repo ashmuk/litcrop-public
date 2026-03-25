@@ -1,17 +1,21 @@
 ---
 /**
- * Admin Stats — operator dashboard for entity counts and global budget.
- * Accessible at /admin/ — no nav tab link, admin-only.
+ * Admin Dashboard — #179
+ * Tabbed admin interface: System stats, Users, Farms.
+ * Accessible at /admin/ — visible in nav only for admins.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import AdminStats from '../../components/AdminStats';
+import AdminDashboard from '../../components/AdminDashboard';
 ---
 
-<BaseLayout title="LitCrop — Admin" activeTab="">
-  <nav class="nav-header" aria-label="Page navigation">
-    <a href="/" class="nav-header__back" aria-label="Back to Home">←</a>
-    <span class="nav-header__title">Admin</span>
-  </nav>
+<BaseLayout title="LitCrop — Admin" activeTab="admin">
+  <div
+    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
+  >
+    <h1 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
+      Admin
+    </h1>
+  </div>
 
-  <AdminStats client:load />
+  <AdminDashboard client:load />
 </BaseLayout>

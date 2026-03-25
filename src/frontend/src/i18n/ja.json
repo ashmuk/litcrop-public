@@ -4,7 +4,8 @@
     "weather": "天気",
     "setup": "プロフィール",
     "manage": "デバイス",
-    "layout": "レイアウト"
+    "layout": "レイアウト",
+    "admin": "管理"
   },
   "status": {
     "healthy": "健全",
@@ -271,6 +272,16 @@
     "last_upload": "最終アップロード",
     "image_count": "画像数",
     "target_bed": "対象ベッド"
+  },
+  "admin": {
+    "system": "システム",
+    "users": "ユーザー",
+    "farms": "ファーム",
+    "no_users": "登録ユーザーが見つかりません。",
+    "no_farms": "ファームが見つかりません。",
+    "joined": "参加日",
+    "members": "メンバー",
+    "grid": "グリッド"
   },
   "bed": {
     "empty": "空",

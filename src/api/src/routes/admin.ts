@@ -48,4 +48,53 @@ router.get('/stats', async (c) => {
   }
 });
 
+// ── GET /api/v1/admin/users ───────────────────────────────────────
+
+router.get('/users', async (c) => {
+  const { userId } = getAuthContext(c);
+  if (!getAdminIds().includes(userId)) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Not authorized' } }, 403);
+  }
+
+  try {
+    const profiles = await dynamoRepo.getAllUserProfiles();
+    return c.json({ users: profiles, total: profiles.length });
+  } catch (err) {
+    console.error('[admin] failed to fetch users', err);
+    throw new ServiceUnavailableError('Unable to retrieve user list');
+  }
+});
+
+// ── GET /api/v1/admin/farms ───────────────────────────────────────
+
+router.get('/farms', async (c) => {
+  const { userId } = getAuthContext(c);
+  if (!getAdminIds().includes(userId)) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Not authorized' } }, 403);
+  }
+
+  try {
+    const farms = await dynamoRepo.getAllFarms();
+    const farmsWithCounts = await Promise.all(
+      farms.map(async (farm) => {
+        const members = await dynamoRepo.getFarmMembers(farm.id);
+        return {
+          id: farm.id,
+          name: farm.name,
+          latitude: farm.latitude,
+          longitude: farm.longitude,
+          grid_rows: farm.grid_rows,
+          grid_cols: farm.grid_cols,
+          member_count: members.length,
+          created_at: farm.created_at,
+        };
+      }),
+    );
+    return c.json({ farms: farmsWithCounts, total: farmsWithCounts.length });
+  } catch (err) {
+    console.error('[admin] failed to fetch farms', err);
+    throw new ServiceUnavailableError('Unable to retrieve farm list');
+  }
+});
+
 export default router;

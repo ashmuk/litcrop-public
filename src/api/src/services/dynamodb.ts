@@ -1009,6 +1009,31 @@ export class DynamoRepository {
     return itemToUserProfile(result.Attributes as Record<string, unknown>, userId);
   }
 
+  /** List all user profiles (admin-only). Scan with PK prefix + SK filter. */
+  async getAllUserProfiles(): Promise<UserProfile[]> {
+    const profiles: UserProfile[] = [];
+    let lastKey: Record<string, unknown> | undefined;
+    do {
+      const result = await ddb.send(
+        new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: 'begins_with(PK, :prefix) AND SK = :profile',
+          ExpressionAttributeValues: {
+            ':prefix': DDB_KEY_PREFIXES.USER,
+            ':profile': '#PROFILE',
+          },
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      for (const item of result.Items ?? []) {
+        const userId = (item['PK'] as string).slice(DDB_KEY_PREFIXES.USER.length);
+        profiles.push(itemToUserProfile(item, userId));
+      }
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+    return profiles;
+  }
+
   // ── User Settings ────────────────────────────────────────────────
 
   /** Get a user's settings. Returns null if no settings saved yet. */

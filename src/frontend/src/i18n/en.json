@@ -4,7 +4,8 @@
     "weather": "Weather",
     "setup": "Profile",
     "manage": "Device",
-    "layout": "Layout"
+    "layout": "Layout",
+    "admin": "Admin"
   },
   "status": {
     "healthy": "Healthy",
@@ -271,6 +272,16 @@
     "last_upload": "Last Upload",
     "image_count": "Images",
     "target_bed": "Target Bed"
+  },
+  "admin": {
+    "system": "System",
+    "users": "Users",
+    "farms": "Farms",
+    "no_users": "No registered users found.",
+    "no_farms": "No farms found.",
+    "joined": "Joined",
+    "members": "members",
+    "grid": "grid"
   },
   "bed": {
     "empty": "Empty",

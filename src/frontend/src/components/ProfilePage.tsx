@@ -10,7 +10,7 @@ import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
 import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
-import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
+import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
@@ -84,6 +84,7 @@ export default function ProfilePage() {
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
       if (p.is_admin) setIsSystemAdmin(true);
+      setCachedIsAdmin(p.is_admin);
       // Sync pending role from registration (no auth token was available post-confirm)
       const pendingRole = localStorage.getItem('litcrop-pendingRole');
       if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {

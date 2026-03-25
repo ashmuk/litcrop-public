@@ -330,3 +330,31 @@ export interface AdminStatsResponse {
 export async function getAdminStats(): Promise<AdminStatsResponse> {
   return request<AdminStatsResponse>('GET', '/admin/stats');
 }
+
+export interface AdminUserItem {
+  user_id: string;
+  display_name: string;
+  preferred_role: 'manager' | 'observer';
+  created_at: string;
+}
+
+export interface AdminFarmItem {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  grid_rows: number;
+  grid_cols: number;
+  member_count: number;
+  created_at: string;
+}
+
+/** GET /api/v1/admin/users — admin only */
+export async function getAdminUsers(): Promise<{ users: AdminUserItem[]; total: number }> {
+  return request<{ users: AdminUserItem[]; total: number }>('GET', '/admin/users');
+}
+
+/** GET /api/v1/admin/farms — admin only */
+export async function getAdminFarms(): Promise<{ farms: AdminFarmItem[]; total: number }> {
+  return request<{ farms: AdminFarmItem[]; total: number }>('GET', '/admin/farms');
+}
