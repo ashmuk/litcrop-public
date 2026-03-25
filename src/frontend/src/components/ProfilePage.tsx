@@ -84,7 +84,7 @@ export default function ProfilePage() {
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
       if (p.is_admin) setIsSystemAdmin(true);
-      setCachedIsAdmin(p.is_admin);
+      setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
       const pendingRole = localStorage.getItem('litcrop-pendingRole');
       if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {

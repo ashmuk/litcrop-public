@@ -28,7 +28,7 @@ const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey
 
 export default function DesktopNav({ activeTab = 'farm' }: Props) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => getCachedIsAdmin());
+  const isAdmin = getCachedIsAdmin();
 
   useEffect(() => {
     const user = getCurrentUser();

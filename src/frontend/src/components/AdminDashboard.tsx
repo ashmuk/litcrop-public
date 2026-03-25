@@ -6,6 +6,7 @@
  * URL hash routing for bookmarkability.
  */
 
+import type { JSX } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { getAdminStats, getAdminUsers, getAdminFarms, ApiError } from '../lib/api';
 import type { AdminStatsResponse, AdminUserItem, AdminFarmItem } from '../lib/api';
@@ -29,12 +30,20 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(false);
   const [farmsLoading, setFarmsLoading] = useState(false);
+  const [farmsError, setFarmsError] = useState(false);
 
-  // Fetch stats on mount (also gates 403)
+  // Fetch stats on mount (also gates 403), then lazy-load the active tab's data
   useEffect(() => {
     getAdminStats()
-      .then((data) => { setStats(data); setLoading(false); })
+      .then((data) => {
+        setStats(data);
+        setLoading(false);
+        // If the URL hash pointed to users/farms, trigger their lazy fetch now
+        if (activeTab === 'users') fetchUsers();
+        if (activeTab === 'farms') fetchFarms();
+      })
       .catch((err) => {
         if (err instanceof ApiError && err.statusCode === 403) setForbidden(true);
         setLoading(false);
@@ -50,20 +59,28 @@ export default function AdminDashboard() {
 
   async function fetchUsers() {
     setUsersLoading(true);
+    setUsersError(false);
     try {
       const data = await getAdminUsers();
       setUsers(data.users);
-    } catch { /* silent — stats 403 already gates */ }
-    finally { setUsersLoading(false); }
+    } catch {
+      setUsersError(true);
+    } finally {
+      setUsersLoading(false);
+    }
   }
 
   async function fetchFarms() {
     setFarmsLoading(true);
+    setFarmsError(false);
     try {
       const data = await getAdminFarms();
       setFarms(data.farms);
-    } catch { /* silent */ }
-    finally { setFarmsLoading(false); }
+    } catch {
+      setFarmsError(true);
+    } finally {
+      setFarmsLoading(false);
+    }
   }
 
   if (forbidden) {
@@ -110,14 +127,8 @@ export default function AdminDashboard() {
       {/* Tab panels */}
       <div role="tabpanel" id={`panel-${activeTab}`} aria-live="polite" style="padding:var(--space-4)">
         {activeTab === 'system' && stats && <SystemPanel stats={stats} />}
-        {activeTab === 'users' && (usersLoading
-          ? <SkeletonRows />
-          : users ? <UsersPanel users={users} /> : null
-        )}
-        {activeTab === 'farms' && (farmsLoading
-          ? <SkeletonRows />
-          : farms ? <FarmsPanel farms={farms} /> : null
-        )}
+        {activeTab === 'users' && renderDataPanel(usersLoading, usersError, users, (u) => <UsersPanel users={u} />)}
+        {activeTab === 'farms' && renderDataPanel(farmsLoading, farmsError, farms, (f) => <FarmsPanel farms={f} />)}
       </div>
     </div>
   );
@@ -131,11 +142,25 @@ function SkeletonRows() {
   );
 }
 
+/** Renders a loading skeleton, error message, data panel, or nothing based on fetch state. */
+function renderDataPanel<T>(isLoading: boolean, hasError: boolean, data: T | null, render: (data: T) => JSX.Element): JSX.Element | null {
+  if (isLoading) return <SkeletonRows />;
+  if (hasError) {
+    return (
+      <div style="color:var(--color-gray-500);text-align:center;padding:var(--space-6)">
+        Failed to load data. Please try again later.
+      </div>
+    );
+  }
+  if (data) return render(data);
+  return null;
+}
+
 function SystemPanel({ stats }: { stats: AdminStatsResponse }) {
   return (
     <div style="display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-      <StatCard label="Farms" value={stats.entity_counts.farms} />
-      <StatCard label="Users" value={stats.entity_counts.users} />
+      <StatCard label={t('admin.farms')} value={stats.entity_counts.farms} />
+      <StatCard label={t('admin.users')} value={stats.entity_counts.users} />
       <StatCard label="Beds" value={stats.entity_counts.beds} />
       {stats.global_budget && (
         <StatCard

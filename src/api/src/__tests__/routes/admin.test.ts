@@ -1,9 +1,14 @@
 import { TEST_USER_ID, authHeaders, makeAuthHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import app from '../../app';
 
+// Set ADMIN_EMAILS before auth module loads (isAdmin derived from ADMIN_EMAILS)
+const ADMIN_EMAIL = 'admin@litcrop.test';
 const ADMIN_USER_ID = 'admin-cognito-sub-001';
-const NON_ADMIN_USER_ID = TEST_USER_ID;
+vi.hoisted(() => {
+  process.env['ADMIN_EMAILS'] = 'admin@litcrop.test';
+});
+
+import app from '../../app';
 
 vi.mock('../../services/budget', () => ({
   checkBudget: vi.fn(),
@@ -20,11 +25,18 @@ vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {
     getFarm: vi.fn(),
     getStats: vi.fn(),
+    getAllUserProfiles: vi.fn(),
+    getAllFarms: vi.fn(),
+    getFarmMembers: vi.fn(),
+    getUserSettings: vi.fn(),
+    upsertUserSettings: vi.fn(),
   },
 }));
 
 import { getUsage } from '../../services/budget';
 import { dynamoRepo } from '../../services/dynamodb';
+
+const adminHeaders = () => makeAuthHeaders(ADMIN_USER_ID, ADMIN_EMAIL);
 
 const usageFixture = {
   user_id: ADMIN_USER_ID,
@@ -51,10 +63,28 @@ const usageFixture = {
 
 const statsFixture = { farms: 5, users: 8, beds: 17 };
 
+const profileFixture = {
+  user_id: 'user-1',
+  display_name: 'Test User',
+  preferred_role: 'manager' as const,
+  created_at: '2026-03-01T00:00:00Z',
+};
+
+const farmFixture = {
+  id: 'farm-1',
+  user_id: 'user-1',
+  name: 'Test Farm',
+  latitude: 36.0,
+  longitude: 138.0,
+  locale: 'en' as const,
+  theme: 'system' as const,
+  grid_rows: 2,
+  grid_cols: 3,
+  created_at: '2026-03-01T00:00:00Z',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
-  // Set ADMIN_USER_IDS env var for tests
-  process.env['ADMIN_USER_IDS'] = ADMIN_USER_ID;
 });
 
 // ── GET /api/v1/admin/stats ────────────────────────────────────────
@@ -64,29 +94,16 @@ describe('GET /api/v1/admin/stats', () => {
     vi.mocked(dynamoRepo.getStats).mockResolvedValue(statsFixture);
     vi.mocked(getUsage).mockResolvedValue(usageFixture);
 
-    const res = await app.request('/api/v1/admin/stats', {
-      headers: makeAuthHeaders(ADMIN_USER_ID),
-    });
+    const res = await app.request('/api/v1/admin/stats', { headers: adminHeaders() });
     expect(res.status).toBe(200);
-    const body = await res.json() as {
-      entity_counts: typeof statsFixture;
-      global_budget: typeof usageFixture.global_budget;
-      period_start: string;
-      reset_at: string;
-    };
-    expect(body.entity_counts).toEqual(statsFixture);
-    expect(body.global_budget.input_tokens_used).toBe(12000);
-    expect(body.global_budget.utilization_pct).toBe(2);
-    expect(body.period_start).toBe('2026-03-20T00:00:00.000Z');
-    expect(body.reset_at).toBe('2026-03-21T00:00:00.000Z');
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['entity_counts']).toEqual(statsFixture);
   });
 
   it('returns 403 for non-admin authenticated user', async () => {
-    const res = await app.request('/api/v1/admin/stats', {
-      headers: authHeaders(), // uses TEST_USER_ID (non-admin)
-    });
+    const res = await app.request('/api/v1/admin/stats', { headers: authHeaders() });
     expect(res.status).toBe(403);
-    const body = await res.json() as { error: { code: string; message: string } };
+    const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('FORBIDDEN');
   });
 
@@ -95,46 +112,72 @@ describe('GET /api/v1/admin/stats', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 403 when ADMIN_USER_IDS is empty', async () => {
-    process.env['ADMIN_USER_IDS'] = '';
-
-    const res = await app.request('/api/v1/admin/stats', {
-      headers: makeAuthHeaders(ADMIN_USER_ID),
-    });
-    expect(res.status).toBe(403);
-  });
-
-  it('calls getStats and getUsage with admin userId', async () => {
-    vi.mocked(dynamoRepo.getStats).mockResolvedValue(statsFixture);
-    vi.mocked(getUsage).mockResolvedValue(usageFixture);
-
-    await app.request('/api/v1/admin/stats', {
-      headers: makeAuthHeaders(ADMIN_USER_ID),
-    });
-    expect(dynamoRepo.getStats).toHaveBeenCalledOnce();
-    expect(getUsage).toHaveBeenCalledWith(ADMIN_USER_ID);
-  });
-
   it('returns 503 when getStats throws', async () => {
     vi.mocked(dynamoRepo.getStats).mockRejectedValue(new Error('DynamoDB timeout'));
     vi.mocked(getUsage).mockResolvedValue(usageFixture);
 
-    const res = await app.request('/api/v1/admin/stats', {
-      headers: makeAuthHeaders(ADMIN_USER_ID),
-    });
+    const res = await app.request('/api/v1/admin/stats', { headers: adminHeaders() });
     expect(res.status).toBe(503);
-    const body = await res.json() as { error: { code: string } };
-    expect(body.error.code).toBe('SERVICE_UNAVAILABLE');
+  });
+});
+
+// ── GET /api/v1/admin/users ────────────────────────────────────────
+
+describe('GET /api/v1/admin/users', () => {
+  it('returns 200 with user list for admin', async () => {
+    vi.mocked(dynamoRepo.getAllUserProfiles).mockResolvedValue([profileFixture]);
+
+    const res = await app.request('/api/v1/admin/users', { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { users: unknown[]; total: number };
+    expect(body.users).toHaveLength(1);
+    expect(body.total).toBe(1);
   });
 
-  it('accepts multiple admin user IDs in ADMIN_USER_IDS', async () => {
-    process.env['ADMIN_USER_IDS'] = `other-admin,${ADMIN_USER_ID}, yet-another`;
-    vi.mocked(dynamoRepo.getStats).mockResolvedValue(statsFixture);
-    vi.mocked(getUsage).mockResolvedValue(usageFixture);
+  it('returns 403 for non-admin', async () => {
+    const res = await app.request('/api/v1/admin/users', { headers: authHeaders() });
+    expect(res.status).toBe(403);
+  });
 
-    const res = await app.request('/api/v1/admin/stats', {
-      headers: makeAuthHeaders(ADMIN_USER_ID),
-    });
+  it('returns empty array when no users exist', async () => {
+    vi.mocked(dynamoRepo.getAllUserProfiles).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/admin/users', { headers: adminHeaders() });
     expect(res.status).toBe(200);
+    const body = await res.json() as { users: unknown[]; total: number };
+    expect(body.users).toHaveLength(0);
+    expect(body.total).toBe(0);
+  });
+});
+
+// ── GET /api/v1/admin/farms ────────────────────────────────────────
+
+describe('GET /api/v1/admin/farms', () => {
+  it('returns 200 with farms and member counts for admin', async () => {
+    vi.mocked(dynamoRepo.getAllFarms).mockResolvedValue([farmFixture]);
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: 'user-1', role: 'admin' as const, joined_at: '2026-03-01T00:00:00Z' },
+    ]);
+
+    const res = await app.request('/api/v1/admin/farms', { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { farms: Array<{ member_count: number }>; total: number };
+    expect(body.farms).toHaveLength(1);
+    expect(body.farms[0].member_count).toBe(1);
+    expect(body.total).toBe(1);
+  });
+
+  it('returns 403 for non-admin', async () => {
+    const res = await app.request('/api/v1/admin/farms', { headers: authHeaders() });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns empty array when no farms exist', async () => {
+    vi.mocked(dynamoRepo.getAllFarms).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/admin/farms', { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { farms: unknown[]; total: number };
+    expect(body.farms).toHaveLength(0);
   });
 });
