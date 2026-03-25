@@ -37,6 +37,10 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const [editingFarmName, setEditingFarmName] = useState<string | null>(null);
+  const [farmNameDraft, setFarmNameDraft] = useState('');
+  const [savingFarmName, setSavingFarmName] = useState(false);
   const activeFarmId = useLocalFarmId('');
 
   // Settings state
@@ -75,6 +79,7 @@ export default function ProfilePage() {
     // Load profile (non-blocking) + sync pending role from registration
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
+      if (p.is_admin) setIsSystemAdmin(true);
       // Sync pending role from registration (no auth token was available post-confirm)
       const pendingRole = localStorage.getItem('litcrop-pendingRole');
       if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {
@@ -265,8 +270,46 @@ export default function ProfilePage() {
                 >
                   <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
                     <div style="flex:1;min-width:0">
-                      <div style="font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                        {farm.name}
+                      <div style="display:flex;align-items:center;gap:var(--space-1)">
+                        {editingFarmName === farm.id ? (
+                          <form
+                            style="display:flex;gap:var(--space-1);align-items:center;flex:1;min-width:0"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (!farmNameDraft.trim() || farmNameDraft.trim() === farm.name) {
+                                setEditingFarmName(null);
+                                return;
+                              }
+                              setSavingFarmName(true);
+                              updateFarm(farm.id, { name: farmNameDraft.trim() })
+                                .then(() => { refreshFarms(); setEditingFarmName(null); showToast(t('profile.name_saved'), 'success'); })
+                                .catch(() => showToast(t('profile.save_error'), 'error'))
+                                .finally(() => setSavingFarmName(false));
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={farmNameDraft}
+                              onInput={(e) => setFarmNameDraft((e.target as HTMLInputElement).value)}
+                              style="font-size:var(--font-size-sm);padding:2px 6px;border:1px solid var(--color-primary);border-radius:var(--radius-sm);flex:1;min-width:0"
+                              autoFocus
+                            />
+                            <button type="submit" disabled={savingFarmName} style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer">✓</button>
+                            <button type="button" onClick={() => setEditingFarmName(null)} style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer">✕</button>
+                          </form>
+                        ) : (
+                          <div style="font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">
+                            {farm.name}
+                          </div>
+                        )}
+                        {isAdmin && !isDemoFarm && editingFarmName !== farm.id && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditingFarmName(farm.id); setFarmNameDraft(farm.name); }}
+                            style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer;padding:0 2px;color:var(--color-gray-500)"
+                            aria-label="Edit farm name"
+                          >✏️</button>
+                        )}
                       </div>
                       <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:2px">
                         <span
@@ -278,6 +321,11 @@ export default function ProfilePage() {
                         {isActive && (
                           <span style="font-size:var(--font-size-xs);color:var(--color-primary);font-weight:var(--font-weight-semibold)">
                             {t('profile.active')}
+                          </span>
+                        )}
+                        {!isDemoFarm && (
+                          <span style="font-size:var(--font-size-xs);color:var(--color-gray-400);font-family:monospace">
+                            {farm.id.slice(0, 8)}
                           </span>
                         )}
                       </div>
@@ -306,7 +354,7 @@ export default function ProfilePage() {
                           {t('profile.delete_farm')}
                         </button>
                       )}
-                      {!isDemoFarm && farm.user_id !== currentUser?.sub && (
+                      {!isDemoFarm && !isSystemAdmin && currentUser && farm.user_id !== currentUser.sub && (
                         <button
                           type="button"
                           style="font-size:var(--font-size-sm);color:var(--color-gray-600);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"

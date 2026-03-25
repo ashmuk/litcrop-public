@@ -8,13 +8,12 @@ const router = new Hono();
 
 // GET /api/v1/me/profile
 router.get('/profile', async (c) => {
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
   const profile = await dynamoRepo.getUserProfile(userId);
-  if (!profile) {
-    // Return a default profile shape when no record exists yet
-    return c.json({ user_id: userId, display_name: '', preferred_role: 'observer', created_at: null });
-  }
-  return c.json(profile);
+  const base = profile
+    ? { ...profile, is_admin: isAdmin }
+    : { user_id: userId, display_name: '', preferred_role: 'observer' as const, created_at: null, is_admin: isAdmin };
+  return c.json(base);
 });
 
 // PATCH /api/v1/me/profile

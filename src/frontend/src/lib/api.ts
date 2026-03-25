@@ -273,6 +273,7 @@ export interface UserProfileResponse {
   display_name: string;
   preferred_role: 'manager' | 'observer';
   created_at: string;
+  is_admin: boolean;
 }
 
 /** GET /api/v1/me/profile */
