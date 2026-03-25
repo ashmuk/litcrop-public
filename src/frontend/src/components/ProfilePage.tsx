@@ -16,6 +16,8 @@ import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
 import FarmWizard from './FarmWizard';
 import ThemeSwitcher from './ThemeSwitcher';
+import FarmDiscovery from './FarmDiscovery';
+import JoinRequestList from './JoinRequestList';
 
 interface FarmWithRole extends Farm {
   role: FarmRole;
@@ -289,8 +291,11 @@ export default function ProfilePage() {
             {[0, 1].map((i) => <div key={i} class="skeleton skeleton-tile" />)}
           </div>
         ) : farms.length === 0 ? (
-          <div style="color:var(--color-gray-500);font-size:var(--font-size-sm);margin-bottom:var(--space-3)">
-            {t('profile.no_farms')}
+          <div style="margin-bottom:var(--space-3)">
+            <div style="color:var(--color-gray-500);font-size:var(--font-size-sm)">
+              {t('profile.no_farms')}
+            </div>
+            <FarmDiscovery />
           </div>
         ) : (
           <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-3)">
@@ -478,6 +483,9 @@ export default function ProfilePage() {
                               </div>
                             ))}
                           </div>
+                        )}
+                        {isAdmin && !isDemoFarm && (
+                          <JoinRequestList farmId={farm.id} onMemberAdded={refreshFarms} />
                         )}
                       </>
                     )}

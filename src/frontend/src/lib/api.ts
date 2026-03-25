@@ -349,6 +349,50 @@ export interface AdminFarmItem {
   created_at: string;
 }
 
+// ── Join Requests ─────────────────────────────────────────────────
+
+export interface DiscoverableFarmItem {
+  id: string;
+  name: string;
+  description: string | null;
+  latitude: number;
+  longitude: number;
+  member_count: number;
+  has_pending_request: boolean;
+}
+
+export interface JoinRequestItem {
+  user_id: string;
+  status: string;
+  display_name: string;
+  requested_at: string;
+  resolved_at: string | null;
+}
+
+/** GET /api/v1/farms/discoverable */
+export async function getDiscoverableFarms(): Promise<DiscoverableFarmItem[]> {
+  const res = await request<{ data: DiscoverableFarmItem[] }>('GET', '/farms/discoverable');
+  return res.data;
+}
+
+/** POST /api/v1/farms/:farmId/join */
+export async function requestToJoinFarm(farmId: string): Promise<{ farm_id: string; status: string }> {
+  return request<{ farm_id: string; status: string }>('POST', `/farms/${farmId}/join`);
+}
+
+/** GET /api/v1/farms/:farmId/join-requests */
+export async function getJoinRequests(farmId: string, status = 'pending'): Promise<JoinRequestItem[]> {
+  const res = await request<{ data: JoinRequestItem[] }>('GET', `/farms/${farmId}/join-requests?status=${status}`);
+  return res.data;
+}
+
+/** PATCH /api/v1/farms/:farmId/join-requests/:userId */
+export async function resolveJoinRequest(farmId: string, userId: string, action: 'approve' | 'reject'): Promise<void> {
+  await request('PATCH', `/farms/${farmId}/join-requests/${userId}`, { action });
+}
+
+// ── Admin Endpoints ─────────────────────────────────────────────
+
 /** GET /api/v1/admin/users — admin only */
 export async function getAdminUsers(): Promise<{ users: AdminUserItem[]; total: number }> {
   return request<{ users: AdminUserItem[]; total: number }>('GET', '/admin/users');

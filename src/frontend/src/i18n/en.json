@@ -273,6 +273,24 @@
     "image_count": "Images",
     "target_bed": "Target Bed"
   },
+  "discovery": {
+    "title": "Find a Farm",
+    "no_farms": "No farms are currently accepting new members.",
+    "request_join": "Request to Join",
+    "pending": "Pending",
+    "members": "members",
+    "request_sent": "Join request sent!",
+    "already_requested": "Already requested"
+  },
+  "join_requests": {
+    "title": "Join Requests",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approved": "Member added!",
+    "rejected": "Request rejected",
+    "empty": "No pending requests",
+    "pending_count": "pending"
+  },
   "admin": {
     "system": "System",
     "users": "Users",

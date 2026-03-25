@@ -48,4 +48,19 @@ router.patch('/settings', async (c) => {
   return c.json(settings);
 });
 
+// GET /api/v1/me/join-requests — observer's outgoing requests
+router.get('/join-requests', async (c) => {
+  const { userId } = getAuthContext(c);
+  // Query GSI1 for user's join requests
+  const { dynamoRepo } = await import('../services/dynamodb');
+  try {
+    // Use a scan-based approach since we need GSI1 query
+    // For MVP scale this is acceptable
+    const requests = await dynamoRepo.getMyJoinRequests(userId);
+    return c.json({ data: requests });
+  } catch {
+    throw new ValidationError('Unable to retrieve join requests');
+  }
+});
+
 export default router;

@@ -11,7 +11,7 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit } from '@litcrop/shared';
-import { DDB_KEY_PREFIXES } from '@litcrop/shared';
+import { DDB_KEY_PREFIXES, DEMO_FARM_ID } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
 // ── Conversation history type ─────────────────────────────────────
@@ -56,6 +56,7 @@ const sk = {
   farmMember: (farmId: string) => `${DDB_KEY_PREFIXES.FARM_MEMBER}${farmId}`,
   member: (userId: string) => `${DDB_KEY_PREFIXES.MEMBER}${userId}`,
   settings: () => DDB_KEY_PREFIXES.SETTINGS,
+  joinRequest: (userId: string) => `${DDB_KEY_PREFIXES.JOIN_REQUEST}${userId}`,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────
@@ -1091,6 +1092,136 @@ export class DynamoRepository {
     );
 
     return itemToUserSettings(result.Attributes as Record<string, unknown>);
+  }
+
+  // ── Join Requests ──────────────────────────────────────────────────
+
+  /** Create a join request (pending). */
+  async createJoinRequest(farmId: string, userId: string, displayName: string): Promise<void> {
+    const now = new Date().toISOString();
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.farm(farmId),
+          SK: sk.joinRequest(userId),
+          GSI1PK: pk.user(userId),
+          GSI1SK: `${DDB_KEY_PREFIXES.JOIN_REQUEST}${farmId}`,
+          farm_id: farmId,
+          user_id: userId,
+          status: 'pending',
+          display_name: displayName,
+          requested_at: now,
+          resolved_at: null,
+          resolved_by: null,
+        },
+        ConditionExpression: 'attribute_not_exists(PK)',
+      }),
+    );
+  }
+
+  /** Get a specific join request. */
+  async getJoinRequest(farmId: string, userId: string): Promise<{ status: string; requested_at: string; display_name: string } | null> {
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.joinRequest(userId) },
+      }),
+    );
+    if (!result.Item) return null;
+    return {
+      status: result.Item['status'] as string,
+      requested_at: result.Item['requested_at'] as string,
+      display_name: (result.Item['display_name'] as string) ?? '',
+    };
+  }
+
+  /** List join requests for a farm (optionally filtered by status). */
+  async getJoinRequestsForFarm(farmId: string, statusFilter?: string): Promise<Array<{ user_id: string; status: string; display_name: string; requested_at: string; resolved_at: string | null }>> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': pk.farm(farmId),
+          ':prefix': DDB_KEY_PREFIXES.JOIN_REQUEST,
+        },
+      }),
+    );
+    const items = (result.Items ?? []).map((item) => ({
+      user_id: (item['user_id'] as string),
+      status: (item['status'] as string),
+      display_name: (item['display_name'] as string) ?? '',
+      requested_at: (item['requested_at'] as string),
+      resolved_at: (item['resolved_at'] as string) ?? null,
+    }));
+    if (statusFilter && statusFilter !== 'all') {
+      return items.filter((i) => i.status === statusFilter);
+    }
+    return items;
+  }
+
+  /** Approve a join request atomically: update status + create FARM_MEMBER in a transaction. */
+  async approveJoinRequest(farmId: string, userId: string, resolvedBy: string): Promise<void> {
+    const now = new Date().toISOString();
+    await ddb.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Update: {
+              TableName: TABLE_NAME,
+              Key: { PK: pk.farm(farmId), SK: sk.joinRequest(userId) },
+              UpdateExpression: 'SET #status = :approved, resolved_at = :now, resolved_by = :by',
+              ConditionExpression: '#status = :pending',
+              ExpressionAttributeNames: { '#status': 'status' },
+              ExpressionAttributeValues: { ':approved': 'approved', ':pending': 'pending', ':now': now, ':by': resolvedBy },
+            },
+          },
+          ...membershipTransactItems(farmId, userId, 'observer', now),
+        ],
+      }),
+    );
+  }
+
+  /** Reject a join request. */
+  async rejectJoinRequest(farmId: string, userId: string, resolvedBy: string): Promise<void> {
+    const now = new Date().toISOString();
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.joinRequest(userId) },
+        UpdateExpression: 'SET #status = :rejected, resolved_at = :now, resolved_by = :by',
+        ConditionExpression: '#status = :pending',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: { ':rejected': 'rejected', ':pending': 'pending', ':now': now, ':by': resolvedBy },
+      }),
+    );
+  }
+
+  /** Get a user's outgoing join requests via GSI1. */
+  async getMyJoinRequests(userId: string): Promise<Array<{ farm_id: string; status: string; requested_at: string }>> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: GSI1_INDEX,
+        KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': pk.user(userId),
+          ':prefix': DDB_KEY_PREFIXES.JOIN_REQUEST,
+        },
+      }),
+    );
+    return (result.Items ?? []).map((item) => ({
+      farm_id: (item['farm_id'] as string),
+      status: (item['status'] as string),
+      requested_at: (item['requested_at'] as string),
+    }));
+  }
+
+  /** Get discoverable farms (where discoverable != false). Excludes demo farm. */
+  async getDiscoverableFarms(): Promise<Farm[]> {
+    const allFarms = await this.getAllFarms();
+    return allFarms.filter((f) => f.id !== DEMO_FARM_ID);
   }
 
 }

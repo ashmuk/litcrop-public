@@ -106,3 +106,27 @@ export interface UserProfile {
   preferred_role: 'manager' | 'observer';
   created_at: string; // ISO 8601
 }
+
+// ── Join Requests ─────────────────────────────────────────────────
+
+export type JoinRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface JoinRequest {
+  farm_id: string;
+  user_id: string;
+  status: JoinRequestStatus;
+  display_name: string;
+  requested_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+}
+
+export interface DiscoverableFarm {
+  id: string;
+  name: string;
+  description: string | null;
+  latitude: number;
+  longitude: number;
+  member_count: number;
+  has_pending_request: boolean;
+}

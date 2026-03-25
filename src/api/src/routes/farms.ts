@@ -188,6 +188,128 @@ router.get('/', async (c) => {
   return c.json({ data: farms.filter((f): f is NonNullable<typeof f> => f !== null) });
 });
 
+// ── GET /api/v1/farms/discoverable ────────────────────────────────
+// Must be registered BEFORE /:farmId to avoid Hono treating "discoverable" as a param
+
+router.get('/discoverable', async (c) => {
+  const { userId } = getAuthContext(c);
+
+  try {
+    const farms = await dynamoRepo.getDiscoverableFarms();
+    const memberships = await dynamoRepo.getFarmsForUser(userId);
+    const memberFarmIds = new Set(memberships.map((m) => m.farm_id));
+
+    const data = await Promise.all(
+      farms
+        .filter((f) => !memberFarmIds.has(f.id))
+        .map(async (farm) => {
+          const members = await dynamoRepo.getFarmMembers(farm.id);
+          const pendingRequest = await dynamoRepo.getJoinRequest(farm.id, userId);
+          return {
+            id: farm.id,
+            name: farm.name,
+            description: farm.description ?? null,
+            latitude: farm.latitude,
+            longitude: farm.longitude,
+            member_count: members.length,
+            has_pending_request: pendingRequest?.status === 'pending',
+          };
+        }),
+    );
+
+    return c.json({ data });
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+});
+
+// ── POST /api/v1/farms/:farmId/join ──────────────────────────────
+
+router.post('/:farmId/join', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  // Verify farm exists
+  const farm = await dynamoRepo.getFarm(farmId).catch((err: unknown) => {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  });
+
+  // Check if already a member
+  const existing = await dynamoRepo.getFarmMembership(userId, farmId).catch(() => null);
+  if (existing) {
+    throw new ConflictError('Already a member of this farm');
+  }
+
+  // Check membership limit
+  const membershipCount = await dynamoRepo.countUserMemberships(userId);
+  if (membershipCount >= FREE_PLAN_MAX_MEMBERSHIPS) {
+    throw new ValidationError(`Membership limit reached (max ${FREE_PLAN_MAX_MEMBERSHIPS})`);
+  }
+
+  // Check for existing pending request
+  const pendingRequest = await dynamoRepo.getJoinRequest(farmId, userId);
+  if (pendingRequest) {
+    throw new ConflictError(`Join request already ${pendingRequest.status}`);
+  }
+
+  // Get display name for denormalization
+  const profile = await dynamoRepo.getUserProfile(userId).catch(() => null);
+  const displayName = profile?.display_name ?? '';
+
+  await dynamoRepo.createJoinRequest(farmId, userId, displayName);
+
+  return c.json({
+    farm_id: farmId,
+    user_id: userId,
+    status: 'pending',
+    requested_at: new Date().toISOString(),
+  }, 201);
+});
+
+// ── GET /api/v1/farms/:farmId/join-requests ──────────────────────
+
+router.get('/:farmId/join-requests', async (c) => {
+  const { farmId } = c.req.param();
+  const { userId } = getAuthContext(c);
+  const status = c.req.query('status') ?? 'pending';
+
+  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+
+  const requests = await dynamoRepo.getJoinRequestsForFarm(farmId, status);
+  return c.json({ data: requests });
+});
+
+// ── PATCH /api/v1/farms/:farmId/join-requests/:userId ────────────
+
+router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
+  const { farmId, targetUserId } = c.req.param();
+  const { userId } = getAuthContext(c);
+
+  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+
+  const body = await c.req.json();
+  const action = body['action'];
+  if (action !== 'approve' && action !== 'reject') {
+    throw new ValidationError('action must be "approve" or "reject"');
+  }
+
+  try {
+    if (action === 'approve') {
+      await dynamoRepo.approveJoinRequest(farmId, targetUserId, userId);
+    } else {
+      await dynamoRepo.rejectJoinRequest(farmId, targetUserId, userId);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.name === 'TransactionCanceledException') {
+      throw new ConflictError('Request is not pending or membership already exists');
+    }
+    throw err;
+  }
+
+  return c.json({ farm_id: farmId, user_id: targetUserId, action, resolved_at: new Date().toISOString() });
+});
+
 // ── GET /api/v1/farms/:farmId ────────────────────────────────────
 
 router.get('/:farmId', async (c) => {
