@@ -57,6 +57,8 @@ jobs:
       - name: CDK deploy
         run: npx cdk deploy --require-approval never
         working-directory: infra
+        env:
+          ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
 
       - name: Sync frontend to S3
         env:
