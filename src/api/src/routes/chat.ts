@@ -213,13 +213,14 @@ async function executeTool(
   toolName: string,
   input: Record<string, unknown>,
   userId: string,
+  isAdmin?: boolean,
 ): Promise<string> {
   if (toolName === TOOL_NAMES.FARM_DATA) {
     const farmId = input['farm_id'];
     if (typeof farmId !== 'string') return 'Error: farm_id is required';
     let farm: Farm;
     try {
-      ({ farm } = await assertFarmAccess(farmId, userId));
+      ({ farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin));
     } catch {
       return 'Error: Farm not found';
     }
@@ -236,7 +237,7 @@ async function executeTool(
     if (typeof farmId !== 'string') return 'Error: farm_id is required';
     let farm: Farm;
     try {
-      ({ farm } = await assertFarmAccess(farmId, userId));
+      ({ farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin));
     } catch {
       return 'Error: Farm not found';
     }
@@ -278,6 +279,7 @@ async function callWithTools(
   history: StoredMessage[],
   userMessage: string,
   userId: string,
+  isAdmin?: boolean,
 ): Promise<LLMResult> {
   const client = getAnthropicClient();
 
@@ -340,7 +342,7 @@ async function callWithTools(
       toolUseBlocks.map(async (tu) => ({
         type: 'tool_result' as const,
         tool_use_id: tu.id,
-        content: await executeTool(tu.name, tu.input as Record<string, unknown>, userId),
+        content: await executeTool(tu.name, tu.input as Record<string, unknown>, userId, isAdmin),
       })),
     );
 
@@ -359,7 +361,7 @@ async function callWithTools(
 // ── 5.11 POST /api/v1/chat ───────────────────────────────────────
 
 router.post('/', async (c) => {
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
   const body = await c.req.json<Record<string, unknown>>();
 
   // Validate message
@@ -410,7 +412,7 @@ router.post('/', async (c) => {
   const farmId = body['farm_id'];
   if (farmId && typeof farmId === 'string') {
     try {
-      ({ farm } = await assertFarmAccess(farmId, userId));
+      ({ farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin));
       try {
         beds = await dynamoRepo.getBedsForFarm(farmId);
       } catch {
@@ -456,7 +458,7 @@ router.post('/', async (c) => {
   }
 
   // Call LLM with tool use loop
-  const result = await callWithTools(systemPrompt, history, message, userId);
+  const result = await callWithTools(systemPrompt, history, message, userId, isAdmin);
 
   // Record token usage asynchronously (non-blocking — don't delay response)
   recordUsage(userId, {

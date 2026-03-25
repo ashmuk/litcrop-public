@@ -8,21 +8,32 @@ import type { Farm, FarmMember, FarmRole, Image } from '@litcrop/shared';
  * Throws 404 if the farm does not exist or the user is not a member
  * (prevents resource enumeration — never leaks existence of other users' farms).
  * Optionally restrict to specific roles; non-matching role also returns 404.
+ *
+ * Admin bypass: when isAdmin is true, membership check is skipped and a
+ * synthetic admin membership is returned. Admins can read any farm.
  */
 export async function assertFarmAccess(
   farmId: string,
   userId: string,
   requiredRoles?: FarmRole[],
+  isAdmin?: boolean,
 ): Promise<{ farm: Farm; membership: FarmMember }> {
-  const [farm, membership] = await Promise.all([
-    dynamoRepo.getFarm(farmId).catch((err: unknown) => {
-      if (err instanceof NotFoundError) throw err;
-      throw new ServiceUnavailableError('Storage service unavailable');
-    }),
-    dynamoRepo.getFarmMembership(userId, farmId).catch(() => {
-      throw new ServiceUnavailableError('Storage service unavailable');
-    }),
-  ]);
+  const farm = await dynamoRepo.getFarm(farmId).catch((err: unknown) => {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  });
+
+  // Admin bypass: skip membership check, grant admin-level access
+  if (isAdmin) {
+    return {
+      farm,
+      membership: { farm_id: farmId, user_id: userId, role: 'admin', joined_at: farm.created_at },
+    };
+  }
+
+  const membership = await dynamoRepo.getFarmMembership(userId, farmId).catch(() => {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  });
 
   if (!membership) {
     throw new NotFoundError(`Farm not found: ${farmId}`);

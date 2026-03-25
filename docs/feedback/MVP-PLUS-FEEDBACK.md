@@ -34,12 +34,12 @@ Both "Profile" (プロフィール) and "Settings" (設定) tabs in the top nav 
 - Per node: `node_id`, last upload time, image count, target bed name
 - Data derived from existing Image records (group by `node_id`) — no new API endpoint needed
 
-**Manage page scope (PROD-1)**:
+**Manage page scope (BETA)**:
 - Device registration and configuration
 - Health monitoring (online/offline status)
 - Camera settings (interval, resolution)
 
-**Root cause**: Phase D merged settings into profile but kept both nav items. IoT device management page was already planned for PROD-1 ("IOT-UI" in MVP-PLUS-REVISE-PLAN.md). Repurposing the nav slot avoids adding a 5th tab later.
+**Root cause**: Phase D merged settings into profile but kept both nav items. IoT device management page was already planned for BETA ("IOT-UI" in MVP-PLUS-REVISE-PLAN.md). Repurposing the nav slot avoids adding a 5th tab later.
 
 ---
 
@@ -88,11 +88,11 @@ The farm list cards show only the farm name and role badge. Location (lat/lon or
 
 **Page**: Crops → Layout view
 **Severity**: Design (future)
-**Priority**: P3 (PROD-1)
+**Priority**: P3 (BETA)
 
 Current model enforces one crop per bed. User clarifies this is acceptable for now but wants support for multiple crops per bed in the future. Additionally, existing PoC crop data is not visible — likely because the Field/Plot → Bed migration rewrote seed data without preserving user-created plots.
 
-**Note**: This is a design decision documented in ADR-20260322. The 1:1 model was chosen for MVP+ simplicity. Multi-crop per bed should be considered for PROD-1.
+**Note**: This is a design decision documented in ADR-20260322. The 1:1 model was chosen for MVP+ simplicity. Multi-crop per bed should be considered for BETA.
 
 ---
 
@@ -164,7 +164,7 @@ The hourly forecast section extends beyond the browser viewport width, creating 
 |----------|--------|--------|
 | **P1** (must fix) | F-01, F-03, F-06, F-07 | ✅ Fixed (PR #138) |
 | **P2** (should fix) | F-02, F-09 | ✅ Fixed (PR #138) |
-| **P3** (nice to have) | F-04, F-05, F-08 | Deferred to PROD-1 |
+| **P3** (nice to have) | F-04, F-05, F-08 | Deferred to BETA |
 
 ---
 
@@ -267,7 +267,7 @@ End-users (readers/observers) can join up to 3 farms. Demo farm exempt (not coun
 |------|--------|--------|----|
 | F-04 | Round 1 P3 | ✅ Fixed — farm card elevation + grid subtitle | #149 |
 | F-08 | Round 1 P3 | ✅ Fixed — weather location via Nominatim reverse geocode | #149 |
-| #90 | PROD-1 backlog | ⚠️ Partial — locale sync done, temp_unit/theme deferred | #149 |
+| #90 | BETA backlog | ⚠️ Partial — locale sync done, temp_unit/theme deferred | #149 |
 
 ---
 
@@ -325,7 +325,7 @@ Admin should be a hardcoded designation for `you@example.com` only. Store admin 
 
 **Implementation approach**:
 - MVP: `ADMIN_EMAILS` env var in `.env` (gitignored), passed to Lambda via CDK
-- PROD-1: Migrate to SSM Parameter Store (encrypted, auditable)
+- BETA: Migrate to SSM Parameter Store (encrypted, auditable)
 - NOT hardcoded in source — reviewed with user before implementation
 
 ---
@@ -467,7 +467,7 @@ Language reverts to English after logout→login. Root cause: signOut() may clea
 ### F-23: Soft delete pattern for farm deletion
 
 **Severity**: Design improvement
-**Priority**: P2 (PROD-1)
+**Priority**: P2 (BETA)
 **GH**: #168
 
 Current farm deletion is hard-delete (immediate, irreversible). Should be a two-phase process:
@@ -499,14 +499,90 @@ Users should be able to leave a farm they belong to (remove their own membership
 | Priority | Items | Scope |
 |----------|-------|-------|
 | **P1** | F-24 (leave farm) | MVP+ quick fix — needed for eval |
-| **P2** | F-23 (soft delete) | PROD-1 — design + retention policy |
+| **P2** | F-23 (soft delete) | BETA — design + retention policy |
 
 ---
 
-> Filed: 2026-03-22 (round 1) | Updated: 2026-03-24 (round 6)
+## Round 7 Findings (2026-03-25) — Navigation Restructure & Role UX
+
+> Tester: Muk (Admin)
+> Context: Role-based navigation and onboarding flow design
+
+### D-01: Rename [Manage] → [Device] for IoT monitoring
+
+**Severity**: UX rename
+**Priority**: P1
+**GH**: #178
+
+[Manage] menu is specifically for device/camera monitoring profiles. Rename to [Device] (デバイス) to clarify purpose.
+
+---
+
+### D-02: Add admin-only [Manage] menu for admin dashboard
+
+**Severity**: Feature
+**Priority**: P1
+**GH**: #179
+
+New [Manage] menu at right end of nav, visible only to admin accounts. Serves as admin dashboard (user management, farm overview, system stats). Distinct from [Device] (camera monitoring).
+
+---
+
+### D-03: Hide "Leave" button for farm owners
+
+**Severity**: Bug
+**Priority**: P1
+**GH**: #180
+
+Farm owners (admin/manager who created the farm) should NOT see "Leave" on their own farm. Currently the check uses `farm.role !== 'admin'`, but managers who own farms should also not see Leave. The distinction is owner vs invited member.
+
+---
+
+### D-04: Observer onboarding — farm discovery + join request
+
+**Severity**: Feature
+**Priority**: P1 (BETA)
+**GH**: #181
+
+After initial login, observers see a list of available farms and can request to join. This is the APPLY workflow from BETA scope. Essential for the multi-user evaluation flow.
+
+---
+
+### D-05: Admin auto-assigned to all farms
+
+**Severity**: Feature
+**Priority**: P1
+**GH**: #182
+
+Admin account is automatically a member of all farms with admin role. Can switch between farms and delete any farm. This enables admin monitoring and management without manual membership setup.
+
+---
+
+### D-06: AI chat visible on all pages, not just Farm Setup
+
+**Severity**: Feature
+**Priority**: P2
+**GH**: #183
+
+AI assistant is currently only accessible on the Farm Setup page. Should be available during daily monitoring (Crops page, Bed Detail) — the primary use case is asking about crop observations in the field.
+
+---
+
+## Priority Summary — Round 7 (2026-03-25)
+
+| Priority | Items | Scope |
+|----------|-------|-------|
+| **P1** (quick) | D-01 (rename), D-03 (leave button) | MVP+ patch |
+| **P1** (design) | D-02 (admin menu), D-04 (observer join), D-05 (admin auto-assign) | BETA |
+| **P2** | D-06 (AI chat everywhere) | BETA |
+
+---
+
+> Filed: 2026-03-22 (round 1) | Updated: 2026-03-25 (round 7)
 > Round 1: 6 P1/P2 fixed (PR #138, issues #132–#137 closed)
 > Round 2: 7 items fixed (PRs #146–#148, issues #139–#145 closed)
 > Round 3: 3 items (F-04, F-08, #90 partial) fixed (PR #149)
 > Round 4: 7 items fixed (PR #158, issues #151–#157 closed)
 > Round 5: 5 items fixed (PR #165, issues #159,#161-#164 closed) + 2 CORS hotfixes (#166,#167)
-> Round 6: 2 items filed (F-23 soft delete, F-24 leave farm)
+> Round 6: 2 items (F-23 soft delete deferred, F-24 leave farm fixed)
+> Round 7: 6 items filed (D-01..D-06) — navigation restructure + role UX

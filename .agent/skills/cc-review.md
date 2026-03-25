@@ -36,7 +36,7 @@ Review all relevant aspects of project progress, co-working with ClaudeCode buil
    - Safety for destructive actions
 4. Provide findings with severity: MUST-FIX / SHOULD-FIX / SUGGESTION
 5. Recommend concrete, actionable fixes
-6. Preserve findings in docs/REVIEW_FINDINGS.md
+6. Preserve findings in docs/feedback/REVIEW-FINDINGS.md
 7. Next: If MUST-FIX findings exist, invoke cc-remediate skill. Otherwise, accept.
 
 ## Issue Integration (optional)
@@ -64,7 +64,7 @@ Actions:
 1. Read staged changes and related plan artifacts
 2. Apply my-reviewer checklist (alignment, security, quality, safety)
 3. Produce findings table with severity levels
-Result: docs/REVIEW_FINDINGS.md with actionable findings
+Result: docs/feedback/REVIEW-FINDINGS.md with actionable findings
 
 ### Example 2: Security-focused audit
 User says: "Audit the auth module for security issues"
@@ -72,7 +72,7 @@ Actions:
 1. Read .agent/prompts/security/ for detailed guidance
 2. Apply OWASP Top 10 and STRIDE analysis
 3. Check for injection, auth bypass, data exposure
-Result: docs/REVIEW_FINDINGS.md with security-specific findings
+Result: docs/feedback/REVIEW-FINDINGS.md with security-specific findings
 
 ## Troubleshooting
 
@@ -82,4 +82,4 @@ Solution: Ask the user what specifically should be reviewed, or run cc-define / 
 
 ### Reviewer attempts to fix code
 Cause: Reviewer crossed into implementation territory.
-Solution: Stop immediately. Findings go to docs/REVIEW_FINDINGS.md. All fixes must flow through cc-remediate to my-builder.
+Solution: Stop immediately. Findings go to docs/feedback/REVIEW-FINDINGS.md. All fixes must flow through cc-remediate to my-builder.

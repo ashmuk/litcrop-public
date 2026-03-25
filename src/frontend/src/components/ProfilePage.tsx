@@ -42,6 +42,7 @@ export default function ProfilePage() {
   // Settings state
   const [locale, setLocale] = useState<Locale>('en');
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
+  const currentUser = getCurrentUser();
 
   function refreshFarms(): void {
     getMyFarms()
@@ -68,9 +69,8 @@ export default function ProfilePage() {
     // Load farms (also syncs settings from active farm)
     refreshFarms();
 
-    // Load user
-    const user = getCurrentUser();
-    if (user) setUserEmail(user.email);
+    // Load user email from already-resolved currentUser
+    if (currentUser) setUserEmail(currentUser.email);
 
     // Load profile (non-blocking) + sync pending role from registration
     getMyProfile().then(p => {
@@ -306,7 +306,7 @@ export default function ProfilePage() {
                           {t('profile.delete_farm')}
                         </button>
                       )}
-                      {!isDemoFarm && farm.role !== 'admin' && (
+                      {!isDemoFarm && farm.user_id !== currentUser?.sub && (
                         <button
                           type="button"
                           style="font-size:var(--font-size-sm);color:var(--color-gray-600);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"

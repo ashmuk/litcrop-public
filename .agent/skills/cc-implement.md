@@ -92,7 +92,7 @@ When `github_issues.enabled: true` in PROJECT.yaml:
 
 ### First scope level (before Step 2)
 If no open issues exist for the current scope level:
-1. Parse PLANS.md or docs/TASK_BREAKDOWN.md for tasks in the current scope level
+1. Parse PLANS.md or docs/TASK-BREAKDOWN.md for tasks in the current scope level
 2. Prompt: "Create GitHub Issues for [current scope level]? ([N] tasks)"
 3. If yes:
    a. Ensure labels and milestones exist (per cc-issue-create taxonomy)
@@ -103,7 +103,7 @@ If no open issues exist for the current scope level:
 
 ### Scope level transitions (PoC → MVP, MVP → Production)
 At each transition checkpoint (see Scope Level Transition below), before the user decides on next scope level:
-1. Parse PLANS.md or docs/TASK_BREAKDOWN.md for tasks in the NEXT scope level
+1. Parse PLANS.md or docs/TASK-BREAKDOWN.md for tasks in the NEXT scope level
 2. Prompt: "Create GitHub Issues for [next scope level]? ([N] tasks)"
 3. If yes:
    a. Ensure labels and milestones exist (per cc-issue-create taxonomy)

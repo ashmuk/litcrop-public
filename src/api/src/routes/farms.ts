@@ -146,7 +146,20 @@ function bedToSummary(bed: Bed) {
 // ── GET /api/v1/farms — list all farms the caller belongs to ──────
 
 router.get('/', async (c) => {
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
+
+  // Admin sees all farms with admin role
+  if (isAdmin) {
+    let allFarms;
+    try {
+      allFarms = await dynamoRepo.getAllFarms();
+    } catch {
+      throw new ServiceUnavailableError('Storage service unavailable');
+    }
+    return c.json({
+      data: allFarms.map((farm) => ({ ...farmToResponse(farm), role: 'admin' as FarmRole })),
+    });
+  }
 
   let memberships;
   try {
@@ -179,9 +192,9 @@ router.get('/', async (c) => {
 
 router.get('/:farmId', async (c) => {
   const { farmId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
-  const { farm } = await assertFarmAccess(farmId, userId);
+  const { farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
   const beds = await dynamoRepo.getBedsForFarm(farmId);
 
@@ -195,9 +208,9 @@ router.get('/:farmId', async (c) => {
 
 router.get('/:farmId/members', async (c) => {
   const { farmId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
-  await assertFarmAccess(farmId, userId);
+  await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
   let members;
   try {
@@ -224,9 +237,9 @@ router.get('/:farmId/members', async (c) => {
 
 router.get('/:farmId/beds', async (c) => {
   const { farmId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
-  await assertFarmAccess(farmId, userId);
+  await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
   const beds = await dynamoRepo.getBedsForFarm(farmId);
 

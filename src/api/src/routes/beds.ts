@@ -35,9 +35,9 @@ function isJpegBytes(buf: Uint8Array): boolean {
 }
 
 /** Verify caller is a member of the farm that contains this bed. */
-async function assertBedAccess(bed: Bed, userId: string): Promise<void> {
+async function assertBedAccess(bed: Bed, userId: string, isAdmin?: boolean): Promise<void> {
   try {
-    await assertFarmAccess(bed.farm_id, userId);
+    await assertFarmAccess(bed.farm_id, userId, undefined, isAdmin);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Bed not found: ${bed.id}`);
@@ -62,7 +62,7 @@ async function assertBedWriteAccess(bed: Bed, userId: string): Promise<void> {
 
 router.get('/:bedId', async (c) => {
   const { bedId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
 
   let bed: Bed;
   try {
@@ -72,7 +72,7 @@ router.get('/:bedId', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  await assertBedAccess(bed, userId);
+  await assertBedAccess(bed, userId, isAdmin);
 
   const latestImage = await dynamoRepo.getLatestImageForBed(bed.id);
 
@@ -153,7 +153,7 @@ router.patch('/:bedId', async (c) => {
 
 router.get('/:bedId/images', async (c) => {
   const { bedId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, isAdmin } = getAuthContext(c);
   const rawLimit = c.req.query('limit');
   const cursor = c.req.query('cursor');
 
@@ -174,7 +174,7 @@ router.get('/:bedId/images', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
-  await assertBedAccess(bed, userId);
+  await assertBedAccess(bed, userId, isAdmin);
 
   let result: { items: Image[]; nextCursor: string | null };
   try {

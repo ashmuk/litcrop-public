@@ -1,6 +1,6 @@
 # PLANS.md - Project Roadmap
 
-> **This is the strategic scope document** — it defines *what* we're building, *why*, and the pass/fail exit criteria for each scope level. For the tactical implementation schedule (phases, task ordering, AWS provisioning), see [docs/EXECUTION-PLAN.md](docs/EXECUTION-PLAN.md).
+> **This is the strategic scope document** — it defines *what* we're building, *why*, and the pass/fail exit criteria for each scope level. For the tactical implementation schedule (phases, task ordering, AWS provisioning), see [docs/planning/EXECUTION-PLAN.md](docs/planning/EXECUTION-PLAN.md).
 
 ## Current Scope Level: MVP
 
@@ -147,7 +147,7 @@ All deployed via IaC (CDK), reproducible and CI/CD-ready.
   - ADR-20260322: Option B selected — flatten 4-level hierarchy to Farm→Bed, merge Plot into Bed
   - UX-DESIGNS.md §14: Map picker wireframes, farm creation wizard (3-step), bed grid editor, profile page redesign, accessibility audit, i18n keys, component state matrix
   - SYSTEM-DESIGN.md §10: 5 sequence diagrams, component interaction diagram, 34-file change summary
-  - docs/EXECUTION-PLAN-PHASE-D.md: 4-batch plan, gate criteria, risk register, readiness mapping
+  - docs/planning/EXECUTION-PLAN-PHASE-D.md: 4-batch plan, gate criteria, risk register, readiness mapping
 - **What preserved**: All Phase A+B+C artifacts, 303 passing tests, v0.12 build, ADRs 001-009
 - **Key design decisions**:
   - Farm→Bed flattening (ADR Option B): removes Field and Plot, 4→2 levels, 2 DynamoDB queries for farm overview

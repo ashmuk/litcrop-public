@@ -253,7 +253,7 @@ github_issues:
 | File | Purpose |
 |------|---------|
 | `TASKS.md` (root) | Auto-generated snapshot of GitHub Issues (via cc-issue-sync) |
-| `docs/TASK_BREAKDOWN.md` | Design artifact from cc-design Step 6 (task decomposition) |
+| `docs/TASK-BREAKDOWN.md` | Design artifact from cc-design Step 6 (task decomposition) |
 | `PLANS.md` / `BACKLOG.md` | Manually authored strategy and task definitions |
 
 ### Commands
@@ -273,7 +273,7 @@ Step 2: Architecture (cc-design) → docs/ARCHITECTURE.md  ← STOP
 Step 3: UX/UI & API Design    → docs/UX-DESIGNS.md
 Step 4: Mock-up                → docs/mockups/            ← STOP
 Step 5: System Design          → docs/DESIGNS.md
-Step 6: Task Breakdown         → docs/TASK_BREAKDOWN.md
+Step 6: Task Breakdown         → docs/TASK-BREAKDOWN.md
 Step 7: Planning               → PLANS.md                 ← STOP
 Step 8: Build (cc-implement)   → code + artifacts         ← STOP
 Step 9: Test Strategy (cc-test) → docs/TEST_STRATEGY.md

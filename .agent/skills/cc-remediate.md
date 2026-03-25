@@ -34,28 +34,28 @@ An issue is "systemic" and requires escalation to my-architect when:
 - (c) The iteration cap (3) is reached without full resolution
 
 ## Workflow
-1. Read my-reviewer findings from docs/REVIEW_FINDINGS.md (MUST-FIX / SHOULD-FIX / SUGGESTION)
+1. Read my-reviewer findings from docs/feedback/REVIEW-FINDINGS.md (MUST-FIX / SHOULD-FIX / SUGGESTION)
 2. Triage findings: separate MUST-FIX from lower-priority items
 3. my-builder agent applies fixes for all MUST-FIX findings
 4. my-builder agent addresses SHOULD-FIX findings where feasible
 5. my-reviewer agent re-validates the fixed code against the original finding set only (new concerns logged as SUGGESTION for next review cycle)
 6. If MUST-FIX findings remain from the original set, return to step 3 (max 3 iterations)
 7. If iteration cap reached or systemic issue criteria met, escalate to my-architect agent
-8. Preserve findings and resolution status in docs/REMEDIATION.md (see output template below)
+8. Preserve findings and resolution status in docs/feedback/REMEDIATION.md (see output template below)
 9. Next: Determine outcome based on resolution status:
    - **All MUST-FIX resolved** → accept; remediation complete
    - **Systemic / architectural issues** → escalate beyond remediation:
-     - If the pattern suggests **system design flaws** (component boundaries, API contracts, data flow) → recommend `/cc-design` re-entry at Step 5, with docs/REMEDIATION.md as context
-     - If the pattern suggests **architecture flaws** (technology choices, fundamental structure) → recommend `/cc-design` re-entry at Step 2, with docs/REMEDIATION.md as context
-     - Document the escalation recommendation in docs/REMEDIATION.md under the Escalations section
+     - If the pattern suggests **system design flaws** (component boundaries, API contracts, data flow) → recommend `/cc-design` re-entry at Step 5, with docs/feedback/REMEDIATION.md as context
+     - If the pattern suggests **architecture flaws** (technology choices, fundamental structure) → recommend `/cc-design` re-entry at Step 2, with docs/feedback/REMEDIATION.md as context
+     - Document the escalation recommendation in docs/feedback/REMEDIATION.md under the Escalations section
 
-## Output Template — docs/REMEDIATION.md
+## Output Template — docs/feedback/REMEDIATION.md
 
 ```markdown
 # Remediation Report
 
 ## Summary
-- Review source: docs/REVIEW_FINDINGS.md
+- Review source: docs/feedback/REVIEW-FINDINGS.md
 - Iterations: [N of 3 max]
 - Status: RESOLVED / ESCALATED
 
@@ -96,29 +96,29 @@ If found:
 ### Example 1: Straightforward fix cycle
 User says: "Fix the review findings"
 Actions:
-1. Read docs/REVIEW_FINDINGS.md — 2 MUST-FIX, 1 SHOULD-FIX
+1. Read docs/feedback/REVIEW-FINDINGS.md — 2 MUST-FIX, 1 SHOULD-FIX
 2. my-builder fixes both MUST-FIX items and the SHOULD-FIX
 3. my-reviewer re-validates — all resolved
-Result: docs/REMEDIATION.md with Status: RESOLVED in 1 iteration
+Result: docs/feedback/REMEDIATION.md with Status: RESOLVED in 1 iteration
 
 ### Example 2: Escalation to architect
 User says: "Remediate the security findings"
 Actions:
-1. Read docs/REVIEW_FINDINGS.md — 3 MUST-FIX (same auth pattern issue)
+1. Read docs/feedback/REVIEW-FINDINGS.md — 3 MUST-FIX (same auth pattern issue)
 2. my-builder fixes in iteration 1, but reviewer finds same category in iteration 2
 3. Systemic issue criteria met (same finding category across 2+ iterations)
 Result: Escalated to my-architect for architectural resolution
 
 ## Troubleshooting
 
-### docs/REVIEW_FINDINGS.md not found
+### docs/feedback/REVIEW-FINDINGS.md not found
 Cause: No review has been run yet.
 Solution: Run cc-review skill first to produce findings.
 
 ### Iteration cap reached without resolution
 Cause: Fixes keep introducing new issues or the root cause is architectural.
-Solution: Escalate to my-architect per systemic issue criteria. Document the pattern in docs/REMEDIATION.md.
+Solution: Escalate to my-architect per systemic issue criteria. Document the pattern in docs/feedback/REMEDIATION.md.
 
 ### Reviewer finds design flaws, not just code bugs
 Cause: The review findings point to design-level problems (wrong abstractions, missing components, broken contracts) rather than implementation bugs.
-Solution: More remediation iterations won't help — the design itself needs to change. Recommend `/cc-design` re-entry at Step 5 (system design) or Step 2 (architecture) depending on severity, passing docs/REMEDIATION.md as context for what broke.
+Solution: More remediation iterations won't help — the design itself needs to change. Recommend `/cc-design` re-entry at Step 5 (system design) or Step 2 (architecture) depending on severity, passing docs/feedback/REMEDIATION.md as context for what broke.
