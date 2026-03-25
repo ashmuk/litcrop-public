@@ -14,11 +14,11 @@
 | Pre | Docs conflict resolution | 2/2 | **DONE** |
 | 0 | Quick wins | 7/7 | **DONE** |
 | 1 | Settings sync + tests | 3/3 | **DONE** |
-| 2 | Admin dashboard | 0/1 | PLANNED |
+| 2 | Admin dashboard | 1/1 | **DONE** |
 | 3 | Observer onboarding | 0/1 | PLANNED |
 | 4 | Admin notifications | 0/1 | PLANNED |
 | 5 | Security & quality | 10/10 | **DONE** |
-| **Total** | | **22/25** | |
+| **Total** | | **23/25** | |
 
 ---
 
@@ -73,8 +73,7 @@
 
 ## Wave 2 — Admin Dashboard (~4-6h)
 
-- [ ] **#179** Admin dashboard (Manage menu)
-  - Needs `/cc-design` before implementation
+- [x] **#179** Admin dashboard (Manage menu) — design: docs/UX-DESIGNS-admin-dashboard.md
   - Nav: admin-only "Manage" tab (uses `isAdmin` from Wave 0)
   - API: `GET /admin/users`, `GET /admin/farms`
   - Frontend: AdminDashboard with Users, Farms, Stats panels
