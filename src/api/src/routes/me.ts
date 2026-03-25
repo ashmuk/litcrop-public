@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { dynamoRepo } from '../services/dynamodb';
+import { dynamoRepo, type UserSettings } from '../services/dynamodb';
 import { ValidationError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcrop/shared';
@@ -32,10 +32,8 @@ router.patch('/profile', async (c) => {
 router.get('/settings', async (c) => {
   const { userId } = getAuthContext(c);
   const settings = await dynamoRepo.getUserSettings(userId);
-  if (!settings) {
-    return c.json({ locale: 'en', temp_unit: 'C', theme: 'system', updated_at: '' });
-  }
-  return c.json(settings);
+  const defaults: UserSettings = { locale: 'en', temp_unit: 'C', theme: 'system', updated_at: '' };
+  return c.json(settings ?? defaults);
 });
 
 // PATCH /api/v1/me/settings

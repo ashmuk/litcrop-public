@@ -29,6 +29,9 @@ import type {
   WeatherResponse,
   ChatResponse,
   UsageResponse,
+  Locale,
+  Theme,
+  TempUnit,
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
@@ -285,8 +288,8 @@ export async function getMyProfile(): Promise<UserProfileResponse> {
 
 export interface UserSettingsResponse {
   locale: Locale;
-  temp_unit: 'C' | 'F';
-  theme: string;
+  temp_unit: TempUnit;
+  theme: Theme;
   updated_at: string;
 }
 
@@ -296,11 +299,7 @@ export async function getMySettings(): Promise<UserSettingsResponse> {
 }
 
 /** PATCH /api/v1/me/settings */
-export async function updateMySettings(data: {
-  locale?: Locale;
-  temp_unit?: 'C' | 'F';
-  theme?: string;
-}): Promise<UserSettingsResponse> {
+export async function updateMySettings(data: Partial<Pick<UserSettingsResponse, 'locale' | 'temp_unit' | 'theme'>>): Promise<UserSettingsResponse> {
   return request<UserSettingsResponse>('PATCH', '/me/settings', data);
 }
 

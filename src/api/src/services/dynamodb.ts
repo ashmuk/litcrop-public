@@ -10,7 +10,7 @@ import {
   BatchWriteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile } from '@litcrop/shared';
+import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
@@ -183,6 +183,28 @@ function itemToUserProfile(item: Record<string, unknown>, userId: string): UserP
     display_name: (item['display_name'] as string) ?? '',
     preferred_role: (item['preferred_role'] as UserProfile['preferred_role']) ?? 'observer',
     created_at: (item['created_at'] as string) ?? '',
+  };
+}
+
+export interface UserSettings {
+  locale: Locale;
+  temp_unit: TempUnit;
+  theme: Theme;
+  updated_at: string;
+}
+
+const DEFAULT_SETTINGS: Omit<UserSettings, 'updated_at'> = {
+  locale: 'en',
+  temp_unit: 'C',
+  theme: 'system',
+};
+
+function itemToUserSettings(item: Record<string, unknown>): UserSettings {
+  return {
+    locale: (item['locale'] as Locale) ?? DEFAULT_SETTINGS.locale,
+    temp_unit: (item['temp_unit'] as TempUnit) ?? DEFAULT_SETTINGS.temp_unit,
+    theme: (item['theme'] as Theme) ?? DEFAULT_SETTINGS.theme,
+    updated_at: (item['updated_at'] as string) ?? '',
   };
 }
 
@@ -990,7 +1012,7 @@ export class DynamoRepository {
   // ── User Settings ────────────────────────────────────────────────
 
   /** Get a user's settings. Returns null if no settings saved yet. */
-  async getUserSettings(userId: string): Promise<{ locale: string; temp_unit: string; theme: string; updated_at: string } | null> {
+  async getUserSettings(userId: string): Promise<UserSettings | null> {
     const result = await ddb.send(
       new GetCommand({
         TableName: TABLE_NAME,
@@ -998,19 +1020,14 @@ export class DynamoRepository {
       }),
     );
     if (!result.Item) return null;
-    return {
-      locale: (result.Item['locale'] as string) ?? 'en',
-      temp_unit: (result.Item['temp_unit'] as string) ?? 'C',
-      theme: (result.Item['theme'] as string) ?? 'system',
-      updated_at: (result.Item['updated_at'] as string) ?? '',
-    };
+    return itemToUserSettings(result.Item);
   }
 
   /** Create or update a user's settings. */
   async upsertUserSettings(
     userId: string,
-    data: { locale?: string; temp_unit?: string; theme?: string },
-  ): Promise<{ locale: string; temp_unit: string; theme: string; updated_at: string }> {
+    data: { locale?: Locale; temp_unit?: TempUnit; theme?: Theme },
+  ): Promise<UserSettings> {
     const now = new Date().toISOString();
     const setExpressions: string[] = [
       'locale = if_not_exists(locale, :default_locale)',
@@ -1019,9 +1036,9 @@ export class DynamoRepository {
       'updated_at = :now',
     ];
     const values: Record<string, unknown> = {
-      ':default_locale': 'en',
-      ':default_temp_unit': 'C',
-      ':default_theme': 'system',
+      ':default_locale': DEFAULT_SETTINGS.locale,
+      ':default_temp_unit': DEFAULT_SETTINGS.temp_unit,
+      ':default_theme': DEFAULT_SETTINGS.theme,
       ':now': now,
     };
 
@@ -1048,13 +1065,7 @@ export class DynamoRepository {
       }),
     );
 
-    const item = result.Attributes as Record<string, unknown>;
-    return {
-      locale: (item['locale'] as string) ?? 'en',
-      temp_unit: (item['temp_unit'] as string) ?? 'C',
-      theme: (item['theme'] as string) ?? 'system',
-      updated_at: (item['updated_at'] as string) ?? '',
-    };
+    return itemToUserSettings(result.Attributes as Record<string, unknown>);
   }
 
 }

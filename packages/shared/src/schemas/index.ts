@@ -322,11 +322,13 @@ export const UpdateProfileRequestSchema = z.object({
 
 export const TempUnitSchema = z.enum(['C', 'F']);
 
-/** PATCH /api/v1/me/settings — request body */
+/** PATCH /api/v1/me/settings — request body (at least one field required) */
 export const UpdateSettingsRequestSchema = z.object({
   locale: LocaleSchema.optional(),
   temp_unit: TempUnitSchema.optional(),
   theme: ThemeSchema.optional(),
+}).refine(obj => Object.keys(obj).length > 0, {
+  message: 'At least one setting field is required',
 });
 
 /** GET|PATCH /api/v1/me/settings — response */

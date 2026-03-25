@@ -5,7 +5,7 @@
  *   2. You section: email, locale, theme, temp unit
  */
 
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
 import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings } from '../lib/api';
@@ -23,6 +23,11 @@ interface FarmWithRole extends Farm {
 
 const LOCALE_STORAGE_KEY = 'litcrop-locale';
 const TEMP_UNIT_STORAGE_KEY = 'litcrop-temp-unit';
+const THEME_STORAGE_KEY = 'litcrop-theme';
+
+function isValidLocale(value: string): value is Locale {
+  return (LOCALE_OPTIONS as ReadonlyArray<string>).includes(value);
+}
 
 export default function ProfilePage() {
   const [farms, setFarms] = useState<FarmWithRole[]>([]);
@@ -43,7 +48,8 @@ export default function ProfilePage() {
   const [savingFarmName, setSavingFarmName] = useState(false);
   const activeFarmId = useLocalFarmId('');
 
-  // Settings state
+  // Settings state (settingsDirty prevents API overwriting user's in-flight changes)
+  const settingsDirty = useRef(false);
   const [locale, setLocale] = useState<Locale>('en');
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
   const currentUser = getCurrentUser();
@@ -57,12 +63,10 @@ export default function ProfilePage() {
         const currentFarmId = localStorage.getItem(LS_FARM_ID) ?? '';
         const activeFarm = list.find((f) => f.id === currentFarmId) as FarmWithRole | undefined;
         const existingLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
-        if (activeFarm && !existingLocale) {
-          if (activeFarm.locale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(activeFarm.locale)) {
-            setLocale(activeFarm.locale);
-            try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
-            document.documentElement.setAttribute('data-locale', activeFarm.locale);
-          }
+        if (activeFarm && !existingLocale && activeFarm.locale && isValidLocale(activeFarm.locale)) {
+          setLocale(activeFarm.locale);
+          try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
+          document.documentElement.setAttribute('data-locale', activeFarm.locale);
         }
       })
       .catch(() => {})
@@ -91,21 +95,22 @@ export default function ProfilePage() {
 
     // Load settings from localStorage as initial state
     try {
-      const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
-      if (storedLocale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(storedLocale)) {
+      const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+      if (storedLocale && isValidLocale(storedLocale)) {
         setLocale(storedLocale);
       } else {
-        const attr = document.documentElement.getAttribute('data-locale') as Locale | null;
-        if (attr) setLocale(attr);
+        const attr = document.documentElement.getAttribute('data-locale');
+        if (attr && isValidLocale(attr)) setLocale(attr);
       }
       const storedUnit = localStorage.getItem(TEMP_UNIT_STORAGE_KEY);
       if (storedUnit === 'C' || storedUnit === 'F') setTempUnit(storedUnit);
     } catch {}
 
-    // Sync settings from API (authoritative — overwrites localStorage)
+    // Sync settings from API (authoritative — overwrites localStorage unless user already changed something)
     getMySettings().then(s => {
-      if (s.locale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(s.locale)) {
-        setLocale(s.locale as Locale);
+      if (settingsDirty.current) return; // user changed a setting while fetch was in-flight
+      if (s.locale && isValidLocale(s.locale)) {
+        setLocale(s.locale);
         document.documentElement.setAttribute('data-locale', s.locale);
         document.documentElement.setAttribute('lang', s.locale === 'ja' ? 'ja' : 'en');
         try { localStorage.setItem(LOCALE_STORAGE_KEY, s.locale); } catch {}
@@ -116,9 +121,9 @@ export default function ProfilePage() {
       }
       if (s.theme) {
         document.documentElement.setAttribute('data-theme', s.theme);
-        try { localStorage.setItem('litcrop-theme', s.theme); } catch {}
+        try { localStorage.setItem(THEME_STORAGE_KEY, s.theme); } catch {}
       }
-    }).catch(() => {}); // non-blocking, localStorage fallback remains
+    }).catch(() => {});
   }, []);
 
   function handleSwitchFarm(farmId: string) {
@@ -200,6 +205,7 @@ export default function ProfilePage() {
   }
 
   function applyLocale(next: Locale) {
+    settingsDirty.current = true;
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
@@ -208,6 +214,7 @@ export default function ProfilePage() {
   }
 
   function applyTempUnit(next: 'C' | 'F') {
+    settingsDirty.current = true;
     setTempUnit(next);
     try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, next); } catch {}
     updateMySettings({ temp_unit: next }).catch(() => {});
