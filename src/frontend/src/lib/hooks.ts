@@ -66,11 +66,12 @@ export function getCachedIsAdmin(): boolean {
 }
 
 export function setCachedIsAdmin(value: boolean): void {
+  const changed = getCachedIsAdmin() !== value;
   try {
     localStorage.setItem(LS_IS_ADMIN, String(value));
   } catch {}
-  // Notify nav components to re-render with updated admin state
-  if (typeof window !== 'undefined') {
+  // Only notify nav components when the value actually changed
+  if (changed && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('litcrop:admin-updated'));
   }
 }
