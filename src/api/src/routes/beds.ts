@@ -30,8 +30,7 @@ const router = new Hono();
 const NODE_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 
 function isJpegBytes(buf: Uint8Array): boolean {
-  if (buf.length < 3) return false;
-  return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
 }
 
 /** Verify caller is a member of the farm that contains this bed. */

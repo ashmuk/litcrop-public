@@ -43,6 +43,9 @@ const MAX_TOOL_ITERATIONS = 5;     // max LLM↔tool rounds per request
 // TODO: Replace with a DynamoDB-backed sliding-window counter if stricter
 // per-hour enforcement is required at production scale.
 
+// S5: In-memory rate limiter — resets on each Lambda cold start. This is a best-effort
+// guard; the DynamoDB-based budget system (budget.ts) is the authoritative limit enforcer.
+// For production, consider DynamoDB atomic counters or API Gateway usage plans.
 export const rateLimitStore = new Map<string, number[]>();
 
 export function checkRateLimit(userId: string): void {
@@ -305,6 +308,7 @@ async function callWithTools(
     } catch (err) {
       if (err instanceof Anthropic.APIError) {
         const status = err.status ?? 500;
+        // S7: Log error type only — do not log upstream error body (may contain user content)
         console.error('[chat] LLM error', { status, error_type: err.error?.type ?? 'unknown' });
         if (status === 429) {
           throw new RateLimitError('AI service rate limit reached. Try again later.');
