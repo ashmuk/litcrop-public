@@ -31,6 +31,26 @@ function isValidLocale(value: string): value is Locale {
   return (LOCALE_OPTIONS as ReadonlyArray<string>).includes(value);
 }
 
+const JA_NAV: Record<string, string> = {
+  'nav.farm': '作物', 'nav.weather': '天気',
+  'nav.setup': 'プロフィール', 'nav.manage': 'デバイス', 'nav.admin': '管理',
+  'nav.layout': 'レイアウト',
+};
+const EN_NAV: Record<string, string> = {
+  'nav.farm': 'Crops', 'nav.weather': 'Weather',
+  'nav.setup': 'Profile', 'nav.manage': 'Device', 'nav.admin': 'Admin',
+  'nav.layout': 'Layout',
+};
+
+/** Re-translate static [data-i18n] nav labels after locale change. */
+function translateNavLabels(locale: Locale): void {
+  const map = locale === 'ja' ? JA_NAV : EN_NAV;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    if (key && map[key]) el.textContent = map[key];
+  });
+}
+
 export default function ProfilePage() {
   const [farms, setFarms] = useState<FarmWithRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,8 +232,11 @@ export default function ProfilePage() {
     settingsDirty.current = true;
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
+    document.documentElement.setAttribute('lang', next === 'ja' ? 'ja' : 'en');
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
     updateMySettings({ locale: next }).catch(() => {});
+    // Re-translate static nav labels (data-i18n elements) immediately
+    translateNavLabels(next);
     showToast(t('settings.save_success'), 'success');
   }
 
