@@ -195,15 +195,16 @@
 ## Summary Statistics
 
 
-| Scope                        | Total  | Done   | Remaining |
-| ---------------------------- | ------ | ------ | --------- |
-| v0.9                         | 29     | 29     | 0         |
-| v1.0 Phases A–F              | 28     | 28     | 0         |
-| Post-deploy feedback (R1+R2) | 16     | 16     | 0         |
-| #90 Settings sync            | 1      | 0.5    | 0.5 (temp_unit, theme) |
-| Production                   | 14     | 0      | 14        |
-| Vision                       | 7      | 0      | 7         |
-| **Total**                    | **95** | **73.5** | **21.5** |
+| Scope                        | Total   | Done   | Remaining |
+| ---------------------------- | ------- | ------ | --------- |
+| v0.9                         | 29      | 29     | 0         |
+| v1.0 Phases A–F              | 28      | 28     | 0         |
+| Post-deploy R1–R6 (F/R items)| 34      | 34     | 0         |
+| Post-deploy R7 (D items)     | 6       | 0      | 6 (2 quick, 4 PROD-1) |
+| #90 Settings sync            | 1       | 0.5    | 0.5 (temp_unit, theme) |
+| Production (original)        | 14      | 0      | 14        |
+| Vision                       | 7       | 0      | 7         |
+| **Total**                    | **119** | **91.5** | **27.5** |
 
 
 ### By Priority (remaining only)
