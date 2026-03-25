@@ -12,13 +12,13 @@
 | Wave | Items | Done | Status |
 |------|-------|------|--------|
 | Pre | Docs conflict resolution | 2/2 | **DONE** |
-| 0 | Quick wins | 0/7 | PLANNED |
+| 0 | Quick wins | 7/7 | **DONE** |
 | 1 | Settings sync + tests | 0/3 | PLANNED |
 | 2 | Admin dashboard | 0/1 | PLANNED |
 | 3 | Observer onboarding | 0/1 | PLANNED |
 | 4 | Admin notifications | 0/1 | PLANNED |
 | 5 | Security & quality | 0/10 | PLANNED |
-| **Total** | | **2/25** | |
+| **Total** | | **9/25** | |
 
 ---
 
@@ -33,29 +33,15 @@
 
 ## Wave 0 — Quick Wins (S-sized, ~1-2h)
 
-- [ ] **#186** E-02: System admin never sees Leave button
-  - File: `src/frontend/src/components/ProfilePage.tsx`
-  - Add `is_admin` to `GET /me/profile` response
-  - Guard Leave button with `isAdmin` check
-- [ ] **#185** E-01: Manager can edit farm name after setup
-  - File: `src/frontend/src/components/ProfilePage.tsx`
-  - Add inline edit (pencil icon) on farm name
-  - Wire to existing `PATCH /farms/:farmId` with `name` field
-- [ ] **#188** E-04: Show farm ID in Profile (disambiguate)
-  - File: `src/frontend/src/components/ProfilePage.tsx`
-  - Show truncated farm ID as subtitle on farm card
-- [ ] **C2** Guard requiredRoles when isAdmin=true
-  - File: `src/api/src/routes/_helpers.ts:27`
-  - Check synthetic `'admin'` role against `requiredRoles` before returning
-- [ ] **C5** Null guard on currentUser in Leave button
-  - File: `src/frontend/src/components/ProfilePage.tsx:309`
-  - Add `currentUser &&` to the guard condition
-- [ ] **S1** Admin 403 uses UNAUTHORIZED → should be FORBIDDEN
-  - File: `src/api/src/routes/admin.ts:30`
-  - Change error code from `UNAUTHORIZED` to `FORBIDDEN`
-- [ ] **S2** plots/view.astro stale UI flash before redirect
-  - File: `src/frontend/src/pages/plots/view.astro`
-  - Fix or remove stale redirect page
+- [x] **#186** E-02: System admin never sees Leave button — `isSystemAdmin` from `/me/profile`
+- [x] **#185** E-01: Manager can edit farm name — inline pencil edit, `maxLength={100}`
+- [x] **#188** E-04: Show farm ID — 8-char truncated UUID as monospace subtitle
+- [x] **C2** Guard requiredRoles when isAdmin — check synthetic role against required
+- [x] **C5** Null guard on currentUser — added `currentUser &&` to Leave condition
+- [x] **S1** Admin 403 UNAUTHORIZED → already uses FORBIDDEN (verified, no change needed)
+- [x] **S2** plots/view.astro flash → `display:none` on body
+- Simplifier: extracted `applyFarmRemoval` + `handleSaveFarmName` helpers, fixed form click propagation
+- Commits: `2a23187`, `f80485d`
 
 ---
 
@@ -171,6 +157,9 @@ Promoted from PROD backlog. Items from REVIEW-FINDINGS-V09.md.
 |------|-------------|------|
 | `1f0b47b` | docs: update REQUIREMENTS + ARCHITECTURE for multi-farm model | Pre |
 | `c5156a5` | docs: fix remaining stale Field/Plot references | Pre |
+| `aa8d90d` | docs: add Beta-2 task breakdown + reshuffle scope | Pre |
+| `2a23187` | feat: Wave 0 — admin Leave, farm name edit, farm ID, guards | 0 |
+| `f80485d` | refactor: simplify ProfilePage + maxLength fix | 0 |
 
 ---
 
