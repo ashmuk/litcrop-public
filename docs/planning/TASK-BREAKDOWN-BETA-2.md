@@ -13,12 +13,12 @@
 |------|-------|------|--------|
 | Pre | Docs conflict resolution | 2/2 | **DONE** |
 | 0 | Quick wins | 7/7 | **DONE** |
-| 1 | Settings sync + tests | 0/3 | PLANNED |
+| 1 | Settings sync + tests | 1/3 | IN PROGRESS |
 | 2 | Admin dashboard | 0/1 | PLANNED |
 | 3 | Observer onboarding | 0/1 | PLANNED |
 | 4 | Admin notifications | 0/1 | PLANNED |
 | 5 | Security & quality | 0/10 | PLANNED |
-| **Total** | | **9/25** | |
+| **Total** | | **10/25** | |
 
 ---
 
@@ -47,19 +47,27 @@
 
 ## Wave 1 — Settings Sync + Tests (~2-3h)
 
-- [ ] **#90** Settings sync (cross-device)
-  - API: `GET /api/v1/settings` + `PATCH /api/v1/settings`
-  - DynamoDB: `PK=USER#{userId}`, `SK=#SETTINGS`
-  - Frontend: fetch on load, save to both localStorage and API
-  - Tests: API endpoint tests
-- [ ] **C1** Admin bypass tests
-  - Test: assertFarmAccess with isAdmin returns synthetic membership
-  - Test: GET /farms with admin returns all farms
-  - Test: write routes reject admin without actual membership
-  - Test: getAllFarms() returns empty array when no farms
-- [ ] **S3** Weather timezone hardcoded to Asia/Tokyo
-  - File: `src/api/src/routes/weather.ts:121`
-  - Use farm's timezone or derive from coordinates
+- [ ] **#90** Settings sync (cross-device) — ADR: [ADR-20260325-settings-sync.md](../decisions/ADR-20260325-settings-sync.md)
+  - **Design**: Separate `#SETTINGS` DynamoDB item (not merged into profile)
+  - Shared: add `SETTINGS` to `DDB_KEY_PREFIXES`, add `TempUnitSchema`, `UpdateSettingsRequestSchema`, `UserSettingsResponseSchema`
+  - API: `GET /me/settings` + `PATCH /me/settings` on existing me router
+  - DynamoDB: `getUserSettings()` + `upsertUserSettings()` (PK=USER#{userId}, SK=#SETTINGS)
+  - Frontend: `getMySettings()` + `updateMySettings()` in api.ts
+  - ProfilePage: fetch settings on mount (API authoritative), update `applyLocale()` to use settings API instead of `updateFarm()`
+  - ThemeSwitcher: add `updateMySettings({ theme })` on theme change
+  - Tests: GET/PATCH /me/settings endpoint tests
+  - **Files**: constants.ts, schemas/index.ts, types/api.ts, types/requests.ts, shared/index.ts, dynamodb.ts, me.ts, api.ts, ProfilePage.tsx, ThemeSwitcher.tsx
+- [ ] **C1** Admin bypass tests — in `farms.test.ts`
+  - **Design**: Need `vi.stubEnv('ADMIN_EMAILS', ...)` before module import (ADMIN_EMAILS_SET cached at module level)
+  - A1: Admin GET /farms returns all farms via getAllFarms
+  - A2: Admin GET /farms returns empty array when no farms exist
+  - A3: Non-admin does NOT take admin path (getFarmsForUser called)
+  - B1: Admin can read farm they are NOT a member of
+  - B2: Admin gets 404 when farm doesn't exist
+  - C1: Admin with requiredRoles including 'admin' passes
+  - C2: Admin with requiredRoles excluding 'admin' gets 404
+  - Add `getAllFarms` to mock factory
+- [x] **S3** Weather timezone — **ALREADY FIXED** (verified: `weather.ts:123` uses `timezone: 'auto'`, no hardcoded 'Asia/Tokyo')
 
 ---
 
