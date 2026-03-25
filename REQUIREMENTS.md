@@ -538,7 +538,7 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | C-9 | `[MVP]` AI chatbot uses Anthropic SDK with Claude Haiku model | ADR-009 | Direct Anthropic API (not Bedrock); ~$0.25/1M input tokens |
 | C-10 | `[MVP]` No visual layout editor (read-only spatial view only) | PLANS.md scope exclusion | Interactive editor deferred to Production |
 | C-11 | `[MVP]` No custom domain (CloudFront default domain sufficient) | PLANS.md scope exclusion | Custom domain deferred to Production |
-| C-12 | `[MVP]` No CI/CD pipeline (CDK deploy from local CLI) | PLANS.md scope exclusion | GitHub Actions CI/CD deferred to Production |
+| C-12 | `[MVP+]` CI/CD via GitHub Actions | Phase A (v0.10) | `pr-checks.yml` (4 parallel jobs) + `deploy.yml` (OIDC, CDK synth gate, production approval) |
 | C-13 | `[MVP]` No social login (email/password only) | PLANS.md scope exclusion | Google/LINE social login deferred to Production |
 
 ---
@@ -562,7 +562,7 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | Q-6 | Is the layout editor in MVP scope? | **Deferred to Production** per PLANS.md scope exclusions. Read-only spatial view carries forward from PoC. Interactive visual editor is Production scope. | 2026-03-20 |
 | Q-7 | Image processing: thumbnails only, or also WebP conversion + compression? | **Thumbnails only (320px JPEG).** WebP conversion and multi-size optimization deferred to Production. Sufficient to replace CSS-only resizing and reduce bandwidth. | 2026-03-20 |
 | Q-8 | Custom domain at MVP or Production? | **Deferred to Production** per PLANS.md scope exclusions. CloudFront default domain sufficient for MVP demos with 1-5 users. | 2026-03-20 |
-| Q-9 | CI/CD pipeline at MVP or Production? | **Deferred to Production** per PLANS.md scope exclusions. `cdk deploy` from local CLI is sufficient for MVP. CDK codifies infrastructure but deployment automation (GitHub Actions) is Production scope. | 2026-03-20 |
+| Q-9 | CI/CD pipeline at MVP or Production? | **Implemented in MVP+ Phase A (v0.10)**. `pr-checks.yml` with 4 parallel jobs (build, test, typecheck, cdk-synth) + `deploy.yml` with OIDC auth and production environment approval. | 2026-03-22 |
 | Q-10 | Should SYSTEM-DESIGN.md TypeScript types be kept in sync manually or generated? | **Recommend generating from `@litcrop/shared`** (Zod schemas now exist). SYSTEM-DESIGN.md should reference the shared package rather than duplicating types. Reduces drift risk identified in PoC retrospective. | 2026-03-20 |
 | Q-11 | UX-DESIGNS.md API section duplicates API-CONTRACTS.md — consolidate or keep? | **Consolidate into API-CONTRACTS.md** as the single source of truth for endpoint contracts. UX-DESIGNS.md should reference API-CONTRACTS.md for API details, not duplicate them. | 2026-03-20 |
 
@@ -599,7 +599,7 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | Computer vision / AI image analysis | Deferred to Production | -- |
 | Multi-farm per user | `[MVP+]` Implemented in Phase B (v0.11) | C-5, FR-1.6, FR-1.7 |
 | Custom domain | Deferred to Production | -- |
-| CI/CD pipeline | Deferred to Production | -- |
+| CI/CD pipeline | `[MVP+]` Implemented in Phase A (v0.10) | C-12 |
 
 ---
 

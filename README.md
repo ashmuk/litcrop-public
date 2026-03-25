@@ -4,7 +4,7 @@ Remote farm observation and management web app — digitally track planting layo
 
 ## Overview
 
-LitCrop builds a digital twin of a small farm, enabling remote visibility into field conditions through periodic and motion-triggered camera captures. The system represents a farm's physical structure (fields, beds, plots) and associates camera images with specific plots, creating a time-ordered growth record viewable on a mobile-first dashboard.
+LitCrop builds a digital twin of a small farm, enabling remote visibility into field conditions through periodic and motion-triggered camera captures. The system represents a farm's physical structure as a flat bed grid (Farm → Beds) and associates camera images with specific beds, creating a time-ordered growth record viewable on a mobile-first dashboard.
 
 **Target deployment**: Nagano Prefecture, Japan (760m elevation, humid continental climate). Bilingual: English / Japanese.
 
@@ -12,24 +12,33 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 
 ## Project Status
 
-**Current Stage**: MVP+ — Phase C complete (v0.12), Phase D next
+**Current Stage**: Beta-2 — v0.28 (24/25 items complete)
 
-**Scope Level**: ~~PoC~~ → **MVP+** → Production ([PLANS.md](PLANS.md))
+**Scope Level**: ~~PoC~~ → ~~MVP~~ → ~~MVP+~~ → **Beta** → Production ([PLANS.md](PLANS.md))
 
-### Design Artifacts Completed
-- Requirements: 54 functional, 24 non-functional ([REQUIREMENTS.md](REQUIREMENTS.md))
-- Architecture: System design with 7 ADRs ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
-- UX/UI: 7 screens, 10 interactive HTML/CSS mockups ([docs/UX-DESIGNS.md](docs/UX-DESIGNS.md))
-- API: 11 endpoints with full request/response schemas ([docs/API-CONTRACTS.md](docs/API-CONTRACTS.md))
+### Milestones
+| Stage | Version | Key Deliverables |
+|-------|---------|-----------------|
+| PoC | v0.6 | Camera sim, 7 screens, weather, AI chat, i18n |
+| MVP | v0.9 | Auth, CDK infra, thumbnails, security hardening |
+| MVP+ | v0.14 | CI/CD, multi-farm, time-lapse, Farm→Bed flattening, roles |
+| Beta-1 | v0.22 | Device rename, ownership checks, admin farm access |
+| Beta-2 | v0.28 | Settings sync, admin dashboard, observer onboarding, security |
+
+### Design Artifacts
+- Requirements: 87 functional, 38 non-functional ([REQUIREMENTS.md](REQUIREMENTS.md))
+- Architecture: System design with 8+ ADRs ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
+- UX/UI: 10+ screens ([docs/UX-DESIGNS.md](docs/UX-DESIGNS.md))
+- API: 22 endpoints with full request/response schemas ([docs/API-CONTRACTS.md](docs/API-CONTRACTS.md))
 - System design: Sequence diagrams, component interfaces ([docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md))
-- Execution plan: 39 tasks across 6 phases ([docs/planning/EXECUTION-PLAN.md](docs/planning/EXECUTION-PLAN.md))
+- Execution plans: [docs/planning/](docs/planning/)
 
 ## Tech Stack
 
 ### Application
 - **Frontend**: [Astro](https://astro.build/) + [Preact](https://preactjs.com/) islands (SSG, zero-JS default)
-- **Backend**: [Hono](https://hono.dev/) on AWS Lambda (11 REST endpoints)
-- **Database**: DynamoDB single-table design (2 GSIs)
+- **Backend**: [Hono](https://hono.dev/) on AWS Lambda (22 REST endpoints)
+- **Database**: DynamoDB single-table design (1 GSI)
 - **Language**: TypeScript
 - **Styling**: CSS custom properties (design tokens), mobile-first
 
