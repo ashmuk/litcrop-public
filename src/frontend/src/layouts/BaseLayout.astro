@@ -74,7 +74,7 @@ const {
           // Inline translation map for nav + common static labels (ja only for PoC)
           var JA = {
             'nav.farm': '作物', 'nav.weather': '天気',
-            'nav.setup': 'プロフィール', 'nav.manage': '管理',
+            'nav.setup': 'プロフィール', 'nav.manage': 'デバイス',
             'nav.layout': 'レイアウト'
           };
           if (locale === 'ja') XHR_TRANSLATIONS = JA;
@@ -138,11 +138,11 @@ const {
       <a
         href="/manage/"
         class={`tab-bar__item${activeTab === 'manage' ? ' tab-bar__item--active' : ''}`}
-        aria-label="Manage devices"
+        aria-label="Device monitoring"
         aria-current={activeTab === 'manage' ? 'page' : undefined}
       >
         <span class="tab-bar__icon" aria-hidden="true">📡</span>
-        <span class="tab-bar__label" data-i18n="nav.manage">Manage</span>
+        <span class="tab-bar__label" data-i18n="nav.manage">Device</span>
       </a>
 
       <a

@@ -3,7 +3,7 @@
     "farm": "Crops",
     "weather": "Weather",
     "setup": "Profile",
-    "manage": "Manage",
+    "manage": "Device",
     "layout": "Layout"
   },
   "status": {
@@ -263,7 +263,7 @@
     "save_error": "Could not save"
   },
   "manage": {
-    "title": "Manage",
+    "title": "Device",
     "camera_nodes": "Camera Nodes",
     "no_nodes": "No camera nodes found",
     "no_nodes_body": "Camera nodes will appear here once they upload images to this farm.",

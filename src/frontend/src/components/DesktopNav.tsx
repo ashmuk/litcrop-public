@@ -2,7 +2,7 @@
  * Desktop Navigation Bar Island — T-DESK-06
  *
  * Displayed only at 1024px+ via CSS (display:none → display:flex).
- * Shows: LitCrop brand | Crops · Weather · Manage · Profile | user email + logout
+ * Shows: LitCrop brand | Crops · Weather · Device · Profile | user email + logout
  *
  * Reads the active tab from `activeTab` prop (passed from BaseLayout).
  * User email is read from localStorage on mount.

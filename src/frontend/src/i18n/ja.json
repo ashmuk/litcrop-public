@@ -3,7 +3,7 @@
     "farm": "作物",
     "weather": "天気",
     "setup": "プロフィール",
-    "manage": "管理",
+    "manage": "デバイス",
     "layout": "レイアウト"
   },
   "status": {
@@ -263,7 +263,7 @@
     "save_error": "保存できませんでした"
   },
   "manage": {
-    "title": "管理",
+    "title": "デバイス",
     "camera_nodes": "カメラノード",
     "no_nodes": "カメラノードが見つかりません",
     "no_nodes_body": "カメラノードが画像をアップロードすると、ここに表示されます。",
