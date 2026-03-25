@@ -15,10 +15,10 @@
 | 0 | Quick wins | 7/7 | **DONE** |
 | 1 | Settings sync + tests | 3/3 | **DONE** |
 | 2 | Admin dashboard | 1/1 | **DONE** |
-| 3 | Observer onboarding | 0/1 | PLANNED |
-| 4 | Admin notifications | 0/1 | PLANNED |
+| 3 | Observer onboarding | 1/1 | **DONE** |
+| 4 | Admin notifications | 0/1 | DEFERRED (CDK/SES needs deploy) |
 | 5 | Security & quality | 10/10 | **DONE** |
-| **Total** | | **23/25** | |
+| **Total** | | **24/25** | |
 
 ---
 
@@ -84,7 +84,7 @@
 
 ## Wave 3 — Observer Onboarding (~4-6h)
 
-- [ ] **#181** Observer onboarding (APPLY workflow) — design: [UX-DESIGNS-observer-onboarding.md](../designs/UX-DESIGNS-observer-onboarding.md)
+- [x] **#181** Observer onboarding (APPLY workflow) — design: [UX-DESIGNS-observer-onboarding.md](../designs/UX-DESIGNS-observer-onboarding.md)
   - Phase 1: Backend — JOIN_REQUEST entity, sk.joinRequest(), 5 API endpoints, tests
   - Phase 2: Email — services/email.ts notifyAdmin(), CDK SES identity + IAM
   - Phase 3: Frontend — FarmDiscovery.tsx, JoinRequestList.tsx, ProfilePage integration
