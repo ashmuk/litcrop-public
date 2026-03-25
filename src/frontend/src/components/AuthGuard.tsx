@@ -11,6 +11,8 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { getAccessToken } from '../lib/auth';
+import { getMyProfile } from '../lib/api';
+import { setCachedIsAdmin } from '../lib/hooks';
 
 export default function AuthGuard() {
   const [checking, setChecking] = useState(true);
@@ -29,6 +31,8 @@ export default function AuthGuard() {
         return;
       }
       setChecking(false);
+      // Cache admin flag on every page load (non-blocking)
+      getMyProfile().then(p => setCachedIsAdmin(p.is_admin === true)).catch(() => {});
     }
     check();
   }, []);

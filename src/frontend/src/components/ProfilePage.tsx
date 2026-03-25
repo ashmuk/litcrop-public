@@ -112,6 +112,7 @@ export default function ProfilePage() {
     // Sync settings from API (authoritative — overwrites localStorage unless user already changed something)
     getMySettings().then(s => {
       if (settingsDirty.current) return; // user changed a setting while fetch was in-flight
+      if (!s.updated_at) return; // no saved settings yet — keep localStorage values
       if (s.locale && isValidLocale(s.locale)) {
         setLocale(s.locale);
         document.documentElement.setAttribute('data-locale', s.locale);
