@@ -157,19 +157,24 @@ Beta-1 (v0.22) ✅
   └── #182 admin access ──────────────────────┐
                                                ▼
 Beta-2 (v0.23)                               Wave 2: #179 admin dashboard
-  Wave 0: #185 #186 #188 C2 C5 (quick wins)   │
-  Wave 1: #90 settings + C1 admin tests        ▼
-                                             Wave 3: #181 observer onboarding
+  Pre:   docs conflict resolution (DONE)       │
+  Wave 0: #185 #186 #188 C2 C5 S1 S2          ▼
+  Wave 1: #90 settings + C1 tests + S3       Wave 3: #181 observer onboarding
                                                │
                                                ▼
                                              Wave 4: #187 admin notifications
+                                               │
+                                               ▼
+                                             Wave 5: security & quality (S4-S8, Q4-Q9, T3-T6)
 ```
 
+- **Pre** is done — docs conflicts resolved (2 commits).
 - **Wave 0** is independent — start immediately.
 - **Wave 1** is independent — can run in parallel with Wave 0.
 - **Wave 2** depends on #182 (live) + Wave 0.1 (`isAdmin` exposed to frontend).
 - **Wave 3** depends on Wave 2 for approval UI placement.
 - **Wave 4** depends on Waves 2+3 for the events to notify on.
+- **Wave 5** is independent — can start any time after Wave 0.
 
 ---
 
@@ -177,14 +182,18 @@ Beta-2 (v0.23)                               Wave 2: #179 admin dashboard
 
 | Category | Count | Items |
 |----------|-------|-------|
-| Quick wins (S) | 5 | #185, #186, #188, C2, C5 |
+| Docs (Pre) | 2 | REQUIREMENTS.md + ARCHITECTURE.md conflict resolution (**DONE**) |
+| Quick wins (S) | 7 | #185, #186, #188, C2, C5, S1, S2 |
 | Features (M) | 1 | #90 |
 | Features (L) | 3 | #179, #181, #187 |
-| Code quality | 1 | C1 (admin tests) |
-| **Total** | **10** | 5 waves |
+| Code quality + tests | 2 | C1 (admin tests), S3 (timezone) |
+| Security & quality | 10 | S4, S5, S7, S8, Q4, Q5, Q6, Q8, Q9, T3-T6 |
+| **Total** | **25** | 6 waves (Pre done) |
 | New API endpoints | ~8 | settings (2), admin (2), join flow (3+), notifications |
 | New pages/components | ~4 | AdminDashboard, ObserverLanding, JoinRequestList, FarmNameEditor |
-| **Estimated effort** | **~15–20 hrs** | Across 5 waves |
+| **Estimated effort** | **~20–28 hrs** | Across 6 waves |
+
+**Tracker**: See [TASK-BREAKDOWN-BETA-2.md](TASK-BREAKDOWN-BETA-2.md) for per-item checklist.
 
 ---
 
@@ -196,12 +205,10 @@ After Beta-2, the PROD backlog:
 |---|-------|------|-------|
 | #168 | Soft delete for farm deletion | L | DynamoDB TTL or scheduled Lambda |
 | UX-5 | Bed → Crop 1:N model | L | Data model migration, ADR needed |
-
-Plus Beta-1 stretch items if not completed:
-| # | Title | Size | Notes |
-|---|-------|------|-------|
-| #160 | Profile picture support | M | Reuse S3 pipeline |
-| #183 | AI chat on all pages | M | Floating FAB in BaseLayout |
+| #160 | Profile picture support | M | Moved from Beta-2 stretch |
+| #183 | AI chat on all pages | M | Moved from Beta-2 stretch |
+| — | 14 SUGGESTION items from Phase H review | — | Low priority polish |
+| — | G1-G2 i18n "Plot" terminology cleanup | — | Low priority |
 
 ---
 
