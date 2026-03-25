@@ -53,6 +53,24 @@ export function getLocalFarmRole(): FarmRole {
   return match?.role ?? 'observer';
 }
 
+// ── Admin cache ───────────────────────────────────────────────────
+
+const LS_IS_ADMIN = 'litcrop-isAdmin';
+
+export function getCachedIsAdmin(): boolean {
+  try {
+    return localStorage.getItem(LS_IS_ADMIN) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setCachedIsAdmin(value: boolean): void {
+  try {
+    localStorage.setItem(LS_IS_ADMIN, String(value));
+  } catch {}
+}
+
 type TempUnit = 'C' | 'F';
 
 /** Read temperature unit preference from localStorage. Defaults to 'C'. */

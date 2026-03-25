@@ -2,19 +2,21 @@
  * Desktop Navigation Bar Island — T-DESK-06
  *
  * Displayed only at 1024px+ via CSS (display:none → display:flex).
- * Shows: LitCrop brand | Crops · Weather · Device · Profile | user email + logout
+ * Shows: LitCrop brand | Crops · Weather · Device · Profile [· Admin] | user email + logout
  *
  * Reads the active tab from `activeTab` prop (passed from BaseLayout).
  * User email is read from localStorage on mount.
+ * Admin tab shown only when litcrop-isAdmin cache is 'true'.
  */
 
 import { useState, useEffect } from 'preact/hooks';
 import { getCurrentUser, signOut } from '../lib/auth';
+import { getCachedIsAdmin } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 
 export interface Props {
-  activeTab?: 'farm' | 'weather' | 'manage' | 'setup';
+  activeTab?: 'farm' | 'weather' | 'manage' | 'setup' | 'admin';
 }
 
 const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey: string }[] = [
@@ -26,6 +28,7 @@ const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey
 
 export default function DesktopNav({ activeTab = 'farm' }: Props) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const isAdmin = getCachedIsAdmin();
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -68,6 +71,16 @@ export default function DesktopNav({ activeTab = 'farm' }: Props) {
             {t(labelKey)}
           </a>
         ))}
+        {isAdmin && (
+          <a
+            href="/admin/"
+            class={`desktop-nav__link${activeTab === 'admin' ? ' desktop-nav__link--active' : ''}`}
+            aria-current={activeTab === 'admin' ? 'page' : undefined}
+          >
+            <span aria-hidden="true">⚙️</span>
+            {t('nav.admin')}
+          </a>
+        )}
       </div>
 
       {/* User email + logout */}

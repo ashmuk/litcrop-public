@@ -10,6 +10,7 @@ import '../styles/auth.css';
 import '../styles/responsive.css';
 import AuthGuard from '../components/AuthGuard';
 import DesktopNav from '../components/DesktopNav';
+import AdminTabInjector from '../components/AdminTabInjector';
 
 export interface Props {
   title?: string;
@@ -18,7 +19,7 @@ export interface Props {
   locale?: 'en' | 'ja';
   theme?: 'light' | 'dark' | 'earthy' | 'system';
   /** Marks the active tab bar item. Defaults to 'farm'. */
-  activeTab?: 'farm' | 'weather' | 'manage' | 'setup';
+  activeTab?: 'farm' | 'weather' | 'manage' | 'setup' | 'admin';
   /** If set, the element with this ID gets its textContent patched with the farm name from localStorage. */
   farmNameTitleId?: string;
   /** Prefix before the farm name (e.g. '🌾 ' or '⛅ Weather — '). */
@@ -74,7 +75,7 @@ const {
           // Inline translation map for nav + common static labels (ja only for PoC)
           var JA = {
             'nav.farm': '作物', 'nav.weather': '天気',
-            'nav.setup': 'プロフィール', 'nav.manage': 'デバイス',
+            'nav.setup': 'プロフィール', 'nav.manage': 'デバイス', 'nav.admin': '管理',
             'nav.layout': 'レイアウト'
           };
           if (locale === 'ja') XHR_TRANSLATIONS = JA;
@@ -155,5 +156,8 @@ const {
         <span class="tab-bar__label" data-i18n="nav.setup">Profile</span>
       </a>
     </nav>
+
+    <!-- Admin tab injector: appends 5th tab to mobile nav when isAdmin cached -->
+    <AdminTabInjector active={activeTab === 'admin'} client:load />
   </body>
 </html>

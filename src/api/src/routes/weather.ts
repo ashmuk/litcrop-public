@@ -36,6 +36,14 @@ function wmoToLabel(code: number): string {
   return 'Unknown';
 }
 
+const CARDINAL_DIRECTIONS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'] as const;
+
+function degreeToCardinal(deg: number): string {
+  if (typeof deg !== 'number' || isNaN(deg)) return 'N';
+  const idx = Math.round(((deg % 360 + 360) % 360) / 22.5) % 16;
+  return CARDINAL_DIRECTIONS[idx];
+}
+
 function wmoToIcon(code: number): string {
   if (code === 0) return 'clear_sky';
   if (code === 1) return 'mainly_clear';
@@ -148,7 +156,7 @@ function transformWeather(raw: Record<string, unknown>, beds: Bed[], cachedAt: s
     apparent_temperature: current['apparent_temperature'] as number,
     humidity: current['relative_humidity_2m'] as number,
     wind_speed: current['wind_speed_10m'] as number,
-    wind_direction: String(current['wind_direction_10m'] as number),
+    wind_direction: degreeToCardinal(current['wind_direction_10m'] as number),
     weather_code: weatherCode,
     condition: wmoToLabel(weatherCode),
     condition_icon: wmoToIcon(weatherCode),

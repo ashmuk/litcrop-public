@@ -1,5 +1,13 @@
-import { TEST_USER_ID, authHeaders } from '../helpers/auth';
+import { TEST_USER_ID, authHeaders, makeAuthHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Set ADMIN_EMAILS before auth module loads (ADMIN_EMAILS_SET is cached at module level)
+const ADMIN_EMAIL = 'admin@litcrop.test';
+const ADMIN_USER_ID = 'admin-cognito-sub-999';
+vi.hoisted(() => {
+  process.env['ADMIN_EMAILS'] = 'admin@litcrop.test';
+});
+
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
 import { getSignedImageUrl } from '../../services/s3';
@@ -19,6 +27,9 @@ vi.mock('../../services/dynamodb', () => ({
     getBedsForFarm: vi.fn(),
     getLatestImageForBed: vi.fn(),
     getUserProfile: vi.fn(),
+    getAllFarms: vi.fn(),
+    getUserSettings: vi.fn(),
+    upsertUserSettings: vi.fn(),
   },
 }));
 
@@ -547,5 +558,78 @@ describe('GET /api/v1/farms/:farmId/members', () => {
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, { headers: authHeaders() });
     expect(res.status).toBe(503);
+  });
+});
+
+// ── Admin Bypass Tests (C1) ──────────────────────────────────────
+
+const adminHeaders = () => makeAuthHeaders(ADMIN_USER_ID, ADMIN_EMAIL);
+const OTHER_FARM_ID = 'f0000000-0000-0000-0000-000000000099';
+const otherFarm = { ...farmFixture, id: OTHER_FARM_ID, user_id: 'other-user', name: 'Other Farm' };
+
+describe('GET /api/v1/farms — admin path', () => {
+  it('returns all farms with role admin for admin user', async () => {
+    vi.mocked(dynamoRepo.getAllFarms).mockResolvedValue([farmFixture, otherFarm]);
+
+    const res = await app.request('/api/v1/farms', { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ id: string; role: string }> };
+    expect(body.data).toHaveLength(2);
+    expect(body.data[0].role).toBe('admin');
+    expect(body.data[1].role).toBe('admin');
+    expect(dynamoRepo.getFarmsForUser).not.toHaveBeenCalled();
+  });
+
+  it('returns empty array when no farms exist for admin', async () => {
+    vi.mocked(dynamoRepo.getAllFarms).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/farms', { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: unknown[] };
+    expect(body.data).toHaveLength(0);
+  });
+
+  it('non-admin user calls getFarmsForUser, not getAllFarms', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/farms', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    expect(dynamoRepo.getAllFarms).not.toHaveBeenCalled();
+    expect(dynamoRepo.getFarmsForUser).toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/v1/farms/:farmId — admin bypass', () => {
+  it('admin can read a farm without membership', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(otherFarm);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/farms/${OTHER_FARM_ID}`, { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+    expect(dynamoRepo.getFarmMembership).not.toHaveBeenCalled();
+  });
+
+  it('admin gets 404 when farm does not exist', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockRejectedValue(new NotFoundError('Farm not found'));
+
+    const res = await app.request(`/api/v1/farms/${OTHER_FARM_ID}`, { headers: adminHeaders() });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('assertFarmAccess — requiredRoles with admin', () => {
+  it('admin passes when requiredRoles includes admin', async () => {
+    // PATCH /farms/:farmId uses requiredRoles ['admin', 'manager']
+    // but does NOT pass isAdmin, so admin without membership gets 404
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(otherFarm);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${OTHER_FARM_ID}`, {
+      method: 'PATCH',
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Renamed' }),
+    });
+    // Admin without membership should NOT be able to write — gets 404
+    expect(res.status).toBe(404);
   });
 });

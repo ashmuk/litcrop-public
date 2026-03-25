@@ -5,17 +5,19 @@
  *   2. You section: email, locale, theme, temp unit
  */
 
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
-import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
+import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
 import FarmWizard from './FarmWizard';
 import ThemeSwitcher from './ThemeSwitcher';
+import FarmDiscovery from './FarmDiscovery';
+import JoinRequestList from './JoinRequestList';
 
 interface FarmWithRole extends Farm {
   role: FarmRole;
@@ -23,6 +25,11 @@ interface FarmWithRole extends Farm {
 
 const LOCALE_STORAGE_KEY = 'litcrop-locale';
 const TEMP_UNIT_STORAGE_KEY = 'litcrop-temp-unit';
+const THEME_STORAGE_KEY = 'litcrop-theme';
+
+function isValidLocale(value: string): value is Locale {
+  return (LOCALE_OPTIONS as ReadonlyArray<string>).includes(value);
+}
 
 export default function ProfilePage() {
   const [farms, setFarms] = useState<FarmWithRole[]>([]);
@@ -37,9 +44,14 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const [editingFarmName, setEditingFarmName] = useState<string | null>(null);
+  const [farmNameDraft, setFarmNameDraft] = useState('');
+  const [savingFarmName, setSavingFarmName] = useState(false);
   const activeFarmId = useLocalFarmId('');
 
-  // Settings state
+  // Settings state (settingsDirty prevents API overwriting user's in-flight changes)
+  const settingsDirty = useRef(false);
   const [locale, setLocale] = useState<Locale>('en');
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
   const currentUser = getCurrentUser();
@@ -53,12 +65,10 @@ export default function ProfilePage() {
         const currentFarmId = localStorage.getItem(LS_FARM_ID) ?? '';
         const activeFarm = list.find((f) => f.id === currentFarmId) as FarmWithRole | undefined;
         const existingLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
-        if (activeFarm && !existingLocale) {
-          if (activeFarm.locale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(activeFarm.locale)) {
-            setLocale(activeFarm.locale);
-            try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
-            document.documentElement.setAttribute('data-locale', activeFarm.locale);
-          }
+        if (activeFarm && !existingLocale && activeFarm.locale && isValidLocale(activeFarm.locale)) {
+          setLocale(activeFarm.locale);
+          try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
+          document.documentElement.setAttribute('data-locale', activeFarm.locale);
         }
       })
       .catch(() => {})
@@ -75,6 +85,8 @@ export default function ProfilePage() {
     // Load profile (non-blocking) + sync pending role from registration
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
+      if (p.is_admin) setIsSystemAdmin(true);
+      setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
       const pendingRole = localStorage.getItem('litcrop-pendingRole');
       if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {
@@ -84,18 +96,37 @@ export default function ProfilePage() {
       }
     }).catch(() => {});
 
-    // Load settings from localStorage as initial state (will be overridden by server sync)
+    // Load settings from localStorage as initial state
     try {
-      const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
-      if (storedLocale && (LOCALE_OPTIONS as ReadonlyArray<string>).includes(storedLocale)) {
+      const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+      if (storedLocale && isValidLocale(storedLocale)) {
         setLocale(storedLocale);
       } else {
-        const attr = document.documentElement.getAttribute('data-locale') as Locale | null;
-        if (attr) setLocale(attr);
+        const attr = document.documentElement.getAttribute('data-locale');
+        if (attr && isValidLocale(attr)) setLocale(attr);
       }
       const storedUnit = localStorage.getItem(TEMP_UNIT_STORAGE_KEY);
       if (storedUnit === 'C' || storedUnit === 'F') setTempUnit(storedUnit);
     } catch {}
+
+    // Sync settings from API (authoritative — overwrites localStorage unless user already changed something)
+    getMySettings().then(s => {
+      if (settingsDirty.current) return; // user changed a setting while fetch was in-flight
+      if (s.locale && isValidLocale(s.locale)) {
+        setLocale(s.locale);
+        document.documentElement.setAttribute('data-locale', s.locale);
+        document.documentElement.setAttribute('lang', s.locale === 'ja' ? 'ja' : 'en');
+        try { localStorage.setItem(LOCALE_STORAGE_KEY, s.locale); } catch {}
+      }
+      if (s.temp_unit === 'C' || s.temp_unit === 'F') {
+        setTempUnit(s.temp_unit);
+        try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, s.temp_unit); } catch {}
+      }
+      if (s.theme) {
+        document.documentElement.setAttribute('data-theme', s.theme);
+        try { localStorage.setItem(THEME_STORAGE_KEY, s.theme); } catch {}
+      }
+    }).catch(() => {});
   }, []);
 
   function handleSwitchFarm(farmId: string) {
@@ -119,21 +150,26 @@ export default function ProfilePage() {
     }
   }
 
+  function applyFarmRemoval(farmId: string): FarmWithRole[] {
+    const remaining = farms.filter(f => f.id !== farmId);
+    setFarms(remaining);
+    setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+    if (activeFarmId === farmId) {
+      if (remaining.length > 0) {
+        setLocalFarmId(remaining[0].id);
+        try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
+      } else {
+        try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
+      }
+    }
+    return remaining;
+  }
+
   async function handleDeleteFarm(farmId: string) {
     try {
       await deleteFarm(farmId);
-      const remaining = farms.filter(f => f.id !== farmId);
-      setFarms(remaining);
-      setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+      applyFarmRemoval(farmId);
       setConfirmDelete(null);
-      if (activeFarmId === farmId) {
-        if (remaining.length > 0) {
-          setLocalFarmId(remaining[0].id);
-          try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
-        } else {
-          try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
-        }
-      }
       showToast(t('profile.farm_deleted'), 'success');
     } catch {
       setConfirmDelete(null);
@@ -144,18 +180,8 @@ export default function ProfilePage() {
   async function handleLeaveFarm(farmId: string) {
     try {
       await leaveFarm(farmId);
-      const remaining = farms.filter(f => f.id !== farmId);
-      setFarms(remaining);
-      setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+      applyFarmRemoval(farmId);
       setConfirmLeave(null);
-      if (activeFarmId === farmId) {
-        if (remaining.length > 0) {
-          setLocalFarmId(remaining[0].id);
-          try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
-        } else {
-          try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
-        }
-      }
       showToast(t('profile.farm_left'), 'success');
     } catch {
       setConfirmLeave(null);
@@ -182,20 +208,39 @@ export default function ProfilePage() {
   }
 
   function applyLocale(next: Locale) {
+    settingsDirty.current = true;
     setLocale(next);
     document.documentElement.setAttribute('data-locale', next);
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
-    // Sync to server (fire-and-forget)
-    if (activeFarmId) {
-      updateFarm(activeFarmId, { locale: next }).catch(() => {});
-    }
+    updateMySettings({ locale: next }).catch(() => {});
     showToast(t('settings.save_success'), 'success');
   }
 
   function applyTempUnit(next: 'C' | 'F') {
+    settingsDirty.current = true;
     setTempUnit(next);
     try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, next); } catch {}
+    updateMySettings({ temp_unit: next }).catch(() => {});
     showToast(t('settings.save_success'), 'success');
+  }
+
+  async function handleSaveFarmName(farmId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === farms.find(f => f.id === farmId)?.name) {
+      setEditingFarmName(null);
+      return;
+    }
+    setSavingFarmName(true);
+    try {
+      await updateFarm(farmId, { name: trimmed });
+      refreshFarms();
+      setEditingFarmName(null);
+      showToast(t('profile.name_saved'), 'success');
+    } catch {
+      showToast(t('profile.save_error'), 'error');
+    } finally {
+      setSavingFarmName(false);
+    }
   }
 
   async function handleSaveName() {
@@ -246,8 +291,11 @@ export default function ProfilePage() {
             {[0, 1].map((i) => <div key={i} class="skeleton skeleton-tile" />)}
           </div>
         ) : farms.length === 0 ? (
-          <div style="color:var(--color-gray-500);font-size:var(--font-size-sm);margin-bottom:var(--space-3)">
-            {t('profile.no_farms')}
+          <div style="margin-bottom:var(--space-3)">
+            <div style="color:var(--color-gray-500);font-size:var(--font-size-sm)">
+              {t('profile.no_farms')}
+            </div>
+            <FarmDiscovery />
           </div>
         ) : (
           <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-3)">
@@ -265,8 +313,37 @@ export default function ProfilePage() {
                 >
                   <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
                     <div style="flex:1;min-width:0">
-                      <div style="font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                        {farm.name}
+                      <div style="display:flex;align-items:center;gap:var(--space-1)">
+                        {editingFarmName === farm.id ? (
+                          <form
+                            style="display:flex;gap:var(--space-1);align-items:center;flex:1;min-width:0"
+                            onClick={(e) => e.stopPropagation()}
+                            onSubmit={(e) => { e.preventDefault(); void handleSaveFarmName(farm.id, farmNameDraft); }}
+                          >
+                            <input
+                              type="text"
+                              value={farmNameDraft}
+                              maxLength={100}
+                              onInput={(e) => setFarmNameDraft((e.target as HTMLInputElement).value)}
+                              style="font-size:var(--font-size-sm);padding:2px 6px;border:1px solid var(--color-primary);border-radius:var(--radius-sm);flex:1;min-width:0"
+                              autoFocus
+                            />
+                            <button type="submit" disabled={savingFarmName} style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer">✓</button>
+                            <button type="button" onClick={() => setEditingFarmName(null)} style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer">✕</button>
+                          </form>
+                        ) : (
+                          <div style="font-weight:var(--font-weight-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">
+                            {farm.name}
+                          </div>
+                        )}
+                        {isAdmin && !isDemoFarm && editingFarmName !== farm.id && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditingFarmName(farm.id); setFarmNameDraft(farm.name); }}
+                            style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer;padding:0 2px;color:var(--color-gray-500)"
+                            aria-label="Edit farm name"
+                          >✏️</button>
+                        )}
                       </div>
                       <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:2px">
                         <span
@@ -278,6 +355,11 @@ export default function ProfilePage() {
                         {isActive && (
                           <span style="font-size:var(--font-size-xs);color:var(--color-primary);font-weight:var(--font-weight-semibold)">
                             {t('profile.active')}
+                          </span>
+                        )}
+                        {!isDemoFarm && (
+                          <span style="font-size:var(--font-size-xs);color:var(--color-gray-400);font-family:monospace">
+                            {farm.id.slice(0, 8)}
                           </span>
                         )}
                       </div>
@@ -306,7 +388,7 @@ export default function ProfilePage() {
                           {t('profile.delete_farm')}
                         </button>
                       )}
-                      {!isDemoFarm && farm.user_id !== currentUser?.sub && (
+                      {!isDemoFarm && !isSystemAdmin && currentUser && farm.user_id !== currentUser.sub && (
                         <button
                           type="button"
                           style="font-size:var(--font-size-sm);color:var(--color-gray-600);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
@@ -401,6 +483,9 @@ export default function ProfilePage() {
                               </div>
                             ))}
                           </div>
+                        )}
+                        {isAdmin && !isDemoFarm && (
+                          <JoinRequestList farmId={farm.id} onMemberAdded={refreshFarms} />
                         )}
                       </>
                     )}

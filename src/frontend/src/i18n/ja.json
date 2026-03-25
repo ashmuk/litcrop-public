@@ -4,7 +4,8 @@
     "weather": "天気",
     "setup": "プロフィール",
     "manage": "デバイス",
-    "layout": "レイアウト"
+    "layout": "レイアウト",
+    "admin": "管理"
   },
   "status": {
     "healthy": "健全",
@@ -271,6 +272,34 @@
     "last_upload": "最終アップロード",
     "image_count": "画像数",
     "target_bed": "対象ベッド"
+  },
+  "discovery": {
+    "title": "ファームを探す",
+    "no_farms": "現在、新しいメンバーを受け付けているファームはありません。",
+    "request_join": "参加をリクエスト",
+    "pending": "承認待ち",
+    "members": "メンバー",
+    "request_sent": "参加リクエストを送信しました！",
+    "already_requested": "リクエスト済み"
+  },
+  "join_requests": {
+    "title": "参加リクエスト",
+    "approve": "承認",
+    "reject": "拒否",
+    "approved": "メンバーを追加しました！",
+    "rejected": "リクエストを拒否しました",
+    "empty": "保留中のリクエストはありません",
+    "pending_count": "保留中"
+  },
+  "admin": {
+    "system": "システム",
+    "users": "ユーザー",
+    "farms": "ファーム",
+    "no_users": "登録ユーザーが見つかりません。",
+    "no_farms": "ファームが見つかりません。",
+    "joined": "参加日",
+    "members": "メンバー",
+    "grid": "グリッド"
   },
   "bed": {
     "empty": "空",

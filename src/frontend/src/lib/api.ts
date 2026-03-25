@@ -29,6 +29,9 @@ import type {
   WeatherResponse,
   ChatResponse,
   UsageResponse,
+  Locale,
+  Theme,
+  TempUnit,
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
@@ -273,11 +276,31 @@ export interface UserProfileResponse {
   display_name: string;
   preferred_role: 'manager' | 'observer';
   created_at: string;
+  is_admin: boolean;
 }
 
 /** GET /api/v1/me/profile */
 export async function getMyProfile(): Promise<UserProfileResponse> {
   return request<UserProfileResponse>('GET', '/me/profile');
+}
+
+// ── Settings Endpoint ─────────────────────────────────────────────
+
+export interface UserSettingsResponse {
+  locale: Locale;
+  temp_unit: TempUnit;
+  theme: Theme;
+  updated_at: string;
+}
+
+/** GET /api/v1/me/settings */
+export async function getMySettings(): Promise<UserSettingsResponse> {
+  return request<UserSettingsResponse>('GET', '/me/settings');
+}
+
+/** PATCH /api/v1/me/settings */
+export async function updateMySettings(data: Partial<Pick<UserSettingsResponse, 'locale' | 'temp_unit' | 'theme'>>): Promise<UserSettingsResponse> {
+  return request<UserSettingsResponse>('PATCH', '/me/settings', data);
 }
 
 /** PATCH /api/v1/me/profile */
@@ -306,4 +329,76 @@ export interface AdminStatsResponse {
 /** GET /api/v1/admin/stats — admin only, returns 403 for non-admins */
 export async function getAdminStats(): Promise<AdminStatsResponse> {
   return request<AdminStatsResponse>('GET', '/admin/stats');
+}
+
+export interface AdminUserItem {
+  user_id: string;
+  display_name: string;
+  preferred_role: 'manager' | 'observer';
+  created_at: string;
+}
+
+export interface AdminFarmItem {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  grid_rows: number;
+  grid_cols: number;
+  member_count: number;
+  created_at: string;
+}
+
+// ── Join Requests ─────────────────────────────────────────────────
+
+export interface DiscoverableFarmItem {
+  id: string;
+  name: string;
+  description: string | null;
+  latitude: number;
+  longitude: number;
+  member_count: number;
+  has_pending_request: boolean;
+}
+
+export interface JoinRequestItem {
+  user_id: string;
+  status: string;
+  display_name: string;
+  requested_at: string;
+  resolved_at: string | null;
+}
+
+/** GET /api/v1/farms/discoverable */
+export async function getDiscoverableFarms(): Promise<DiscoverableFarmItem[]> {
+  const res = await request<{ data: DiscoverableFarmItem[] }>('GET', '/farms/discoverable');
+  return res.data;
+}
+
+/** POST /api/v1/farms/:farmId/join */
+export async function requestToJoinFarm(farmId: string): Promise<{ farm_id: string; status: string }> {
+  return request<{ farm_id: string; status: string }>('POST', `/farms/${farmId}/join`);
+}
+
+/** GET /api/v1/farms/:farmId/join-requests */
+export async function getJoinRequests(farmId: string, status = 'pending'): Promise<JoinRequestItem[]> {
+  const res = await request<{ data: JoinRequestItem[] }>('GET', `/farms/${farmId}/join-requests?status=${status}`);
+  return res.data;
+}
+
+/** PATCH /api/v1/farms/:farmId/join-requests/:userId */
+export async function resolveJoinRequest(farmId: string, userId: string, action: 'approve' | 'reject'): Promise<void> {
+  await request('PATCH', `/farms/${farmId}/join-requests/${userId}`, { action });
+}
+
+// ── Admin Endpoints ─────────────────────────────────────────────
+
+/** GET /api/v1/admin/users — admin only */
+export async function getAdminUsers(): Promise<{ users: AdminUserItem[]; total: number }> {
+  return request<{ users: AdminUserItem[]; total: number }>('GET', '/admin/users');
+}
+
+/** GET /api/v1/admin/farms — admin only */
+export async function getAdminFarms(): Promise<{ farms: AdminFarmItem[]; total: number }> {
+  return request<{ farms: AdminFarmItem[]; total: number }>('GET', '/admin/farms');
 }

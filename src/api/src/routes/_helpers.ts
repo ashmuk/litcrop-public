@@ -23,11 +23,16 @@ export async function assertFarmAccess(
     throw new ServiceUnavailableError('Storage service unavailable');
   });
 
-  // Admin bypass: skip membership check, grant admin-level access
+  // Admin bypass: skip membership check, grant admin-level read access.
+  // The synthetic membership uses role 'admin' — callers must NOT use it for write authorization.
   if (isAdmin) {
+    const syntheticRole: FarmRole = 'admin';
+    if (requiredRoles && !requiredRoles.includes(syntheticRole)) {
+      throw new NotFoundError(`Farm not found: ${farmId}`);
+    }
     return {
       farm,
-      membership: { farm_id: farmId, user_id: userId, role: 'admin', joined_at: farm.created_at },
+      membership: { farm_id: farmId, user_id: userId, role: syntheticRole, joined_at: farm.created_at },
     };
   }
 

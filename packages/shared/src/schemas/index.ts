@@ -318,6 +318,27 @@ export const UpdateProfileRequestSchema = z.object({
   preferred_role: z.enum(['manager', 'observer']).optional(),
 });
 
+// ── Settings schema ──────────────────────────────────────────────
+
+export const TempUnitSchema = z.enum(['C', 'F']);
+
+/** PATCH /api/v1/me/settings — request body (at least one field required) */
+export const UpdateSettingsRequestSchema = z.object({
+  locale: LocaleSchema.optional(),
+  temp_unit: TempUnitSchema.optional(),
+  theme: ThemeSchema.optional(),
+}).refine(obj => Object.keys(obj).length > 0, {
+  message: 'At least one setting field is required',
+});
+
+/** GET|PATCH /api/v1/me/settings — response */
+export const UserSettingsResponseSchema = z.object({
+  locale: LocaleSchema,
+  temp_unit: TempUnitSchema,
+  theme: ThemeSchema,
+  updated_at: z.string(),
+});
+
 // ── Usage schema (MVP: AI budget status) ─────────────────────────
 
 const UserBudgetSchema = z.object({

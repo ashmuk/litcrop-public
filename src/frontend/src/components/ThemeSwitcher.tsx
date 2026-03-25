@@ -8,6 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { Theme } from '@litcrop/shared';
 import { THEME_OPTIONS } from '@litcrop/shared';
 import { t } from '../i18n/i18n';
+import { updateMySettings } from '../lib/api';
 
 const STORAGE_KEY = 'litcrop-theme';
 
@@ -36,6 +37,7 @@ export default function ThemeSwitcher() {
     } catch {
       // localStorage may be unavailable
     }
+    updateMySettings({ theme }).catch(() => {});
   }
 
   return (
