@@ -78,7 +78,10 @@
     "weekly": "7日間",
     "alerts": "気象警報",
     "crop_impact": "作物への影響",
-    "no_alerts": "現在の警報はありません"
+    "no_alerts": "現在の警報はありません",
+    "impact_frost_risk": "霜のリスク",
+    "impact_heat_stress": "高温ストレス",
+    "impact_heavy_rain": "大雨"
   },
   "settings": {
     "theme": "テーマ",

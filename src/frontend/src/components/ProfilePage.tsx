@@ -65,6 +65,7 @@ export default function ProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const [preferredRole, setPreferredRole] = useState<'manager' | 'observer' | null>(null);
   const [editingFarmName, setEditingFarmName] = useState<string | null>(null);
   const [farmNameDraft, setFarmNameDraft] = useState('');
   const [savingFarmName, setSavingFarmName] = useState(false);
@@ -105,6 +106,7 @@ export default function ProfilePage() {
     // Load profile (non-blocking) + sync pending role from registration
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
+      if (p.preferred_role) setPreferredRole(p.preferred_role);
       if (p.is_admin) setIsSystemAdmin(true);
       setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
@@ -286,8 +288,9 @@ export default function ProfilePage() {
     setTimeout(() => { window.location.replace('/login/'); }, 800);
   }
 
-  // Determine if user is observer on all farms (no create permission)
-  const isObserverOnly = farms.length > 0 && farms.every((f) => f.role === 'observer');
+  // Determine if user should see farm creation UI
+  // Hide for observers AND while profile is still loading (preferredRole === null)
+  const isObserverOnly = preferredRole !== 'manager' || (farms.length > 0 && farms.every((f) => f.role === 'observer'));
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
   const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
