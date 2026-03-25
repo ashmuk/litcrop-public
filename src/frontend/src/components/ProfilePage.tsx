@@ -124,21 +124,26 @@ export default function ProfilePage() {
     }
   }
 
+  function applyFarmRemoval(farmId: string): FarmWithRole[] {
+    const remaining = farms.filter(f => f.id !== farmId);
+    setFarms(remaining);
+    setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+    if (activeFarmId === farmId) {
+      if (remaining.length > 0) {
+        setLocalFarmId(remaining[0].id);
+        try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
+      } else {
+        try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
+      }
+    }
+    return remaining;
+  }
+
   async function handleDeleteFarm(farmId: string) {
     try {
       await deleteFarm(farmId);
-      const remaining = farms.filter(f => f.id !== farmId);
-      setFarms(remaining);
-      setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+      applyFarmRemoval(farmId);
       setConfirmDelete(null);
-      if (activeFarmId === farmId) {
-        if (remaining.length > 0) {
-          setLocalFarmId(remaining[0].id);
-          try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
-        } else {
-          try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
-        }
-      }
       showToast(t('profile.farm_deleted'), 'success');
     } catch {
       setConfirmDelete(null);
@@ -149,18 +154,8 @@ export default function ProfilePage() {
   async function handleLeaveFarm(farmId: string) {
     try {
       await leaveFarm(farmId);
-      const remaining = farms.filter(f => f.id !== farmId);
-      setFarms(remaining);
-      setLocalFarmList(remaining.map(f => ({ id: f.id, name: f.name, role: f.role })));
+      applyFarmRemoval(farmId);
       setConfirmLeave(null);
-      if (activeFarmId === farmId) {
-        if (remaining.length > 0) {
-          setLocalFarmId(remaining[0].id);
-          try { localStorage.setItem(LS_FARM_NAME, remaining[0].name); } catch {}
-        } else {
-          try { localStorage.removeItem(LS_FARM_ID); localStorage.removeItem(LS_FARM_NAME); } catch {}
-        }
-      }
       showToast(t('profile.farm_left'), 'success');
     } catch {
       setConfirmLeave(null);
@@ -201,6 +196,25 @@ export default function ProfilePage() {
     setTempUnit(next);
     try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, next); } catch {}
     showToast(t('settings.save_success'), 'success');
+  }
+
+  async function handleSaveFarmName(farmId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === farms.find(f => f.id === farmId)?.name) {
+      setEditingFarmName(null);
+      return;
+    }
+    setSavingFarmName(true);
+    try {
+      await updateFarm(farmId, { name: trimmed });
+      refreshFarms();
+      setEditingFarmName(null);
+      showToast(t('profile.name_saved'), 'success');
+    } catch {
+      showToast(t('profile.save_error'), 'error');
+    } finally {
+      setSavingFarmName(false);
+    }
   }
 
   async function handleSaveName() {
@@ -274,22 +288,13 @@ export default function ProfilePage() {
                         {editingFarmName === farm.id ? (
                           <form
                             style="display:flex;gap:var(--space-1);align-items:center;flex:1;min-width:0"
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              if (!farmNameDraft.trim() || farmNameDraft.trim() === farm.name) {
-                                setEditingFarmName(null);
-                                return;
-                              }
-                              setSavingFarmName(true);
-                              updateFarm(farm.id, { name: farmNameDraft.trim() })
-                                .then(() => { refreshFarms(); setEditingFarmName(null); showToast(t('profile.name_saved'), 'success'); })
-                                .catch(() => showToast(t('profile.save_error'), 'error'))
-                                .finally(() => setSavingFarmName(false));
-                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onSubmit={(e) => { e.preventDefault(); void handleSaveFarmName(farm.id, farmNameDraft); }}
                           >
                             <input
                               type="text"
                               value={farmNameDraft}
+                              maxLength={100}
                               onInput={(e) => setFarmNameDraft((e.target as HTMLInputElement).value)}
                               style="font-size:var(--font-size-sm);padding:2px 6px;border:1px solid var(--color-primary);border-radius:var(--radius-sm);flex:1;min-width:0"
                               autoFocus
