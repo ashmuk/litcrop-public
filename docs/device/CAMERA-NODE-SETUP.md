@@ -2,7 +2,7 @@
 
 > Date: 2026-03-22
 > Hardware: Raspberry Pi Zero 2 W + Camera Module 3 + RPZ-PowerMGR
-> Spec: `docs/MVP-CAMERA-NODE-SPEC.md`
+> Spec: `docs/device/MVP-CAMERA-NODE-SPEC.md`
 > Script: `scripts/camera-node/capture.sh`
 
 ---
@@ -393,4 +393,4 @@ find /var/spool/litcrop/ -name "*.jpg" -mtime +7 -delete
 
 ---
 
-> Generated 2026-03-22 | See also: docs/MVP-CAMERA-NODE-SPEC.md (hardware spec)
+> Generated 2026-03-22 | See also: docs/device/MVP-CAMERA-NODE-SPEC.md (hardware spec)
