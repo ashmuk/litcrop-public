@@ -16,7 +16,7 @@
 | 1 | Settings sync + tests | 3/3 | **DONE** |
 | 2 | Admin dashboard | 1/1 | **DONE** |
 | 3 | Observer onboarding | 1/1 | **DONE** |
-| 4 | Admin notifications | 0/1 | DEFERRED (CDK/SES needs deploy) |
+| 4 | Admin notifications | 0/1 | DEFERRED to PROD (CDK/SES) |
 | 5 | Security & quality | 10/10 | **DONE** |
 | **Total** | | **24/25** | |
 
@@ -151,6 +151,7 @@ Promoted from PROD backlog. Items from REVIEW-FINDINGS-V09.md.
 
 | Item | Reason |
 |------|--------|
+| #187 Admin email notifications | CDK/SES infrastructure, designed but not implemented |
 | #168 Soft delete for farm deletion | Safety feature for production scale |
 | UX-5 Bed→Crop 1:N model | Data model migration, needs ADR |
 | #160 Profile picture support | Nice-to-have, not blocking beta |
@@ -175,7 +176,28 @@ Promoted from PROD backlog. Items from REVIEW-FINDINGS-V09.md.
 | `62bc4a9` | feat: cross-device settings sync (#90) | 1 |
 | `8880c32` | refactor: simplify settings sync + fix review findings | 1 |
 | `b5750a4` | test: add admin bypass tests for assertFarmAccess (C1) | 1 |
+| `403bfb2` | fix: Wave 5 security & quality — wind cardinal, error redaction | 5 |
+| `7b33cf9` | docs: admin dashboard design for #179 | 2 |
+| `1a34c84` | feat: admin dashboard with Users, Farms, System tabs (#179) | 2 |
+| `f350728` | fix: unify admin auth + simplify dashboard + add tests | 2 |
+| `c7500b4` | docs: combined design for observer onboarding + notifications | 3 |
+| `65eb85e` | feat: observer onboarding APPLY workflow (#181) | 3 |
+| `5ed5039` | fix: 3 MUST-FIX + 2 SHOULD-FIX from observer review | 3 |
+
+**Post-deploy hotfixes (PRs #190–#199)**:
+| `4b968e0` | fix: settings overwrite guard, AuthGuard admin cache, DELETE bypass | hotfix |
+| `32b65b4` | fix: clear localStorage on signout + event-based admin tab | hotfix |
+| `b9dbd3e` | fix: nav labels update immediately on locale change | hotfix |
+| `52f2635` | docs: post-deploy feedback round 4 | hotfix |
+| `81a86d1` | fix: hide New Farm button for observers | hotfix |
+| `35fc793` | fix: crop impact i18n + observer New Farm timing | hotfix |
+| `43733c5` | fix: deep i18n — page titles, alerts, admin role label | hotfix |
+| `8f1a2e0` | fix: crop impact desc i18n, desktop nav locale, admin role badge | hotfix |
+| `3fe5e7d` | refactor: setCachedIsAdmin change guard | hotfix |
+| `df3141c` | fix: observer login → profile + join 415 error | hotfix |
+| `2d67dd2` | fix: observer always → /profile/ + pending request badges | hotfix |
+| `76e014f` | fix: remove misleading role badge from admin users list | hotfix |
 
 ---
 
-*Generated: 2026-03-25 | Session: litcrop-beta-2*
+*Generated: 2026-03-25 | Updated: 2026-03-26 (post-deploy hotfixes)*
