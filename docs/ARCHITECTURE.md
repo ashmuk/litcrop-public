@@ -289,7 +289,7 @@ Standard HTTP status codes: 401 (unauthorized — API Gateway), 400 (validation)
 | Bed | `FARM#{farmId}` | `BED#{row}#{col}#{bedId}` | name, row, col, crop_type, crop_variety, latest_status |
 | Image | `FARM#{farmId}` | `IMG#{capturedAt}#{imageId}` | node_id, trigger, uploaded_at, storage_key, **thumbnail_key**, content_type, size_bytes, **bed_id**, metadata |
 | Tag | `IMG#{imageId}` | `TAG#{createdAt}#{tagId}` | tag (enum), note |
-| **Conversation** | `CONV#{conversationId}` | `MSG#{timestamp}#{msgId}` | role (user/assistant), content, tool_use?, **TTL** (24h) |
+| **Conversation** | `CONV#{conversationId}` | `#HISTORY` | messages[] (JSON array), user_id, farm_id, created_at, updated_at, **TTL** (24h) |
 | **User Profile** | `USER#{userId}` | `#PROFILE` | display_name, preferred_role, created_at |
 | **Farm Member** (user→farm) | `USER#{userId}` | `FARM_MEMBER#{farmId}` | farm_id, role (admin/manager/observer), joined_at |
 | **Farm Member** (farm→user) | `FARM#{farmId}` | `MEMBER#{userId}` | user_id, role, joined_at |
@@ -327,31 +327,23 @@ Standard HTTP status codes: 401 (unauthorized — API Gateway), 400 (validation)
 ### Image Storage Key Convention
 
 ```
-images/{farmId}/{plotId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
+images/{farmId}/{bedId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
 ```
 
-Example: `images/farm-001/plot-a1/2026/03/17/550e8400-e29b-41d4-a716-446655440000.jpg`
+Example: `images/farm-001/bed-a1/2026/03/17/550e8400-e29b-41d4-a716-446655440000.jpg`
 
-### Seed Data (PoC)
+### Seed Data (Demo Farm)
 
-The PoC uses a single farm with pre-populated structure:
+The demo farm (`DEMO_FARM_ID`) provides a pre-populated bed grid for new users:
 
 ```
-LitCrop Demo Farm (farm-001)
-  +-- North Field (field-001)
-  |     +-- Bed A (bed-001)
-  |     |     +-- Plot A1: Cherry Tomato
-  |     |     +-- Plot A2: Basil
-  |     +-- Bed B (bed-002)
-  |           +-- Plot B1: Cucumber
-  |           +-- Plot B2: Lettuce
-  +-- South Field (field-002)
-        +-- Bed C (bed-003)
-              +-- Plot C1: Strawberry
-              +-- Plot C2: Eggplant
+LitCrop Demo Farm (demo-farm)
+  Grid: 2 rows x 3 cols
+  +-- A1: Cherry Tomato    A2: Basil        A3: Cucumber
+  +-- B1: Lettuce          B2: Strawberry   B3: Eggplant
 ```
 
-6 plots across 2 fields, 3 beds. Sufficient to demonstrate the hierarchy and grid layout.
+6 beds in a 2x3 grid. All users see this farm on first login. Managers can create their own farms via the wizard.
 
 ---
 
@@ -431,7 +423,7 @@ All DynamoDB records include `user_id` (Cognito `sub`):
 │    └─ IAM Role: S3 read (images/) + write (thumbnails/), DynamoDB      │
 │                                                                        │
 │  DynamoDB Table: litcrop-mvp             -- All metadata (single-table)│
-│    └─ GSI1 (entity lookup), GSI2 (farm→plots)                          │
+│    └─ GSI1 (entity lookup by ID)                                       │
 │                                                                        │
 │  S3 Bucket: litcrop-mvp-images           -- Uploaded crop images       │
 │  S3 Bucket: litcrop-mvp-static           -- Astro SSG build output     │

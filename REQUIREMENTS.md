@@ -30,11 +30,11 @@ Onboard 1-5 early adopters matching this persona. Each must be able to register,
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| FR-1.1 | Display a farm as a structured layout: Farm -> Fields -> Beds -> Plots | Must | Static seed data; no editor in PoC or MVP |
-| FR-1.2 | Each plot shows: crop type, variety, planting date, expected harvest window | Must | Pre-populated data |
-| FR-1.3 | Farm Overview screen shows all plots as a grid with status indicators | Must | Single-column mobile layout; 2-column at desktop breakpoint [MVP] |
-| FR-1.4 | Plot tiles show: crop name, latest image thumbnail, status badge | Must | Status: Healthy / Slow Growth / Issue / No Data. Thumbnail = server-generated derivative at MVP (see FR-13). |
-| FR-1.5 | Tap a plot tile to navigate to Plot Detail screen | Must | Hub-and-spoke navigation |
+| FR-1.1 | `[MVP+]` Display a farm as a flat bed grid: Farm -> Beds (row/col layout) | Must | Phase D (v0.13) flattened Field→Bed→Plot (4 levels) to Farm→Bed (2 levels) per ADR-20260322. Grid dimensions set via `grid_rows`/`grid_cols`. |
+| FR-1.2 | Each bed shows: crop type, variety, and status badge | Must | Bed cards on Crops page |
+| FR-1.3 | Farm Overview (Crops) screen shows all beds as a grid with status indicators | Must | Single-column mobile layout; 2-column at desktop breakpoint [MVP] |
+| FR-1.4 | Bed cards show: crop name, latest image thumbnail, status badge | Must | Status: Healthy / Slow Growth / Issue / No Data. Thumbnail = server-generated derivative at MVP (see FR-13). |
+| FR-1.5 | Tap a bed card to navigate to Bed Detail screen | Must | Hub-and-spoke navigation |
 | FR-1.6 | `[MVP+]` Each farm is associated with the authenticated user who created it (`user_id`). Users may own multiple farms (up to `FREE_PLAN_MAX_OWNED_FARMS`). | Must | `user_id` (Cognito `sub`) stored on Farm record. Multi-farm ownership added in Phase B (v0.11). |
 | FR-1.7 | `[MVP+]` API endpoints enforce per-membership access — a user can access farms they belong to (as owner or invited member) | Must | `FARM_MEMBER` records link users to farms with roles (`admin`, `manager`, `observer`). `assertFarmAccess()` checks membership; returns 404 for non-members. System admins (`ADMIN_EMAILS`) bypass membership for read-only access (v0.22). |
 
@@ -87,11 +87,11 @@ Onboard 1-5 early adopters matching this persona. Each must be able to register,
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| FR-6.1 | Display farm in spatial layout: Fields as sections, Beds as ridges, Plots as cells | Must | Read-only in PoC and MVP; shows physical arrangement |
-| FR-6.2 | Toggle between List view (severity-sorted) and Layout view (spatial) on Farm Overview | Must | Tab-style toggle at top of screen |
-| FR-6.3 | Plot cells show crop icon, label, and status-tinted background | Must | Consistent status colors with list view |
-| FR-6.4 | Tap a plot cell to navigate to Plot Detail | Must | Same destination as list view tiles |
-| FR-6.5 | Show empty/unassigned plot placeholders | Should | Visual indication of available space |
+| FR-6.1 | `[MVP+]` Display farm as a flat bed grid (rows x cols) | Must | Farm→Bed (2-level) model. Grid dimensions: `grid_rows` x `grid_cols`. |
+| FR-6.2 | Toggle between List view (severity-sorted) and Layout view (grid) on Farm Overview | Must | Tab-style toggle at top of screen |
+| FR-6.3 | Bed cells show crop icon, label, and status-tinted background | Must | Consistent status colors with list view |
+| FR-6.4 | Tap a bed cell to navigate to Bed Detail | Must | Same destination as list view cards |
+| FR-6.5 | Show empty/unassigned bed placeholders | Should | Visual indication of available space |
 | FR-6.6 | Compass/orientation indicator | Should | Helps user orient spatial view to physical farm |
 
 ### FR-7: Weather & Environment
@@ -302,34 +302,35 @@ Based on ADR-008 (AWS CDK TypeScript).
 
 ```
 User (1) [MVP — Cognito-managed, referenced by sub]
- └── Farm (1..n per user; 1 for MVP)
-      └── Field (1..n)
-           └── Bed (1..n)
-                └── Plot (1..n)
-                     ├── CropInfo (1)
-                     └── Image (0..n)
-                          ├── Tag (0..n)
-                          └── Thumbnail (0..1) [MVP]
+ ├── User Profile (1) [MVP+]
+ ├── Farm Membership (0..n) [MVP+ — links user to farms with roles]
+ └── Farm (0..n owned, up to FREE_PLAN_MAX_OWNED_FARMS)
+      └── Bed (1..n, grid layout: row x col)
+           └── Image (0..n)
+                ├── Tag (0..n)
+                └── Thumbnail (0..1) [MVP]
 
 Conversation (0..n per user) [MVP]
- └── Message (1..n)
+ └── messages[] (JSON array, single DynamoDB item with TTL)
 ```
 
 ### User `[MVP]`
 
-User identity is managed by Cognito. No `User` table in DynamoDB — the Cognito `sub` (UUID) is used as the user identifier across all records.
+User identity is managed by Cognito. The Cognito `sub` (UUID) is used as the user identifier. A `User Profile` record in DynamoDB stores display name and preferred role.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| sub | string (UUID) | Cognito user ID; used as `user_id` FK in Farm and Conversation records |
+| sub | string (UUID) | Cognito user ID; used as `user_id` across all records |
 | email | string | Cognito-managed; available in JWT claims |
+| display_name | string | `[MVP+]` User-editable display name |
+| preferred_role | enum | `[MVP+]` `manager` or `observer`; set at registration |
 
 ### Farm
 
 | Field | Type | Notes |
 |-------|------|-------|
 | id | string (UUID) | Primary key |
-| user_id | string (UUID) | `[MVP]` Cognito `sub`; FK to user identity; enables per-user data isolation |
+| user_id | string (UUID) | `[MVP]` Cognito `sub`; farm creator/owner |
 | name | string | Farm name |
 | description | string | Optional |
 | latitude | number | Farm location (drives weather API) |
@@ -338,54 +339,44 @@ User identity is managed by Cognito. No `User` table in DynamoDB — the Cognito
 | climate_zone | string | Optional; e.g., "USDA 7a" or "Koppen Dfa" |
 | locale | string | User language preference: "en" or "ja" |
 | theme | string | User theme preference: "light", "dark", "earthy", "system" |
+| grid_rows | integer | `[MVP+]` Bed grid dimensions (1-5) |
+| grid_cols | integer | `[MVP+]` Bed grid dimensions (1-5) |
 | created_at | ISO 8601 | |
 
-### Field
+### Farm Member `[MVP+]`
 | Field | Type | Notes |
 |-------|------|-------|
-| id | string (UUID) | Primary key |
 | farm_id | string | FK to Farm |
-| name | string | e.g., "North Field" |
-| position | integer | Display order |
+| user_id | string | FK to User (Cognito sub) |
+| role | enum | `admin`, `manager`, or `observer` |
+| joined_at | ISO 8601 | Stored as dual record: user→farm and farm→user |
 
-### Bed
+### Bed `[MVP+]`
 | Field | Type | Notes |
 |-------|------|-------|
 | id | string (UUID) | Primary key |
-| field_id | string | FK to Field |
-| name | string | e.g., "Bed A" |
-| position | integer | Display order |
-
-### Plot
-| Field | Type | Notes |
-|-------|------|-------|
-| id | string (UUID) | Primary key |
-| bed_id | string | FK to Bed |
-| label | string | e.g., "A1" |
+| farm_id | string | FK to Farm (PK in DynamoDB) |
+| row | integer | Grid row position (1-based) |
+| col | integer | Grid column position (1-based) |
+| name | string | Auto-generated: e.g., "A1" (row=1, col=1) |
 | crop_type | string | e.g., "Tomato" |
 | crop_variety | string | e.g., "Cherry Tomato" |
-| planted_at | ISO 8601 date | |
-| expected_harvest | ISO 8601 date | Approximate |
-| notes | string | Free-text observations |
-| latest_status | enum | healthy / slow_growth / issue / animal_intrusion / no_data. Auto-updated from the most recent Tag on the plot's latest image. |
-| farm_id | string | Denormalized for GSI2 query |
+| latest_status | enum | healthy / slow_growth / issue / animal_intrusion / no_data |
 
 ### Image
 | Field | Type | Notes |
 |-------|------|-------|
 | id | string (UUID) | Primary key |
-| plot_id | string | FK to Plot |
+| bed_id | string | `[MVP+]` FK to Bed (replaces plot_id) |
 | node_id | string | Camera node identifier |
 | captured_at | ISO 8601 | When the image was taken |
 | uploaded_at | ISO 8601 | When received by server |
 | storage_key | string | Object storage path/key |
-| thumbnail_key | string | `[MVP]` Object storage path for generated thumbnail; null until thumbnail generation completes |
+| thumbnail_key | string | `[MVP]` Object storage path for generated thumbnail |
 | trigger | enum | `scheduled` (periodic) or `motion` (PIR sensor event) |
-| content_type | string | Always "image/jpeg" for PoC/MVP; retained for future format support (WebP, PNG) |
+| content_type | string | Always "image/jpeg" for PoC/MVP |
 | size_bytes | integer | File size |
 | metadata | JSON | Resolution, battery %, etc. |
-| bed_id | string | `[MVP]` Denormalized at write time (SF-4 from retrospective); prevents tag race conditions |
-| field_id | string | `[MVP]` Denormalized at write time (SF-4 from retrospective) |
 
 ### Tag
 | Field | Type | Notes |
@@ -415,17 +406,27 @@ User identity is managed by Cognito. No `User` table in DynamoDB — the Cognito
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/api/v1/farms/{farmId}` | Farm metadata + layout structure + location | `[MVP]` JWT required; ownership enforced |
-| POST | `/api/v1/farms` | Create farm (onboarding: name, lat, lon) | `[MVP]` JWT required; `user_id` set from JWT `sub` |
-| PATCH | `/api/v1/farms/{farmId}` | Update farm settings (name, locale, theme) | `[MVP]` JWT required; ownership enforced |
-| GET | `/api/v1/farms/{farmId}/plots` | All plots with latest status and thumbnail | `[MVP]` JWT required; ownership enforced |
-| GET | `/api/v1/plots/{plotId}` | Plot detail with crop metadata | `[MVP]` JWT required; ownership enforced (via farm association) |
-| GET | `/api/v1/plots/{plotId}/images?limit=N&cursor=X` | Paginated image history | `[MVP]` JWT required |
-| POST | `/api/v1/plots/{plotId}/images` | Upload image from camera node | `[MVP]` JWT required |
-| GET | `/api/v1/images/{imageId}` | Image metadata + signed URL + `[MVP]` thumbnail URL | `[MVP]` JWT required |
-| POST | `/api/v1/images/{imageId}/tags` | Add manual tag to image | `[MVP]` JWT required |
-| GET | `/api/v1/farms/{farmId}/weather` | Current weather + forecast (proxy to Open-Meteo) | `[MVP]` JWT required |
-| POST | `/api/v1/chat` | `[MVP]` AI chatbot message (multi-turn, tool use, streaming) | `[MVP]` JWT required; conversation scoped to user |
+| GET | `/api/v1/farms` | `[MVP+]` List all farms the caller belongs to (admin sees all) | JWT required; membership or admin |
+| GET | `/api/v1/farms/{farmId}` | Farm metadata + beds + location | JWT required; membership enforced |
+| POST | `/api/v1/farms` | Create farm (onboarding: name, lat, lon, grid) | JWT required; `user_id` set from JWT `sub`; plan limits enforced |
+| PATCH | `/api/v1/farms/{farmId}` | Update farm settings (name, locale, theme, grid) | JWT required; admin/manager role |
+| DELETE | `/api/v1/farms/{farmId}` | `[MVP+]` Delete farm and all associated data | JWT required; admin role |
+| GET | `/api/v1/farms/{farmId}/beds` | `[MVP+]` All beds with latest status and thumbnail | JWT required; membership enforced |
+| GET | `/api/v1/farms/{farmId}/members` | `[MVP+]` List farm members with display names | JWT required; membership enforced |
+| POST | `/api/v1/farms/{farmId}/members` | `[MVP+]` Invite member to farm | JWT required; admin/manager role |
+| DELETE | `/api/v1/farms/{farmId}/members/{userId}` | `[MVP+]` Remove member (or self-leave) | JWT required |
+| GET | `/api/v1/beds/{bedId}` | `[MVP+]` Bed detail with crop metadata + latest image | JWT required; membership enforced |
+| PATCH | `/api/v1/beds/{bedId}` | `[MVP+]` Update bed crop assignment | JWT required; admin/manager role |
+| GET | `/api/v1/beds/{bedId}/images?limit=N&cursor=X` | Paginated image history for bed | JWT required |
+| POST | `/api/v1/beds/{bedId}/images` | `[MVP+]` Upload image to bed | JWT required; admin/manager role |
+| GET | `/api/v1/images/{imageId}` | Image metadata + signed URL + thumbnail URL | JWT required |
+| POST | `/api/v1/images/{imageId}/tags` | Add manual tag to image | JWT required |
+| GET | `/api/v1/farms/{farmId}/weather` | Current weather + forecast (proxy to Open-Meteo) | JWT required; membership enforced |
+| POST | `/api/v1/chat` | AI chatbot message (multi-turn, tool use) | JWT required; conversation scoped to user |
+| GET | `/api/v1/me/profile` | `[MVP+]` User profile (display name, role) | JWT required |
+| PATCH | `/api/v1/me/profile` | `[MVP+]` Update user profile | JWT required |
+| GET | `/api/v1/admin/stats` | `[MVP+]` System statistics (admin only) | JWT required; admin only |
+| GET | `/api/v1/usage` | `[MVP+]` Chat usage stats for current user | JWT required |
 | GET | `/health` | Health check | None (always public) |
 
 ### Upload Contract
@@ -610,14 +611,14 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | Non-Functional Requirements | 38 (NFR-1: 7, NFR-2: 3, NFR-3: 6, NFR-4: 5, NFR-5: 4, NFR-6/i18n: 5, NFR-7/security: 12, NFR-8/infra: 4) |
 | Constraints | 13 |
 | Open Questions | 11 (all resolved) |
-| API Endpoints | 12 |
+| API Endpoints | 22 |
 | Screens | 10 |
-| Data Entities | 8 (User, Farm, Field, Bed, Plot, Image, Tag, Conversation) |
+| Data Entities | 7 (User Profile, Farm, Farm Member, Bed, Image, Tag, Conversation) |
 
 | Scope | FRs Added | NFRs Added | New Screens | New Entities |
 |-------|-----------|------------|-------------|--------------|
 | PoC (baseline) | 54 | 24 | 7 | 6 |
 | MVP (increment) | +33 | +14 | +3 | +2 |
-| **MVP (total)** | **87** | **38** | **10** | **8** |
+| **MVP+ (total)** | **87** | **38** | **10** | **7** |
 
-> Updated 2026-03-20 during Phase D (MVP `/cc-define`). PoC requirements (v0.7) carry forward unchanged; MVP additions marked with `[MVP]` tag.
+> Updated 2026-03-25 (Beta-2). PoC requirements carry forward; MVP additions marked `[MVP]`, MVP+ additions marked `[MVP+]`. Phase D flattened Field→Bed→Plot to Farm→Bed. Phase B added multi-farm membership.
