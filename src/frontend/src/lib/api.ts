@@ -377,7 +377,7 @@ export async function getDiscoverableFarms(): Promise<DiscoverableFarmItem[]> {
 
 /** POST /api/v1/farms/:farmId/join */
 export async function requestToJoinFarm(farmId: string): Promise<{ farm_id: string; status: string }> {
-  return request<{ farm_id: string; status: string }>('POST', `/farms/${farmId}/join`);
+  return request<{ farm_id: string; status: string }>('POST', `/farms/${farmId}/join`, {});
 }
 
 /** GET /api/v1/farms/:farmId/join-requests */
