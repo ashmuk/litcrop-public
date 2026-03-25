@@ -20,16 +20,12 @@ const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   info: 'status-nodata',
 };
 
-const IMPACT_TITLE_KEYS: Record<string, string> = {
-  'Frost Risk': 'weather.impact_frost_risk',
-  'Heat Stress': 'weather.impact_heat_stress',
-  'Heavy Rain': 'weather.impact_heavy_rain',
+/** Maps for translating weather impact titles, descriptions, and alert messages. */
+const IMPACT_I18N: Record<string, { title: string; desc: string }> = {
+  'Frost Risk': { title: 'weather.impact_frost_risk', desc: 'weather.impact_frost_desc' },
+  'Heat Stress': { title: 'weather.impact_heat_stress', desc: 'weather.impact_heat_desc' },
+  'Heavy Rain': { title: 'weather.impact_heavy_rain', desc: 'weather.impact_rain_desc' },
 };
-
-function translateImpactTitle(title: string, tl: (key: string) => string): string {
-  const key = IMPACT_TITLE_KEYS[title];
-  return key ? tl(key) : title;
-}
 
 const ALERT_I18N: Record<string, string> = {
   frost: 'weather.alert_frost',
@@ -37,12 +33,14 @@ const ALERT_I18N: Record<string, string> = {
   rain: 'weather.alert_rain',
 };
 
-function translateAlertMessage(alert: { type: string; message: string }, tl: (key: string) => string): string {
-  const key = ALERT_I18N[alert.type];
-  if (!key) return alert.message;
-  const translated = tl(key);
-  // If the i18n key returns the key itself (not found), fall back to original
-  return translated === key ? alert.message : translated;
+/**
+ * Translate a string using an i18n key. If the key is not found in the map
+ * or the translation returns the key itself (missing), fall back to the original text.
+ */
+function translateWithFallback(i18nKey: string | undefined, fallback: string, tl: (key: string) => string): string {
+  if (!i18nKey) return fallback;
+  const translated = tl(i18nKey);
+  return translated === i18nKey ? fallback : translated;
 }
 
 function formatHour(iso: string): string {
@@ -171,7 +169,7 @@ export default function WeatherView({ farmId }: Props) {
           aria-live="assertive"
         >
           <span aria-hidden="true">{alert.severity === 'danger' ? '🚨' : '⚠️'}</span>
-          <span>{translateAlertMessage(alert, tl)}</span>
+          <span>{translateWithFallback(ALERT_I18N[alert.type], alert.message, tl)}</span>
         </div>
       ))}
 
@@ -314,9 +312,9 @@ export default function WeatherView({ farmId }: Props) {
                     role="region"
                     aria-label={card.title}
                   >
-                    <div style="font-weight:var(--font-weight-semibold)">{translateImpactTitle(card.title, tl)}</div>
+                    <div style="font-weight:var(--font-weight-semibold)">{translateWithFallback(IMPACT_I18N[card.title]?.title, card.title, tl)}</div>
                     <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
-                      {card.description}
+                      {translateWithFallback(IMPACT_I18N[card.title]?.desc, card.description, tl)}
                     </div>
                     {card.affected_beds.length > 0 && (
                       <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
