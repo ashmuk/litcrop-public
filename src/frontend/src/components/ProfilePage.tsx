@@ -156,7 +156,7 @@ export default function ProfilePage() {
       }
       // Notify ThemeSwitcher to re-sync from localStorage
       window.dispatchEvent(new CustomEvent('litcrop:settings-synced'));
-    }).catch(() => {});
+    }).catch((err) => console.error('[settings] sync failed — API may not be deployed', err));
   }, []);
 
   function handleSwitchFarm(farmId: string) {
@@ -248,7 +248,7 @@ export default function ProfilePage() {
     document.documentElement.setAttribute('data-locale', next);
     document.documentElement.setAttribute('lang', next === 'ja' ? 'ja' : 'en');
     try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
-    updateMySettings({ locale: next }).catch(() => {});
+    updateMySettings({ locale: next }).catch((err) => console.error('[settings] locale save failed', err));
     // Re-translate static nav labels (data-i18n elements) immediately
     translateNavLabels();
     // Notify Preact islands (DesktopNav) to re-render with new locale
@@ -260,7 +260,7 @@ export default function ProfilePage() {
     settingsDirty.current = true;
     setTempUnit(next);
     try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, next); } catch {}
-    updateMySettings({ temp_unit: next }).catch(() => {});
+    updateMySettings({ temp_unit: next }).catch((err) => console.error('[settings] temp_unit save failed', err));
     showToast(t('settings.save_success'), 'success');
   }
 

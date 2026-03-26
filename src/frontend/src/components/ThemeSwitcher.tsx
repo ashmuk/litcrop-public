@@ -41,7 +41,7 @@ export default function ThemeSwitcher() {
     } catch {
       // localStorage may be unavailable
     }
-    updateMySettings({ theme }).catch(() => {});
+    updateMySettings({ theme }).catch((err) => console.error('[settings] theme save failed', err));
   }
 
   return (
