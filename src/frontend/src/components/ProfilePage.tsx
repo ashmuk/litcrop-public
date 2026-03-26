@@ -131,15 +131,20 @@ export default function ProfilePage() {
       if (storedUnit === 'C' || storedUnit === 'F') setTempUnit(storedUnit);
     } catch {}
 
-    // Sync settings from API (authoritative — overwrites localStorage unless user already changed something)
+    // Sync settings from API (authoritative source after login clears localStorage)
+    const initialLocale = document.documentElement.getAttribute('data-locale') || 'en';
     getMySettings().then(s => {
       if (settingsDirty.current) return; // user changed a setting while fetch was in-flight
-      if (!s.updated_at) return; // no saved settings yet — keep localStorage values
       if (s.locale && isValidLocale(s.locale)) {
         setLocale(s.locale);
         document.documentElement.setAttribute('data-locale', s.locale);
         document.documentElement.setAttribute('lang', s.locale === 'ja' ? 'ja' : 'en');
         try { localStorage.setItem(LOCALE_STORAGE_KEY, s.locale); } catch {}
+        // Reload page if locale changed from initial — ensures all islands re-render
+        if (s.locale !== initialLocale) {
+          translateNavLabels();
+          window.dispatchEvent(new CustomEvent('litcrop:locale-changed'));
+        }
       }
       if (s.temp_unit === 'C' || s.temp_unit === 'F') {
         setTempUnit(s.temp_unit);
@@ -149,6 +154,8 @@ export default function ProfilePage() {
         document.documentElement.setAttribute('data-theme', s.theme);
         try { localStorage.setItem(THEME_STORAGE_KEY, s.theme); } catch {}
       }
+      // Notify ThemeSwitcher to re-sync from localStorage
+      window.dispatchEvent(new CustomEvent('litcrop:settings-synced'));
     }).catch(() => {});
   }, []);
 
