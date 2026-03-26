@@ -16,17 +16,21 @@ export default function ThemeSwitcher() {
   const [current, setCurrent] = useState<Theme>('system');
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-      if (stored && (THEME_OPTIONS as ReadonlyArray<string>).includes(stored)) {
-        setCurrent(stored);
-        return;
-      }
-    } catch {
-      // localStorage may be unavailable
+    function syncFromStorage() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+        if (stored && (THEME_OPTIONS as ReadonlyArray<string>).includes(stored)) {
+          setCurrent(stored);
+          return;
+        }
+      } catch {}
+      const attr = document.documentElement.getAttribute('data-theme') as Theme | null;
+      if (attr) setCurrent(attr);
     }
-    const attr = document.documentElement.getAttribute('data-theme') as Theme | null;
-    if (attr) setCurrent(attr);
+    syncFromStorage();
+    // Re-sync when settings are loaded from API (ProfilePage sets localStorage + fires event)
+    window.addEventListener('litcrop:settings-synced', syncFromStorage);
+    return () => window.removeEventListener('litcrop:settings-synced', syncFromStorage);
   }, []);
 
   function applyTheme(theme: Theme) {
