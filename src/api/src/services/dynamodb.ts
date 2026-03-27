@@ -194,7 +194,7 @@ export interface UserSettings {
   updated_at: string;
 }
 
-const DEFAULT_SETTINGS: Omit<UserSettings, 'updated_at'> = {
+export const DEFAULT_SETTINGS: Omit<UserSettings, 'updated_at'> = {
   locale: 'en',
   temp_unit: 'C',
   theme: 'system',
@@ -1055,30 +1055,17 @@ export class DynamoRepository {
     data: { locale?: Locale; temp_unit?: TempUnit; theme?: Theme },
   ): Promise<UserSettings> {
     const now = new Date().toISOString();
-    const setExpressions: string[] = [
-      'locale = if_not_exists(locale, :default_locale)',
-      'temp_unit = if_not_exists(temp_unit, :default_temp_unit)',
-      'theme = if_not_exists(theme, :default_theme)',
-      'updated_at = :now',
-    ];
-    const values: Record<string, unknown> = {
-      ':default_locale': DEFAULT_SETTINGS.locale,
-      ':default_temp_unit': DEFAULT_SETTINGS.temp_unit,
-      ':default_theme': DEFAULT_SETTINGS.theme,
-      ':now': now,
-    };
+    const setExpressions: string[] = ['updated_at = :now'];
+    const values: Record<string, unknown> = { ':now': now };
 
-    if (data.locale !== undefined) {
-      setExpressions[0] = 'locale = :locale';
-      values[':locale'] = data.locale;
-    }
-    if (data.temp_unit !== undefined) {
-      setExpressions[1] = 'temp_unit = :temp_unit';
-      values[':temp_unit'] = data.temp_unit;
-    }
-    if (data.theme !== undefined) {
-      setExpressions[2] = 'theme = :theme';
-      values[':theme'] = data.theme;
+    for (const field of ['locale', 'temp_unit', 'theme'] as const) {
+      if (data[field] !== undefined) {
+        setExpressions.push(`${field} = :${field}`);
+        values[`:${field}`] = data[field];
+      } else {
+        setExpressions.push(`${field} = if_not_exists(${field}, :default_${field})`);
+        values[`:default_${field}`] = DEFAULT_SETTINGS[field];
+      }
     }
 
     const result = await ddb.send(
