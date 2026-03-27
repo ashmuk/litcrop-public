@@ -11,8 +11,10 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { getAccessToken } from '../lib/auth';
-import { getMyProfile } from '../lib/api';
+import { getMyProfile, getMySettings } from '../lib/api';
 import { setCachedIsAdmin } from '../lib/hooks';
+import { THEME_OPTIONS, LOCALE_OPTIONS } from '@litcrop/shared';
+import type { Theme, Locale } from '@litcrop/shared';
 
 export default function AuthGuard() {
   const [checking, setChecking] = useState(true);
@@ -33,6 +35,34 @@ export default function AuthGuard() {
       setChecking(false);
       // Cache admin flag for nav components (non-blocking, deduped by setCachedIsAdmin change guard)
       getMyProfile().then(p => setCachedIsAdmin(p.is_admin === true)).catch(() => {});
+      // Sync settings from API so theme/locale/temp_unit apply on every page, not just Profile
+      getMySettings().then(s => {
+        const validTheme = THEME_OPTIONS.includes(s.theme as Theme);
+        const validLocale = LOCALE_OPTIONS.includes(s.locale as Locale);
+        const validUnit = s.temp_unit === 'C' || s.temp_unit === 'F';
+        let themeChanged = false;
+        let localeChanged = false;
+        try {
+          if (validTheme && localStorage.getItem('litcrop-theme') !== s.theme) {
+            localStorage.setItem('litcrop-theme', s.theme);
+            themeChanged = true;
+          }
+          if (validLocale && localStorage.getItem('litcrop-locale') !== s.locale) {
+            localStorage.setItem('litcrop-locale', s.locale);
+            localeChanged = true;
+          }
+          if (validUnit && localStorage.getItem('litcrop-temp-unit') !== s.temp_unit) {
+            localStorage.setItem('litcrop-temp-unit', s.temp_unit);
+          }
+        } catch {}
+        if (themeChanged) document.documentElement.setAttribute('data-theme', s.theme);
+        if (localeChanged) {
+          document.documentElement.setAttribute('data-locale', s.locale);
+          document.documentElement.setAttribute('lang', s.locale === 'ja' ? 'ja' : 'en');
+        }
+        if (themeChanged) window.dispatchEvent(new CustomEvent('litcrop:settings-synced'));
+        if (localeChanged) window.dispatchEvent(new CustomEvent('litcrop:locale-changed'));
+      }).catch(err => console.error('[settings] sync failed', err));
     }
     check();
   }, []);
