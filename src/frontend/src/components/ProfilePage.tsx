@@ -303,9 +303,10 @@ export default function ProfilePage() {
   }
 
   // Determine if user should see farm creation UI
-  // Always show when user has no farms (prevent dead-end with no escape)
-  // Hide for observers who have farms (all observer-role) and didn't register as manager
-  const isObserverOnly = farms.length > 0 && preferredRole !== 'manager' && farms.every((f) => f.role === 'observer');
+  // Show for: managers (by preferredRole), system admins, or users with admin/manager farm roles
+  // Hide for: observers (preferredRole !== 'manager' and no admin/manager farm role)
+  const hasManagerRole = farms.some((f) => f.role === 'admin' || f.role === 'manager');
+  const isObserverOnly = preferredRole !== 'manager' && !isSystemAdmin && !hasManagerRole;
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
   const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
