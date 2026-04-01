@@ -12,6 +12,10 @@ import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as sns_subs from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as apigwv2 from '@aws-cdk/aws-apigatewayv2-alpha';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { HttpJwtAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
@@ -41,7 +45,7 @@ export class LitCropStack extends cdk.Stack {
         requireSymbols: false,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // H-02: preserve user accounts on stack delete
     });
 
     const userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
@@ -75,7 +79,7 @@ export class LitCropStack extends cdk.Stack {
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      pointInTimeRecovery: false,
+      pointInTimeRecovery: true, // H-01: enable PITR for data recovery
       removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve data on stack delete
       timeToLiveAttribute: 'TTL',
     });
@@ -172,6 +176,38 @@ function handler(event) {
       `),
     });
 
+    // ── H-03: Security Response Headers (CSP, HSTS, X-Frame-Options) ────────
+    const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'SecurityHeaders', {
+      responseHeadersPolicyName: 'litcrop-security-headers',
+      securityHeadersBehavior: {
+        contentSecurityPolicy: {
+          contentSecurityPolicy: [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline' https://unpkg.com",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' https://*.execute-api.*.amazonaws.com https://cognito-idp.*.amazonaws.com https://api.open-meteo.com https://nominatim.openstreetmap.org",
+            "frame-ancestors 'none'",
+          ].join('; '),
+          override: true,
+        },
+        contentTypeOptions: { override: true }, // X-Content-Type-Options: nosniff
+        frameOptions: {
+          frameOption: cloudfront.HeadersFrameOption.DENY,
+          override: true,
+        },
+        referrerPolicy: {
+          referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          override: true,
+        },
+        strictTransportSecurity: {
+          accessControlMaxAge: cdk.Duration.days(730), // 2 years
+          includeSubdomains: true,
+          override: true,
+        },
+      },
+    });
+
     const distribution = new cloudfront.Distribution(this, 'StaticDistribution', {
       defaultBehavior: {
         origin: new origins.S3Origin(staticBucket),
@@ -179,6 +215,7 @@ function handler(event) {
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy, // H-03: attach security headers
         compress: true,
         functionAssociations: [{
           function: rewriteFunction,
@@ -186,22 +223,14 @@ function handler(event) {
         }],
       },
       defaultRootObject: 'index.html',
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: cdk.Duration.seconds(0),
-        },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: cdk.Duration.seconds(0),
-        },
-      ],
+      errorResponses: [403, 404].map((httpStatus) => ({
+        httpStatus,
+        responseHttpStatus: 200,
+        responsePagePath: '/index.html',
+        ttl: cdk.Duration.seconds(0),
+      })),
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_ALL,
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_200, // H-06: exclude expensive regions, keep Asia
       comment: 'LitCrop static frontend — Astro SSG',
       enableLogging: false, // MVP: deferred to Production
     });
@@ -253,8 +282,11 @@ function handler(event) {
         CHAT_DAILY_USER_OUTPUT_LIMIT: '10000',
         CHAT_DAILY_GLOBAL_INPUT_LIMIT: '500000',
         CHAT_DAILY_GLOBAL_OUTPUT_LIMIT: '100000',
-        // Admin designation — comma-separated email list, empty by default
-        ADMIN_EMAILS: process.env['ADMIN_EMAILS'] ?? '',
+        // Admin designation — comma-separated email list; evaluated at synth time
+        ADMIN_EMAILS: process.env['ADMIN_EMAILS'] ?? (() => {
+          console.warn('[CDK] ADMIN_EMAILS not set — admin bypass will be disabled in Lambda');
+          return '';
+        })(),
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
@@ -399,7 +431,96 @@ function handler(event) {
       authorizer: jwtAuthorizer,
     });
 
+    // ── H-04: API Gateway Stage Throttling ──────────────────────────────────
+    // Default throttle: 100 requests/sec sustained, 200 burst.
+    // Per-endpoint limits (auth, chat) are enforced in application code.
+    const defaultStage = httpApi.defaultStage?.node.defaultChild as cdk.CfnResource;
+    defaultStage.addPropertyOverride('DefaultRouteSettings', {
+      ThrottlingBurstLimit: 200,
+      ThrottlingRateLimit: 100,
+    });
+
+    // ── H-05: CloudWatch Alarms + SNS Notifications ────────────────────────
+    // SNS topic for alarm notifications — email subscription via env var
+    const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
+      topicName: 'litcrop-alarms',
+      displayName: 'LitCrop Alerts',
+    });
+
+    // Subscribe admin email if provided (empty string → no subscription)
+    const alarmEmail = process.env['ALARM_EMAIL'] ?? '';
+    if (alarmEmail) {
+      alarmTopic.addSubscription(new sns_subs.EmailSubscription(alarmEmail));
+    }
+
+    const alarmAction = new cw_actions.SnsAction(alarmTopic);
+
+    // Wire both ALARM and OK actions to the SNS topic
+    function attachAlarmActions(alarm: cloudwatch.Alarm): void {
+      alarm.addAlarmAction(alarmAction);
+      alarm.addOkAction(alarmAction);
+    }
+
+    // Alarm 1: API Lambda error rate > 1% (5-minute evaluation)
+    const lambdaErrorAlarm = new cloudwatch.Alarm(this, 'ApiLambdaErrorAlarm', {
+      alarmName: 'litcrop-api-lambda-errors',
+      alarmDescription: 'API Lambda recorded at least 1 error in 5 minutes',
+      metric: apiLambda.metricErrors({
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    attachAlarmActions(lambdaErrorAlarm);
+
+    // Alarm 2: API Gateway 5xx count > 5 in 5 minutes
+    const api5xxAlarm = new cloudwatch.Alarm(this, 'Api5xxAlarm', {
+      alarmName: 'litcrop-api-5xx',
+      alarmDescription: 'API Gateway 5xx errors exceed 5 in 5 minutes',
+      metric: new cloudwatch.Metric({
+        namespace: 'AWS/ApiGateway',
+        metricName: '5xx',
+        dimensionsMap: { ApiId: httpApi.httpApiId },
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 5,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    attachAlarmActions(api5xxAlarm);
+
+    // Alarm 3: DynamoDB throttled requests > 0
+    const dynamoThrottleAlarm = new cloudwatch.Alarm(this, 'DynamoThrottleAlarm', {
+      alarmName: 'litcrop-dynamo-throttle',
+      alarmDescription: 'DynamoDB read/write throttling detected',
+      metric: table.metricThrottledRequestsForOperations({
+        operations: [
+          dynamodb.Operation.GET_ITEM,
+          dynamodb.Operation.PUT_ITEM,
+          dynamodb.Operation.QUERY,
+          dynamodb.Operation.SCAN,
+        ],
+        period: cdk.Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 0,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    attachAlarmActions(dynamoThrottleAlarm);
+
     // ── CloudFormation Outputs ────────────────────────────────────────────────
+
+    new cdk.CfnOutput(this, 'AlarmTopicArn', {
+      value: alarmTopic.topicArn,
+      description: 'SNS topic ARN for alarm notifications',
+    });
 
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: httpApi.url ?? '',
@@ -493,7 +614,7 @@ function handler(event) {
       },
       {
         id: 'AwsSolutions-DDB3',
-        reason: 'MVP: DynamoDB PITR deferred to Production; seed data is reproducible',
+        reason: 'DynamoDB PITR is enabled (H-01, Beta-3)',
       },
       {
         id: 'AwsSolutions-L1',
@@ -506,6 +627,14 @@ function handler(event) {
       {
         id: 'AwsSolutions-IAM5',
         reason: 'CDK L2 grant wildcard resources are scoped to specific buckets/tables',
+      },
+      {
+        id: 'AwsSolutions-SNS2',
+        reason: 'MVP: SNS alarm topic uses email protocol which does not support KMS encryption',
+      },
+      {
+        id: 'AwsSolutions-SNS3',
+        reason: 'MVP: SNS alarm topic uses email protocol; SSL enforcement not applicable to email delivery',
       },
     ]);
   }

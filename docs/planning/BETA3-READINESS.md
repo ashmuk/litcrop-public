@@ -1,126 +1,145 @@
-# BETA3-READINESS.md — Beta-3 Sprint Planning
+# BETA3-READINESS.md — Beta-3 Sprint Planning (Infrastructure Hardening)
 
-> Date: 2026-04-01 | Status: **PLANNED**
-> Prerequisite: Beta-2 (v0.28) merged + post-deploy hotfixes (v0.29 pending)
-> Target: v0.3x (Beta-3 release)
+> Date: 2026-04-01 | Status: **COMPLETE** (all waves done, pending deploy + tag)
+> Prerequisite: v0.29 tagged (Beta-2 + post-deploy hotfixes)
+> Target: v0.30 (Beta-3 release)
+> Theme: **Foundation hardening — fix the D-grade operations before building more features**
 
 ---
 
 ## Purpose
 
-Beta-3 delivers **account lifecycle management, admin workflow completion, and user personalization** — the features that transform LitCrop from a demo into a product users control.
+Beta-3 focuses on **infrastructure hardening, security posture, and quality foundations** — addressing the critical gaps identified in the v0.29 executive audit. No new user-facing features; this sprint makes the platform safe for real users before Beta-4 adds more functionality.
+
+The audit scored Operations at **D** — no backups, no alarms, no CSP, no rate limiting. Beta-3 brings this to B- minimum.
 
 ---
 
-## 1. Prerequisite State (Beta-2 complete)
+## 1. Prerequisite State
 
 | Item | Value |
 |------|-------|
-| Tag | v0.28 (Beta-2) → v0.29 (hotfixes) pending |
+| Tag | v0.29 on develop |
 | Tests | 354 passing (20 files) |
-| Open Issues | 7 (5 Beta-3 scope, 2 PENDING) |
-| Post-deploy hotfixes | 19 PRs (#190–#208), 61 commits since v0.28 |
-| Resolved in hotfixes | F-01 settings sync, F-02 admin tab, F-04–F-12 i18n/observer/UX |
+| Open Issues | 7 (#160, #168, #183, #187, #204, #205, #207) |
+| Audit Grade | Arch B+, API B, UX B, Security C+, **Ops D**, Testing C+, Docs B- |
 
 ---
 
-## 2. Beta-3 Scope (6 items)
+## 2. Beta-3 Scope (Infrastructure + Quick Fixes)
 
-### From Beta-2 carry-over
+### Production Blockers (from audit)
 
-| # | Title | Size | Area |
-|---|-------|------|------|
+| ID | Title | Size | Area | Audit Severity |
+|----|-------|------|------|----------------|
+| H-01 | Enable DynamoDB Point-in-Time Recovery | XS | infra/CDK | CRITICAL — data loss is permanent |
+| H-02 | Cognito User Pool removalPolicy → RETAIN | XS | infra/CDK | CRITICAL — cdk destroy wipes accounts |
+| H-03 | Add Content-Security-Policy header | S | infra/CDK | HIGH — XSS defense for AI markdown |
+| H-04 | API Gateway rate limiting / throttling | S | infra/CDK | HIGH — brute-force, capacity exhaustion |
+| H-05 | CloudWatch alarms (5xx, errors, throttling) | M | infra/CDK | HIGH — silent failures |
+
+### Security & Quality
+
+| ID | Title | Size | Area |
+|----|-------|------|------|
+| H-06 | CloudFront PriceClass → PRICE_CLASS_200 (Asia) | XS | infra/CDK |
+| H-07 | Add ESLint to CI pipeline | S | ci/config |
+| H-08 | Update API-CONTRACTS.md (11 → 31 endpoints) | M | docs |
+
+### Bug Fix (Beta-2 carry-over)
+
+| ID | Title | Size | Area |
+|----|-------|------|------|
 | F-03 | Admin delete farm bypass (isAdmin on DELETE route) | S | api |
 
-### New features
-
-| # | Title | Size | Area |
-|---|-------|------|------|
-| #204 | Change password from Profile page | S | frontend |
-| #205 | Delete own account from Profile page | L | full-stack |
-| #187 | Admin email notifications (SES/SNS) | L | api/infra |
-| #160 | Profile picture support | M | full-stack |
-
-### Code quality / debt
+### Code Quality (deferred suggestions)
 
 | ID | Title | Size | Area |
 |----|-------|------|------|
 | G1-G2 | i18n "Plot" → "Bed" terminology cleanup | S | frontend |
+| G3 | Remove unused `_lat` param in timezone.ts | XS | shared |
+| G4 | Type-narrow Anthropic SDK error in chat.ts | XS | api |
 
-### Deferred to PENDING (not in Beta-3)
+### Deferred (not in Beta-3)
 
-| # | Title | Reason |
+| # | Title | Target |
 |---|-------|--------|
-| #168 | Soft delete for farm deletion | PENDING — user decision, not scoped to any milestone |
-| #183 | AI chat on all pages | PENDING — user decision, not scoped to any milestone |
-| #207 | Admin activity log monitor | Deferred to Prod — significant feature, not blocking |
+| #204 | Change password | Beta-4 |
+| #205 | Delete own account | Beta-4 |
+| #187 | Admin email notifications | Beta-4 |
+| #160 | Profile picture support | Beta-4 |
+| #168 | Soft delete | PENDING |
+| #183 | AI chat on all pages | PENDING |
+| #207 | Admin activity log | Backlog |
 
 ---
 
 ## 3. Implementation Waves
 
-### Wave 0 — Quick Wins (~1 hr)
+### Wave 0 — Critical CDK Fixes (~1 hr)
+
+One-line or few-line CDK changes that eliminate the worst risks.
 
 | Order | Item | What to Do |
 |-------|------|------------|
-| 0.1 | F-03 | Pass `isAdmin` to `assertFarmAccess` in DELETE /farms/:farmId route |
-| 0.2 | G1-G2 | Rename `add_plot.*` and `plot_detail` i18n keys to Bed terminology (en.json + ja.json) |
+| 0.1 | H-01 | `pointInTimeRecovery: true` on DynamoDB table |
+| 0.2 | H-02 | Cognito User Pool `removalPolicy: cdk.RemovalPolicy.RETAIN` |
+| 0.3 | H-06 | CloudFront `priceClass: PriceClass.PRICE_CLASS_200` |
 
-### Wave 1 — Change Password (~3 hrs)
+**Deploy**: `cdk deploy` after Wave 0 to activate backups immediately.
 
-| Step | What to Do |
-|------|------------|
-| 1.1 | **Frontend (auth.ts)**: Add `changePassword(oldPassword, newPassword)` using Cognito `ChangePassword` action |
-| 1.2 | **Frontend (ProfilePage)**: Add collapsible "Change Password" section with current/new/confirm fields |
-| 1.3 | **Frontend**: Reuse existing password strength indicator from RegisterForm |
-| 1.4 | **i18n**: Add EN/JA translations for change password UI |
-| 1.5 | **Tests**: Frontend component tests for validation and error states |
-
-### Wave 2 — Delete Own Account (~6 hrs)
+### Wave 1 — Security Headers & Rate Limiting (~2 hrs)
 
 | Step | What to Do |
 |------|------------|
-| 2.1 | **API**: Add `DELETE /api/v1/me` endpoint — remove USER# items (profile, settings, join requests) |
-| 2.2 | **API**: Remove FARM_MEMBER# / MEMBER# records from all farms user belongs to |
-| 2.3 | **API**: Handle owned farms — transfer to next admin/manager or delete if sole member |
-| 2.4 | **Frontend (auth.ts)**: Add `deleteMyAccount()` calling Cognito `DeleteUser` after API cleanup |
-| 2.5 | **Frontend (ProfilePage)**: Add danger-zone "Delete Account" section with confirmation |
-| 2.6 | **i18n**: Add EN/JA translations for warnings and confirmation |
-| 2.7 | **Tests**: API + frontend tests for account deletion flow |
+| 1.1 | **H-03 CSP**: Add CloudFront response headers policy with Content-Security-Policy (default-src 'self', script-src 'self' 'unsafe-inline', style-src 'self' 'unsafe-inline', img-src 'self' data: blob: https:, connect-src 'self' https://*.execute-api.*.amazonaws.com, frame-ancestors 'none') |
+| 1.2 | **H-04 Rate limiting**: Add API Gateway throttling — default 100 rps per route, 10 rps on auth endpoints (login/register/reset), 5 rps on chat |
+| 1.3 | **CDK deploy** to activate security controls |
 
-### Wave 3 — Admin Email Notifications (~5 hrs)
+### Wave 2 — Monitoring & Alerting (~2 hrs)
 
 | Step | What to Do |
 |------|------------|
-| 3.1 | **CDK**: Add SES identity + SNS topic for admin notifications |
-| 3.2 | **API**: Add notification service — send emails on: new user signup, farm creation/deletion, join request |
-| 3.3 | **API**: Add admin notification preferences (opt-in/out per event type) |
-| 3.4 | **Tests**: Notification service unit tests |
+| 2.1 | **H-05**: CloudWatch alarm — API Lambda error rate > 1% (5-min period) |
+| 2.2 | **H-05**: CloudWatch alarm — API Gateway 5xx count > 5 (5-min period) |
+| 2.3 | **H-05**: CloudWatch alarm — DynamoDB throttled requests > 0 |
+| 2.4 | **H-05**: SNS topic + email subscription for alarm notifications |
+| 2.5 | **Optional**: AWS Budgets alarm at $5/month threshold |
+| 2.6 | **CDK deploy** to activate monitoring |
 
-### Wave 4 — Profile Picture (~4 hrs)
+### Wave 3 — Bug Fix + Code Quality (~2 hrs)
 
 | Step | What to Do |
 |------|------------|
-| 4.1 | **API**: Add `POST /api/v1/me/avatar` — upload to S3 with user-scoped key |
-| 4.2 | **API**: Add `avatar_url` to profile response |
-| 4.3 | **Frontend**: Add avatar upload/display to ProfilePage |
-| 4.4 | **Frontend**: Show avatars in farm member lists and admin dashboard |
-| 4.5 | **Tests**: Upload validation, signed URL generation |
+| 3.1 | **F-03**: Pass `isAdmin` to `assertFarmAccess` in DELETE /farms/:farmId |
+| 3.2 | **G1-G2**: Rename `add_plot.*` and `plot_detail` i18n keys to Bed (en.json + ja.json) |
+| 3.3 | **G3**: Remove unused `_lat` param in timezone.ts |
+| 3.4 | **G4**: Type-narrow `err.error?.type` in chat.ts error handler |
+| 3.5 | **Tests**: Add test for admin delete bypass |
+
+### Wave 4 — CI & Documentation (~3 hrs)
+
+| Step | What to Do |
+|------|------------|
+| 4.1 | **H-07**: Add ESLint config + lint step to PR checks workflow |
+| 4.2 | **H-08**: Update API-CONTRACTS.md with all 31 endpoints (admin, me, beds, join-requests, members, discoverable) |
+| 4.3 | **H-08**: Update README.md deployment status and endpoint count |
+| 4.4 | **H-08**: Update PLANS.md scope level (MVP → Beta) |
 
 ---
 
 ## 4. Dependency Graph
 
 ```
-F-03 ──────────────────────────► standalone (Wave 0)
-#204 (change password) ────────► standalone (Wave 1)
-#205 (delete account) ─────────► standalone (Wave 2)
-#187 (email notifications) ────► standalone (Wave 3)
-#160 (profile picture) ────────► standalone (Wave 4)
-G1-G2 (i18n cleanup) ─────────► standalone (Wave 0)
+Wave 0 (CDK critical) ────► Wave 1 (security) ────► Wave 2 (monitoring)
+                                                          │
+Wave 3 (bug + quality) ──────────────────────────────────►│
+Wave 4 (CI + docs) ──────────────────────────────────────►│
+                                                          ▼
+                                                     cdk deploy (final)
 ```
 
-No inter-wave dependencies — waves can be reordered if needed.
+Waves 3 and 4 are independent of Waves 0-2 and can run in parallel.
 
 ---
 
@@ -128,23 +147,76 @@ No inter-wave dependencies — waves can be reordered if needed.
 
 | Wave | Items | Estimate |
 |------|-------|----------|
-| Wave 0 | F-03, G1-G2 | ~1 hr |
-| Wave 1 | #204 | ~3 hrs |
-| Wave 2 | #205 | ~6 hrs |
-| Wave 3 | #187 | ~5 hrs |
-| Wave 4 | #160 | ~4 hrs |
-| **Total** | | **~19 hrs** |
+| Wave 0 | H-01, H-02, H-06 + deploy | ~1 hr |
+| Wave 1 | H-03, H-04 + deploy | ~2 hrs |
+| Wave 2 | H-05 (alarms, SNS, budgets) + deploy | ~2 hrs |
+| Wave 3 | F-03, G1-G4 | ~2 hrs |
+| Wave 4 | H-07, H-08 (ESLint, docs) | ~3 hrs |
+| **Total** | | **~10 hrs** |
 
 ---
 
 ## 6. Exit Criteria
 
-- [ ] All 6 items implemented and tested
-- [ ] No MUST-FIX findings from cc-review
-- [ ] All existing tests pass + new test coverage
-- [ ] Deployed to staging and manually verified
-- [ ] Tagged as v0.3x on main
+- [x] DynamoDB PITR enabled (CDK: `pointInTimeRecovery: true`)
+- [x] Cognito removalPolicy is RETAIN (CDK: `cdk.RemovalPolicy.RETAIN`)
+- [x] CSP header present on CloudFront responses (CDK: ResponseHeadersPolicy)
+- [x] API Gateway throttling active (CDK: 200 burst / 100 rps)
+- [x] CloudWatch alarms firing to SNS (3 alarms + SNS topic)
+- [x] F-03 admin delete bypass working (verified + test added)
+- [x] ESLint passing in CI (0 errors, 8 warnings)
+- [x] API-CONTRACTS.md covers all 35 endpoints (expanded from 11)
+- [x] All existing 354+ tests pass (355/355)
+- [ ] Tagged as v0.30 on develop (pending final review)
 
 ---
 
-*Created: 2026-04-01 | Based on Beta-2 post-deploy analysis*
+## 7. AWS Cost Impact Analysis
+
+**Constraint**: Monthly cost must not exceed current ~$1.18/month ($5/month ceiling). Any increase requires explicit user approval (hard-stop).
+
+| Item | Service | Cost Impact | Notes |
+|------|---------|-------------|-------|
+| H-01 PITR | DynamoDB | +$0.20/GB/month | Current table ~1MB → ~$0.00/month. Negligible. |
+| H-02 Cognito RETAIN | Cognito | $0.00 | Policy change only, no cost |
+| H-03 CSP header | CloudFront | $0.00 | Response headers policy, included in free tier |
+| H-04 Rate limiting | API Gateway | $0.00 | Throttling config, no additional cost |
+| H-05 Alarms | CloudWatch | +$0.10/alarm × 3 = $0.30/month | 3 alarms. First 10 alarms are free tier → **$0.00** if under 10 total |
+| H-05 SNS topic | SNS | $0.00 | First 1M notifications free; email delivery free |
+| H-05 Budgets | AWS Budgets | $0.00 | First 2 budget alerts free |
+| H-06 PriceClass | CloudFront | -$0.00 to -$0.01 | Slight reduction by excluding expensive regions |
+| **Total** | | **~$0.00–$0.20/month** | Well within $5 ceiling |
+
+**Verdict**: All Beta-3 changes fit within free tier or add negligible cost. No hard-stop required.
+
+---
+
+## 8. Design Documentation
+
+Beta-3 is infrastructure-only — no new features requiring UX or API design. Design artifacts:
+
+- [ ] **CDK diff preview** (`cdk diff`) documented before each deploy wave
+- [ ] **CSP policy specification** documented in ARCHITECTURE.md security section
+- [ ] **Rate limiting table** (per-route limits) documented in API-CONTRACTS.md
+- [ ] **Alarm thresholds** documented in ARCHITECTURE.md monitoring section
+- [ ] **Updated API-CONTRACTS.md** with all 31 endpoints (Wave 4 deliverable)
+
+No new ADRs needed — all changes implement existing audit recommendations.
+
+---
+
+## 9. Audit Grade Target
+
+| Area | v0.29 | v0.30 Target | How |
+|------|-------|-------------|-----|
+| Architecture | B+ | B+ | No change needed |
+| API Design | B | B | F-03 fix |
+| Frontend UX | B | B | No change (features in Beta-4) |
+| Security | C+ | B+ | CSP, rate limiting |
+| Operations | **D** | **B-** | PITR, alarms, Cognito RETAIN |
+| Testing | C+ | C+ | Minor improvement (admin delete test) |
+| Documentation | B- | B | API contracts updated, README corrected |
+
+---
+
+*Created: 2026-04-01 | Based on v0.29 executive audit*

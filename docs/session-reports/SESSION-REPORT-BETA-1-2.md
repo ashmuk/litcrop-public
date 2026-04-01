@@ -1,16 +1,16 @@
-# Session Report: Beta-1 + Beta-2 Sprint
+# Session Report: Beta-1 + Beta-2 + Post-Deploy Sprint
 
-> **Sessions**: litcrop-beta-1 → litcrop-beta-2 (continuous)
-> **Date**: 2026-03-25
+> **Sessions**: litcrop-beta-1 → litcrop-beta-2 → beta2-post (continuous)
+> **Date**: 2026-03-25 → 2026-04-01
 > **Baseline**: v0.21 (docs reorg, 336 tests, 9 open issues)
-> **Final**: v0.28 (Beta-2 at 96%, 345 tests, 10 open issues)
-> **Context used**: 502k / 1000k (50%)
+> **Final**: v0.29 (Beta-2 complete, 354 tests, 7 open issues)
+> **Context used**: 502k + 210k / 1000k (across 2 sessions)
 
 ---
 
 ## Summary
 
-Two-phase sprint delivering Beta-1 (3 HIGH priority fixes) and Beta-2 (24/25 items including settings sync, admin dashboard, observer onboarding, security hardening, and docs alignment). Started with 9 open issues from live testing feedback; ended with a multi-user collaborative platform.
+Three-phase sprint delivering Beta-1 (3 HIGH priority fixes), Beta-2 (24/25 items including settings sync, admin dashboard, observer onboarding, security hardening), and post-deploy hotfixes (19 PRs resolving 12+ live-testing bugs). Started with 9 open issues; ended with v0.29 tagged, Beta-3 planned, and an executive audit identifying operational hardening as the top priority.
 
 ---
 
@@ -201,33 +201,80 @@ Resolve 3 HIGH priority issues from live testing feedback (D-01 through D-06 ser
 | #187 | E-03: Admin email notifications | Beta-1 feedback |
 | #188 | E-04: Farm ID display | Beta-1 feedback |
 
-### Remaining Open
+### Remaining Open (at end of Beta-1+2 sprint)
 | # | Title | Target |
 |---|-------|--------|
-| #187 | Admin email notifications | Beta-2 (deploy session) |
-| #183 | AI chat on all pages | PROD |
-| #168 | Soft delete for farm deletion | PROD |
-| #160 | Profile picture support | PROD |
+| #187 | Admin email notifications | Beta-3 |
+| #183 | AI chat on all pages | PENDING |
+| #168 | Soft delete for farm deletion | PENDING |
+| #160 | Profile picture support | Beta-3 |
 
 ---
 
-## Remaining Work
+## Phase 3: Post-Deploy Hotfixes (v0.28 → v0.29)
 
-### Next Session
-1. **#187** — Implement `services/email.ts` + CDK SES identity
-2. **PR** develop → main for Beta-2
-3. **Deploy** + live verification
-4. **Tag** final Beta-2 milestone
+> Session: beta2-post | Date: 2026-03-27 → 2026-04-01
 
-### PROD Backlog
-| # | Title | Size |
-|---|-------|------|
-| #168 | Soft delete for farm deletion | L |
-| #160 | Profile picture support | M |
-| #183 | AI chat on all pages | M |
-| UX-5 | Bed → Crop 1:N model | L |
-| — | Farm `discoverable` flag (opt-out) | S |
-| — | 14 SUGGESTION items from Phase H | — |
+### Summary
+19 PRs (#190–#208) resolving 12+ live-testing bugs found after Beta-2 deployment. Culminated in v0.29 tag and Beta-3 sprint planning.
+
+### Metrics
+
+| Metric | Value |
+|--------|-------|
+| PRs merged | 19 (#190–#208) |
+| Commits on main | 61 since v0.28 |
+| Tests | 345 → 354 (+9 new settings tests) |
+| Issues created | 4 (#204, #205, #207, #208) |
+| Bugs fixed | 12+ (F-01 through F-12, New Farm button) |
+| Review rounds | 6 (live testing feedback) |
+
+### Key Fixes
+
+| PR | Fix | Severity |
+|----|-----|----------|
+| #190 | F-01/F-02/F-03: Settings overwrite, admin tab race, admin delete bypass | HIGH |
+| #191 | F-04: Clear localStorage on signout + event-based admin tab | HIGH |
+| #192 | F-08: Nav labels update immediately on locale change | MEDIUM |
+| #193-#199 | F-07 to F-12: Observer routing, New Farm hide, deep i18n fixes | mixed |
+| #200-#201 | Settings sync — stale guard removal, error logging | HIGH |
+| #202 | **Settings PATCH 500** — DynamoDB unused ExpressionAttributeValues | HIGH |
+| #203 | **Settings sync on every page load** via AuthGuard | HIGH |
+| #206 | New Farm button shown when user has zero farms | MEDIUM |
+| #208 | New Farm button hidden for observer-only users | MEDIUM |
+
+### Root Causes Identified and Fixed
+
+1. **Settings PATCH 500** (PR #202) — `upsertUserSettings` built all `:default_*` ExpressionAttributeValues upfront then conditionally replaced expressions, leaving orphaned keys that DynamoDB rejects. Refactored to conditional-build loop.
+
+2. **Settings not reflecting until Profile visit** (PR #203) — `getMySettings()` was only called in ProfilePage. Moved to AuthGuard with change-detection guards, input validation against THEME_OPTIONS/LOCALE_OPTIONS, and conditional event dispatch.
+
+3. **New Farm button logic** (PRs #206, #208) — `isObserverOnly` guard used `preferredRole !== 'manager'` which hid the button during profile loading (null state) and for users without preferred_role set. Refactored to role-based check: `preferredRole !== 'manager' && !isSystemAdmin && !hasManagerRole`.
+
+### Issues Created This Session
+| # | Title | Scope |
+|---|-------|-------|
+| #204 | Change password from Profile page | Beta-3 |
+| #205 | Delete own account from Profile page | Beta-3 |
+| #207 | Admin activity log monitor with filtering | Backlog |
+
+### Deliverables
+- v0.29 tag on develop
+- Beta-3 sprint planning (`docs/planning/BETA3-READINESS.md`)
+- Executive audit report (`docs/reports/AUDIT-REPORT-v0.29.md`)
+- Review findings for settings fix and AuthGuard changes
+
+### Open Issues (post-session)
+| # | Title | Target |
+|---|-------|--------|
+| F-03 | Admin delete farm bypass | Beta-3 Wave 0 |
+| #204 | Change password | Beta-3 Wave 1 |
+| #205 | Delete own account | Beta-3 Wave 2 |
+| #187 | Admin email notifications | Beta-3 Wave 3 |
+| #160 | Profile picture support | Beta-3 Wave 4 |
+| #207 | Admin activity log | Backlog |
+| #168 | Soft delete | PENDING |
+| #183 | AI chat on all pages | PENDING |
 
 ---
 
@@ -245,6 +292,12 @@ Resolve 3 HIGH priority issues from live testing feedback (D-01 through D-06 ser
 
 6. **Unified mechanisms prevent drift** — the dual ADMIN_USER_IDS/ADMIN_EMAILS was a configuration land mine caught by review. Single source of truth (ADMIN_EMAILS) eliminated an entire class of support issues.
 
+7. **DynamoDB expression building is strict** — Unlike SQL, DynamoDB rejects unused ExpressionAttributeValues. Dynamic UpdateExpression construction must ensure 1:1 correspondence between placeholders and values. The settings PATCH 500 (PR #202) was caused by this exact issue.
+
+8. **Feature work outpaces operational readiness** — The v0.29 audit revealed the application layer is B+ but operations is D. No backups, no alarms, no CSP. Hardening should precede feature sprints to avoid building on a fragile foundation.
+
+9. **Live testing finds what unit tests miss** — 12 bugs found in 6 rounds of post-deploy testing, none caught by 345 unit tests. The gap is zero frontend tests and zero E2E tests — the entire UI layer is untested.
+
 ---
 
-*Generated: 2026-03-25 | Sessions: litcrop-beta-1 + litcrop-beta-2 | Model: Claude Opus 4.6 (1M context)*
+*Updated: 2026-04-01 | Sessions: litcrop-beta-1 + litcrop-beta-2 + beta2-post | Model: Claude Opus 4.6 (1M context)*

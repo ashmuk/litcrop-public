@@ -24,6 +24,7 @@ vi.mock('../../services/dynamodb', () => ({
     countUserMemberships: vi.fn(),
     createFarm: vi.fn(),
     updateFarm: vi.fn(),
+    deleteFarm: vi.fn(),
     getBedsForFarm: vi.fn(),
     getLatestImageForBed: vi.fn(),
     getUserProfile: vi.fn(),
@@ -614,6 +615,33 @@ describe('GET /api/v1/farms/:farmId — admin bypass', () => {
 
     const res = await app.request(`/api/v1/farms/${OTHER_FARM_ID}`, { headers: adminHeaders() });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE /api/v1/farms/:farmId — admin bypass', () => {
+  it('admin can delete a farm they do not own', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(otherFarm);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+    vi.mocked(dynamoRepo.deleteFarm).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${OTHER_FARM_ID}`, {
+      method: 'DELETE',
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(204);
+    expect(dynamoRepo.deleteFarm).toHaveBeenCalledWith(OTHER_FARM_ID);
+  });
+
+  it('non-admin user cannot delete a farm they do not own', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(otherFarm);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${OTHER_FARM_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(404);
+    expect(dynamoRepo.deleteFarm).not.toHaveBeenCalled();
   });
 });
 
