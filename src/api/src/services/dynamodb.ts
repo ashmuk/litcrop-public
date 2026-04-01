@@ -855,7 +855,7 @@ export class DynamoRepository {
     messages: StoredMessage[],
     userId: string,
   ): Promise<void> {
-    const ttl = Math.floor(Date.now() / 1000) + 24 * 3600;
+    const TTL = Math.floor(Date.now() / 1000) + 24 * 3600;
     await ddb.send(
       new PutCommand({
         TableName: TABLE_NAME,
@@ -864,7 +864,7 @@ export class DynamoRepository {
           SK: '#HISTORY',
           messages,
           user_id: userId,
-          ttl,
+          TTL,
           updated_at: new Date().toISOString(),
         },
       }),
