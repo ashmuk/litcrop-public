@@ -309,7 +309,10 @@ async function callWithTools(
       if (err instanceof Anthropic.APIError) {
         const status = err.status ?? 500;
         // S7: Log error type only — do not log upstream error body (may contain user content)
-        console.error('[chat] LLM error', { status, error_type: err.error?.type ?? 'unknown' });
+        const errorBody = err.error as Record<string, unknown> | null | undefined;
+        const hasType = typeof errorBody === 'object' && errorBody !== null && typeof errorBody['type'] === 'string';
+        const errorType = hasType ? errorBody['type'] : 'unknown';
+        console.error('[chat] LLM error', { status, error_type: errorType });
         if (status === 429) {
           throw new RateLimitError('AI service rate limit reached. Try again later.');
         }

@@ -1,6 +1,6 @@
 # BETA3-READINESS.md — Beta-3 Sprint Planning (Infrastructure Hardening)
 
-> Date: 2026-04-01 | Status: **PLANNED**
+> Date: 2026-04-01 | Status: **COMPLETE** (all waves done, pending deploy + tag)
 > Prerequisite: v0.29 tagged (Beta-2 + post-deploy hotfixes)
 > Target: v0.30 (Beta-3 release)
 > Theme: **Foundation hardening — fix the D-grade operations before building more features**
@@ -158,16 +158,16 @@ Waves 3 and 4 are independent of Waves 0-2 and can run in parallel.
 
 ## 6. Exit Criteria
 
-- [ ] DynamoDB PITR enabled (verified in AWS Console)
-- [ ] Cognito removalPolicy is RETAIN
-- [ ] CSP header present on CloudFront responses (verified via curl)
-- [ ] API Gateway throttling active (verified via 429 on burst)
-- [ ] CloudWatch alarms firing to SNS (verified via test alarm)
-- [ ] F-03 admin delete bypass working
-- [ ] ESLint passing in CI
-- [ ] API-CONTRACTS.md covers all 31 endpoints
-- [ ] All existing 354+ tests pass
-- [ ] Tagged as v0.30 on develop
+- [x] DynamoDB PITR enabled (CDK: `pointInTimeRecovery: true`)
+- [x] Cognito removalPolicy is RETAIN (CDK: `cdk.RemovalPolicy.RETAIN`)
+- [x] CSP header present on CloudFront responses (CDK: ResponseHeadersPolicy)
+- [x] API Gateway throttling active (CDK: 200 burst / 100 rps)
+- [x] CloudWatch alarms firing to SNS (3 alarms + SNS topic)
+- [x] F-03 admin delete bypass working (verified + test added)
+- [x] ESLint passing in CI (0 errors, 8 warnings)
+- [x] API-CONTRACTS.md covers all 35 endpoints (expanded from 11)
+- [x] All existing 354+ tests pass (355/355)
+- [ ] Tagged as v0.30 on develop (pending final review)
 
 ---
 

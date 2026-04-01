@@ -11,6 +11,7 @@
     "dev": "echo 'Use workspace-specific dev commands'",
     "build": "npm run build -w packages/shared && npm run build -w src/frontend -w src/api --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint src/api/src --ext .ts && eslint packages/shared/src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -23,6 +24,9 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^4.1.0"
   }
 }

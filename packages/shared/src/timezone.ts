@@ -13,11 +13,9 @@
  * Returns an approximate UTC offset string (e.g. "+09:00", "-05:00", "+00:00")
  * derived from the given longitude.
  *
- * @param _lat - Latitude (unused in longitude-only approximation, reserved for
- *               future hemisphere-aware refinements)
- * @param lng  - Longitude in decimal degrees (-180 to +180)
+ * @param lng - Longitude in decimal degrees (-180 to +180)
  */
-export function getTimezoneOffsetFromCoords(_lat: number, lng: number): string {
+export function getTimezoneOffsetFromCoords(lng: number): string {
   const offsetHours = Math.round(lng / 15);
   const clampedOffset = Math.max(-12, Math.min(14, offsetHours));
   const sign = clampedOffset >= 0 ? '+' : '-';
