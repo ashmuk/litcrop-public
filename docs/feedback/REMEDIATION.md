@@ -1,51 +1,51 @@
 # Remediation Report
 
-> Date: 2026-03-20
-> Review source: docs/feedback/REVIEW-FINDINGS-LEGACY.md
-> Branch: develop
-> Iterations: 1 of 3 max (residual fix applied within same iteration)
-> Status: **RESOLVED**
-
 ## Summary
-
-All 6 MUST-FIX and 7 SHOULD-FIX findings resolved in a single iteration. 1 residual (HourlyForecast/DailyForecast field naming in API-CONTRACTS.md §8) caught during re-validation and fixed immediately. No escalation needed.
+- Review source: docs/feedback/REVIEW-FINDINGS.md
+- Iterations: 1 of 3 max
+- Status: **RESOLVED**
 
 ## Findings Resolution
 
 | # | Finding | Severity | Status | Notes |
 |---|---------|----------|--------|-------|
-| MF-1 | 403 vs 404 for ownership failures | MUST-FIX | **FIXED** | API-CONTRACTS.md: all ownership 403→404; §4b code example updated; FORBIDDEN reserved for future RBAC. UX-DESIGNS.md: 403 error row → 404 generic "Farm not found" |
-| MF-2 | Pagination envelope mismatch | MUST-FIX | **FIXED** | SYSTEM-DESIGN.md: `pagination` → `meta`, removed `has_more`, added `limit` |
-| MF-3 | Weather response field naming | MUST-FIX | **FIXED** | API-CONTRACTS.md §8: CurrentWeather, HourlyForecast, DailyForecast all aligned to Zod short names |
-| MF-4 | Zod FarmBaseSchema missing `user_id` | MUST-FIX | **FIXED** | Added `user_id: z.string()` to FarmBaseSchema |
-| MF-5 | Zod ImageDetailResponseSchema missing `thumbnail_url` | MUST-FIX | **FIXED** | Added `thumbnail_url: z.string().nullable()` to ImageDetailResponseSchema |
-| MF-6 | S3 bucket name inconsistency | MUST-FIX | **FIXED** | All `litcrop-poc-images` → `litcrop-mvp-images` in API-CONTRACTS.md |
-| SF-1 | FarmPlotItem / PlotSummary field alignment | SHOULD-FIX | **FIXED** | Added `bed_id`, `field_id` to PlotSummary; removed `url` from LatestImage |
-| SF-2 | ImageListItem vs ImageSummary divergence | SHOULD-FIX | **FIXED** | Changed to flat `latest_tag` in API-CONTRACTS.md; removed TagSummary |
-| SF-3 | ChatResponse.tool_calls undocumented | SHOULD-FIX | **FIXED** | Added optional `tool_calls` to API-CONTRACTS.md §5.11 |
-| SF-4 | CropImpact severity enum mismatch | SHOULD-FIX | **FIXED** | `"critical"` → `"danger"`, added `"good"` in API-CONTRACTS.md §8 |
-| SF-5 | UX 403 error state | SHOULD-FIX | **FIXED** | Addressed as part of MF-1 |
-| SF-6 | Single-farm-per-user constraint undocumented | SHOULD-FIX | **FIXED** | Added constraint callout in ARCHITECTURE.md §4 |
-| SF-7 | UX-DESIGNS.md duplicate section numbering | SHOULD-FIX | **FIXED** | Toast Notification renumbered to §5.11 |
+| MF-1 | Wave 1 missing AccessToken prerequisite dependency | MUST-FIX | FIXED | Added Prerequisites section to DELETE-ACCOUNT.md referencing Wave 0's `getCognitoAccessToken()` fix |
+| MF-2 | TTL attribute lowercase `ttl` vs CDK uppercase `TTL` | MUST-FIX | FIXED | All references changed to uppercase `TTL`. Pre-existing bug in `dynamodb.ts:852` / `budget.ts:168` documented for separate fix |
+| MF-3 | Variable shadowing: `const result` declared twice | MUST-FIX | FIXED | Second declaration renamed to `const data` |
+| MF-4 | Event catalog mismatch: 14 vs 7 events + naming inconsistency | MUST-FIX | FIXED | Wave 2 `AppEventMap` expanded to 14 events with typed payloads. `join_request.created` renamed to `join_request.submitted`. Wave 3 catalog aligned |
+| MF-5 | i18n key count says 6 but lists 8 | MUST-FIX | FIXED | Updated to "8 new keys" in all occurrences |
+| SF-1 | Orphaned images undocumented in cascade checklist | SHOULD-FIX | FIXED | Added row 10: IMG# items are bed-owned, intentionally retained, no PII |
+| SF-2 | Admin transfer atomicity gap | SHOULD-FIX | FIXED | Documented as accepted MVP risk; TransactWriteCommand recommended for production |
+| SF-3 | Session expiry vs wrong password ambiguity | SHOULD-FIX | FIXED | Added null-check pre-condition before `changePassword()` with redirect flow |
+| SF-4 | Lambda fire-and-forget may lose emails | SHOULD-FIX | FIXED | Added Section 4.1.1 documenting ~5-10% accepted loss rate and production mitigations |
+| SF-5 | IAM condition uses synth-time env var | SHOULD-FIX | FIXED | Added `if (!sesFromEmail) throw new Error(...)` CDK guard |
+| SF-6 | CDK-Nag will flag SES wildcard resource | SHOULD-FIX | FIXED | Added `AwsSolutions-IAM5` NagSuppression with reason |
+| SF-7 | Tab count disagreement between Wave 2 and Wave 3 | SHOULD-FIX | FIXED | Both docs now agree: 5 tabs — System, Users, Farms, Activity, Notifications |
+| SF-8 | Session expiry during password change under-specified | SHOULD-FIX | FIXED | Added: display `auth.session_expired` and redirect to `/login/` after 2s |
+| S-1 | Line numbers 16-36 should be 19-37 | SUGGESTION | FIXED | Corrected |
+| S-2 | Password history limitation undocumented | SUGGESTION | FIXED | Added known-limitation note |
+| S-9 | Missing note: PK for writes/TTL, GSI2 for reads | SUGGESTION | FIXED | Added |
 
 ## Iteration Log
 
 ### Iteration 1
-- Findings addressed: MF-1 through MF-6, SF-1 through SF-7
-- Outcome: 12/13 fixed; 1 residual (MF-3 partial — HourlyForecast/DailyForecast field names)
-
-### Iteration 1b (residual fix)
-- Findings addressed: MF-3 residual (HourlyForecast + DailyForecast field naming in API-CONTRACTS.md §8)
-- Outcome: All 13 findings fully resolved
+- Findings addressed: 5 MUST-FIX, 8 SHOULD-FIX, 3 SUGGESTION (16 total)
+- Agents: 3 parallel my-builder agents (Wave 0, Wave 1, Wave 2+3)
+- Re-validation: 1 my-reviewer agent confirmed all 16 findings FIXED
+- Outcome: **All findings resolved. No regressions.**
 
 ## Escalations
-None required. All findings were cross-document consistency mismatches — no architectural or design flaws.
 
-## Phase E Gate Status (Post-Remediation)
+None required.
 
-| Gate | Verdict | Status |
-|------|---------|--------|
-| Gate 1: Architecture + System Design | CONDITIONAL PASS → **PASS** | All findings resolved |
-| Gate 2: UX + API Contracts | CONDITIONAL PASS → **PASS** | All findings resolved |
+## Pre-existing Bug (out of scope)
 
-**Phase E is complete.** Design documents are internally consistent and ready for task breakdown / implementation.
+TTL attribute case mismatch discovered during review:
+- CDK defines `timeToLiveAttribute: 'TTL'` (uppercase)
+- `dynamodb.ts:852` and `budget.ts:168` write lowercase `ttl`
+- Existing CONV# and budget items are silently never expiring
+- **Action**: File as separate bug fix, independent of Beta-4
+
+---
+
+*Remediation completed: 2026-04-01 | 1 iteration | Status: RESOLVED*
