@@ -195,6 +195,11 @@ export interface UserSettings {
   updated_at: string;
 }
 
+export interface NotificationPrefs {
+  prefs: Record<string, boolean>;  // keys are AppEventType values
+  updated_at: string;
+}
+
 export interface DeleteAccountSummary {
   farms_deleted: string[];
   farms_left: string[];
@@ -1354,6 +1359,43 @@ export class DynamoRepository {
     await this.deleteUserItems(userId);
 
     return summary;
+  }
+
+  // ── Notification Preferences ──────────────────────────────────────
+
+  /** Get notification preferences for a user. Returns null if no record exists. */
+  async getNotificationPrefs(userId: string): Promise<NotificationPrefs | null> {
+    const result = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.user(userId), SK: '#NOTIFICATION_PREFS' },
+      }),
+    );
+    if (!result.Item) return null;
+    return {
+      prefs: result.Item['prefs'] as Record<string, boolean>,
+      updated_at: result.Item['updated_at'] as string,
+    };
+  }
+
+  /** Create or replace notification preferences for a user. */
+  async upsertNotificationPrefs(
+    userId: string,
+    prefs: Record<string, boolean>,
+  ): Promise<NotificationPrefs> {
+    const now = new Date().toISOString();
+    await ddb.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          PK: pk.user(userId),
+          SK: '#NOTIFICATION_PREFS',
+          prefs,
+          updated_at: now,
+        },
+      }),
+    );
+    return { prefs, updated_at: now };
   }
 
 }

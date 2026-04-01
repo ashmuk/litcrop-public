@@ -1,5 +1,12 @@
-import { TEST_USER_ID, authHeaders } from '../helpers/auth';
+import { TEST_USER_ID, authHeaders, makeAuthHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Set ADMIN_EMAILS before auth module loads (isAdmin derived from ADMIN_EMAILS)
+const ADMIN_EMAIL = 'admin@litcrop.test';
+const ADMIN_USER_ID = 'admin-cognito-sub-001';
+vi.hoisted(() => {
+  process.env['ADMIN_EMAILS'] = 'admin@litcrop.test';
+});
 
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
@@ -12,11 +19,15 @@ vi.mock('../../services/dynamodb', () => ({
     upsertUserSettings: vi.fn(),
     getMyJoinRequests: vi.fn(),
     deleteAccount: vi.fn(),
+    getNotificationPrefs: vi.fn(),
+    upsertNotificationPrefs: vi.fn(),
   },
   DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'system' },
 }));
 
 const mockRepo = vi.mocked(dynamoRepo);
+
+const adminHeaders = () => makeAuthHeaders(ADMIN_USER_ID, ADMIN_EMAIL);
 
 const settingsFixture = {
   locale: 'en' as const,
@@ -120,6 +131,7 @@ describe('DELETE /api/v1/me', () => {
   };
 
   it('returns 200 with summary on success', async () => {
+    mockRepo.getUserProfile.mockResolvedValue(null);
     mockRepo.deleteAccount.mockResolvedValue(summaryFixture);
     const res = await app.request('/api/v1/me', {
       method: 'DELETE',
@@ -134,6 +146,7 @@ describe('DELETE /api/v1/me', () => {
   });
 
   it('returns 500 when deleteAccount throws', async () => {
+    mockRepo.getUserProfile.mockResolvedValue(null);
     mockRepo.deleteAccount.mockRejectedValue(new Error('DynamoDB error'));
     const res = await app.request('/api/v1/me', {
       method: 'DELETE',
@@ -147,5 +160,128 @@ describe('DELETE /api/v1/me', () => {
   it('returns 401 without auth token', async () => {
     const res = await app.request('/api/v1/me', { method: 'DELETE' });
     expect(res.status).toBe(401);
+  });
+});
+
+// ── Notification preferences ──────────────────────────────────────
+
+describe('GET /api/v1/me/notification-preferences', () => {
+  it('returns 403 for non-admin', async () => {
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns defaults when no prefs stored (admin)', async () => {
+    mockRepo.getNotificationPrefs.mockResolvedValue(null);
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { prefs: Record<string, boolean>; updated_at: string };
+    expect(body.prefs['user.signup']).toBe(true);
+    expect(body.prefs['farm.created']).toBe(true);
+    expect(body.prefs['account.deleted']).toBe(true);
+    expect(body.updated_at).toBe('');
+  });
+
+  it('returns stored prefs (admin)', async () => {
+    const storedPrefs = {
+      prefs: {
+        'user.signup': true,
+        'farm.created': false,
+        'farm.deleted': true,
+        'join_request.submitted': true,
+        'join_request.approved': false,
+        'join_request.rejected': false,
+        'account.deleted': true,
+      },
+      updated_at: '2026-04-01T10:00:00.000Z',
+    };
+    mockRepo.getNotificationPrefs.mockResolvedValue(storedPrefs);
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { prefs: Record<string, boolean>; updated_at: string };
+    expect(body.prefs['farm.created']).toBe(false);
+    expect(body.prefs['join_request.approved']).toBe(false);
+    expect(body.updated_at).toBe('2026-04-01T10:00:00.000Z');
+  });
+});
+
+describe('PATCH /api/v1/me/notification-preferences', () => {
+  it('returns 403 for non-admin', async () => {
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ prefs: { 'farm.created': false } }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('partial update merges with existing prefs (admin)', async () => {
+    const existing = {
+      prefs: {
+        'user.signup': true,
+        'farm.created': true,
+        'farm.deleted': true,
+        'join_request.submitted': true,
+        'join_request.approved': true,
+        'join_request.rejected': true,
+        'account.deleted': true,
+      },
+      updated_at: '2026-04-01T09:00:00.000Z',
+    };
+    const updated = {
+      prefs: { ...existing.prefs, 'farm.created': false, 'join_request.approved': false },
+      updated_at: '2026-04-01T10:00:00.000Z',
+    };
+    mockRepo.getNotificationPrefs.mockResolvedValue(existing);
+    mockRepo.upsertNotificationPrefs.mockResolvedValue(updated);
+
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+      body: JSON.stringify({ prefs: { 'farm.created': false, 'join_request.approved': false } }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { prefs: Record<string, boolean>; updated_at: string };
+    expect(body.prefs['farm.created']).toBe(false);
+    expect(body.prefs['join_request.approved']).toBe(false);
+    // Other keys are preserved
+    expect(body.prefs['user.signup']).toBe(true);
+    expect(mockRepo.upsertNotificationPrefs).toHaveBeenCalledWith(
+      ADMIN_USER_ID,
+      expect.objectContaining({ 'farm.created': false, 'join_request.approved': false }),
+    );
+  });
+
+  it('rejects unknown event type key (400)', async () => {
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+      body: JSON.stringify({ prefs: { 'unknown.event': true } }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects non-boolean value (400)', async () => {
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+      body: JSON.stringify({ prefs: { 'farm.created': 'yes' } }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects missing prefs field (400)', async () => {
+    const res = await app.request('/api/v1/me/notification-preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+      body: JSON.stringify({ notPrefs: {} }),
+    });
+    expect(res.status).toBe(400);
   });
 });

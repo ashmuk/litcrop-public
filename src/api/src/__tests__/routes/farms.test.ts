@@ -31,6 +31,12 @@ vi.mock('../../services/dynamodb', () => ({
     getAllFarms: vi.fn(),
     getUserSettings: vi.fn(),
     upsertUserSettings: vi.fn(),
+    createJoinRequest: vi.fn(),
+    getJoinRequest: vi.fn(),
+    getJoinRequestsForFarm: vi.fn(),
+    approveJoinRequest: vi.fn(),
+    rejectJoinRequest: vi.fn(),
+    createBedsForPositions: vi.fn(),
   },
 }));
 
@@ -659,5 +665,145 @@ describe('assertFarmAccess — requiredRoles with admin', () => {
     });
     // Admin without membership should NOT be able to write — gets 404
     expect(res.status).toBe(404);
+  });
+});
+
+// ── Event emission tests ─────────────────────────────────────────
+
+import { appEvents } from '../../services/events';
+import type { AppEventMap } from '../../services/events';
+
+describe('farm.created event emission', () => {
+  it('emits farm.created after successful farm creation', async () => {
+    const listener = vi.fn();
+    appEvents.on('farm.created', listener);
+
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.createFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
+
+    await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'Test Farm', latitude: 36.0, longitude: 138.0 }),
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(listener).toHaveBeenCalledOnce();
+    const event = listener.mock.calls[0][0] as AppEventMap['farm.created'];
+    expect(event.type).toBe('farm.created');
+    expect(event.payload.farm_name).toBe('Test Farm');
+
+    appEvents.off('farm.created', listener);
+  });
+});
+
+describe('farm.deleted event emission', () => {
+  it('emits farm.deleted after successful farm deletion', async () => {
+    const listener = vi.fn();
+    appEvents.on('farm.deleted', listener);
+
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+    vi.mocked(dynamoRepo.deleteFarm).mockResolvedValue(undefined);
+
+    await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(listener).toHaveBeenCalledOnce();
+    const event = listener.mock.calls[0][0] as AppEventMap['farm.deleted'];
+    expect(event.type).toBe('farm.deleted');
+    expect(event.payload.farm_id).toBe(FARM_ID);
+
+    appEvents.off('farm.deleted', listener);
+  });
+});
+
+describe('join_request events emission', () => {
+  const targetUserId = 'target-user-001';
+
+  beforeEach(() => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+  });
+
+  it('emits join_request.submitted after join request creation', async () => {
+    const listener = vi.fn();
+    appEvents.on('join_request.submitted', listener);
+
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(null); // not already a member
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Alice', preferred_role: 'observer', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.createJoinRequest).mockResolvedValue(undefined);
+
+    await app.request(`/api/v1/farms/${FARM_ID}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({}),
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(listener).toHaveBeenCalledOnce();
+    const event = listener.mock.calls[0][0] as AppEventMap['join_request.submitted'];
+    expect(event.type).toBe('join_request.submitted');
+    expect(event.payload.farm_id).toBe(FARM_ID);
+
+    appEvents.off('join_request.submitted', listener);
+  });
+
+  it('emits join_request.approved after approval', async () => {
+    const listener = vi.fn();
+    appEvents.on('join_request.approved', listener);
+
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+    vi.mocked(dynamoRepo.approveJoinRequest).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Bob', preferred_role: 'observer', created_at: '2026-01-01T00:00:00.000Z' });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ action: 'approve' }),
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(listener).toHaveBeenCalledOnce();
+    const event = listener.mock.calls[0][0] as AppEventMap['join_request.approved'];
+    expect(event.type).toBe('join_request.approved');
+    expect(event.payload.farm_id).toBe(FARM_ID);
+    expect(event.payload.target_user_id).toBe(targetUserId);
+
+    appEvents.off('join_request.approved', listener);
+  });
+
+  it('emits join_request.rejected after rejection', async () => {
+    const listener = vi.fn();
+    appEvents.on('join_request.rejected', listener);
+
+    vi.mocked(dynamoRepo.rejectJoinRequest).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Carol', preferred_role: 'observer', created_at: '2026-01-01T00:00:00.000Z' });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ action: 'reject' }),
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(listener).toHaveBeenCalledOnce();
+    const event = listener.mock.calls[0][0] as AppEventMap['join_request.rejected'];
+    expect(event.type).toBe('join_request.rejected');
+    expect(event.payload.target_user_id).toBe(targetUserId);
+
+    appEvents.off('join_request.rejected', listener);
   });
 });

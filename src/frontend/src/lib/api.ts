@@ -419,3 +419,22 @@ export async function getAdminUsers(): Promise<{ users: AdminUserItem[]; total: 
 export async function getAdminFarms(): Promise<{ farms: AdminFarmItem[]; total: number }> {
   return request<{ farms: AdminFarmItem[]; total: number }>('GET', '/admin/farms');
 }
+
+// ── Notification Preferences ──────────────────────────────────────
+
+export interface NotificationPrefsResponse {
+  prefs: Record<string, boolean>;
+  updated_at: string;
+}
+
+/** GET /api/v1/me/notification-preferences — admin only */
+export async function getNotificationPrefs(): Promise<NotificationPrefsResponse> {
+  return request<NotificationPrefsResponse>('GET', '/me/notification-preferences');
+}
+
+/** PATCH /api/v1/me/notification-preferences — admin only */
+export async function updateNotificationPrefs(
+  prefs: Record<string, boolean>,
+): Promise<NotificationPrefsResponse> {
+  return request<NotificationPrefsResponse>('PATCH', '/me/notification-preferences', { prefs });
+}

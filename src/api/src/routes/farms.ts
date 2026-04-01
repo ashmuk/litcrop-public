@@ -22,6 +22,7 @@ import {
 } from '@litcrop/shared';
 import type { Farm, Bed, FarmRole } from '@litcrop/shared';
 import { makeLatestImage, assertFarmAccess } from './_helpers';
+import { appEvents } from '../services/events';
 
 const router = new Hono();
 
@@ -259,6 +260,14 @@ router.post('/:farmId/join', async (c) => {
 
   await dynamoRepo.createJoinRequest(farmId, userId, displayName);
 
+  appEvents.emit('join_request.submitted', {
+    type: 'join_request.submitted',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: '',
+    payload: { farm_id: farmId, farm_name: farm.name, requester_name: displayName },
+  });
+
   return c.json({
     farm_id: farmId,
     user_id: userId,
@@ -286,13 +295,17 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
   const { farmId, targetUserId } = c.req.param();
   const { userId } = getAuthContext(c);
 
-  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'manager']);
 
   const body = await c.req.json();
   const action = body['action'];
   if (action !== 'approve' && action !== 'reject') {
     throw new ValidationError('action must be "approve" or "reject"');
   }
+
+  // Fetch the target user's display name for the notification
+  const targetProfile = await dynamoRepo.getUserProfile(targetUserId).catch(() => null);
+  const targetDisplayName = targetProfile?.display_name ?? '';
 
   try {
     if (action === 'approve') {
@@ -302,8 +315,22 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
         throw new ValidationError(`User has reached membership limit (max ${FREE_PLAN_MAX_MEMBERSHIPS})`);
       }
       await dynamoRepo.approveJoinRequest(farmId, targetUserId, userId);
+      appEvents.emit('join_request.approved', {
+        type: 'join_request.approved',
+        timestamp: new Date().toISOString(),
+        actor_id: userId,
+        actor_email: '',
+        payload: { farm_id: farmId, farm_name: farm.name, target_user_id: targetUserId, target_user_name: targetDisplayName },
+      });
     } else {
       await dynamoRepo.rejectJoinRequest(farmId, targetUserId, userId);
+      appEvents.emit('join_request.rejected', {
+        type: 'join_request.rejected',
+        timestamp: new Date().toISOString(),
+        actor_id: userId,
+        actor_email: '',
+        payload: { farm_id: farmId, farm_name: farm.name, target_user_id: targetUserId, target_user_name: targetDisplayName },
+      });
     }
   } catch (err) {
     if (err instanceof Error && err.name === 'TransactionCanceledException') {
@@ -458,6 +485,14 @@ router.post('/', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
+  appEvents.emit('farm.created', {
+    type: 'farm.created',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: '',
+    payload: { farm_id: farm.id, farm_name: farm.name },
+  });
+
   return c.json(farmToResponse(farm), 201);
 });
 
@@ -523,13 +558,21 @@ router.delete('/:farmId', async (c) => {
   }
 
   // System admin can delete any farm; farm admin/manager can delete their own
-  await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
+  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
 
   try {
     await dynamoRepo.deleteFarm(farmId);
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
+
+  appEvents.emit('farm.deleted', {
+    type: 'farm.deleted',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: '',
+    payload: { farm_id: farmId, farm_name: farm.name },
+  });
 
   return c.body(null, 204);
 });

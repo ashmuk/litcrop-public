@@ -13,6 +13,11 @@ import usageRouter from './routes/usage';
 import adminRouter from './routes/admin';
 import meRouter from './routes/me';
 
+// ── Notification subscriptions (must import to initialize) ──────
+// This side-effect import registers all event subscribers at module load time.
+// Events emitted by route handlers will trigger email notifications.
+import './services/notification';
+
 const CLOUDFRONT_ORIGIN = process.env.CLOUDFRONT_ORIGIN;
 
 const app = new Hono();
