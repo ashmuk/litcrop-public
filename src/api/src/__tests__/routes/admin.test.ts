@@ -1,4 +1,4 @@
-import { TEST_USER_ID, authHeaders, makeAuthHeaders } from '../helpers/auth';
+import { authHeaders, makeAuthHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Set ADMIN_EMAILS before auth module loads (isAdmin derived from ADMIN_EMAILS)
