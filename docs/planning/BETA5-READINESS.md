@@ -59,6 +59,12 @@ This sprint delivers the **core product capability** — connecting a camera nod
 |---|-------|------|
 | #160 | Profile picture support | M |
 
+### Crop Library
+
+| # | Title | Size |
+|---|-------|------|
+| #216 | Searchable crop library (100+ crops, EN+JA, bundled JSON) | M |
+
 ### Resource Management
 
 | ID | Title | Size |

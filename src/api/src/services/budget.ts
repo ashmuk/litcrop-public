@@ -164,8 +164,8 @@ export async function recordUsage(
 
   const updateExpr =
     'ADD input_tokens_used :i, output_tokens_used :o, messages_sent :m ' +
-    'SET updated_at = :ts, #ttl = :ttl';
-  const exprAttrNames = { '#ttl': 'ttl' };
+    'SET updated_at = :ts, #TTL = :ttl';
+  const exprAttrNames = { '#TTL': 'TTL' };
   const exprAttrValues = {
     ':i': usage.input_tokens,
     ':o': usage.output_tokens,

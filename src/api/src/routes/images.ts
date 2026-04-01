@@ -10,6 +10,7 @@ import { getAuthContext } from '../middleware/auth';
 import { TAG_VALUES, isValidTagValue } from '@litcrop/shared';
 import type { Image, Bed } from '@litcrop/shared';
 import { assertFarmAccess } from './_helpers';
+import { appEvents } from '../services/events';
 
 /** Resolve farm access for an image via its bed_id. */
 async function assertImageOwnership(image: Image, userId: string, isAdmin?: boolean): Promise<void> {
@@ -103,7 +104,7 @@ router.get('/:imageId', async (c) => {
 
 router.post('/:imageId/tags', async (c) => {
   const { imageId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, userEmail } = getAuthContext(c);
   const body = await c.req.json<Record<string, unknown>>();
 
   const tagValue = body['tag'];
@@ -143,6 +144,20 @@ router.post('/:imageId/tags', async (c) => {
     tagValue as import('@litcrop/shared').TagValue,
     typeof note === 'string' ? note : undefined,
   );
+
+  appEvents.emit('tag.created', {
+    type: 'tag.created',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      image_id: imageId,
+      tag_value: tagValue as string,
+      farm_id: bed.farm_id,
+      // farm_name omitted intentionally — denormalization deferred to avoid extra DDB read in hot path
+      farm_name: '',
+    },
+  });
 
   return c.json(
     {

@@ -8,12 +8,13 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
-import { getCurrentUser, signOut } from '../lib/auth';
+import { getCurrentUser, signOut, changePassword, deleteCurrentUser, CognitoError } from '../lib/auth';
+import PasswordStrengthIndicator, { checkPassword, strengthScore } from './PasswordStrengthIndicator';
 import FarmWizard from './FarmWizard';
 import ThemeSwitcher from './ThemeSwitcher';
 import FarmDiscovery from './FarmDiscovery';
@@ -37,6 +38,338 @@ function translateNavLabels(): void {
     const key = el.getAttribute('data-i18n');
     if (key) el.textContent = t(key);
   });
+}
+
+// ── Change Password Section ───────────────────────────────────────
+
+function ChangePasswordSection() {
+  const [open, setOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const newScore = strengthScore(checkPassword(newPassword));
+  const allFilled = currentPassword.length > 0 && newPassword.length > 0 && confirmPassword.length > 0;
+  const canSubmit = allFilled && newScore >= 4 && newPassword === confirmPassword && !loading;
+
+  function mapChangePasswordError(err: unknown): string {
+    if (err instanceof CognitoError) {
+      switch (err.code) {
+        case 'NotAuthenticated':
+          // Session expired — redirect to login
+          setTimeout(() => { window.location.replace('/login/'); }, 2000);
+          return t('auth.session_expired');
+        case 'NotAuthorizedException':
+          return t('auth.errors.wrong_current_password');
+        case 'InvalidPasswordException':
+          return t('auth.errors.weak_password');
+        case 'LimitExceededException':
+        case 'TooManyRequestsException':
+          return t('auth.errors.too_many_requests');
+        case 'PasswordResetRequiredException':
+          return t('auth.errors.password_reset_required');
+        default:
+          return t('auth.errors.generic');
+      }
+    }
+    if (err instanceof TypeError) return t('auth.errors.network');
+    return t('auth.errors.generic');
+  }
+
+  async function handleSubmit(e: Event) {
+    e.preventDefault();
+    setError('');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError(t('auth.errors.fields_required'));
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError(t('auth.errors.passwords_mismatch'));
+      return;
+    }
+
+    if (newScore < 4) {
+      setError(t('auth.errors.weak_password'));
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      setError(t('auth.errors.new_password_same'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      showToast(t('profile.password_changed'), 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setOpen(false);
+    } catch (err) {
+      setError(mapChangePasswordError(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style="margin-bottom:var(--space-4)">
+      <button
+        type="button"
+        style="font-size:var(--font-size-sm);color:var(--color-primary);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:var(--space-1)"
+        aria-expanded={open}
+        aria-controls="change-password-panel"
+        onClick={() => { setOpen((v) => !v); setError(''); }}
+      >
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+        {t('profile.change_password')}
+      </button>
+
+      {open && (
+        <form
+          id="change-password-panel"
+          onSubmit={handleSubmit}
+          noValidate
+          style="margin-top:var(--space-3);display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);border:var(--border-default);border-radius:var(--radius-md);background:var(--color-surface)"
+        >
+          {error && (
+            <div class="auth-server-error" role="alert">
+              <span class="auth-server-error__icon" aria-hidden="true">⚠</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="cp-current">
+              {t('auth.password.current')}
+            </label>
+            <input
+              id="cp-current"
+              type="password"
+              class="form-input"
+              value={currentPassword}
+              onInput={(e) => { setCurrentPassword((e.target as HTMLInputElement).value); setError(''); }}
+              placeholder={t('auth.password.current_placeholder')}
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="cp-new">
+              {t('auth.password.new')}
+            </label>
+            <input
+              id="cp-new"
+              type="password"
+              class="form-input"
+              value={newPassword}
+              onInput={(e) => { setNewPassword((e.target as HTMLInputElement).value); setError(''); }}
+              placeholder={t('auth.password.placeholder')}
+              autocomplete="new-password"
+              aria-describedby="cp-new-strength"
+            />
+            <div id="cp-new-strength">
+              <PasswordStrengthIndicator password={newPassword} />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="cp-confirm">
+              {t('auth.password.confirm')}
+            </label>
+            <input
+              id="cp-confirm"
+              type="password"
+              class="form-input"
+              value={confirmPassword}
+              onInput={(e) => { setConfirmPassword((e.target as HTMLInputElement).value); setError(''); }}
+              placeholder={t('auth.password.confirm_placeholder')}
+              autocomplete="new-password"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            style="width:100%"
+            disabled={!canSubmit}
+            aria-busy={loading}
+          >
+            {loading ? '…' : t('profile.change_password')}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// ── Delete Account Section ────────────────────────────────────────
+
+interface DeleteAccountSectionProps {
+  farms: FarmWithRole[];
+}
+
+function DeleteAccountSection({ farms }: DeleteAccountSectionProps) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const CONFIRM_STRING = 'DELETE MY ACCOUNT';
+  const canSubmit = confirmText === CONFIRM_STRING && !loading;
+
+  const soleMemberFarms = farms.filter((f) => {
+    // We don't have member counts directly on the farm object, so we show all
+    // admin farms as potentially requiring transfer or deletion. The warning
+    // text uses the generic "sole member or transfer" language from the design.
+    return f.role === 'admin';
+  });
+
+  function handleOpen() {
+    setOpen(true);
+    setConfirmText('');
+    setError('');
+    // Move focus to input after render
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  }
+
+  async function handleDelete() {
+    if (!canSubmit) return;
+    setLoading(true);
+    setError('');
+
+    // Step 1: Delete DynamoDB data via API
+    try {
+      await deleteMyAccount();
+    } catch (err) {
+      console.error('[delete-account] API error:', err);
+      setError(t('profile.delete_account.error'));
+      setLoading(false);
+      return;
+    }
+
+    // Step 2: Delete Cognito identity — API data already gone, proceed regardless
+    try {
+      await deleteCurrentUser();
+    } catch (err) {
+      console.error('[delete-account] Cognito error:', err);
+      // Show warning but still sign out and redirect
+      setError(t('profile.delete_account.cognito_warning'));
+      signOut();
+      setTimeout(() => { window.location.href = '/login/'; }, 2500);
+      return;
+    }
+
+    // Step 3: Sign out and redirect
+    signOut();
+    window.location.href = '/login/';
+  }
+
+  return (
+    <div style="margin-top:var(--space-6)">
+      {!open ? (
+        <button
+          type="button"
+          style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:var(--space-1)"
+          aria-expanded={open}
+          aria-controls="delete-account-panel"
+          onClick={handleOpen}
+        >
+          <span aria-hidden="true">▸</span>
+          {t('profile.delete_account.expand_button')}
+        </button>
+      ) : (
+        <div
+          id="delete-account-panel"
+          style="border:2px solid var(--color-error,#dc2626);border-radius:var(--radius-md);padding:var(--space-4)"
+          role="alert"
+        >
+          <div style="font-weight:var(--font-weight-semibold);color:var(--color-error,#dc2626);margin-bottom:var(--space-3)">
+            {t('profile.delete_account.title')}
+          </div>
+
+          <div style="font-size:var(--font-size-sm);color:var(--color-text);margin-bottom:var(--space-3)">
+            {t('profile.delete_account.description')}
+          </div>
+
+          {soleMemberFarms.length > 0 && (
+            <div style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);margin-bottom:var(--space-3)">
+              <div style="font-weight:var(--font-weight-semibold);margin-bottom:var(--space-1)">
+                {t('profile.delete_account.admin_transfer_warning')}
+              </div>
+              <ul style="margin:0;padding-left:var(--space-4)">
+                {soleMemberFarms.map((f) => (
+                  <li key={f.id} style="margin-bottom:var(--space-1)">{f.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+
+          <div class="form-group" style="margin-bottom:var(--space-3)">
+            <label
+              class="form-label"
+              for="delete-account-confirm"
+              style="font-size:var(--font-size-sm)"
+            >
+              {t('profile.delete_account.confirm_prompt')}
+            </label>
+            <input
+              id="delete-account-confirm"
+              ref={inputRef}
+              type="text"
+              class="form-input"
+              value={confirmText}
+              onInput={(e) => setConfirmText((e.target as HTMLInputElement).value)}
+              placeholder={t('profile.delete_account.confirm_placeholder')}
+              aria-label="Type DELETE MY ACCOUNT to confirm"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck={false}
+            />
+          </div>
+
+          {error && (
+            <div class="auth-server-error" role="alert" style="margin-bottom:var(--space-3)">
+              <span class="auth-server-error__icon" aria-hidden="true">⚠</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div style="display:flex;gap:var(--space-2)">
+            <button
+              type="button"
+              class="btn-secondary"
+              style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
+              onClick={() => { setOpen(false); setConfirmText(''); setError(''); }}
+              disabled={loading}
+            >
+              {t('buttons.cancel')}
+            </button>
+            <button
+              type="button"
+              style={`font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);background:var(--color-error,#dc2626);color:#fff;border:none;border-radius:var(--radius-sm);cursor:${canSubmit ? 'pointer' : 'not-allowed'};opacity:${canSubmit ? '1' : '0.5'}`}
+              onClick={() => void handleDelete()}
+              disabled={!canSubmit}
+              aria-disabled={!canSubmit}
+              aria-busy={loading}
+            >
+              {loading ? t('profile.delete_account.deleting') : t('profile.delete_account.confirm_button')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ProfilePage() {
@@ -615,6 +948,8 @@ export default function ProfilePage() {
           </div>
         )}
 
+        <ChangePasswordSection />
+
         <ThemeSwitcher />
 
         <div class="form-group">
@@ -662,6 +997,8 @@ export default function ProfilePage() {
             {t('auth.logout')}
           </button>
         </div>
+
+        <DeleteAccountSection farms={farms} />
       </section>
     </div>
   );

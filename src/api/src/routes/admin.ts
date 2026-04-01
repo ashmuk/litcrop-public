@@ -12,7 +12,8 @@ import { Hono } from 'hono';
 import { getAuthContext } from '../middleware/auth';
 import { dynamoRepo } from '../services/dynamodb';
 import { getUsage } from '../services/budget';
-import { ServiceUnavailableError } from '../errors';
+import { ServiceUnavailableError, ValidationError } from '../errors';
+import { queryActivities } from '../services/activity';
 
 const router = new Hono();
 
@@ -93,6 +94,52 @@ router.get('/farms', async (c) => {
   } catch (err) {
     console.error('[admin] failed to fetch farms', err);
     throw new ServiceUnavailableError('Unable to retrieve farm list');
+  }
+});
+
+// ── GET /api/v1/admin/activity ────────────────────────────────────
+
+router.get('/activity', async (c) => {
+  const result = requireAdmin(c);
+  if (result instanceof Response) return result;
+
+  const from = c.req.query('from');
+  const to = c.req.query('to');
+  const eventTypeRaw = c.req.query('event_type');
+  const userId = c.req.query('user_id');
+  const farmId = c.req.query('farm_id');
+  const q = c.req.query('q');
+  const cursor = c.req.query('cursor');
+  const limitRaw = c.req.query('limit');
+
+  let limit = 50;
+  if (limitRaw !== undefined) {
+    const parsed = parseInt(limitRaw, 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 100) {
+      throw new ValidationError('limit must be an integer between 1 and 100');
+    }
+    limit = parsed;
+  }
+
+  const event_type = eventTypeRaw
+    ? eventTypeRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : undefined;
+
+  try {
+    const data = await queryActivities({
+      from,
+      to,
+      event_type,
+      actor_id: userId,
+      farm_id: farmId,
+      q,
+      cursor,
+      limit,
+    });
+    return c.json(data);
+  } catch (err) {
+    console.error('[admin] failed to fetch activity log', err);
+    throw new ServiceUnavailableError('Unable to retrieve activity log');
   }
 });
 

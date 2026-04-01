@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitCrop Beta-4 Strategy Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --surface2: #1e2230;
+    --border: #2a2e3b;
+    --text: #e4e6ed;
+    --text-muted: #8b8fa3;
+    --accent: #6c8cff;
+    --accent-dim: #3d5099;
+    --green: #34d399;
+    --green-dim: #064e3b;
+    --yellow: #fbbf24;
+    --yellow-dim: #713f12;
+    --red: #f87171;
+    --red-dim: #7f1d1d;
+    --purple: #a78bfa;
+    --purple-dim: #4c1d95;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+  .dashboard { max-width: 1200px; margin: 0 auto; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+  .header h1 span { color: var(--accent); }
+  .header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 0.3rem; }
+  .header .tag {
+    display: inline-block; margin-top: 0.6rem;
+    background: var(--accent-dim); color: var(--accent);
+    padding: 0.2rem 0.8rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+  }
+
+  /* KPI Row */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.2rem; text-align: center;
+  }
+  .kpi .value { font-size: 1.6rem; font-weight: 700; }
+  .kpi .label { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.2rem; }
+
+  /* Sections */
+  .section { margin-bottom: 2rem; }
+  .section-title {
+    font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .section-title .icon { font-size: 1.2rem; }
+
+  /* Dependency Graph */
+  .dep-graph {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; overflow-x: auto;
+  }
+  .dep-svg { width: 100%; max-width: 900px; margin: 0 auto; display: block; }
+
+  /* Wave Cards */
+  .waves { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .wave-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.3rem; position: relative; overflow: hidden;
+  }
+  .wave-card::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+  }
+  .wave-card.w0::before { background: var(--green); }
+  .wave-card.w1::before { background: var(--yellow); }
+  .wave-card.w2::before { background: var(--purple); }
+  .wave-card.w3::before { background: var(--red); }
+
+  .wave-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.8rem; }
+  .wave-name { font-weight: 600; font-size: 1rem; }
+  .wave-badge {
+    font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px;
+  }
+  .badge-s { background: var(--green-dim); color: var(--green); }
+  .badge-l { background: var(--red-dim); color: var(--red); }
+  .wave-issue { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .wave-issue a { color: var(--accent); text-decoration: none; }
+  .wave-area { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.7rem; }
+  .wave-area span {
+    display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+    padding: 0.1rem 0.4rem; border-radius: 4px; margin-right: 0.3rem;
+  }
+  .wave-steps { list-style: none; font-size: 0.82rem; color: var(--text-muted); }
+  .wave-steps li { padding: 0.2rem 0; padding-left: 1.2rem; position: relative; }
+  .wave-steps li::before {
+    content: ''; position: absolute; left: 0; top: 0.55rem;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--border);
+  }
+  .wave-hours { font-size: 0.85rem; font-weight: 600; margin-top: 0.7rem; color: var(--text); }
+
+  /* Design Gates */
+  .gates-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .gate-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.2rem;
+  }
+  .gate-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.6rem; }
+  .gate-list { list-style: none; font-size: 0.82rem; }
+  .gate-list li { padding: 0.25rem 0; display: flex; align-items: center; gap: 0.5rem; }
+  .gate-check { width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 4px; flex-shrink: 0; }
+
+  /* Cost Table */
+  .cost-table-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.3rem; overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { text-align: left; color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); }
+  td { padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; font-weight: 600; }
+  .cost-ok { color: var(--green); }
+  .cost-watch { color: var(--yellow); }
+
+  /* Timeline */
+  .timeline-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .timeline { display: flex; align-items: stretch; gap: 0; position: relative; padding: 1rem 0; }
+  .tl-block { flex: 1; text-align: center; position: relative; }
+  .tl-block::before {
+    content: ''; position: absolute; top: 24px; left: 0; right: 0; height: 3px;
+    background: var(--border);
+  }
+  .tl-block.done::before { background: var(--green); }
+  .tl-block.current::before { background: var(--accent); }
+  .tl-dot {
+    width: 12px; height: 12px; border-radius: 50%; margin: 18px auto 0.6rem;
+    position: relative; z-index: 1;
+  }
+  .tl-block.done .tl-dot { background: var(--green); }
+  .tl-block.current .tl-dot { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .tl-block.future .tl-dot { background: var(--border); }
+  .tl-label { font-size: 0.75rem; font-weight: 600; }
+  .tl-sub { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+  /* Exit Criteria */
+  .exit-list {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.3rem; list-style: none;
+  }
+  .exit-list li {
+    padding: 0.4rem 0; display: flex; align-items: center; gap: 0.6rem;
+    font-size: 0.88rem;
+  }
+  .exit-list li .check-box {
+    width: 18px; height: 18px; border: 2px solid var(--accent-dim); border-radius: 4px; flex-shrink: 0;
+  }
+
+  /* Strategy Box */
+  .strategy-box {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+    border: 1px solid var(--accent-dim); border-radius: 12px;
+    padding: 1.5rem; margin-bottom: 2rem;
+  }
+  .strategy-box h3 { color: var(--accent); font-size: 1rem; margin-bottom: 0.8rem; }
+  .strategy-box ol { padding-left: 1.3rem; font-size: 0.88rem; }
+  .strategy-box ol li { padding: 0.3rem 0; }
+  .strategy-box .note { color: var(--yellow); font-size: 0.82rem; margin-top: 0.8rem; font-style: italic; }
+
+  @media (max-width: 768px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .waves { grid-template-columns: 1fr; }
+    .gates-grid { grid-template-columns: 1fr; }
+    body { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>LitCrop <span>Beta-4</span> Strategy</h1>
+    <div class="subtitle">Account Lifecycle & Admin Experience Completion</div>
+    <div class="tag">v0.31 &rarr; v0.32 &middot; ~22 hours &middot; 4 issues</div>
+  </div>
+
+  <!-- Sprint Timeline -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9201;</span> Sprint Progression</div>
+    <div class="timeline-wrap">
+      <div class="timeline">
+        <div class="tl-block done"><div class="tl-dot"></div><div class="tl-label">Beta-1</div><div class="tl-sub">v0.22</div></div>
+        <div class="tl-block done"><div class="tl-dot"></div><div class="tl-label">Beta-2</div><div class="tl-sub">v0.28</div></div>
+        <div class="tl-block done"><div class="tl-dot"></div><div class="tl-label">Beta-3</div><div class="tl-sub">v0.31</div></div>
+        <div class="tl-block current"><div class="tl-dot"></div><div class="tl-label">Beta-4</div><div class="tl-sub">v0.32</div></div>
+        <div class="tl-block future"><div class="tl-dot"></div><div class="tl-label">Beta-5</div><div class="tl-sub">v0.33</div></div>
+        <div class="tl-block future"><div class="tl-dot"></div><div class="tl-label">Prod</div><div class="tl-sub">v1.0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi"><div class="value" style="color:var(--accent)">4</div><div class="label">Issues in Scope</div></div>
+    <div class="kpi"><div class="value" style="color:var(--yellow)">~22h</div><div class="label">Estimated Effort</div></div>
+    <div class="kpi"><div class="value" style="color:var(--green)">$0.10</div><div class="label">Max Cost Impact/mo</div></div>
+    <div class="kpi"><div class="value" style="color:var(--purple)">4</div><div class="label">Waves</div></div>
+  </div>
+
+  <!-- Recommended Strategy -->
+  <div class="strategy-box">
+    <h3>&#9889; Recommended Execution Strategy</h3>
+    <ol>
+      <li><strong>Design-first</strong> &mdash; run <code>/cc-design</code> for all 4 waves before any code. Produces ADRs, API contracts, UX wireframes, and data models.</li>
+      <li><strong>Parallel start</strong> &mdash; Waves 0 &amp; 1 (password + delete account) are independent. Tackle them simultaneously or sequentially; either way, they don't block anything.</li>
+      <li><strong>Sequential chain</strong> &mdash; Wave 2 (notifications) must land before Wave 3 (activity log), since the activity log reuses the event-capture layer from notifications.</li>
+      <li><strong>Test as you go</strong> &mdash; each wave has its own test step. Target: 400+ total tests at sprint end.</li>
+      <li><strong>Review gate</strong> &mdash; run <code>/cc-review</code> after all 4 waves, then <code>/cc-remediate</code> for any MUST-FIX findings before tagging.</li>
+    </ol>
+    <div class="note">&#9888; Design docs required before implementation per project rules. SES production transition needs a cost checkpoint.</div>
+  </div>
+
+  <!-- Dependency Graph (SVG) -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#128279;</span> Dependency Graph</div>
+    <div class="dep-graph">
+      <svg class="dep-svg" viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg">
+        <!-- Wave 0 -->
+        <rect x="30" y="20" width="180" height="56" rx="10" fill="#064e3b" stroke="#34d399" stroke-width="1.5"/>
+        <text x="120" y="42" fill="#34d399" font-size="11" font-weight="600" text-anchor="middle">Wave 0 &middot; #204</text>
+        <text x="120" y="60" fill="#8b8fa3" font-size="10" text-anchor="middle">Change Password (3h)</text>
+        <text x="250" y="52" fill="#34d399" font-size="20" text-anchor="middle">&#10003;</text>
+        <text x="280" y="55" fill="#8b8fa3" font-size="10">standalone</text>
+
+        <!-- Wave 1 -->
+        <rect x="30" y="95" width="180" height="56" rx="10" fill="#713f12" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="120" y="117" fill="#fbbf24" font-size="11" font-weight="600" text-anchor="middle">Wave 1 &middot; #205</text>
+        <text x="120" y="135" fill="#8b8fa3" font-size="10" text-anchor="middle">Delete Account (6h)</text>
+        <text x="250" y="127" fill="#34d399" font-size="20" text-anchor="middle">&#10003;</text>
+        <text x="280" y="130" fill="#8b8fa3" font-size="10">standalone</text>
+
+        <!-- Wave 2 -->
+        <rect x="420" y="20" width="190" height="56" rx="10" fill="#4c1d95" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="515" y="42" fill="#a78bfa" font-size="11" font-weight="600" text-anchor="middle">Wave 2 &middot; #187</text>
+        <text x="515" y="60" fill="#8b8fa3" font-size="10" text-anchor="middle">Email Notifications (5h)</text>
+
+        <!-- Wave 3 -->
+        <rect x="690" y="20" width="180" height="56" rx="10" fill="#7f1d1d" stroke="#f87171" stroke-width="1.5"/>
+        <text x="780" y="42" fill="#f87171" font-size="11" font-weight="600" text-anchor="middle">Wave 3 &middot; #207</text>
+        <text x="780" y="60" fill="#8b8fa3" font-size="10" text-anchor="middle">Activity Log (8h)</text>
+
+        <!-- Arrow Wave 2 -> Wave 3 -->
+        <line x1="612" y1="48" x2="685" y2="48" stroke="#8b8fa3" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <polygon points="685,43 695,48 685,53" fill="#8b8fa3"/>
+        <text x="648" y="40" fill="#8b8fa3" font-size="9" text-anchor="middle">depends</text>
+
+        <!-- Legend -->
+        <rect x="420" y="110" width="12" height="12" rx="2" fill="#064e3b" stroke="#34d399"/>
+        <text x="440" y="121" fill="#8b8fa3" font-size="10">Independent</text>
+        <rect x="540" y="110" width="12" height="12" rx="2" fill="#4c1d95" stroke="#a78bfa"/>
+        <text x="560" y="121" fill="#8b8fa3" font-size="10">Foundation</text>
+        <rect x="660" y="110" width="12" height="12" rx="2" fill="#7f1d1d" stroke="#f87171"/>
+        <text x="680" y="121" fill="#8b8fa3" font-size="10">Dependent</text>
+        <line x1="770" y1="116" x2="800" y2="116" stroke="#8b8fa3" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="808" y="121" fill="#8b8fa3" font-size="10">Requires</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Wave Cards -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#128736;</span> Implementation Waves</div>
+    <div class="waves">
+
+      <div class="wave-card w0">
+        <div class="wave-header">
+          <div class="wave-name">Wave 0: Change Password</div>
+          <div class="wave-badge badge-s">S &middot; ~3h</div>
+        </div>
+        <div class="wave-issue"><a href="#">#204</a> &mdash; Change password from Profile page</div>
+        <div class="wave-area"><span>frontend</span><span>cognito</span></div>
+        <ul class="wave-steps">
+          <li>Add <code>changePassword()</code> to auth.ts (direct Cognito call)</li>
+          <li>Collapsible section on ProfilePage with current/new/confirm fields</li>
+          <li>Extract shared password strength indicator from RegisterForm</li>
+          <li>i18n: EN/JA translations</li>
+          <li>Validation & error state tests</li>
+        </ul>
+        <div class="wave-hours" style="color:var(--green)">No backend changes needed</div>
+      </div>
+
+      <div class="wave-card w1">
+        <div class="wave-header">
+          <div class="wave-name">Wave 1: Delete Account</div>
+          <div class="wave-badge badge-l">L &middot; ~6h</div>
+        </div>
+        <div class="wave-issue"><a href="#">#205</a> &mdash; Delete own account from Profile page</div>
+        <div class="wave-area"><span>api</span><span>frontend</span><span>cognito</span><span>dynamodb</span></div>
+        <ul class="wave-steps">
+          <li><code>DELETE /api/v1/me</code> endpoint</li>
+          <li>Cascade: remove USER#, FARM_MEMBER#, MEMBER#, JOIN_REQUEST# items</li>
+          <li>Owned-farm handling: transfer or delete if sole member</li>
+          <li>Danger-zone UI with typed confirmation</li>
+          <li>Cognito DeleteUser &rarr; sign out</li>
+          <li>i18n: EN/JA warnings &amp; owned-farm notice</li>
+        </ul>
+        <div class="wave-hours">Full-stack &middot; ADR required for deletion strategy</div>
+      </div>
+
+      <div class="wave-card w2">
+        <div class="wave-header">
+          <div class="wave-name">Wave 2: Email Notifications</div>
+          <div class="wave-badge badge-l">L &middot; ~5h</div>
+        </div>
+        <div class="wave-issue"><a href="#">#187</a> &mdash; Admin email notifications (SES/SNS)</div>
+        <div class="wave-area"><span>api</span><span>cdk</span><span>ses</span><span>sns</span><span>frontend</span></div>
+        <ul class="wave-steps">
+          <li>CDK: SES verified identity + SNS topic</li>
+          <li><code>services/notification.ts</code> &mdash; event-driven email sender</li>
+          <li>Events: signup, farm CRUD, join requests, account deletion</li>
+          <li>Admin notification preferences (DynamoDB opt-in/out)</li>
+          <li>AdminDashboard: notification preferences UI</li>
+        </ul>
+        <div class="wave-hours" style="color:var(--purple)">Foundation for Wave 3 &middot; SES cost checkpoint</div>
+      </div>
+
+      <div class="wave-card w3">
+        <div class="wave-header">
+          <div class="wave-name">Wave 3: Activity Log</div>
+          <div class="wave-badge badge-l">L &middot; ~8h</div>
+        </div>
+        <div class="wave-issue"><a href="#">#207</a> &mdash; Admin activity log with filtering</div>
+        <div class="wave-area"><span>api</span><span>dynamodb</span><span>frontend</span></div>
+        <ul class="wave-steps">
+          <li>ADR: DynamoDB ACTIVITY# vs CloudWatch Logs</li>
+          <li><code>services/activity.ts</code> &mdash; event recording on all mutations</li>
+          <li><code>GET /api/v1/admin/activity</code> &mdash; paginated, filterable</li>
+          <li>ACTIVITY# entity + GSI for time-range queries</li>
+          <li>AdminDashboard: Activity tab with filter bar &amp; log table</li>
+          <li>Filters: date range, event type, user, farm, free-text</li>
+        </ul>
+        <div class="wave-hours" style="color:var(--red)">Depends on Wave 2 event-capture layer</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Design Gates -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#128196;</span> Design Gates (Required Before Coding)</div>
+    <div class="gates-grid">
+      <div class="gate-card">
+        <h4 style="color:var(--green)">Wave 0 &mdash; Change Password</h4>
+        <ul class="gate-list">
+          <li><div class="gate-check"></div>UX wireframe: ProfilePage collapsible section</li>
+        </ul>
+      </div>
+      <div class="gate-card">
+        <h4 style="color:var(--yellow)">Wave 1 &mdash; Delete Account</h4>
+        <ul class="gate-list">
+          <li><div class="gate-check"></div>ADR: hard delete vs soft delete strategy</li>
+          <li><div class="gate-check"></div>Sequence diagram: delete flow</li>
+          <li><div class="gate-check"></div>Data model: all DynamoDB items to cascade</li>
+          <li><div class="gate-check"></div>API contract: DELETE /api/v1/me</li>
+        </ul>
+      </div>
+      <div class="gate-card">
+        <h4 style="color:var(--purple)">Wave 2 &mdash; Notifications</h4>
+        <ul class="gate-list">
+          <li><div class="gate-check"></div>ADR: SES direct vs SNS fan-out vs EventBridge</li>
+          <li><div class="gate-check"></div>Event catalog: all trigger events</li>
+          <li><div class="gate-check"></div>CDK diagram: SES + SNS + Lambda</li>
+          <li><div class="gate-check"></div>API contract: notification preferences</li>
+        </ul>
+      </div>
+      <div class="gate-card">
+        <h4 style="color:var(--red)">Wave 3 &mdash; Activity Log</h4>
+        <ul class="gate-list">
+          <li><div class="gate-check"></div>ADR: DynamoDB ACTIVITY# vs CloudWatch</li>
+          <li><div class="gate-check"></div>Data model: ACTIVITY# schema + GSI + TTL</li>
+          <li><div class="gate-check"></div>API contract: GET /api/v1/admin/activity</li>
+          <li><div class="gate-check"></div>UX wireframe: Activity tab layout</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- AWS Cost -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#128176;</span> AWS Cost Impact</div>
+    <div class="cost-table-wrap">
+      <table>
+        <thead><tr><th>Wave</th><th>Service</th><th>Impact/mo</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>W0 Change Password</td><td>Cognito</td><td class="cost-ok">$0.00</td><td>Client-side only</td></tr>
+          <tr><td>W1 Delete Account</td><td>Cognito + DynamoDB</td><td class="cost-ok">$0.00</td><td>Deletes reduce storage</td></tr>
+          <tr><td>W2 Notifications</td><td>SES + SNS</td><td class="cost-watch">$0.00&ndash;$0.10</td><td>Sandbox free; production needs review</td></tr>
+          <tr><td>W3 Activity Log</td><td>DynamoDB + GSI</td><td class="cost-ok">$0.00&ndash;$0.05</td><td>~200 bytes/event, negligible at scale</td></tr>
+          <tr><td><strong>Total</strong></td><td></td><td class="cost-ok"><strong>~$0.10</strong></td><td>Well within $5 ceiling ($1.18 target)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Exit Criteria -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#127937;</span> Exit Criteria</div>
+    <ul class="exit-list">
+      <li><div class="check-box"></div>Users can change their own password from Profile</li>
+      <li><div class="check-box"></div>Users can delete their own account (with owned-farm handling)</li>
+      <li><div class="check-box"></div>Admin receives email notifications for key platform events</li>
+      <li><div class="check-box"></div>Admin can view and filter activity log on dashboard</li>
+      <li><div class="check-box"></div>No MUST-FIX findings from /cc-review</li>
+      <li><div class="check-box"></div>All existing tests pass + new coverage (target: 400+)</li>
+      <li><div class="check-box"></div>Deployed and manually verified</li>
+      <li><div class="check-box"></div>Tagged as v0.32 on develop</li>
+    </ul>
+  </div>
+
+  <!-- Deferred -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#128260;</span> Deferred to Beta-5</div>
+    <div class="cost-table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Title</th><th>Size</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>#160</td><td>Profile picture support</td><td>M</td><td>User personalization, not account lifecycle</td></tr>
+          <tr><td>#210</td><td>Device configuration UI and API</td><td>L</td><td>Camera node scope &mdash; separate sprint</td></tr>
+          <tr><td>#216</td><td>Crop library (100+ crops)</td><td>M</td><td>Data expansion, no lifecycle dependency</td></tr>
+          <tr><td>R-01</td><td>DELETE /beds/:bedId</td><td>S</td><td>Resource cleanup batch</td></tr>
+          <tr><td>R-02</td><td>DELETE /images/:imageId</td><td>S</td><td>Resource cleanup batch</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center; color:var(--text-muted); font-size:0.75rem; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border);">
+    LitCrop Beta-4 Strategy Dashboard &middot; Generated 2026-04-01 &middot; Source: BETA4-READINESS.md
+  </div>
+
+</div>
+</body>
+</html>

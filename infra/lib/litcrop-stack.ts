@@ -244,6 +244,13 @@ function handler(event) {
       { parameterName: '/litcrop/llm-api-key' },
     );
 
+    // ── SES configuration (Wave 2: Admin Email Notifications) ─────────────────
+    // SES stays in sandbox for Beta-4. Each admin email must be manually verified:
+    //   aws ses verify-email-identity --email-address admin@example.com --region ap-northeast-1
+    // SES_FROM_EMAIL must be set in the environment before CDK synthesis.
+    // Graceful degradation: if not set, notifications are disabled (events still fire for Wave 3).
+    const sesFromEmail = process.env['SES_FROM_EMAIL'] ?? '';
+
     // ── T-CDK-04: Lambda Functions ────────────────────────────────────────────
     // NodejsFunction: esbuild bundling from src/api/src/handler.ts
     // Matches existing esbuild.config.mjs: CJS format, node22 target, @aws-sdk external
@@ -287,6 +294,10 @@ function handler(event) {
           console.warn('[CDK] ADMIN_EMAILS not set — admin bypass will be disabled in Lambda');
           return '';
         })(),
+        // SES email notifications (Wave 2) — requires manual SES sandbox verification per address
+        // Leave empty to disable notifications (events still fire for Wave 3 activity log)
+        SES_FROM_EMAIL: sesFromEmail,
+        SES_REGION: process.env['SES_REGION'] ?? 'ap-northeast-1',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
@@ -298,6 +309,31 @@ function handler(event) {
 
     // Grant API Lambda permission to read the LLM API key from SSM
     llmApiKeyParam.grantRead(apiLambda);
+
+    // Grant API Lambda permission to send email via SES (Wave 2: notifications)
+    // Note: SES SendEmail does not support resource-level ARN restrictions (AWS limitation).
+    // The ses:FromAddress condition key restricts sending to the configured sender address only.
+    // Manual step required: verify each admin email address in SES sandbox before deployment.
+    if (sesFromEmail) {
+      apiLambda.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'ses:FromAddress': sesFromEmail,
+          },
+        },
+      }));
+    }
+
+    // CDK-Nag: suppress AwsSolutions-IAM5 for SES wildcard resource (required by AWS)
+    NagSuppressions.addResourceSuppressions(apiLambda, [
+      {
+        id: 'AwsSolutions-IAM5',
+        reason: 'SES SendEmail does not support resource-level ARN restrictions; scoped by ses:FromAddress condition key.',
+        appliesTo: ['Resource::*'],
+      },
+    ], true);
 
     // Thumbnail Lambda — Phase 4: full sharp-based thumbnail generation
     const thumbnailLambda = new NodejsFunction(this, 'ThumbnailLambda', {
