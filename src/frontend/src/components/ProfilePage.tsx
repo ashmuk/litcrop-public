@@ -398,7 +398,7 @@ export default function ProfilePage() {
                           class="badge status-healthy"
                           style="font-size:var(--font-size-xs);padding:1px 6px"
                         >
-                          {farm.role}
+                          {t(`profile.role_${farm.role}`)}
                         </span>
                         {isActive && (
                           <span style="font-size:var(--font-size-xs);color:var(--color-primary);font-weight:var(--font-weight-semibold)">
@@ -527,12 +527,9 @@ export default function ProfilePage() {
                                 <span style="font-size:var(--font-size-sm);color:var(--color-text);overflow:hidden;text-overflow:ellipsis">
                                   {m.display_name || m.user_id.slice(0, 8) + '...'}
                                 </span>
-                                {m.role === 'manager' && (
-                                  <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">Manager</span>
-                                )}
-                                {m.role === 'admin' && (
-                                  <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">Admin</span>
-                                )}
+                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">
+                                  {t(`profile.role_${m.role}`)}
+                                </span>
                               </div>
                             ))}
                           </div>
