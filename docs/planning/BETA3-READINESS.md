@@ -167,7 +167,7 @@ Waves 3 and 4 are independent of Waves 0-2 and can run in parallel.
 - [x] ESLint passing in CI (0 errors, 8 warnings)
 - [x] API-CONTRACTS.md covers all 35 endpoints (expanded from 11)
 - [x] All existing 354+ tests pass (355/355)
-- [ ] Tagged as v0.30 on develop (pending final review)
+- [x] Tagged as v0.30 on develop (3ede974)
 
 ---
 
