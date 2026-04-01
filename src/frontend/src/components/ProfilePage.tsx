@@ -8,12 +8,12 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
-import { getCurrentUser, signOut, changePassword, CognitoError } from '../lib/auth';
+import { getCurrentUser, signOut, changePassword, deleteCurrentUser, CognitoError } from '../lib/auth';
 import PasswordStrengthIndicator, { checkPassword, strengthScore } from './PasswordStrengthIndicator';
 import FarmWizard from './FarmWizard';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -203,6 +203,170 @@ function ChangePasswordSection() {
             {loading ? '…' : t('profile.change_password')}
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+// ── Delete Account Section ────────────────────────────────────────
+
+interface DeleteAccountSectionProps {
+  farms: FarmWithRole[];
+}
+
+function DeleteAccountSection({ farms }: DeleteAccountSectionProps) {
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const CONFIRM_STRING = 'DELETE MY ACCOUNT';
+  const canSubmit = confirmText === CONFIRM_STRING && !loading;
+
+  const soleMemberFarms = farms.filter((f) => {
+    // We don't have member counts directly on the farm object, so we show all
+    // admin farms as potentially requiring transfer or deletion. The warning
+    // text uses the generic "sole member or transfer" language from the design.
+    return f.role === 'admin';
+  });
+
+  function handleOpen() {
+    setOpen(true);
+    setConfirmText('');
+    setError('');
+    // Move focus to input after render
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  }
+
+  async function handleDelete() {
+    if (!canSubmit) return;
+    setLoading(true);
+    setError('');
+
+    // Step 1: Delete DynamoDB data via API
+    try {
+      await deleteMyAccount();
+    } catch (err) {
+      console.error('[delete-account] API error:', err);
+      setError(t('profile.delete_account.error'));
+      setLoading(false);
+      return;
+    }
+
+    // Step 2: Delete Cognito identity — API data already gone, proceed regardless
+    try {
+      await deleteCurrentUser();
+    } catch (err) {
+      console.error('[delete-account] Cognito error:', err);
+      // Show warning but still sign out and redirect
+      setError(t('profile.delete_account.cognito_warning'));
+      signOut();
+      setTimeout(() => { window.location.href = '/login/'; }, 2500);
+      return;
+    }
+
+    // Step 3: Sign out and redirect
+    signOut();
+    window.location.href = '/login/';
+  }
+
+  return (
+    <div style="margin-top:var(--space-6)">
+      {!open ? (
+        <button
+          type="button"
+          style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:var(--space-1)"
+          aria-expanded={open}
+          aria-controls="delete-account-panel"
+          onClick={handleOpen}
+        >
+          <span aria-hidden="true">▸</span>
+          {t('profile.delete_account.expand_button')}
+        </button>
+      ) : (
+        <div
+          id="delete-account-panel"
+          style="border:2px solid var(--color-error,#dc2626);border-radius:var(--radius-md);padding:var(--space-4)"
+          role="alert"
+        >
+          <div style="font-weight:var(--font-weight-semibold);color:var(--color-error,#dc2626);margin-bottom:var(--space-3)">
+            {t('profile.delete_account.title')}
+          </div>
+
+          <div style="font-size:var(--font-size-sm);color:var(--color-text);margin-bottom:var(--space-3)">
+            {t('profile.delete_account.description')}
+          </div>
+
+          {soleMemberFarms.length > 0 && (
+            <div style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);margin-bottom:var(--space-3)">
+              <div style="font-weight:var(--font-weight-semibold);margin-bottom:var(--space-1)">
+                {t('profile.delete_account.admin_transfer_warning')}
+              </div>
+              <ul style="margin:0;padding-left:var(--space-4)">
+                {soleMemberFarms.map((f) => (
+                  <li key={f.id} style="margin-bottom:var(--space-1)">{f.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+
+          <div class="form-group" style="margin-bottom:var(--space-3)">
+            <label
+              class="form-label"
+              for="delete-account-confirm"
+              style="font-size:var(--font-size-sm)"
+            >
+              {t('profile.delete_account.confirm_prompt')}
+            </label>
+            <input
+              id="delete-account-confirm"
+              ref={inputRef}
+              type="text"
+              class="form-input"
+              value={confirmText}
+              onInput={(e) => setConfirmText((e.target as HTMLInputElement).value)}
+              placeholder={t('profile.delete_account.confirm_placeholder')}
+              aria-label="Type DELETE MY ACCOUNT to confirm"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck={false}
+            />
+          </div>
+
+          {error && (
+            <div class="auth-server-error" role="alert" style="margin-bottom:var(--space-3)">
+              <span class="auth-server-error__icon" aria-hidden="true">⚠</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div style="display:flex;gap:var(--space-2)">
+            <button
+              type="button"
+              class="btn-secondary"
+              style="font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);min-width:auto"
+              onClick={() => { setOpen(false); setConfirmText(''); setError(''); }}
+              disabled={loading}
+            >
+              {t('buttons.cancel')}
+            </button>
+            <button
+              type="button"
+              style={`font-size:var(--font-size-sm);padding:var(--space-1) var(--space-3);background:var(--color-error,#dc2626);color:#fff;border:none;border-radius:var(--radius-sm);cursor:${canSubmit ? 'pointer' : 'not-allowed'};opacity:${canSubmit ? '1' : '0.5'}`}
+              onClick={() => void handleDelete()}
+              disabled={!canSubmit}
+              aria-disabled={!canSubmit}
+              aria-busy={loading}
+            >
+              {loading ? t('profile.delete_account.deleting') : t('profile.delete_account.confirm_button')}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -833,6 +997,8 @@ export default function ProfilePage() {
             {t('auth.logout')}
           </button>
         </div>
+
+        <DeleteAccountSection farms={farms} />
       </section>
     </div>
   );

@@ -3,6 +3,7 @@ import { dynamoRepo, type UserSettings, DEFAULT_SETTINGS } from '../services/dyn
 import { ValidationError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcrop/shared';
+import type { DeleteAccountSummary } from '../services/dynamodb';
 
 const router = new Hono();
 
@@ -53,6 +54,19 @@ router.get('/join-requests', async (c) => {
   const { userId } = getAuthContext(c);
   const requests = await dynamoRepo.getMyJoinRequests(userId);
   return c.json({ data: requests });
+});
+
+// DELETE /api/v1/me — permanently delete caller's account and all associated data
+router.delete('/', async (c) => {
+  const { userId } = getAuthContext(c);
+  let summary: DeleteAccountSummary;
+  try {
+    summary = await dynamoRepo.deleteAccount(userId);
+  } catch (err) {
+    console.error('[DELETE /me] deleteAccount failed', err);
+    return c.json({ error: 'Account deletion failed. Please try again.' }, 500);
+  }
+  return c.json({ deleted: true, summary });
 });
 
 export default router;

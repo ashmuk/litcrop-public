@@ -11,6 +11,7 @@ vi.mock('../../services/dynamodb', () => ({
     getUserSettings: vi.fn(),
     upsertUserSettings: vi.fn(),
     getMyJoinRequests: vi.fn(),
+    deleteAccount: vi.fn(),
   },
   DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'system' },
 }));
@@ -105,5 +106,46 @@ describe('PATCH /api/v1/me/settings', () => {
       body: JSON.stringify({ theme: 'neon' }),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('DELETE /api/v1/me', () => {
+  const summaryFixture = {
+    farms_deleted: ['farm-aaa'],
+    farms_left: ['farm-bbb'],
+    farms_transferred: [{ farm_id: 'farm-ccc', new_admin: 'user-ddd' }],
+    join_requests_deleted: 1,
+    profile_deleted: true,
+    settings_deleted: true,
+  };
+
+  it('returns 200 with summary on success', async () => {
+    mockRepo.deleteAccount.mockResolvedValue(summaryFixture);
+    const res = await app.request('/api/v1/me', {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { deleted: boolean; summary: typeof summaryFixture };
+    expect(body.deleted).toBe(true);
+    expect(body.summary.farms_deleted).toContain('farm-aaa');
+    expect(body.summary.farms_transferred[0].new_admin).toBe('user-ddd');
+    expect(mockRepo.deleteAccount).toHaveBeenCalledWith(TEST_USER_ID);
+  });
+
+  it('returns 500 when deleteAccount throws', async () => {
+    mockRepo.deleteAccount.mockRejectedValue(new Error('DynamoDB error'));
+    const res = await app.request('/api/v1/me', {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(500);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/Account deletion failed/);
+  });
+
+  it('returns 401 without auth token', async () => {
+    const res = await app.request('/api/v1/me', { method: 'DELETE' });
+    expect(res.status).toBe(401);
   });
 });

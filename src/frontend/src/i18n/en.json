@@ -279,7 +279,22 @@
     "name_saved": "Name saved",
     "save_error": "Could not save",
     "change_password": "Change Password",
-    "password_changed": "Password changed successfully"
+    "password_changed": "Password changed successfully",
+    "delete_account": {
+      "expand_button": "Delete Account",
+      "title": "Delete Account",
+      "description": "This will permanently delete your account, remove you from all farms, and delete any farms where you are the only member. This action cannot be undone.",
+      "sole_member_warning": "You are the sole member of the following farms. They will be permanently deleted:",
+      "admin_transfer_warning": "The following farms you administer will be transferred to another member or deleted if you are the sole member:",
+      "admin_transfer_to": "admin will transfer to {{name}}",
+      "confirm_prompt": "To confirm, type DELETE MY ACCOUNT below:",
+      "confirm_placeholder": "DELETE MY ACCOUNT",
+      "confirm_button": "Delete My Account",
+      "deleting": "Deleting account...",
+      "success": "Your account has been deleted.",
+      "error": "Could not delete account. Please try again.",
+      "cognito_warning": "Account data deleted, but sign-in cleanup failed. You have been logged out."
+    }
   },
   "manage": {
     "title": "Device",

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import {
   DynamoDBDocumentClient,
@@ -8,6 +8,7 @@ import {
   UpdateCommand,
   TransactWriteCommand,
   BatchWriteCommand,
+  DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { DynamoRepository } from '../../services/dynamodb';
 import { NotFoundError } from '../../errors';
@@ -489,6 +490,249 @@ describe('addFarmMember', () => {
     const farmItem2 = (items[1]['Put'] as Record<string, unknown>)['Item'] as Record<string, unknown>;
     expect((farmItem2['PK'] as string).startsWith('FARM#')).toBe(true);
     expect((farmItem2['SK'] as string).startsWith('MEMBER#')).toBe(true);
+  });
+});
+
+// ── updateMemberRole ──────────────────────────────────────────────
+
+describe('updateMemberRole', () => {
+  it('sends a TransactWrite with two Update items', async () => {
+    ddbMock.on(TransactWriteCommand).resolves({});
+    await repo.updateMemberRole(FARM_ID, USER_ID, 'admin');
+
+    const calls = ddbMock.commandCalls(TransactWriteCommand);
+    expect(calls).toHaveLength(1);
+    const items = calls[0].args[0].input.TransactItems as Array<Record<string, unknown>>;
+    expect(items).toHaveLength(2);
+
+    // USER# record
+    const userUpdate = items[0]['Update'] as Record<string, unknown>;
+    const userKey = userUpdate['Key'] as Record<string, string>;
+    expect(userKey['PK']).toBe(`USER#${USER_ID}`);
+    expect(userKey['SK']).toBe(`FARM_MEMBER#${FARM_ID}`);
+    expect((userUpdate['ExpressionAttributeValues'] as Record<string, string>)[':role']).toBe('admin');
+
+    // FARM# record
+    const farmUpdate = items[1]['Update'] as Record<string, unknown>;
+    const farmKey = farmUpdate['Key'] as Record<string, string>;
+    expect(farmKey['PK']).toBe(`FARM#${FARM_ID}`);
+    expect(farmKey['SK']).toBe(`MEMBER#${USER_ID}`);
+    expect((farmUpdate['ExpressionAttributeValues'] as Record<string, string>)[':role']).toBe('admin');
+  });
+});
+
+// ── deleteJoinRequest ─────────────────────────────────────────────
+
+describe('deleteJoinRequest', () => {
+  it('sends a DeleteCommand for FARM#/JOIN_REQUEST# key', async () => {
+    ddbMock.on(DeleteCommand).resolves({});
+    await repo.deleteJoinRequest(FARM_ID, USER_ID);
+
+    const calls = ddbMock.commandCalls(DeleteCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0].args[0].input;
+    expect(input.Key?.['PK']).toBe(`FARM#${FARM_ID}`);
+    expect(input.Key?.['SK']).toBe(`JOIN_REQUEST#${USER_ID}`);
+  });
+});
+
+// ── deleteUserItems ───────────────────────────────────────────────
+
+describe('deleteUserItems', () => {
+  it('sends a BatchWrite deleting PROFILE and SETTINGS items', async () => {
+    ddbMock.on(BatchWriteCommand).resolves({});
+    await repo.deleteUserItems(USER_ID);
+
+    const calls = ddbMock.commandCalls(BatchWriteCommand);
+    expect(calls).toHaveLength(1);
+    const tableRequests = calls[0].args[0].input.RequestItems as Record<string, unknown[]>;
+    const requests = Object.values(tableRequests)[0] as Array<{ DeleteRequest: { Key: Record<string, string> } }>;
+    expect(requests).toHaveLength(2);
+
+    const keys = requests.map((r) => r.DeleteRequest.Key['SK']);
+    expect(keys).toContain('#PROFILE');
+    expect(keys).toContain('#SETTINGS');
+    for (const r of requests) {
+      expect(r.DeleteRequest.Key['PK']).toBe(`USER#${USER_ID}`);
+    }
+  });
+});
+
+// ── deleteAccount ─────────────────────────────────────────────────
+
+describe('deleteAccount', () => {
+  const FARM_ID_2 = 'f0000000-0000-0000-0000-000000000002';
+  const FARM_ID_3 = 'f0000000-0000-0000-0000-000000000003';
+  const OTHER_USER_ID = 'u9999999-0000-0000-0000-000000000099';
+
+  it('A1 — deletes farm when user is sole member', async () => {
+    const spyDeleteFarm = vi.spyOn(repo, 'deleteFarm').mockResolvedValue();
+    const spyDeleteUserItems = vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+    const spyGetMyJoinRequests = vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
+
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
+      { user_id: USER_ID, farm_id: FARM_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+    ]);
+    vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
+      { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+    ]);
+
+    const summary = await repo.deleteAccount(USER_ID);
+
+    expect(spyDeleteFarm).toHaveBeenCalledWith(FARM_ID);
+    expect(summary.farms_deleted).toContain(FARM_ID);
+    expect(summary.farms_transferred).toHaveLength(0);
+    expect(summary.farms_left).toHaveLength(0);
+    expect(spyDeleteUserItems).toHaveBeenCalledWith(USER_ID);
+    expect(summary.profile_deleted).toBe(true);
+    expect(summary.settings_deleted).toBe(true);
+
+    spyDeleteFarm.mockRestore();
+    spyDeleteUserItems.mockRestore();
+    spyGetMyJoinRequests.mockRestore();
+  });
+
+  it('A2 — transfers admin to manager when admin has other members', async () => {
+    const spyUpdateRole = vi.spyOn(repo, 'updateMemberRole').mockResolvedValue();
+    const spyRemoveMember = vi.spyOn(repo, 'removeFarmMember').mockResolvedValue();
+    vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+    vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
+
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
+      { user_id: USER_ID, farm_id: FARM_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+    ]);
+    vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
+      { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+      { user_id: OTHER_USER_ID, role: 'manager', joined_at: '2026-02-01T00:00:00.000Z' },
+    ]);
+
+    const summary = await repo.deleteAccount(USER_ID);
+
+    expect(spyUpdateRole).toHaveBeenCalledWith(FARM_ID, OTHER_USER_ID, 'admin');
+    expect(spyRemoveMember).toHaveBeenCalledWith(USER_ID, FARM_ID);
+    expect(summary.farms_transferred).toHaveLength(1);
+    expect(summary.farms_transferred[0].farm_id).toBe(FARM_ID);
+    expect(summary.farms_transferred[0].new_admin).toBe(OTHER_USER_ID);
+
+    spyUpdateRole.mockRestore();
+    spyRemoveMember.mockRestore();
+  });
+
+  it('A3 — transfers admin to member when no managers exist', async () => {
+    const spyUpdateRole = vi.spyOn(repo, 'updateMemberRole').mockResolvedValue();
+    const spyRemoveMember = vi.spyOn(repo, 'removeFarmMember').mockResolvedValue();
+    vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+    vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
+
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
+      { user_id: USER_ID, farm_id: FARM_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+    ]);
+    vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
+      { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+      { user_id: OTHER_USER_ID, role: 'observer', joined_at: '2026-02-01T00:00:00.000Z' },
+    ]);
+
+    await repo.deleteAccount(USER_ID);
+
+    expect(spyUpdateRole).toHaveBeenCalledWith(FARM_ID, OTHER_USER_ID, 'admin');
+
+    spyUpdateRole.mockRestore();
+    spyRemoveMember.mockRestore();
+  });
+
+  it('A4 — removes non-admin member without affecting farm', async () => {
+    const spyRemoveMember = vi.spyOn(repo, 'removeFarmMember').mockResolvedValue();
+    const spyDeleteFarm = vi.spyOn(repo, 'deleteFarm').mockResolvedValue();
+    vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+    vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
+
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
+      { user_id: USER_ID, farm_id: FARM_ID, role: 'observer', joined_at: '2026-01-01T00:00:00.000Z' },
+    ]);
+    vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
+      { user_id: OTHER_USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+      { user_id: USER_ID, role: 'observer', joined_at: '2026-02-01T00:00:00.000Z' },
+    ]);
+
+    const summary = await repo.deleteAccount(USER_ID);
+
+    expect(spyRemoveMember).toHaveBeenCalledWith(USER_ID, FARM_ID);
+    expect(spyDeleteFarm).not.toHaveBeenCalled();
+    expect(summary.farms_left).toContain(FARM_ID);
+
+    spyRemoveMember.mockRestore();
+    spyDeleteFarm.mockRestore();
+  });
+
+  it('A5 — handles multiple farms with mixed scenarios', async () => {
+    const spyDeleteFarm = vi.spyOn(repo, 'deleteFarm').mockResolvedValue();
+    const spyUpdateRole = vi.spyOn(repo, 'updateMemberRole').mockResolvedValue();
+    const spyRemoveMember = vi.spyOn(repo, 'removeFarmMember').mockResolvedValue();
+    vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+    vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
+
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
+      { user_id: USER_ID, farm_id: FARM_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },    // sole member
+      { user_id: USER_ID, farm_id: FARM_ID_2, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' }, // admin + others
+      { user_id: USER_ID, farm_id: FARM_ID_3, role: 'observer', joined_at: '2026-01-01T00:00:00.000Z' }, // non-admin
+    ]);
+    vi.spyOn(repo, 'getFarmMembers')
+      .mockResolvedValueOnce([{ user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' }]) // FARM_ID: sole
+      .mockResolvedValueOnce([
+        { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+        { user_id: OTHER_USER_ID, role: 'manager', joined_at: '2026-02-01T00:00:00.000Z' },
+      ])
+      .mockResolvedValueOnce([
+        { user_id: OTHER_USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
+        { user_id: USER_ID, role: 'observer', joined_at: '2026-02-01T00:00:00.000Z' },
+      ]);
+
+    const summary = await repo.deleteAccount(USER_ID);
+
+    expect(summary.farms_deleted).toContain(FARM_ID);
+    expect(summary.farms_transferred[0].farm_id).toBe(FARM_ID_2);
+    expect(summary.farms_left).toContain(FARM_ID_3);
+    expect(spyDeleteFarm).toHaveBeenCalledWith(FARM_ID);
+    expect(spyUpdateRole).toHaveBeenCalledWith(FARM_ID_2, OTHER_USER_ID, 'admin');
+    expect(spyRemoveMember).toHaveBeenCalledWith(USER_ID, FARM_ID_2);
+    expect(spyRemoveMember).toHaveBeenCalledWith(USER_ID, FARM_ID_3);
+
+    spyDeleteFarm.mockRestore();
+    spyUpdateRole.mockRestore();
+    spyRemoveMember.mockRestore();
+  });
+
+  it('A6 — deletes pending join requests', async () => {
+    const spyDeleteJR = vi.spyOn(repo, 'deleteJoinRequest').mockResolvedValue();
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([]);
+    vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+    vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([
+      { farm_id: FARM_ID_2, status: 'pending', requested_at: '2026-01-01T00:00:00.000Z' },
+      { farm_id: FARM_ID_3, status: 'pending', requested_at: '2026-01-01T00:00:00.000Z' },
+    ]);
+
+    const summary = await repo.deleteAccount(USER_ID);
+
+    expect(spyDeleteJR).toHaveBeenCalledWith(FARM_ID_2, USER_ID);
+    expect(spyDeleteJR).toHaveBeenCalledWith(FARM_ID_3, USER_ID);
+    expect(summary.join_requests_deleted).toBe(2);
+
+    spyDeleteJR.mockRestore();
+  });
+
+  it('A8 — succeeds when user has no farms', async () => {
+    vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([]);
+    vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
+    vi.spyOn(repo, 'deleteUserItems').mockResolvedValue();
+
+    const summary = await repo.deleteAccount(USER_ID);
+
+    expect(summary.farms_deleted).toHaveLength(0);
+    expect(summary.farms_left).toHaveLength(0);
+    expect(summary.farms_transferred).toHaveLength(0);
+    expect(summary.join_requests_deleted).toBe(0);
+    expect(summary.profile_deleted).toBe(true);
+    expect(summary.settings_deleted).toBe(true);
   });
 });
 

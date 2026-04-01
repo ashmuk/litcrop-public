@@ -146,3 +146,42 @@ describe('changePassword', () => {
     expect(getCognitoAccessToken()).toBe('my-cognito-access-token');
   });
 });
+
+// ── deleteCurrentUser — unit tests with mocked fetch ──────────────
+
+describe('deleteCurrentUser', () => {
+  const storageStore: Record<string, string> = {};
+  const localStorageMock = {
+    getItem: (k: string) => storageStore[k] ?? null,
+    setItem: (k: string, v: string) => { storageStore[k] = v; },
+    removeItem: (k: string) => { delete storageStore[k]; },
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+    Object.keys(storageStore).forEach((k) => delete storageStore[k]);
+    vi.stubGlobal('localStorage', localStorageMock);
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() });
+    vi.stubGlobal('fetch', undefined);
+  });
+
+  async function signInForTest() {
+    vi.stubGlobal('fetch', makeFetch(200, AUTH_RESULT_FIXTURE));
+    const { signIn } = await import('../lib/auth');
+    await signIn('user@example.com', 'OldPass1!');
+  }
+
+  it('throws CognitoError with NotAuthenticated when no session exists', async () => {
+    const { deleteCurrentUser, CognitoError } = await import('../lib/auth');
+    const err = await deleteCurrentUser().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(CognitoError);
+    expect(err).toMatchObject({ code: 'NotAuthenticated' });
+  });
+
+  it('resolves successfully after sign-in when DeleteUser call succeeds', async () => {
+    await signInForTest();
+    vi.stubGlobal('fetch', makeFetch(200, {}));
+    const { deleteCurrentUser } = await import('../lib/auth');
+    await expect(deleteCurrentUser()).resolves.toBeUndefined();
+  });
+});

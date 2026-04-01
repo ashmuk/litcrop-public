@@ -311,6 +311,23 @@ export async function updateMyProfile(data: {
   return request<UserProfileResponse>('PATCH', '/me/profile', data);
 }
 
+export interface DeleteAccountResponse {
+  deleted: boolean;
+  summary: {
+    farms_deleted: string[];
+    farms_left: string[];
+    farms_transferred: Array<{ farm_id: string; new_admin: string }>;
+    join_requests_deleted: number;
+    profile_deleted: boolean;
+    settings_deleted: boolean;
+  };
+}
+
+/** DELETE /api/v1/me — permanently delete caller's account and all associated data */
+export async function deleteMyAccount(): Promise<DeleteAccountResponse> {
+  return request<DeleteAccountResponse>('DELETE', '/me');
+}
+
 // ── Admin Endpoint ────────────────────────────────────────────────
 
 export interface AdminStatsResponse {

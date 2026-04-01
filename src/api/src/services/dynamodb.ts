@@ -8,6 +8,7 @@ import {
   UpdateCommand,
   TransactWriteCommand,
   BatchWriteCommand,
+  DeleteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit } from '@litcrop/shared';
@@ -192,6 +193,15 @@ export interface UserSettings {
   temp_unit: TempUnit;
   theme: Theme;
   updated_at: string;
+}
+
+export interface DeleteAccountSummary {
+  farms_deleted: string[];
+  farms_left: string[];
+  farms_transferred: Array<{ farm_id: string; new_admin: string }>;
+  join_requests_deleted: number;
+  profile_deleted: boolean;
+  settings_deleted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Omit<UserSettings, 'updated_at'> = {
@@ -1213,6 +1223,137 @@ export class DynamoRepository {
   async getDiscoverableFarms(): Promise<Farm[]> {
     const allFarms = await this.getAllFarms();
     return allFarms.filter((f) => f.id !== DEMO_FARM_ID);
+  }
+
+  // ── Account Deletion ──────────────────────────────────────────────
+
+  /**
+   * Update the role field on both membership records for a user+farm pair:
+   *   - USER#{userId} / FARM_MEMBER#{farmId}
+   *   - FARM#{farmId} / MEMBER#{userId}
+   */
+  async updateMemberRole(farmId: string, userId: string, role: FarmRole): Promise<void> {
+    await ddb.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Update: {
+              TableName: TABLE_NAME,
+              Key: { PK: pk.user(userId), SK: sk.farmMember(farmId) },
+              UpdateExpression: 'SET #role = :role',
+              ExpressionAttributeNames: { '#role': 'role' },
+              ExpressionAttributeValues: { ':role': role },
+            },
+          },
+          {
+            Update: {
+              TableName: TABLE_NAME,
+              Key: { PK: pk.farm(farmId), SK: sk.member(userId) },
+              UpdateExpression: 'SET #role = :role',
+              ExpressionAttributeNames: { '#role': 'role' },
+              ExpressionAttributeValues: { ':role': role },
+            },
+          },
+        ],
+      }),
+    );
+  }
+
+  /**
+   * Delete a single join request item by PK=FARM#{farmId}, SK=JOIN_REQUEST#{userId}.
+   */
+  async deleteJoinRequest(farmId: string, userId: string): Promise<void> {
+    await ddb.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.joinRequest(userId) },
+      }),
+    );
+  }
+
+  /**
+   * Batch-delete USER#{userId}/#PROFILE and USER#{userId}/#SETTINGS.
+   * Both deletes are no-ops if the items do not exist.
+   */
+  async deleteUserItems(userId: string): Promise<void> {
+    await ddb.send(
+      new BatchWriteCommand({
+        RequestItems: {
+          [TABLE_NAME]: [
+            { DeleteRequest: { Key: { PK: pk.user(userId), SK: sk.profile() } } },
+            { DeleteRequest: { Key: { PK: pk.user(userId), SK: sk.settings() } } },
+          ],
+        },
+      }),
+    );
+  }
+
+  /**
+   * Full account deletion cascade for a user:
+   * 1. For each farm the user belongs to:
+   *    - Sole member   → deleteFarm (cascade beds, memberships, join requests)
+   *    - Admin + others → transfer admin to longest-tenured manager (or member), then removeFarmMember
+   *    - Non-admin     → removeFarmMember
+   * 2. Delete the user's outgoing join requests (via GSI1)
+   * 3. Delete USER#/PROFILE and USER#/SETTINGS items
+   *
+   * The cascade is NOT atomic (accepted risk at MVP scale — see design doc).
+   * Images under BED# partitions are intentionally retained (no PII).
+   * CONV# items are left to TTL expiry.
+   */
+  async deleteAccount(userId: string): Promise<DeleteAccountSummary> {
+    const summary: DeleteAccountSummary = {
+      farms_deleted: [],
+      farms_left: [],
+      farms_transferred: [],
+      join_requests_deleted: 0,
+      profile_deleted: true,
+      settings_deleted: true,
+    };
+
+    // 1. Get all farm memberships for the user
+    const memberships = await this.getFarmsForUser(userId);
+
+    // 2. Process each farm
+    for (const membership of memberships) {
+      const farmId = membership.farm_id;
+      const members = await this.getFarmMembers(farmId);
+
+      if (members.length === 1) {
+        // Sole member — delete entire farm (cascades beds, memberships, join requests)
+        await this.deleteFarm(farmId);
+        summary.farms_deleted.push(farmId);
+      } else if (membership.role === 'admin') {
+        // Admin with other members — transfer admin role to successor
+        const otherMembers = members
+          .filter((m) => m.user_id !== userId)
+          .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
+
+        // Prefer managers over regular members; fall back to longest-tenured member
+        const successor =
+          otherMembers.find((m) => m.role === 'manager') ?? otherMembers[0];
+
+        await this.updateMemberRole(farmId, successor.user_id, 'admin');
+        await this.removeFarmMember(userId, farmId);
+        summary.farms_transferred.push({ farm_id: farmId, new_admin: successor.user_id });
+      } else {
+        // Non-admin — just leave
+        await this.removeFarmMember(userId, farmId);
+        summary.farms_left.push(farmId);
+      }
+    }
+
+    // 3. Delete the user's outgoing join requests via GSI1
+    const joinRequests = await this.getMyJoinRequests(userId);
+    for (const jr of joinRequests) {
+      await this.deleteJoinRequest(jr.farm_id, userId);
+    }
+    summary.join_requests_deleted = joinRequests.length;
+
+    // 4. Delete USER#/PROFILE and USER#/SETTINGS
+    await this.deleteUserItems(userId);
+
+    return summary;
   }
 
 }
