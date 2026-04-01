@@ -27,6 +27,7 @@ const USER_SUB_KEY = 'litcrop_user_sub';
 
 // ── In-memory token state (never persisted to localStorage) ─────────
 let _accessToken: string | null = null;
+let _cognitoAccessToken: string | null = null;
 let _tokenExpiry = 0; // Unix timestamp ms
 
 // ── Cognito error ─────────────────────────────────────────────────
@@ -89,6 +90,7 @@ function setTokens(accessToken: string, expiresIn: number, refreshToken?: string
 
 function clearTokens(): void {
   _accessToken = null;
+  _cognitoAccessToken = null;
   _tokenExpiry = 0;
   try {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -130,6 +132,7 @@ async function tryRefresh(): Promise<string | null> {
 
     // Use IdToken for API calls (see signIn comment for rationale)
     setTokens(result.IdToken, result.ExpiresIn);
+    _cognitoAccessToken = result.AccessToken;
     return result.IdToken;
   } catch {
     clearTokens();
@@ -218,6 +221,7 @@ export async function signIn(email: string, password: string): Promise<SignInRes
   // Use IdToken (not AccessToken) for API calls — API Gateway JWT authorizer
   // checks the `aud` claim, which only exists in Cognito ID tokens.
   setTokens(result.IdToken, result.ExpiresIn, result.RefreshToken);
+  _cognitoAccessToken = result.AccessToken;
 
   try {
     localStorage.setItem(USER_EMAIL_KEY, email);
@@ -291,4 +295,29 @@ export async function confirmForgotPassword(
     ConfirmationCode: code,
     Password: newPassword,
   });
+}
+
+/** Return the raw Cognito AccessToken (needed for user-scoped operations like ChangePassword). */
+export function getCognitoAccessToken(): string | null {
+  return _cognitoAccessToken;
+}
+
+/** Change the current user's password. Requires an active Cognito AccessToken. */
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  const token = _cognitoAccessToken;
+  if (!token) throw new CognitoError('NotAuthenticated', 'No active session');
+
+  await cognitoRequest('ChangePassword', {
+    AccessToken: token,
+    PreviousPassword: oldPassword,
+    ProposedPassword: newPassword,
+  });
+}
+
+/** Delete the currently authenticated user from Cognito. Requires an active Cognito AccessToken. */
+export async function deleteCurrentUser(): Promise<void> {
+  const token = _cognitoAccessToken;
+  if (!token) throw new CognitoError('NotAuthenticated', 'No active session');
+
+  await cognitoRequest('DeleteUser', { AccessToken: token });
 }

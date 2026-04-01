@@ -13,28 +13,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { signUp, confirmSignUp, resendConfirmationCode, getAccessToken, CognitoError } from '../lib/auth';
 import { t } from '../i18n/i18n';
-
-// ── Password strength ─────────────────────────────────────────────
-
-interface PasswordCheck {
-  length: boolean;
-  uppercase: boolean;
-  lowercase: boolean;
-  number: boolean;
-}
-
-function checkPassword(password: string): PasswordCheck {
-  return {
-    length: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-  };
-}
-
-function strengthScore(check: PasswordCheck): number {
-  return Object.values(check).filter(Boolean).length;
-}
+import PasswordStrengthIndicator, { checkPassword, strengthScore } from './PasswordStrengthIndicator';
 
 // ── Error mapping ─────────────────────────────────────────────────
 
@@ -108,9 +87,8 @@ export default function RegisterForm() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Password checks
-  const pwCheck = checkPassword(password);
-  const score = strengthScore(pwCheck);
+  // Password score for validation (strength bar is rendered by PasswordStrengthIndicator)
+  const score = strengthScore(checkPassword(password));
 
   // If already authenticated, redirect away
   useEffect(() => {
@@ -233,21 +211,6 @@ export default function RegisterForm() {
     } catch {
       // ignore — not critical
     }
-  }
-
-  // ── Strength bar ──────────────────────────────────────────────
-
-  let strengthLabel: string;
-  let strengthIdx: number;
-  if (score <= 1) {
-    strengthLabel = t('auth.password_strength.weak');
-    strengthIdx = 0;
-  } else if (score <= 3) {
-    strengthLabel = t('auth.password_strength.fair');
-    strengthIdx = 1;
-  } else {
-    strengthLabel = t('auth.password_strength.strong');
-    strengthIdx = 2;
   }
 
   // ── Step indicator dots ───────────────────────────────────────
@@ -424,34 +387,9 @@ export default function RegisterForm() {
         )}
 
         {/* Password strength indicator */}
-        {password && (
-          <div id="reg-password-strength" class="password-strength" aria-live="polite">
-            <div class="password-strength__bar">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  class={`password-strength__segment${score > 0 && i <= strengthIdx ? ` password-strength__segment--active-${strengthIdx}` : ''}`}
-                />
-              ))}
-            </div>
-            <div class="password-strength__label">{strengthLabel}</div>
-            <div class="password-requirements">
-              {([
-                ['length', 'auth.password_requirements.length'],
-                ['uppercase', 'auth.password_requirements.uppercase'],
-                ['lowercase', 'auth.password_requirements.lowercase'],
-                ['number', 'auth.password_requirements.number'],
-              ] as [keyof PasswordCheck, string][]).map(([key, labelKey]) => (
-                <div key={key} class={`password-req${pwCheck[key] ? ' password-req--met' : ''}`}>
-                  <span class="password-req__icon" aria-hidden="true">
-                    {pwCheck[key] ? '✓' : '○'}
-                  </span>
-                  {t(labelKey)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <div id="reg-password-strength">
+          <PasswordStrengthIndicator password={password} />
+        </div>
       </div>
 
       <div class="form-group">

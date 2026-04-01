@@ -277,7 +277,9 @@
     "no_name": "No name set",
     "edit_name": "Edit",
     "name_saved": "Name saved",
-    "save_error": "Could not save"
+    "save_error": "Could not save",
+    "change_password": "Change Password",
+    "password_changed": "Password changed successfully"
   },
   "manage": {
     "title": "Device",
@@ -377,6 +379,8 @@
       "confirm": "Confirm password",
       "confirm_placeholder": "Repeat password",
       "new": "New password",
+      "current": "Current Password",
+      "current_placeholder": "Enter current password",
       "show": "Show password",
       "hide": "Hide password"
     },
@@ -414,7 +418,11 @@
       "email_invalid": "Please enter a valid email address.",
       "password_required": "Password is required.",
       "code_required": "Verification code is required.",
-      "code_length": "Please enter the full 6-digit code."
+      "code_length": "Please enter the full 6-digit code.",
+      "wrong_current_password": "Current password is incorrect",
+      "password_reset_required": "Password reset required. Please use forgot password.",
+      "new_password_same": "New password must be different from current password",
+      "fields_required": "All fields are required"
     }
   }
 }

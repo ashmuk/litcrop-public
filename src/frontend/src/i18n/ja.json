@@ -277,7 +277,9 @@
     "no_name": "名前未設定",
     "edit_name": "編集",
     "name_saved": "名前を保存しました",
-    "save_error": "保存できませんでした"
+    "save_error": "保存できませんでした",
+    "change_password": "パスワード変更",
+    "password_changed": "パスワードを変更しました"
   },
   "manage": {
     "title": "デバイス",
@@ -377,6 +379,8 @@
       "confirm": "パスワードの確認",
       "confirm_placeholder": "パスワードを再入力",
       "new": "新しいパスワード",
+      "current": "現在のパスワード",
+      "current_placeholder": "現在のパスワードを入力",
       "show": "パスワードを表示",
       "hide": "パスワードを非表示"
     },
@@ -414,7 +418,11 @@
       "email_invalid": "有効なメールアドレスを入力してください。",
       "password_required": "パスワードを入力してください。",
       "code_required": "確認コードを入力してください。",
-      "code_length": "6桁のコードを全て入力してください。"
+      "code_length": "6桁のコードを全て入力してください。",
+      "wrong_current_password": "現在のパスワードが正しくありません",
+      "password_reset_required": "パスワードのリセットが必要です",
+      "new_password_same": "新しいパスワードは現在のものと異なる必要があります",
+      "fields_required": "すべての項目を入力してください"
     }
   }
 }
