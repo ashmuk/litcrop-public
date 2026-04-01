@@ -127,7 +127,7 @@ export type AppEventType = keyof AppEventMap;
 type Listener<T extends AppEventType> = (event: AppEventMap[T]) => void | Promise<void>;
 
 class TypedEventEmitter {
-  private listeners = new Map<string, Set<Function>>();
+  private listeners = new Map<string, Set<Listener<AppEventType>>>();
 
   on<T extends AppEventType>(type: T, listener: Listener<T>): void {
     if (!this.listeners.has(type)) {

@@ -39,7 +39,7 @@ function makeEvent<T extends string>(type: T, payload: unknown) {
     actor_id: 'user-001',
     actor_email: 'actor@litcrop.test',
     payload,
-  } as any;
+  } as unknown as import('../../services/events').AppEventMap[keyof import('../../services/events').AppEventMap];
 }
 
 describe('notification service', () => {
