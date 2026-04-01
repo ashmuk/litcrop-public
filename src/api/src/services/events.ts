@@ -126,18 +126,22 @@ export type AppEventType = keyof AppEventMap;
 
 type Listener<T extends AppEventType> = (event: AppEventMap[T]) => void | Promise<void>;
 
+// Internal storage uses a broad callback signature; the public API (on/off/emit)
+// constrains callers to type-safe Listener<T> via generics.
+type AnyListener = (event: AppEventMap[AppEventType]) => void | Promise<void>;
+
 class TypedEventEmitter {
-  private listeners = new Map<string, Set<Listener<AppEventType>>>();
+  private listeners = new Map<string, Set<AnyListener>>();
 
   on<T extends AppEventType>(type: T, listener: Listener<T>): void {
     if (!this.listeners.has(type)) {
       this.listeners.set(type, new Set());
     }
-    this.listeners.get(type)!.add(listener);
+    this.listeners.get(type)!.add(listener as AnyListener);
   }
 
   off<T extends AppEventType>(type: T, listener: Listener<T>): void {
-    this.listeners.get(type)?.delete(listener);
+    this.listeners.get(type)?.delete(listener as AnyListener);
   }
 
   /**

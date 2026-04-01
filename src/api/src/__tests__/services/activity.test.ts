@@ -51,14 +51,15 @@ import { appEvents } from '../../services/events';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-function makeEvent<T extends string>(type: T, payload: unknown) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper builds partial events
+function makeEvent<T extends string>(type: T, payload: unknown): any {
   return {
     type,
     timestamp: '2026-04-01T12:00:00.000Z',
     actor_id: 'user-001',
     actor_email: 'alice@litcrop.test',
     payload,
-  } as unknown as import('../../services/events').AppEventMap[keyof import('../../services/events').AppEventMap];
+  };
 }
 
 function getBatchWriteItems(call: unknown[]): Record<string, unknown>[] {
@@ -190,7 +191,7 @@ describe('activity subscriptions — recordActivity', () => {
     ];
 
     for (const [type, payload] of events) {
-      appEvents.emit(type as keyof import('../../services/events').AppEventMap, makeEvent(type, payload));
+      appEvents.emit(type as keyof import('../../services/events').AppEventMap, makeEvent(type, payload) as never);
     }
 
     await new Promise((r) => setTimeout(r, 100));
@@ -231,7 +232,7 @@ describe('queryActivities', () => {
     expect(result.next_cursor).toBeUndefined();
 
     // Verify GSI2PK used
-    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: Record<string, unknown> }).input;
+    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: { IndexName: string; FilterExpression?: string; ExpressionAttributeValues: Record<string, unknown>; Limit?: number } }).input;
     expect(queryInput.IndexName).toBe('GSI2');
     expect(queryInput.ExpressionAttributeValues[':gsi2pk']).toBe('ACTIVITY#ALL');
   });
@@ -241,7 +242,7 @@ describe('queryActivities', () => {
 
     await queryActivities({ farm_id: 'farm-xyz', limit: 10 });
 
-    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: Record<string, unknown> }).input;
+    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: { IndexName: string; FilterExpression?: string; ExpressionAttributeValues: Record<string, unknown>; Limit?: number } }).input;
     expect(queryInput.ExpressionAttributeValues[':gsi2pk']).toBe('ACTIVITY#FARM#farm-xyz');
   });
 
@@ -250,7 +251,7 @@ describe('queryActivities', () => {
 
     await queryActivities({ event_type: ['farm.created'], limit: 10 });
 
-    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: Record<string, unknown> }).input;
+    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: { IndexName: string; FilterExpression?: string; ExpressionAttributeValues: Record<string, unknown>; Limit?: number } }).input;
     expect(queryInput.FilterExpression).toContain('event_type IN');
     expect(queryInput.ExpressionAttributeValues[':et0']).toBe('farm.created');
   });
@@ -260,7 +261,7 @@ describe('queryActivities', () => {
 
     await queryActivities({ actor_id: 'user-001', limit: 10 });
 
-    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: Record<string, unknown> }).input;
+    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: { IndexName: string; FilterExpression?: string; ExpressionAttributeValues: Record<string, unknown>; Limit?: number } }).input;
     expect(queryInput.FilterExpression).toContain('actor_id = :actor_id');
     expect(queryInput.ExpressionAttributeValues[':actor_id']).toBe('user-001');
   });
@@ -309,7 +310,7 @@ describe('queryActivities', () => {
     mockDdbSend.mockResolvedValueOnce({ Items: [], LastEvaluatedKey: undefined });
     await queryActivities({ limit: 999 });
 
-    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: Record<string, unknown> }).input;
+    const queryInput = (mockDdbSend.mock.calls[0][0] as { input: { IndexName: string; FilterExpression?: string; ExpressionAttributeValues: Record<string, unknown>; Limit?: number } }).input;
     // Over-fetch is limit * 2 = 200 (capped at 100 * 2)
     expect(queryInput.Limit).toBe(200);
   });

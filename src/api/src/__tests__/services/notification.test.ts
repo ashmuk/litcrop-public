@@ -39,7 +39,8 @@ function makeEvent<T extends string>(type: T, payload: unknown) {
     actor_id: 'user-001',
     actor_email: 'actor@litcrop.test',
     payload,
-  } as unknown as import('../../services/events').AppEventMap[keyof import('../../services/events').AppEventMap];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper builds partial events
+  } as any;
 }
 
 describe('notification service', () => {
