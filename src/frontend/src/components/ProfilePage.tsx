@@ -104,17 +104,20 @@ export default function ProfilePage() {
     if (currentUser) setUserEmail(currentUser.email);
 
     // Load profile (non-blocking) + sync pending role from registration
+    const pendingRole = localStorage.getItem('litcrop-pendingRole');
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
-      if (p.preferred_role) setPreferredRole(p.preferred_role);
       if (p.is_admin) setIsSystemAdmin(true);
       setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
-      const pendingRole = localStorage.getItem('litcrop-pendingRole');
       if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {
+        // Pending role takes precedence over API fallback ('observer')
+        setPreferredRole(pendingRole);
         updateMyProfile({ preferred_role: pendingRole })
           .then(() => { localStorage.removeItem('litcrop-pendingRole'); })
           .catch(() => {});
+      } else if (p.preferred_role) {
+        setPreferredRole(p.preferred_role);
       }
     }).catch(() => {});
 
@@ -303,10 +306,12 @@ export default function ProfilePage() {
   }
 
   // Determine if user should see farm creation UI
-  // Show for: managers (by preferredRole), system admins, or users with admin/manager farm roles
-  // Hide for: observers (preferredRole !== 'manager' and no admin/manager farm role)
+  // Show for: managers (by preferredRole), system admins, users with admin/manager farm roles,
+  // or users with zero farms (they need a way to get started regardless of role)
+  // Hide for: observers who already belong to at least one farm
   const hasManagerRole = farms.some((f) => f.role === 'admin' || f.role === 'manager');
-  const isObserverOnly = preferredRole !== 'manager' && !isSystemAdmin && !hasManagerRole;
+  const hasNoFarms = !loading && farms.length === 0;
+  const isObserverOnly = preferredRole !== 'manager' && !isSystemAdmin && !hasManagerRole && !hasNoFarms;
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
   const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
