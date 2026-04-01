@@ -952,7 +952,7 @@ export class DynamoRepository {
 
     const [farms, users, beds] = await Promise.all([
       countScan('begins_with(PK, :p) AND SK = :s', { ':p': 'FARM#', ':s': '#META' }),
-      countScan('begins_with(PK, :p)', { ':p': 'USER#' }),
+      countScan('begins_with(PK, :p) AND SK = :s', { ':p': 'USER#', ':s': '#PROFILE' }),
       countScan('begins_with(SK, :s)', { ':s': 'BED#' }),
     ]);
 
