@@ -186,7 +186,7 @@ function handler(event) {
             "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
             "img-src 'self' data: blob: https:",
-            "connect-src 'self' https://*.execute-api.*.amazonaws.com https://cognito-idp.*.amazonaws.com https://api.open-meteo.com https://nominatim.openstreetmap.org",
+            `connect-src 'self' https://*.execute-api.${this.region}.amazonaws.com https://cognito-idp.${this.region}.amazonaws.com https://api.open-meteo.com https://nominatim.openstreetmap.org`,
             "frame-ancestors 'none'",
           ].join('; '),
           override: true,
