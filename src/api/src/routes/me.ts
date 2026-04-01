@@ -34,24 +34,33 @@ router.patch('/profile', async (c) => {
 
   const profile = await dynamoRepo.upsertUserProfile(userId, parsed.data);
 
+  // Derive email from the auth context — decoded from JWT in middleware
+  const authHeader = c.req.header('Authorization') ?? '';
+  let actorEmail = '';
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const payloadB64 = token.split('.')[1] ?? '';
+    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+    actorEmail = (JSON.parse(payloadJson) as Record<string, unknown>)['email'] as string ?? '';
+  } catch {
+    // ignore — email is best-effort
+  }
+
   if (isFirstCreation) {
-    // Derive email from the auth context — decoded from JWT in middleware
-    const authHeader = c.req.header('Authorization') ?? '';
-    let actorEmail = '';
-    try {
-      const token = authHeader.replace(/^Bearer\s+/i, '');
-      const payloadB64 = token.split('.')[1] ?? '';
-      const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
-      actorEmail = (JSON.parse(payloadJson) as Record<string, unknown>)['email'] as string ?? '';
-    } catch {
-      // ignore — email is best-effort
-    }
     appEvents.emit('user.signup', {
       type: 'user.signup',
       timestamp: new Date().toISOString(),
       actor_id: userId,
       actor_email: actorEmail,
       payload: { user_id: userId, display_name: profile.display_name, email: actorEmail },
+    });
+  } else {
+    appEvents.emit('user.profile_updated', {
+      type: 'user.profile_updated',
+      timestamp: new Date().toISOString(),
+      actor_id: userId,
+      actor_email: actorEmail,
+      payload: { changed_fields: Object.keys(parsed.data) },
     });
   }
 

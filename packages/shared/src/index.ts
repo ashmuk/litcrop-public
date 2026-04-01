@@ -82,6 +82,7 @@ export {
   FREE_PLAN_MAX_MEMBERSHIPS,
   CROP_TYPES,
   DDB_KEY_PREFIXES,
+  ACTIVITY_TTL_DAYS,
   ENV_ADMIN_EMAILS,
 } from './constants';
 

@@ -22,6 +22,7 @@ import {
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
 import { makeBedDetailImage, assertFarmAccess } from './_helpers';
+import { appEvents } from '../services/events';
 
 const router = new Hono();
 
@@ -95,7 +96,7 @@ router.get('/:bedId', async (c) => {
 
 router.patch('/:bedId', async (c) => {
   const { bedId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, userEmail } = getAuthContext(c);
 
   let bed: Bed;
   try {
@@ -133,6 +134,22 @@ router.patch('/:bedId', async (c) => {
 
   // Re-fetch to return updated bed
   const updated = await dynamoRepo.getBedById(bedId);
+
+  appEvents.emit('bed.updated', {
+    type: 'bed.updated',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      bed_id: bedId,
+      bed_name: updated.name,
+      farm_id: updated.farm_id,
+      // farm_name omitted intentionally — denormalization deferred to avoid extra DDB read in hot path
+      farm_name: '',
+      changed_fields: Object.keys(updates),
+    },
+  });
+
   return c.json({
     id: updated.id,
     farm_id: updated.farm_id,
@@ -216,7 +233,7 @@ router.get('/:bedId/images', async (c) => {
 
 router.post('/:bedId/images', async (c) => {
   const { bedId } = c.req.param();
-  const { userId } = getAuthContext(c);
+  const { userId, userEmail } = getAuthContext(c);
 
   // Verify bed exists and caller has write access (admin/manager only)
   let bed: Bed;
@@ -355,6 +372,21 @@ router.post('/:bedId/images', async (c) => {
   }
 
   const signedUrl = await getSignedImageUrl(storageKey);
+
+  appEvents.emit('image.uploaded', {
+    type: 'image.uploaded',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      image_id: image.id,
+      bed_id: bedId,
+      bed_name: bed.name,
+      farm_id: bed.farm_id,
+      // farm_name omitted intentionally — denormalization deferred to avoid extra DDB read in hot path
+      farm_name: '',
+    },
+  });
 
   return c.json(
     {

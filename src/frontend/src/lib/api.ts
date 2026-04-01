@@ -420,6 +420,50 @@ export async function getAdminFarms(): Promise<{ farms: AdminFarmItem[]; total: 
   return request<{ farms: AdminFarmItem[]; total: number }>('GET', '/admin/farms');
 }
 
+// ── Activity Log Endpoint ─────────────────────────────────────────
+
+export interface ActivityItem {
+  id: string;
+  event_type: string;
+  actor_id: string;
+  actor_email: string;
+  target_type: string;
+  target_id: string;
+  target_name: string;
+  farm_id?: string;
+  details?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ActivityResponse {
+  activities: ActivityItem[];
+  next_cursor?: string;
+}
+
+/** GET /api/v1/admin/activity — admin only */
+export async function getAdminActivities(params: {
+  from?: string;
+  to?: string;
+  event_type?: string;
+  user_id?: string;
+  farm_id?: string;
+  q?: string;
+  cursor?: string;
+  limit?: number;
+} = {}): Promise<ActivityResponse> {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  if (params.event_type) qs.set('event_type', params.event_type);
+  if (params.user_id) qs.set('user_id', params.user_id);
+  if (params.farm_id) qs.set('farm_id', params.farm_id);
+  if (params.q) qs.set('q', params.q);
+  if (params.cursor) qs.set('cursor', params.cursor);
+  if (params.limit !== undefined) qs.set('limit', String(params.limit));
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request<ActivityResponse>('GET', `/admin/activity${query}`);
+}
+
 // ── Notification Preferences ──────────────────────────────────────
 
 export interface NotificationPrefsResponse {

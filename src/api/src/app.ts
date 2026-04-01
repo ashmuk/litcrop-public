@@ -18,6 +18,10 @@ import meRouter from './routes/me';
 // Events emitted by route handlers will trigger email notifications.
 import './services/notification';
 
+// ── Activity log subscriptions (must import to initialize) ───────
+// Registers subscribers for all 14 event types; writes ACTIVITY# items to DynamoDB.
+import './services/activity';
+
 const CLOUDFRONT_ORIGIN = process.env.CLOUDFRONT_ORIGIN;
 
 const app = new Hono();
