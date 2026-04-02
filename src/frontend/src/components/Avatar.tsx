@@ -41,7 +41,7 @@ const PALETTE = [
   { bg: 'var(--color-gray-100)', fg: 'var(--color-gray-700)' },
 ];
 
-function getInitials(displayName: string, charCount: number): string {
+export function getInitials(displayName: string, charCount: number): string {
   const trimmed = displayName.trim();
   if (!trimmed) return 'U';
 
@@ -57,7 +57,7 @@ function getInitials(displayName: string, charCount: number): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
-function getColorIndex(userId?: string): number {
+export function getColorIndex(userId?: string): number {
   if (!userId) return 0;
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
