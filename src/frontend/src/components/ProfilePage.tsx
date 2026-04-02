@@ -19,6 +19,7 @@ import FarmWizard from './FarmWizard';
 import ThemeSwitcher from './ThemeSwitcher';
 import FarmDiscovery from './FarmDiscovery';
 import JoinRequestList from './JoinRequestList';
+import ProfilePicture from './ProfilePicture';
 
 interface FarmWithRole extends Farm {
   role: FarmRole;
@@ -383,6 +384,7 @@ export default function ProfilePage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
@@ -440,6 +442,7 @@ export default function ProfilePage() {
     const pendingRole = localStorage.getItem('litcrop-pendingRole');
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
+      if (p.profile_picture_thumb_url) setProfilePictureUrl(p.profile_picture_thumb_url);
       if (p.is_admin) setIsSystemAdmin(true);
       setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
@@ -904,6 +907,11 @@ export default function ProfilePage() {
         <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);margin-bottom:var(--space-3);color:var(--color-text)">
           👤 {t('profile.you')}
         </h2>
+
+        {/* Profile Picture */}
+        <div style="display:flex;justify-content:center;margin-bottom:var(--space-4)">
+          <ProfilePicture currentUrl={profilePictureUrl} displayName={displayName || userEmail || ''} />
+        </div>
 
         <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)">
           {editingName ? (

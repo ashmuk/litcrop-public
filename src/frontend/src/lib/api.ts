@@ -277,6 +277,8 @@ export interface UserProfileResponse {
   preferred_role: 'manager' | 'observer';
   created_at: string;
   is_admin: boolean;
+  profile_picture_url: string | null;
+  profile_picture_thumb_url: string | null;
 }
 
 /** GET /api/v1/me/profile */
