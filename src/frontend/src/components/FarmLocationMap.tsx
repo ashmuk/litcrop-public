@@ -2,11 +2,13 @@
  * FarmLocationMap — Beta-5 (#227)
  *
  * Read-only Leaflet map showing the farm's location pin.
- * Lazy-loads Leaflet to avoid bundle impact on pages that don't use it.
- * Reuses the Leaflet dependency already bundled for the farm creation wizard.
+ * Lazy-loads Leaflet + CSS to avoid bundle impact on pages that don't use it.
+ * Follows the same CDN pattern as MapPicker.tsx.
  */
 
 import { useEffect, useRef } from 'preact/hooks';
+
+const LEAFLET_CDN = 'https://unpkg.com/leaflet@1.9.4/dist';
 
 interface Props {
   latitude: number;
@@ -22,9 +24,16 @@ export default function FarmLocationMap({ latitude, longitude, elevation, farmNa
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Lazy-load Leaflet
     import('leaflet').then((L) => {
       if (!mapRef.current) return;
+
+      // Load Leaflet CSS (same pattern as MapPicker)
+      if (!document.querySelector('link[href*="leaflet"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `${LEAFLET_CDN}/leaflet.css`;
+        document.head.appendChild(link);
+      }
 
       const map = L.map(mapRef.current, {
         center: [latitude, longitude],
@@ -40,6 +49,16 @@ export default function FarmLocationMap({ latitude, longitude, elevation, farmNa
         maxZoom: 18,
       }).addTo(map);
 
+      // Fix default marker icon (bundled Leaflet can't resolve icon paths)
+      const DefaultIcon = L.icon({
+        iconUrl: `${LEAFLET_CDN}/images/marker-icon.png`,
+        iconRetinaUrl: `${LEAFLET_CDN}/images/marker-icon-2x.png`,
+        shadowUrl: `${LEAFLET_CDN}/images/marker-shadow.png`,
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        shadowSize: [41, 41],
+      });
+
       // Build popup with text nodes to prevent XSS via farmName
       const container = document.createElement('div');
       const nameEl = document.createElement('strong');
@@ -52,9 +71,12 @@ export default function FarmLocationMap({ latitude, longitude, elevation, farmNa
         container.appendChild(document.createTextNode(`${Math.round(elevation)}m`));
       }
 
-      L.marker([latitude, longitude])
+      L.marker([latitude, longitude], { icon: DefaultIcon })
         .addTo(map)
         .bindPopup(container);
+
+      // Invalidate size after CSS loads to fix tile alignment
+      setTimeout(() => map.invalidateSize(), 200);
 
       mapInstanceRef.current = map;
     }).catch(() => {
