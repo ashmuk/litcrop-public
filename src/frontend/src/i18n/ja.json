@@ -547,7 +547,11 @@
     "interval_30": "30分ごと",
     "interval_60": "60分ごと",
     "window_start": "開始",
-    "window_end": "終了"
+    "window_end": "終了",
+    "guide_ssh": "Raspberry PiにSSHで接続",
+    "guide_config": "~/.litcrop.env を作成し、以下の値を設定：",
+    "guide_capture": "capture.sh をインストールして実行（ドキュメント参照）",
+    "guide_verify": "このページで確認 — 最初のハートビート後にデバイスがオンラインになります"
   },
   "profile_picture": {
     "change": "写真を変更",

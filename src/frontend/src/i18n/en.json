@@ -547,7 +547,11 @@
     "interval_30": "Every 30 minutes",
     "interval_60": "Every 60 minutes",
     "window_start": "Start",
-    "window_end": "End"
+    "window_end": "End",
+    "guide_ssh": "SSH into your Raspberry Pi",
+    "guide_config": "Create ~/.litcrop.env with these values:",
+    "guide_capture": "Install and run capture.sh (see documentation)",
+    "guide_verify": "Check this page — device status will show Online after first heartbeat"
   },
   "profile_picture": {
     "change": "Change photo",
