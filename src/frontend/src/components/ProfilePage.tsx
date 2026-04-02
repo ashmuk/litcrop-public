@@ -20,6 +20,8 @@ import ThemeSwitcher from './ThemeSwitcher';
 import FarmDiscovery from './FarmDiscovery';
 import JoinRequestList from './JoinRequestList';
 import ProfilePicture from './ProfilePicture';
+import Avatar from './Avatar';
+import FarmLocationMap from './FarmLocationMap';
 
 interface FarmWithRole extends Farm {
   role: FarmRole;
@@ -836,6 +838,14 @@ export default function ProfilePage() {
                       <div class="skeleton" style="height:60px;border-radius:var(--radius-sm)" />
                     ) : (
                       <>
+                        <div style="margin-bottom:var(--space-3)">
+                          <FarmLocationMap
+                            latitude={farm.latitude}
+                            longitude={farm.longitude}
+                            elevation={farm.elevation_m}
+                            farmName={farm.name}
+                          />
+                        </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
                           <div>
                             <div style="color:var(--color-gray-500);font-size:var(--font-size-xs)">{t('profile.location')}</div>
@@ -859,11 +869,19 @@ export default function ProfilePage() {
                         {farmMembers && farmMembers.length > 0 && (
                           <div style="border-top:var(--border-default);padding-top:var(--space-2);display:flex;flex-direction:column;gap:var(--space-1)">
                             {farmMembers.map((m) => (
-                              <div key={m.user_id} style="display:flex;justify-content:space-between;align-items:center">
-                                <span style="font-size:var(--font-size-sm);color:var(--color-text);overflow:hidden;text-overflow:ellipsis">
-                                  {m.display_name || m.user_id.slice(0, 8) + '...'}
-                                </span>
-                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">
+                              <div key={m.user_id} style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-2)">
+                                <div style="display:flex;align-items:center;gap:var(--space-2);min-width:0;flex:1">
+                                  <Avatar
+                                    displayName={m.display_name || m.user_id}
+                                    thumbUrl={m.profile_picture_thumb_url}
+                                    size="list"
+                                    userId={m.user_id}
+                                  />
+                                  <span style="font-size:var(--font-size-sm);color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                    {m.display_name || m.user_id.slice(0, 8) + '...'}
+                                  </span>
+                                </div>
+                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px;flex-shrink:0">
                                   {t(`profile.role_${m.role}`)}
                                 </span>
                               </div>
