@@ -1,11 +1,16 @@
 import { Hono } from 'hono';
 import { dynamoRepo, type UserSettings, DEFAULT_SETTINGS } from '../services/dynamodb';
-import { ValidationError } from '../errors';
+import { ValidationError, PayloadTooLargeError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcrop/shared';
 import type { DeleteAccountSummary } from '../services/dynamodb';
 import { appEvents } from '../services/events';
 import { DEFAULT_NOTIFICATION_PREFS } from '../services/notification';
+import { uploadAvatar, deleteAvatar, getSignedAvatarUrls } from '../services/s3';
+
+const MAX_AVATAR_SIZE = 1024 * 1024; // 1MB
+const JPEG_MAGIC = new Uint8Array([0xFF, 0xD8, 0xFF]);
+const PNG_MAGIC = new Uint8Array([0x89, 0x50, 0x4E, 0x47]);
 
 const router = new Hono();
 
@@ -13,10 +18,18 @@ const router = new Hono();
 router.get('/profile', async (c) => {
   const { userId, isAdmin } = getAuthContext(c);
   const profile = await dynamoRepo.getUserProfile(userId);
-  const base = profile
-    ? { ...profile, is_admin: isAdmin }
-    : { user_id: userId, display_name: '', preferred_role: 'observer' as const, created_at: null, is_admin: isAdmin };
-  return c.json(base);
+
+  // Resolve avatar signed URLs if picture keys exist
+  const { url: profilePictureUrl, thumbUrl: profilePictureThumbUrl } = await getSignedAvatarUrls(
+    profile?.profile_picture_key,
+    profile?.profile_picture_thumb_key,
+  );
+
+  if (profile) {
+    const { profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
+    return c.json({ ...rest, is_admin: isAdmin, profile_picture_url: profilePictureUrl, profile_picture_thumb_url: profilePictureThumbUrl });
+  }
+  return c.json({ user_id: userId, display_name: '', preferred_role: 'observer' as const, created_at: null, is_admin: isAdmin, profile_picture_url: null, profile_picture_thumb_url: null });
 });
 
 // PATCH /api/v1/me/profile
@@ -169,6 +182,69 @@ router.patch('/notification-preferences', async (c) => {
   const merged = { ...(stored?.prefs ?? DEFAULT_NOTIFICATION_PREFS), ...(incoming as Record<string, boolean>) };
   const result = await dynamoRepo.upsertNotificationPrefs(userId, merged);
   return c.json(result);
+});
+
+// POST /api/v1/me/profile-picture — upload avatar
+router.post('/profile-picture', async (c) => {
+  const { userId } = getAuthContext(c);
+
+  const body = await c.req.parseBody();
+  const file = body['image'];
+  if (!(file instanceof File)) {
+    throw new ValidationError('image field is required (multipart file upload)');
+  }
+
+  if (file.size > MAX_AVATAR_SIZE) {
+    throw new PayloadTooLargeError(`Image must be under ${MAX_AVATAR_SIZE / 1024 / 1024}MB`);
+  }
+
+  const buffer = new Uint8Array(await file.arrayBuffer());
+
+  // Validate JPEG or PNG magic bytes
+  const isJpeg = buffer.length >= 3 && buffer[0] === JPEG_MAGIC[0] && buffer[1] === JPEG_MAGIC[1] && buffer[2] === JPEG_MAGIC[2];
+  const isPng = buffer.length >= 4 && buffer[0] === PNG_MAGIC[0] && buffer[1] === PNG_MAGIC[1] && buffer[2] === PNG_MAGIC[2] && buffer[3] === PNG_MAGIC[3];
+  if (!isJpeg && !isPng) {
+    throw new ValidationError('Image must be JPEG or PNG format');
+  }
+
+  // Generate thumbnail using dynamic import (avoids cold-start penalty)
+  const sharp = (await import('sharp')).default;
+  const thumbBuffer = await sharp(buffer)
+    .resize(150, 150, { fit: 'cover', position: 'centre' })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  const { originalKey, thumbKey } = await uploadAvatar(
+    userId,
+    buffer,
+    new Uint8Array(thumbBuffer),
+    isJpeg ? 'image/jpeg' : 'image/png',
+  );
+
+  await dynamoRepo.upsertUserProfile(userId, {
+    profile_picture_key: originalKey,
+    profile_picture_thumb_key: thumbKey,
+  });
+
+  const { url, thumbUrl } = await getSignedAvatarUrls(originalKey, thumbKey);
+
+  return c.json({
+    profile_picture_url: url,
+    profile_picture_thumb_url: thumbUrl,
+  }, 201);
+});
+
+// DELETE /api/v1/me/profile-picture — remove avatar
+router.delete('/profile-picture', async (c) => {
+  const { userId } = getAuthContext(c);
+
+  await deleteAvatar(userId);
+  await dynamoRepo.upsertUserProfile(userId, {
+    profile_picture_key: undefined,
+    profile_picture_thumb_key: undefined,
+  });
+
+  return c.json({ deleted: true });
 });
 
 export default router;

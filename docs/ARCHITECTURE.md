@@ -876,6 +876,229 @@ Sanitized HTML rendered in assistant message bubble
 
 ---
 
+## 13. Beta-5: Device Management & Profile Picture — Architecture Delta
+
+> Added 2026-04-02 — extends architecture for Beta-5 (#210 device configuration, #160 profile picture).
+> **Design decisions based on user interview** (see project memory: Beta-5 device decisions).
+
+### 13.1 Overview
+
+Beta-5 delivers two features:
+- **Wave 0 (#210)**: Device configuration UI + API — the core product capability (connecting a real Raspberry Pi camera node through the web interface)
+- **Wave 1 (#160)**: Profile picture support — avatar upload, storage, and display
+
+### 13.2 New DynamoDB Entity: DEVICE#
+
+#### Entity Design
+
+| Entity | PK | SK | Key Attributes |
+|--------|----|----|----------------|
+| **Device** (device→farm) | `FARM#{farmId}` | `DEVICE#{deviceId}` | device_id, farm_id, bed_id, node_name, status (`online`/`offline`/`inactive`), device_api_key_hash, capture_interval, resolution, jpeg_quality, active_window_start, active_window_end, trigger_type, last_seen_at, battery_level, wifi_signal_dbm, storage_status, created_at, updated_at |
+
+**Design rationale**:
+- PK under `FARM#{farmId}` enables efficient `Query SK begins_with 'DEVICE#'` to list all devices for a farm (same partition as beds and images)
+- GSI1 mapping: `GSI1PK=DEVICE#{deviceId}`, `GSI1SK=#META` — enables direct device lookup by ID (for the config poll endpoint)
+- No separate USER# partition for devices — devices belong to farms, not users. Farm membership controls device access.
+- `device_api_key_hash` stores a bcrypt hash of the API key (shown once at registration). The raw key is never stored.
+
+#### Device Capabilities
+
+Each device reports its hardware capabilities via the first heartbeat. The web UI uses this to disable unsupported config fields and hide unavailable health indicators.
+
+```json
+{
+  "capabilities": {
+    "resolutions": ["1920x1080", "1280x720"],
+    "has_battery_sensor": false,
+    "has_pir_sensor": false
+  }
+}
+```
+
+| Capability | Effect on Config UI | Effect on Health UI |
+|------------|-------------------|-------------------|
+| `resolutions` | Resolution dropdown shows only supported values | — |
+| `has_battery_sensor: false` | — | Battery cell shows "N/A" (dimmed) |
+| `has_pir_sensor: false` | Motion trigger radio disabled with "Not supported by this device" | — |
+
+Capabilities are stored on the DEVICE# entity as an optional `capabilities` JSON attribute. Devices that haven't sent a heartbeat yet default to full capabilities (all fields enabled).
+
+#### Future-Proofing (Optional Fields)
+
+These fields are defined as optional in the schema, reserved for Beta-6+:
+- `iot_thing_name?: string` — AWS IoT Core thing name (future migration from JWT to X.509 certificates)
+- `secondary_bed_ids?: string[]` — multi-camera per bed support
+- `motion_sensitivity?: number` — motion detection threshold (currently `trigger_type` is `scheduled` only)
+
+#### New Access Patterns
+
+| # | Screen | Query | DynamoDB Operation |
+|---|--------|-------|-------------------|
+| 12 | Device Management | List devices for farm | Query PK=`FARM#{farmId}` SK begins_with `DEVICE#` |
+| 13 | Device Management | Get device by ID | Query GSI1 PK=`DEVICE#{deviceId}` SK=`#META` |
+| 14 | Config Poll (Pi) | Get device config | Query GSI1 PK=`DEVICE#{deviceId}` SK=`#META` — returns config fields only |
+| 15 | Device Health | Update device heartbeat | UpdateItem (last_seen_at, battery_level, wifi_signal_dbm, storage_status, capabilities) |
+| 16 | Image Upload | Link upload to device | Image record includes `device_id` field (already has `node_id`, reuse as `device_id` reference) |
+
+### 13.3 Device Authentication (Beta-5)
+
+**Decision**: User JWT credentials (Option A from interview — couples device to user account) with web UI registration showing device API key (Option B from interview).
+
+```
+Pi (capture.sh)                    API Gateway              Lambda
+  |                                    |                       |
+  |-- POST /api/v1/beds/{bedId}/images |                       |
+  |   Authorization: Bearer <user-JWT> |                       |
+  |   + device_api_key header -------->|                       |
+  |                                    |-- JWT validated ----->|
+  |                                    |                       |-- verify device_api_key
+  |                                    |                       |   (bcrypt compare)
+  |                                    |                       |-- check device.farm_id
+  |                                    |                       |   matches bed.farm_id
+  |                                    |                       |
+  |<-- 201 Created -------------------------------------------|
+```
+
+**Two-factor device auth**:
+1. **JWT** (user-level): The Pi stores a long-lived Cognito refresh token and uses it to periodically obtain short-lived access tokens. API Gateway JWT Authorizer validates the access token at the gateway level.
+2. **Device API key** (device-level): `X-Device-Key` header, verified in Lambda middleware by bcrypt comparison against `device_api_key_hash`. When a device is not found, compare against a dummy hash to prevent timing side-channel leakage.
+
+This provides defense-in-depth: a compromised JWT alone cannot upload without the device key, and a compromised device key alone fails JWT validation.
+
+**Future (Beta-6+)**: Migrate to Cognito machine-to-machine client credentials (Option C), removing the coupling between device and user account.
+
+### 13.4 Device API Endpoints
+
+| # | Method | Path | Auth | Description |
+|---|--------|------|------|-------------|
+| 1 | POST | `/api/v1/farms/{farmId}/devices` | JWT (manager+) | Register device — generates API key (shown once) |
+| 2 | GET | `/api/v1/farms/{farmId}/devices` | JWT (member) | List devices with health status |
+| 3 | GET | `/api/v1/devices/{deviceId}/config` | JWT + device key | Config poll endpoint (Pi calls on each capture cycle) |
+| 4 | PATCH | `/api/v1/farms/{farmId}/devices/{deviceId}` | JWT (manager+) | Update device config from web UI |
+| 5 | DELETE | `/api/v1/farms/{farmId}/devices/{deviceId}` | JWT (manager+) | Deregister device |
+| 6 | POST | `/api/v1/devices/{deviceId}/heartbeat` | JWT + device key | Device health update (battery, wifi, storage) |
+| 7 | POST | `/api/v1/farms/{farmId}/devices/{deviceId}/test-shot` | JWT (manager+) | Request test capture (sets flag in config, Pi picks up on next poll) |
+
+**Endpoint #3 detail** (config poll): Returns only the fields the Pi needs:
+```json
+{
+  "capture_interval": 1800,
+  "resolution": "1920x1080",
+  "jpeg_quality": 85,
+  "active_window": { "start": "05:00", "end": "20:00" },
+  "trigger_type": "scheduled",
+  "bed_id": "bed-a1",
+  "upload_url": "/api/v1/beds/bed-a1/images",
+  "test_shot_requested": false
+}
+```
+
+**Endpoint #1 detail** (registration response — shown once):
+```json
+{
+  "device_id": "dev-xxxxx",
+  "device_api_key": "dk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "bed_id": "bed-a1",
+  "config_poll_url": "https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/api/v1/devices/dev-xxxxx/config"
+}
+```
+
+**Registration defaults**: New devices are created with these server-side defaults (user can change via config editor):
+- `capture_interval`: 1800 (30 minutes)
+- `resolution`: "1920x1080"
+- `jpeg_quality`: 85
+- `active_window`: { start: "05:00", end: "20:00" }
+- `trigger_type`: "scheduled"
+- `status`: "inactive" (transitions to "online" after first heartbeat)
+
+**Device limit**: Maximum 10 devices per farm (Beta-5). Enforced server-side on `POST /farms/{farmId}/devices`.
+
+### 13.5 Profile Picture Architecture (#160)
+
+#### Storage
+
+Profile pictures reuse the existing S3 images bucket with a new key prefix:
+
+```
+images/avatars/{userId}/original.jpg    — uploaded original (max 1MB)
+images/avatars/{userId}/thumb.jpg       — 150x150 center-crop thumbnail
+```
+
+**Why reuse the images bucket**: Avoids creating a new S3 bucket (cost + CDK complexity). The existing thumbnail Lambda trigger fires on `images/` prefix — the handler includes a guard (`if key starts with 'images/avatars/' → skip`) to avoid processing avatars. Avatar thumbnails are generated inline during upload (sharp in the API Lambda, not via S3 trigger) since it's a single synchronous operation. The API Lambda bundles sharp separately from the thumbnail Lambda layer.
+
+#### New Profile Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `profile_picture_key` | `string?` | S3 key for original (`images/avatars/{userId}/original.jpg`) |
+| `profile_picture_thumb_key` | `string?` | S3 key for thumbnail (`images/avatars/{userId}/thumb.jpg`) |
+
+Added to the `USER#{userId}` / `#PROFILE` entity via `UpdateCommand`.
+
+#### API Endpoints
+
+| # | Method | Path | Auth | Description |
+|---|--------|------|------|-------------|
+| 1 | POST | `/api/v1/me/profile-picture` | JWT | Upload profile picture (multipart, JPEG/PNG, max 1MB). Generates thumbnail inline. Returns signed URLs. |
+| 2 | DELETE | `/api/v1/me/profile-picture` | JWT | Remove profile picture (deletes S3 objects, clears profile fields) |
+| 3 | GET | `/api/v1/me/profile` | JWT | Returns profile including `profile_picture_url` and `profile_picture_thumb_url` (signed URLs, existing endpoint extended) |
+
+**Upload flow**:
+1. Client sends multipart form with image file
+2. Lambda validates format (JPEG/PNG) and size (<=1MB)
+3. Lambda resizes to 150x150 thumbnail using sharp (already a dependency in the thumbnail Lambda — add to API Lambda bundle)
+4. Lambda uploads both original and thumbnail to S3
+5. Lambda updates USER# profile with S3 keys
+6. Returns signed URLs for both sizes
+
+**Avatar display**: The `GET /me/profile` and `GET /farms/{farmId}/members` endpoints return `profile_picture_thumb_url` (signed, 1-hour expiry) so avatars appear in member lists and the admin dashboard.
+
+### 13.6 CDK Infrastructure Changes
+
+| Change | Resource | Impact |
+|--------|----------|--------|
+| **API Lambda bundle** | `NodejsFunction` | Add `sharp` to API Lambda (already in thumbnail Lambda — ~1.8MB layer). Increases cold start by ~50ms. |
+| **S3 permissions** | IAM policy | API Lambda already has `grantReadWrite(imagesBucket)` — no change needed. The `avatars/` prefix is within the images bucket. |
+| **Thumbnail trigger** | S3 event notification | No CDK filter change needed. Add a key-prefix guard at the start of the thumbnail Lambda handler: `if (key.startsWith('images/avatars/')) return;`. This skips avatar uploads without modifying the existing S3 event notification configuration. |
+| **DynamoDB** | Table | No schema change needed (schemaless). New DEVICE# items use existing table. |
+| **GSI1** | GSI | DEVICE# entities need GSI1PK/GSI1SK attributes (same pattern as Bed and Image — already supported). |
+| **Environment variables** | Lambda env | Add `DEVICE_API_KEY_PREFIX=dk_` for key generation convention. |
+
+### 13.7 Cost Impact
+
+| Item | Usage (Beta-5) | Cost Delta |
+|------|---------------|------------|
+| DynamoDB (DEVICE# items) | 1-5 devices, ~5 items | $0.00 (free tier) |
+| S3 (avatar images) | 1-5 users × ~200KB | $0.00 (negligible) |
+| API calls (config poll) | ~1 req/30min/device × 5 devices = ~240/day | $0.00 (free tier) |
+| API Lambda (sharp bundle) | +1.8MB bundle, +50ms cold start | $0.00 (within free tier) |
+| **Total cost delta** | | **~$0.00/month** |
+
+Well within the ~$1.18/month budget constraint. Config polling at 30-min intervals adds negligible API Gateway and Lambda costs.
+
+### 13.8 Security Considerations
+
+| Concern | Mitigation |
+|---------|-----------|
+| Device API key exposure | Key shown once at registration, stored as bcrypt hash. User must re-register device if key is lost. |
+| Key brute force | Rate limiting on config poll and heartbeat endpoints (10 req/min/device). Failed key validation returns 401 (same as JWT failure — no timing oracle). |
+| Avatar upload abuse | 1MB limit, JPEG/PNG only (magic bytes check), one avatar per user (overwrites previous). |
+| Config polling from unauthorized device | Two-factor: JWT validates the user account, device key validates the specific device. Both must match. |
+| S3 avatar key predictability | Keys use `userId` (Cognito sub, UUID) — not guessable. Access via signed URLs only. |
+
+### 13.9 Key Technical Decisions (Beta-5)
+
+| # | Decision | Choice | Key Rationale |
+|---|----------|--------|---------------|
+| 17 | Device entity location | Under `FARM#` partition | Co-located with beds/images for efficient farm queries |
+| 18 | Device auth | JWT + device API key (two-factor) | Defense-in-depth; future migration path to IoT Core X.509 |
+| 19 | Config delivery | Pi polls `GET /devices/{id}/config` | Simplest approach; no WebSocket/MQTT infrastructure needed |
+| 20 | Profile picture storage | Reuse images S3 bucket with `avatars/` prefix | Avoids new bucket; IAM already grants access |
+| 21 | Avatar thumbnail | Inline in API Lambda (sharp) | Single synchronous op; no S3 trigger needed |
+| 22 | Device API key format | `dk_` prefix + 32 random chars | Distinguishable from JWTs; easy to grep in logs |
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Full requirements specification (expanded for MVP)

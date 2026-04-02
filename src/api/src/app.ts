@@ -12,6 +12,7 @@ import chatRouter from './routes/chat';
 import usageRouter from './routes/usage';
 import adminRouter from './routes/admin';
 import meRouter from './routes/me';
+import { farmDevicesRouter, deviceRouter } from './routes/devices';
 
 // ── Notification subscriptions (must import to initialize) ──────
 // This side-effect import registers all event subscribers at module load time.
@@ -39,7 +40,7 @@ app.use(
   cors({
     origin: corsOrigins,
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Accept', 'Accept-Language', 'X-Request-Id', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Accept', 'Accept-Language', 'X-Request-Id', 'Authorization', 'X-Device-Key'],
     exposeHeaders: ['X-Request-Id'],
     maxAge: 86400,
     credentials: false,
@@ -131,6 +132,8 @@ app.use('/api/v1/admin', authMiddleware);
 app.use('/api/v1/admin/*', authMiddleware);
 app.use('/api/v1/me', authMiddleware);
 app.use('/api/v1/me/*', authMiddleware);
+app.use('/api/v1/devices', authMiddleware);
+app.use('/api/v1/devices/*', authMiddleware);
 
 // ── Routes ───────────────────────────────────────────────────────
 
@@ -165,7 +168,18 @@ app.route('/api/v1/usage', usageRouter);
 // GET /api/v1/admin/stats
 app.route('/api/v1/admin', adminRouter);
 
-// GET|PATCH /api/v1/me/profile
+// GET|PATCH /api/v1/me/profile + profile-picture
 app.route('/api/v1/me', meRouter);
+
+// Device management (farm-scoped)
+// POST|GET /api/v1/farms/:farmId/devices
+// PATCH|DELETE /api/v1/farms/:farmId/devices/:deviceId
+// POST /api/v1/farms/:farmId/devices/:deviceId/test-shot
+app.route('/api/v1/farms', farmDevicesRouter);
+
+// Device management (device-scoped, Pi-facing)
+// GET /api/v1/devices/:deviceId/config
+// POST /api/v1/devices/:deviceId/heartbeat
+app.route('/api/v1/devices', deviceRouter);
 
 export default app;

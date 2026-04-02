@@ -15,6 +15,7 @@ import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import sharp from 'sharp';
+import { S3_AVATAR_PREFIX } from '@litcrop/shared';
 
 // ── Configuration ─────────────────────────────────────────────────
 
@@ -70,6 +71,12 @@ export const handler = async (event: S3Event): Promise<void> => {
 
 async function processThumbnail(sourceBucket: string, sourceKey: string): Promise<void> {
   console.log('[thumbnail] processing', { sourceBucket, sourceKey });
+
+  // Skip avatar uploads — these are processed inline by the API Lambda
+  if (sourceKey.startsWith(S3_AVATAR_PREFIX)) {
+    console.log('[thumbnail] skipping avatar upload', { sourceKey });
+    return;
+  }
 
   // 1. Parse imageId from storage key: images/{farmId}/{bedId}/{YYYY}/{MM}/{DD}/{imageId}.jpg
   const filename = sourceKey.split('/').pop();

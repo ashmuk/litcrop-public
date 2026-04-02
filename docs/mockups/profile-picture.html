@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop Beta-5 — Profile Picture</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .avatar-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-6) var(--space-4);
+    }
+
+    .avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      border: 2px solid var(--color-gray-300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .avatar--initials {
+      font-size: 36px;
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary-dark);
+      background-color: var(--color-primary-light);
+    }
+
+    .avatar--image {
+      background-color: var(--color-gray-100);
+    }
+
+    .avatar--image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-action {
+      font-size: var(--font-size-sm);
+      color: var(--color-info);
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: var(--font-family);
+    }
+
+    .avatar-action:hover { text-decoration: underline; }
+
+    .avatar-action--remove {
+      color: var(--color-status-issue);
+    }
+
+    /* Upload Preview */
+    .upload-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-6) var(--space-4);
+    }
+
+    .avatar-preview {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      border: 2px solid var(--color-gray-300);
+      background-color: var(--color-gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-size: 64px;
+    }
+
+    .avatar-preview--has-image {
+      background: linear-gradient(135deg, #6B8F5E 0%, #4A5A3F 100%);
+      color: white;
+      font-size: 48px;
+    }
+
+    .upload-actions {
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    .progress-bar {
+      width: 100%;
+      max-width: 280px;
+      height: 4px;
+      background: var(--color-gray-100);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .progress-bar__fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: var(--radius-full);
+      transition: width var(--transition-normal);
+    }
+
+    .upload-hint {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      text-align: center;
+    }
+
+    /* Member list avatars */
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-bottom: var(--border-default);
+    }
+
+    .avatar-sm {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: var(--font-weight-bold);
+      flex-shrink: 0;
+    }
+
+    .avatar-sm--1 { background: #E8F5EC; color: #1B6B3A; }
+    .avatar-sm--2 { background: #E3F2FD; color: #1565C0; }
+    .avatar-sm--3 { background: #FFF3E0; color: #E65100; }
+    .avatar-sm--4 { background: #F3E5F5; color: #7B1FA2; }
+    .avatar-sm--5 { background: #FFEBEE; color: #C62828; }
+
+    .avatar-xs {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: var(--font-weight-bold);
+      flex-shrink: 0;
+    }
+
+    .member-info {
+      flex: 1;
+    }
+
+    .member-name {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .member-role {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+    }
+
+    .profile-field {
+      padding: var(--space-3) var(--space-4);
+    }
+
+    .profile-field__label {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-bottom: 2px;
+    }
+
+    .profile-field__value {
+      font-size: var(--font-size-base);
+      color: var(--color-gray-900);
+    }
+
+    .form-group {
+      padding: 0 var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .form-label {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .form-input {
+      height: var(--touch-target-min);
+      padding: 0 var(--space-3);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-family: var(--font-family);
+      background: var(--color-surface);
+      color: var(--color-gray-900);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== SECTION 1: Profile with Avatar (No Picture) ===== -->
+  <header class="nav-header">
+    <a href="index.html" class="nav-header__back" aria-label="Back to mock-ups">&larr;</a>
+    <h1 class="nav-header__title">Profile</h1>
+  </header>
+
+  <div class="section-heading">State: No Profile Picture</div>
+
+  <div class="avatar-section">
+    <div class="avatar avatar--initials" role="img" aria-label="Ash Muk avatar">
+      AM
+    </div>
+    <button class="avatar-action">&#x1F4F7; Add photo</button>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Display Name</label>
+    <input class="form-input" type="text" value="Ash Muk">
+  </div>
+
+  <div class="profile-field">
+    <div class="profile-field__label">Email</div>
+    <div class="profile-field__value">you@example.com</div>
+  </div>
+
+  <!-- ===== SECTION 2: Profile with Avatar (Has Picture) ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+  <div class="section-heading">State: Has Profile Picture</div>
+
+  <div class="avatar-section">
+    <div class="avatar avatar--image" role="img" aria-label="Ash Muk avatar">
+      <!-- Simulated avatar with gradient placeholder -->
+      <div style="width:100%;height:100%;background:linear-gradient(135deg, #6B8F5E 0%, #1B6B3A 50%, #0E4D28 100%); display:flex; align-items:center; justify-content:center; color:white; font-size:36px; font-weight:bold;">AM</div>
+    </div>
+    <div style="display: flex; gap: var(--space-4);">
+      <button class="avatar-action">&#x1F4F7; Change</button>
+      <button class="avatar-action avatar-action--remove">Remove photo</button>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Display Name</label>
+    <input class="form-input" type="text" value="Ash Muk">
+  </div>
+
+  <div class="profile-field">
+    <div class="profile-field__label">Email</div>
+    <div class="profile-field__value">you@example.com</div>
+  </div>
+
+  <!-- ===== SECTION 3: Upload Flow ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+
+  <header class="nav-header">
+    <a href="#" class="nav-header__back" aria-label="Back">&larr;</a>
+    <h1 class="nav-header__title">Profile Picture</h1>
+  </header>
+
+  <div class="section-heading">Upload: Choose Photo</div>
+
+  <div class="upload-preview">
+    <div class="avatar-preview">
+      <span style="opacity: 0.3;">&#x1F4F7;</span>
+    </div>
+    <button class="btn-primary">Choose Photo</button>
+    <div class="upload-hint">Supported: JPEG, PNG. Max 1MB.</div>
+  </div>
+
+  <div class="section-heading">Upload: Uploading...</div>
+
+  <div class="upload-preview">
+    <div class="avatar-preview avatar-preview--has-image">
+      AM
+    </div>
+    <div class="progress-bar" role="progressbar" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress">
+      <div class="progress-bar__fill" style="width: 65%;"></div>
+    </div>
+    <div class="upload-hint">Uploading... 65%</div>
+  </div>
+
+  <!-- ===== SECTION 4: Member List with Avatars ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+  <div class="section-heading">Member List (32px avatars)</div>
+
+  <div>
+    <div class="member-row">
+      <div class="avatar-sm avatar-sm--1">A</div>
+      <div class="member-info">
+        <div class="member-name">Ash Muk</div>
+        <div class="member-role">Admin</div>
+      </div>
+    </div>
+    <div class="member-row">
+      <div class="avatar-sm avatar-sm--2">K</div>
+      <div class="member-info">
+        <div class="member-name">Kenji Yamamoto</div>
+        <div class="member-role">Manager</div>
+      </div>
+    </div>
+    <div class="member-row">
+      <div class="avatar-sm avatar-sm--3">Y</div>
+      <div class="member-info">
+        <div class="member-name">Yuki Tanaka</div>
+        <div class="member-role">Observer</div>
+      </div>
+    </div>
+    <div class="member-row">
+      <div class="avatar-sm avatar-sm--4">M</div>
+      <div class="member-info">
+        <div class="member-name">Mika Suzuki</div>
+        <div class="member-role">Observer</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 5: Admin Dashboard Avatars (28px) ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+  <div class="section-heading">Admin Dashboard (28px avatars)</div>
+
+  <div style="padding: var(--space-4);">
+    <table style="width:100%; border-collapse: collapse; font-size: var(--font-size-sm);">
+      <thead>
+        <tr style="border-bottom: var(--border-default); text-align: left;">
+          <th style="padding: var(--space-2) var(--space-1); color: var(--color-gray-500); font-weight: var(--font-weight-semibold);">User</th>
+          <th style="padding: var(--space-2) var(--space-1); color: var(--color-gray-500); font-weight: var(--font-weight-semibold);">Role</th>
+          <th style="padding: var(--space-2) var(--space-1); color: var(--color-gray-500); font-weight: var(--font-weight-semibold);">Farms</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: var(--border-default);">
+          <td style="padding: var(--space-2) var(--space-1);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <div class="avatar-xs avatar-sm--1">A</div>
+              Ash Muk
+            </div>
+          </td>
+          <td style="padding: var(--space-2) var(--space-1);">Admin</td>
+          <td style="padding: var(--space-2) var(--space-1);">2</td>
+        </tr>
+        <tr style="border-bottom: var(--border-default);">
+          <td style="padding: var(--space-2) var(--space-1);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <div class="avatar-xs avatar-sm--2">K</div>
+              Kenji Y.
+            </div>
+          </td>
+          <td style="padding: var(--space-2) var(--space-1);">Manager</td>
+          <td style="padding: var(--space-2) var(--space-1);">1</td>
+        </tr>
+        <tr style="border-bottom: var(--border-default);">
+          <td style="padding: var(--space-2) var(--space-1);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <div class="avatar-xs avatar-sm--3">Y</div>
+              Yuki T.
+            </div>
+          </td>
+          <td style="padding: var(--space-2) var(--space-1);">Observer</td>
+          <td style="padding: var(--space-2) var(--space-1);">1</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

@@ -423,6 +423,43 @@ function fromPayload<T extends AppEventType>(
         details: p['changed_fields'] ? { changed_fields: p['changed_fields'] } : undefined,
       };
 
+    // Device events (Beta-5)
+    case 'device.registered':
+    case 'device.deregistered':
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'device',
+        target_id: String(p['device_id'] ?? ''),
+        target_name: String(p['node_name'] ?? ''),
+        farm_id: String(p['farm_id'] ?? ''),
+        details: { bed_id: p['bed_id'] },
+      };
+
+    case 'device.config_updated':
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'device',
+        target_id: String(p['device_id'] ?? ''),
+        target_name: '',
+        farm_id: String(p['farm_id'] ?? ''),
+        details: { changes: p['changes'] },
+      };
+
+    case 'device.test_shot':
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'device',
+        target_id: String(p['device_id'] ?? ''),
+        target_name: '',
+        farm_id: String(p['farm_id'] ?? ''),
+      };
+
     default:
       return {
         event_type: type,
@@ -452,6 +489,10 @@ const ALL_EVENT_TYPES: AppEventType[] = [
   'member.joined',
   'member.removed',
   'user.profile_updated',
+  'device.registered',
+  'device.deregistered',
+  'device.config_updated',
+  'device.test_shot',
 ];
 
 let _initialized = false;

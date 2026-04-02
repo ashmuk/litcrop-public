@@ -110,7 +110,20 @@ export const DDB_KEY_PREFIXES = {
   SETTINGS: '#SETTINGS',
   JOIN_REQUEST: 'JOIN_REQUEST#',
   ACTIVITY: 'ACTIVITY#',
+  DEVICE: 'DEVICE#',
 } as const;
 
 /** Activity log TTL retention period in days */
 export const ACTIVITY_TTL_DAYS = 90;
+
+// ── Device Management (Beta-5) ──────────────────────────────────
+
+export const DEVICE_STATUS_VALUES = ['online', 'offline', 'inactive'] as const;
+export const STORAGE_STATUS_VALUES = ['ok', 'low', 'full'] as const;
+
+export const MAX_NODE_NAME_LENGTH = 64;
+export const MIN_CAPTURE_INTERVAL = 300;   // 5 minutes
+export const MAX_CAPTURE_INTERVAL = 86400; // 24 hours
+
+/** S3 key prefix for profile picture avatars */
+export const S3_AVATAR_PREFIX = 'images/avatars/';

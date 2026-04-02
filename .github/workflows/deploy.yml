@@ -59,6 +59,8 @@ jobs:
         working-directory: infra
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
+          SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL }}
+          SES_REGION: ${{ vars.SES_REGION }}
 
       - name: Sync frontend to S3
         env:

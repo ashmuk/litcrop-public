@@ -1,22 +1,15 @@
 ---
 /**
- * Manage (IoT) Page — F-01
- * Read-only camera node monitoring: nodes that have uploaded to the current farm.
+ * Device Management Page — Beta-5 (#210)
+ * Full device lifecycle: register, configure, monitor, deregister camera nodes.
+ * Replaced ManagePage (read-only node list derived from images).
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ManagePage from '../../components/ManagePage';
+import DeviceListPage from '../../components/DeviceListPage';
 
 const farmId = import.meta.env.PUBLIC_FARM_ID ?? 'demo-farm';
 ---
 
 <BaseLayout title="LitCrop — Device" activeTab="manage" farmNameTitleId="manage-title" farmNamePrefix="📡 ">
-  <div
-    style="display:flex;align-items:center;padding:var(--space-4);background:var(--color-surface);border-bottom:var(--border-default);position:sticky;top:0;z-index:100"
-  >
-    <h1 id="manage-title" style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold)">
-      <span data-i18n="page.device">📡 Device</span>
-    </h1>
-  </div>
-
-  <ManagePage farmId={farmId} client:load />
+  <DeviceListPage farmId={farmId} client:load />
 </BaseLayout>

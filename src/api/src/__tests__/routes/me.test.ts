@@ -25,6 +25,25 @@ vi.mock('../../services/dynamodb', () => ({
   DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'system' },
 }));
 
+vi.mock('../../services/s3', () => ({
+  uploadAvatar: vi.fn().mockResolvedValue({ originalKey: 'images/avatars/test/original.jpg', thumbKey: 'images/avatars/test/thumb.jpg' }),
+  deleteAvatar: vi.fn().mockResolvedValue(undefined),
+  getSignedAvatarUrls: vi.fn().mockImplementation((origKey?: string, thumbKey?: string) =>
+    Promise.resolve({
+      url: origKey ? 'https://signed-original' : null,
+      thumbUrl: thumbKey ? 'https://signed-thumb' : null,
+    }),
+  ),
+}));
+
+vi.mock('sharp', () => ({
+  default: vi.fn(() => ({
+    resize: vi.fn().mockReturnThis(),
+    jpeg: vi.fn().mockReturnThis(),
+    toBuffer: vi.fn().mockResolvedValue(Buffer.from([0xFF, 0xD8, 0xFF])),
+  })),
+}));
+
 const mockRepo = vi.mocked(dynamoRepo);
 
 const adminHeaders = () => makeAuthHeaders(ADMIN_USER_ID, ADMIN_EMAIL);
@@ -283,5 +302,42 @@ describe('PATCH /api/v1/me/notification-preferences', () => {
       body: JSON.stringify({ notPrefs: {} }),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+// ── T-B5-21: Profile avatar URLs ────────────────────────────────
+
+describe('GET /api/v1/me/profile (avatar URLs)', () => {
+  it('returns signed avatar URLs when profile has picture keys', async () => {
+    mockRepo.getUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Test User',
+      preferred_role: 'manager' as const,
+      created_at: '2026-04-01T00:00:00Z',
+      profile_picture_key: 'images/avatars/test/original.jpg',
+      profile_picture_thumb_key: 'images/avatars/test/thumb.jpg',
+    });
+    const res = await app.request('/api/v1/me/profile', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.profile_picture_url).toBe('https://signed-original');
+    expect(body.profile_picture_thumb_url).toBe('https://signed-thumb');
+    // Raw S3 keys should NOT be in response
+    expect(body.profile_picture_key).toBeUndefined();
+    expect(body.profile_picture_thumb_key).toBeUndefined();
+  });
+
+  it('returns null avatar URLs when no profile picture', async () => {
+    mockRepo.getUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Test User',
+      preferred_role: 'manager' as const,
+      created_at: '2026-04-01T00:00:00Z',
+    });
+    const res = await app.request('/api/v1/me/profile', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.profile_picture_url).toBeNull();
+    expect(body.profile_picture_thumb_url).toBeNull();
   });
 });

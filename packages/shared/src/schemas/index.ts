@@ -367,3 +367,110 @@ export const UsageResponseSchema = z.object({
   user_budget: UserBudgetSchema,
   global_budget: GlobalBudgetSchema,
 });
+
+// ── Device schemas (Beta-5) ──────────────────────────────────────
+
+import {
+  MAX_NODE_NAME_LENGTH,
+  MIN_CAPTURE_INTERVAL,
+  MAX_CAPTURE_INTERVAL,
+} from '../constants';
+
+export const DeviceStatusSchema = z.enum(['online', 'offline', 'inactive']);
+export const StorageStatusSchema = z.enum(['ok', 'low', 'full']);
+
+const NodeNameSchema = z.string().min(1).max(MAX_NODE_NAME_LENGTH);
+
+export const DeviceCapabilitiesSchema = z.object({
+  resolutions: z.array(z.string()),
+  has_battery_sensor: z.boolean(),
+  has_pir_sensor: z.boolean(),
+});
+
+const TimeOfDaySchema = z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format');
+
+const ActiveWindowSchema = z.object({
+  start: TimeOfDaySchema,
+  end: TimeOfDaySchema,
+});
+
+/** GET /api/v1/farms/:farmId/devices — each device in the list */
+export const DeviceListItemSchema = z.object({
+  device_id: z.string(),
+  farm_id: z.string(),
+  bed_id: z.string(),
+  bed_name: z.string(),
+  node_name: NodeNameSchema,
+  status: DeviceStatusSchema,
+  capture_interval: z.number().int(),
+  resolution: z.string(),
+  jpeg_quality: z.number().int().min(50).max(100),
+  active_window: ActiveWindowSchema,
+  trigger_type: z.literal('scheduled'),
+  last_seen_at: z.string().nullable(),
+  battery_level: z.number().nullable(),
+  wifi_signal_dbm: z.number().nullable(),
+  storage_status: StorageStatusSchema.nullable(),
+  capabilities: DeviceCapabilitiesSchema.nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/** GET /api/v1/farms/:farmId/devices — envelope */
+export const DeviceListResponseSchema = z.object({
+  devices: z.array(DeviceListItemSchema),
+});
+
+/** POST /api/v1/farms/:farmId/devices (201) — includes one-time API key */
+export const DeviceRegistrationResponseSchema = z.object({
+  device_id: z.string(),
+  node_name: NodeNameSchema,
+  bed_id: z.string(),
+  device_api_key: z.string(),
+  config_poll_url: z.string(),
+  created_at: z.string(),
+});
+
+/** GET /api/v1/devices/:deviceId/config — Pi-facing config */
+export const DeviceConfigResponseSchema = z.object({
+  capture_interval: z.number(),
+  resolution: z.string(),
+  jpeg_quality: z.number(),
+  active_window: ActiveWindowSchema,
+  trigger_type: z.literal('scheduled'),
+  bed_id: z.string(),
+  upload_url: z.string(),
+  test_shot_requested: z.boolean(),
+});
+
+/** POST /api/v1/farms/:farmId/devices — request body */
+export const RegisterDeviceRequestSchema = z.object({
+  node_name: NodeNameSchema,
+  bed_id: z.string().min(1),
+});
+
+/** PATCH /api/v1/farms/:farmId/devices/:deviceId — request body */
+export const UpdateDeviceRequestSchema = z.object({
+  node_name: NodeNameSchema.optional(),
+  bed_id: z.string().min(1).optional(),
+  capture_interval: z.number().int().min(MIN_CAPTURE_INTERVAL).max(MAX_CAPTURE_INTERVAL).optional(),
+  resolution: z.string().optional(),
+  jpeg_quality: z.number().int().min(50).max(100).optional(),
+  active_window: ActiveWindowSchema.optional(),
+});
+
+/** POST /api/v1/devices/:deviceId/heartbeat — request body */
+export const DeviceHeartbeatRequestSchema = z.object({
+  battery_level: z.number().int().min(0).max(100).nullable().optional(),
+  wifi_signal_dbm: z.number().min(-120).max(0).optional(),
+  storage_status: StorageStatusSchema.optional(),
+  capabilities: DeviceCapabilitiesSchema.optional(),
+});
+
+// ── Profile picture schemas (Beta-5) ─────────────────────────────
+
+/** POST /api/v1/me/profile-picture (201) */
+export const ProfilePictureResponseSchema = z.object({
+  profile_picture_url: z.string(),
+  profile_picture_thumb_url: z.string(),
+});

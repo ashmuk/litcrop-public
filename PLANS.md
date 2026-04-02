@@ -174,3 +174,62 @@ All deployed via IaC (CDK), reproducible and CI/CD-ready.
   - DOMPurify mandatory for markdown output — defense-in-depth against prompt injection
   - Custom Preact components for time-lapse and lightbox — no external UI libraries, keeps bundle small
   - `requestAnimationFrame` for animation — smoother than `setInterval`, respects browser tab visibility
+
+### Beta-5 Design (cc-design re-entry) — 2026-04-02
+- **Trigger**: Beta-4 complete (v0.32), device management + profile picture next
+- **Entry point**: Step 2 (Architecture) — re-entry with existing artifacts
+- **What changed**:
+  - ARCHITECTURE.md §13: DEVICE# entity, two-factor device auth (JWT + API key), 7 API endpoints, profile picture S3 storage, device capabilities model, cost impact ($0.00 delta)
+  - UX-DESIGNS.md §15: Device list/registration/config wireframes, profile picture upload, API contracts for 9 endpoints, i18n keys, accessibility audit, capability-driven UI adaptation
+  - SYSTEM-DESIGN.md §11: 5 sequence diagrams, shared types, component interfaces, 22-file change summary, event system extensions, Zod schemas
+  - TASK-BREAKDOWN.md: 30 tasks (T-B5-01..T-B5-30) across 4 waves + gate, dependency DAG
+  - PREREQUISITES.md §7: Beta-5 review checklist
+  - docs/mockups/: 3 new HTML mock-ups (device-list, device-config, profile-picture)
+  - docs/feedback/REVIEW-FINDINGS-BETA-5-DESIGN.md: 2 MUST-FIX + 6 SHOULD-FIX + 5 SUGGESTION — all resolved
+- **What preserved**: All prior artifacts (Steps 1–10 of SYSTEM-DESIGN, §1–12 of ARCHITECTURE, §1–14 of UX-DESIGNS)
+- **Key design decisions**:
+  - DEVICE# under FARM# partition (co-located with beds/images for efficient farm queries)
+  - Two-factor auth: JWT (user-level) + device API key (device-level, bcrypt-hashed, shown once)
+  - Config polling: Pi calls GET /devices/{id}/config on each capture cycle (no MQTT/WebSocket)
+  - Profile picture reuses images S3 bucket with avatars/ prefix (no new bucket)
+  - Avatar thumbnails generated inline in API Lambda (sharp) — not via S3 trigger
+  - Thumbnail Lambda guard: skip images/avatars/ prefix (not suffix filter)
+  - Device capabilities: reported via heartbeat, UI disables unsupported fields
+  - Device limit: max 10 per farm (Beta-5)
+  - Registration defaults: 30-min interval, 1080p, 85% quality, 05:00-20:00 window
+
+## Beta-5 Execution Plan
+
+### Scope
+- **Wave 0** (#210): Device configuration UI + API — 19 tasks (T-B5-01 to T-B5-19)
+- **Wave 1** (#160): Profile picture support — 9 tasks (T-B5-20 to T-B5-28)
+- **Gate**: Integration verification — 2 tasks (T-B5-29 to T-B5-30)
+- **Deferred**: #216 crop library → Beta-6
+
+### Execution Sequence
+
+| Batch | Tasks | What | Depends On |
+|-------|-------|------|-----------|
+| **1 (Foundation)** | T-B5-01, T-B5-08, T-B5-11, T-B5-18, T-B5-19 | Shared types, thumb guard, Avatar component, sharp+bcrypt deps | — (all independent) |
+| **2 (API Core)** | T-B5-02, T-B5-03, T-B5-22 | DynamoDB device methods, device auth middleware, S3 avatar helpers | Batch 1 |
+| **3 (API Routes)** | T-B5-04, T-B5-05, T-B5-07, T-B5-20 | Device routes (register/list/delete, poll/heartbeat), device events, profile picture API | Batch 2 |
+| **4 (API Ext + Tests)** | T-B5-06, T-B5-09, T-B5-21, T-B5-27 | Config update/test-shot routes, device API tests, extend profile/members responses, profile picture tests | Batch 3 |
+| **5 (Frontend)** | T-B5-10, T-B5-12, T-B5-13, T-B5-14, T-B5-23 | API client, DeviceListPage, RegisterForm, ConfigForm, ProfilePicture | Batch 3 (API available) |
+| **6 (Integration)** | T-B5-15, T-B5-16, T-B5-24, T-B5-25, T-B5-26 | Wire pages, i18n, integrate avatar everywhere | Batch 5 |
+| **7 (Gate)** | T-B5-17, T-B5-28, T-B5-29, T-B5-30 | Contract tests, full test suite, build verification | Batch 6 |
+
+### Exit Criteria (Beta-5)
+- [ ] Manager can register a device from the web UI and receive a one-time API key
+- [ ] Device list shows all registered devices with health indicators (battery, WiFi, storage)
+- [ ] Config changes saved from web UI are returned on the next config poll
+- [ ] Test shot can be requested from web UI for online devices
+- [ ] Offline devices show red status dot and disabled test-shot button
+- [ ] Wall-powered devices show "N/A" for battery
+- [ ] Device can be deregistered with confirmation
+- [ ] User can upload a profile picture (JPEG/PNG, max 1MB)
+- [ ] Avatar displays at 96px (profile), 32px (member list), 28px (admin)
+- [ ] Initials fallback with deterministic colors when no picture
+- [ ] Device registration/deregistration triggers activity log entry visible in admin dashboard
+- [ ] All 439+ existing tests pass + new device/profile tests
+- [ ] `npm run build` succeeds across all packages
+- [ ] Total monthly cost remains under $5 ceiling
