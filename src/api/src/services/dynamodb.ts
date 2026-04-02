@@ -186,6 +186,8 @@ function itemToUserProfile(item: Record<string, unknown>, userId: string): UserP
     display_name: (item['display_name'] as string) ?? '',
     preferred_role: (item['preferred_role'] as UserProfile['preferred_role']) ?? 'observer',
     created_at: (item['created_at'] as string) ?? '',
+    profile_picture_key: item['profile_picture_key'] as string | undefined,
+    profile_picture_thumb_key: item['profile_picture_thumb_key'] as string | undefined,
   };
 }
 
@@ -1010,6 +1012,16 @@ export class DynamoRepository {
       setExpressions.push('#preferred_role = :preferred_role');
       names['#preferred_role'] = 'preferred_role';
       values[':preferred_role'] = data.preferred_role;
+    }
+    if (data.profile_picture_key !== undefined) {
+      setExpressions.push('#ppk = :ppk');
+      names['#ppk'] = 'profile_picture_key';
+      values[':ppk'] = data.profile_picture_key;
+    }
+    if (data.profile_picture_thumb_key !== undefined) {
+      setExpressions.push('#pptk = :pptk');
+      names['#pptk'] = 'profile_picture_thumb_key';
+      values[':pptk'] = data.profile_picture_thumb_key;
     }
 
     const result = await ddb.send(
