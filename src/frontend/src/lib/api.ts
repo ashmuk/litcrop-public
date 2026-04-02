@@ -154,7 +154,7 @@ export async function getMyFarm(): Promise<Farm | null> {
   return farms[0] ?? null;
 }
 
-export type FarmMemberItem = Omit<FarmMember, 'farm_id'> & { display_name: string };
+export type FarmMemberItem = Omit<FarmMember, 'farm_id'> & { display_name: string; profile_picture_thumb_url: string | null };
 
 /** GET /api/v1/farms/:farmId/members — list members of a farm */
 export async function getFarmMembers(farmId: string): Promise<FarmMemberItem[]> {

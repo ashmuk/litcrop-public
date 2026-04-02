@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
+import { getSignedAvatarUrls } from '../services/s3';
 import {
   ValidationError,
   ConflictError,
@@ -376,11 +377,18 @@ router.get('/:farmId/members', async (c) => {
   const enrichedMembers = await Promise.all(
     members.map(async (m) => {
       let displayName = '';
+      let profilePictureThumbUrl: string | null = null;
       try {
         const profile = await dynamoRepo.getUserProfile(m.user_id);
         displayName = profile?.display_name ?? '';
-      } catch { /* graceful degradation — show member without name */ }
-      return { ...m, display_name: displayName };
+        if (profile?.profile_picture_thumb_key) {
+          try {
+            const { thumbUrl } = await getSignedAvatarUrls(undefined, profile.profile_picture_thumb_key);
+            profilePictureThumbUrl = thumbUrl;
+          } catch { /* signing failed — show member without avatar */ }
+        }
+      } catch { /* profile fetch failed — show member without name */ }
+      return { ...m, display_name: displayName, profile_picture_thumb_url: profilePictureThumbUrl };
     }),
   );
 
