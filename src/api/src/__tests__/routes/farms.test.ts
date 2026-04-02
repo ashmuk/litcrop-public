@@ -413,6 +413,11 @@ describe('DELETE /api/v1/farms/:farmId/members/me', () => {
 
   it('removes membership and returns 204', async () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+    // Manager leaving: must have another manager so the sole-owner check passes
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: 'other-user', role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
     vi.mocked(dynamoRepo.removeFarmMember).mockResolvedValue(undefined);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
@@ -444,13 +449,13 @@ describe('DELETE /api/v1/farms/:farmId/members/me', () => {
     expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns 400 when admin is the only admin', async () => {
+  it('returns 400 when manager is the only owner', async () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       ...membershipFixture,
-      role: 'admin' as const,
+      role: 'manager' as const,
     });
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
-      { user_id: TEST_USER_ID, role: 'admin' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
     ]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {

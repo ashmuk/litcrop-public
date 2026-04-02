@@ -639,7 +639,7 @@ export class DynamoRepository {
               ConditionExpression: 'attribute_not_exists(PK)',
             },
           },
-          ...buildMembershipItems(userId, farmId, 'admin', joinedAt),
+          ...buildMembershipItems(userId, farmId, 'manager', joinedAt),
         ],
       }),
     );

@@ -681,12 +681,12 @@ router.delete('/:farmId/members/me', async (c) => {
     throw new NotFoundError('Not a member of this farm');
   }
 
-  // If admin, check there are other admins
-  if (membership.role === 'admin') {
+  // If manager (farm owner), check there are other managers
+  if (membership.role === 'manager') {
     const members = await dynamoRepo.getFarmMembers(farmId);
-    const otherAdmins = members.filter(m => m.role === 'admin' && m.user_id !== userId);
-    if (otherAdmins.length === 0) {
-      throw new ValidationError('Cannot leave: you are the only admin. Delete the farm or transfer ownership first.');
+    const otherManagers = members.filter(m => m.role === 'manager' && m.user_id !== userId);
+    if (otherManagers.length === 0) {
+      throw new ValidationError('Cannot leave: you are the only owner. Delete the farm or transfer ownership first.');
     }
   }
 
