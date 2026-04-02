@@ -240,12 +240,12 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
                   style="display:block;margin-top:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-primary);color:white;border:none;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-family:inherit;cursor:pointer"
                   onClick={() => {
                     const content = [
-                      `LITCROP_DEVICE_ID=${result.device_id}`,
-                      `LITCROP_API_KEY=${result.device_api_key}`,
-                      `LITCROP_CONFIG_URL=${result.config_poll_url}`,
-                      `LITCROP_REFRESH_TOKEN=${refreshToken || 'PASTE_YOUR_TOKEN_HERE'}`,
-                      `LITCROP_COGNITO_CLIENT_ID=${cognitoClientId}`,
-                      `LITCROP_COGNITO_REGION=ap-northeast-1`,
+                      `export LITCROP_DEVICE_ID=${result.device_id}`,
+                      `export LITCROP_API_KEY=${result.device_api_key}`,
+                      `export LITCROP_CONFIG_URL=${result.config_poll_url}`,
+                      `export LITCROP_REFRESH_TOKEN=${refreshToken || 'PASTE_YOUR_TOKEN_HERE'}`,
+                      `export LITCROP_COGNITO_CLIENT_ID=${cognitoClientId}`,
+                      `export LITCROP_COGNITO_REGION=ap-northeast-1`,
                     ].join('\n');
                     const blob = new Blob([content], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
