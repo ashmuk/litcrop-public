@@ -71,7 +71,7 @@ export default function ProfilePicture({ currentUrl, displayName }: Props) {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', pendingFile);
+      formData.append('image', pendingFile);
       await uploadProfilePicture(formData);
       showToast(t('profile_picture.upload_success'), 'success');
       window.location.reload();
