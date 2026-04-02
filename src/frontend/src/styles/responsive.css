@@ -328,7 +328,6 @@
   .weather-desktop-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: calc(100vh - 56px);
     align-items: start;
   }
 

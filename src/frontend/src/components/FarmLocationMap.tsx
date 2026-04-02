@@ -94,7 +94,7 @@ export default function FarmLocationMap({ latitude, longitude, elevation, farmNa
   return (
     <div
       ref={mapRef}
-      style="width:100%;height:200px;border-radius:var(--radius-lg);border:var(--border-default);overflow:hidden;background:var(--color-gray-100)"
+      style="width:100%;height:300px;border-radius:var(--radius-lg);border:var(--border-default);overflow:hidden;background:var(--color-gray-100)"
       role="img"
       aria-label={`Map showing ${farmName} at ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`}
     />
