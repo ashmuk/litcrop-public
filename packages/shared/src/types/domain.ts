@@ -145,6 +145,7 @@ export interface Device {
   wifi_signal_dbm: number | null;
   storage_status: StorageStatus | null;
   capabilities: DeviceCapabilities | null;
+  test_shot_requested: boolean;
   created_at: string;
   updated_at: string;
 }

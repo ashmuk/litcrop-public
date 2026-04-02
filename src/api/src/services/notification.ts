@@ -50,6 +50,11 @@ export const DEFAULT_NOTIFICATION_PREFS: Record<AppEventType, boolean> = {
   'member.joined': false,
   'member.removed': false,
   'user.profile_updated': false,
+  // Device events (Beta-5 — activity log only)
+  'device.registered': false,
+  'device.deregistered': false,
+  'device.config_updated': false,
+  'device.test_shot': false,
 };
 
 // ── Email subject map ───────────────────────────────────────────

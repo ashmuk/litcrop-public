@@ -992,7 +992,7 @@ export class DynamoRepository {
   /** Create or update a user's profile record. */
   async upsertUserProfile(
     userId: string,
-    data: { display_name?: string; preferred_role?: string },
+    data: { display_name?: string; preferred_role?: string; profile_picture_key?: string; profile_picture_thumb_key?: string },
   ): Promise<UserProfile> {
     const now = new Date().toISOString();
     const setExpressions: string[] = [
@@ -1401,6 +1401,7 @@ export class DynamoRepository {
       wifi_signal_dbm: (item['wifi_signal_dbm'] as number) ?? null,
       storage_status: (item['storage_status'] as StorageStatus) ?? null,
       capabilities: (item['capabilities'] as DeviceCapabilities) ?? null,
+      test_shot_requested: !!(item['test_shot_requested']),
       created_at: item['created_at'] as string,
       updated_at: item['updated_at'] as string,
     };

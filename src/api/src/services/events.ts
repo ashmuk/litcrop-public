@@ -99,6 +99,32 @@ export interface UserProfileUpdatedPayload {
   changed_fields?: string[];
 }
 
+// ── Device event payloads (Beta-5) ──────────────────────────────
+
+export interface DeviceRegisteredPayload {
+  farm_id: string;
+  device_id: string;
+  node_name: string;
+  bed_id: string;
+}
+
+export interface DeviceDeregisteredPayload {
+  farm_id: string;
+  device_id: string;
+  node_name: string;
+}
+
+export interface DeviceConfigUpdatedPayload {
+  farm_id: string;
+  device_id: string;
+  changes: string[];
+}
+
+export interface DeviceTestShotPayload {
+  farm_id: string;
+  device_id: string;
+}
+
 // ── Event type map ──────────────────────────────────────────────
 
 export interface AppEventMap {
@@ -118,6 +144,12 @@ export interface AppEventMap {
   'member.joined':           AppEvent<'member.joined', MemberJoinedPayload>;
   'member.removed':          AppEvent<'member.removed', MemberRemovedPayload>;
   'user.profile_updated':    AppEvent<'user.profile_updated', UserProfileUpdatedPayload>;
+
+  // Device events (Beta-5)
+  'device.registered':       AppEvent<'device.registered', DeviceRegisteredPayload>;
+  'device.deregistered':     AppEvent<'device.deregistered', DeviceDeregisteredPayload>;
+  'device.config_updated':   AppEvent<'device.config_updated', DeviceConfigUpdatedPayload>;
+  'device.test_shot':        AppEvent<'device.test_shot', DeviceTestShotPayload>;
 }
 
 export type AppEventType = keyof AppEventMap;
