@@ -399,7 +399,7 @@ export async function requestToJoinFarm(farmId: string): Promise<{ farm_id: stri
 
 /** GET /api/v1/farms/:farmId/join-requests */
 export async function getJoinRequests(farmId: string, status = 'pending'): Promise<JoinRequestItem[]> {
-  const res = await request<{ data: JoinRequestItem[] }>('GET', `/farms/${farmId}/join-requests?status=${status}`);
+  const res = await request<{ data: JoinRequestItem[] }>('GET', `/farms/${farmId}/join-requests?status=${encodeURIComponent(status)}`);
   return res.data;
 }
 
@@ -481,4 +481,85 @@ export async function updateNotificationPrefs(
   prefs: Record<string, boolean>,
 ): Promise<NotificationPrefsResponse> {
   return request<NotificationPrefsResponse>('PATCH', '/me/notification-preferences', { prefs });
+}
+
+// ── Device Management (Beta-5) ──────────────────────────────────
+
+export interface DeviceListItemResponse {
+  device_id: string;
+  farm_id: string;
+  bed_id: string;
+  bed_name: string;
+  node_name: string;
+  status: 'online' | 'offline' | 'inactive';
+  capture_interval: number;
+  resolution: string;
+  jpeg_quality: number;
+  active_window: { start: string; end: string };
+  trigger_type: 'scheduled';
+  last_seen_at: string | null;
+  battery_level: number | null;
+  wifi_signal_dbm: number | null;
+  storage_status: 'ok' | 'low' | 'full' | null;
+  capabilities: { resolutions: string[]; has_battery_sensor: boolean; has_pir_sensor: boolean } | null;
+  test_shot_requested: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeviceRegistrationResult {
+  device_id: string;
+  node_name: string;
+  bed_id: string;
+  device_api_key: string;
+  config_poll_url: string;
+  created_at: string;
+}
+
+export async function getDevices(farmId: string): Promise<{ devices: DeviceListItemResponse[] }> {
+  return request<{ devices: DeviceListItemResponse[] }>('GET', `/farms/${farmId}/devices`);
+}
+
+export async function registerDevice(
+  farmId: string,
+  data: { node_name: string; bed_id: string },
+): Promise<DeviceRegistrationResult> {
+  return request<DeviceRegistrationResult>('POST', `/farms/${farmId}/devices`, data);
+}
+
+export async function updateDevice(
+  farmId: string,
+  deviceId: string,
+  data: Record<string, unknown>,
+): Promise<DeviceListItemResponse> {
+  return request<DeviceListItemResponse>('PATCH', `/farms/${farmId}/devices/${deviceId}`, data);
+}
+
+export async function deleteDevice(
+  farmId: string,
+  deviceId: string,
+): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>('DELETE', `/farms/${farmId}/devices/${deviceId}`);
+}
+
+export async function requestTestShot(
+  farmId: string,
+  deviceId: string,
+): Promise<{ test_shot_requested: boolean }> {
+  return request<{ test_shot_requested: boolean }>('POST', `/farms/${farmId}/devices/${deviceId}/test-shot`);
+}
+
+// ── Profile Picture (Beta-5) ────────────────────────────────────
+
+export interface ProfilePictureResult {
+  profile_picture_url: string;
+  profile_picture_thumb_url: string;
+}
+
+export async function uploadProfilePicture(formData: FormData): Promise<ProfilePictureResult> {
+  return request<ProfilePictureResult>('POST', '/me/profile-picture', formData, true);
+}
+
+export async function deleteProfilePicture(): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>('DELETE', '/me/profile-picture');
 }
