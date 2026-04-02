@@ -110,6 +110,7 @@ export const DDB_KEY_PREFIXES = {
   SETTINGS: '#SETTINGS',
   JOIN_REQUEST: 'JOIN_REQUEST#',
   ACTIVITY: 'ACTIVITY#',
+  DEVICE: 'DEVICE#',
 } as const;
 
 /** Activity log TTL retention period in days */
