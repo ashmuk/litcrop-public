@@ -197,6 +197,36 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
           <span>{t('device.api_key_warning')}</span>
         </div>
 
+        {/* Setup guide */}
+        <div style="background:var(--color-gray-100);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
+          <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--space-3)">
+            {t('device.setup_guide_title')}
+          </div>
+          <div style="font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:var(--line-height-relaxed);display:flex;flex-direction:column;gap:var(--space-2)">
+            <div style="display:flex;gap:var(--space-2)">
+              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">1.</span>
+              <span>{t('device.guide_ssh')}</span>
+            </div>
+            <div style="display:flex;gap:var(--space-2)">
+              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">2.</span>
+              <span>{t('device.guide_config')}</span>
+            </div>
+            <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-3);font-family:monospace;font-size:var(--font-size-xs);white-space:pre-wrap;word-break:break-all;border:var(--border-default)">
+{`LITCROP_DEVICE_ID=${result.device_id}
+LITCROP_API_KEY=${result.device_api_key}
+LITCROP_CONFIG_URL=${result.config_poll_url}`}
+            </div>
+            <div style="display:flex;gap:var(--space-2)">
+              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">3.</span>
+              <span>{t('device.guide_capture')}</span>
+            </div>
+            <div style="display:flex;gap:var(--space-2)">
+              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">4.</span>
+              <span>{t('device.guide_verify')}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Done */}
         <button
           class="btn-primary"
