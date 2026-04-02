@@ -329,19 +329,21 @@ export default function WeatherView({ farmId }: Props) {
           )}
         </div>
 
-        {/* Farm location map */}
-        <div style="padding:var(--space-4) 0">
-          <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-500);margin-bottom:var(--space-2)">
-            {locationName ?? `${weather.latitude.toFixed(4)}, ${weather.longitude.toFixed(4)}`}
-          </div>
-          <FarmLocationMap
-            latitude={weather.latitude}
-            longitude={weather.longitude}
-            farmName={locationName ?? tl('weather.farm_location')}
-          />
-        </div>
 
       </div>
+
+      {/* Farm location map — full width, outside the 2-column grid */}
+      <div style="padding:var(--space-4)">
+        <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-500);margin-bottom:var(--space-2)">
+          {locationName ?? `${weather.latitude.toFixed(4)}, ${weather.longitude.toFixed(4)}`}
+        </div>
+        <FarmLocationMap
+          latitude={weather.latitude}
+          longitude={weather.longitude}
+          farmName={locationName ?? tl('weather.farm_location')}
+        />
+      </div>
+
     </div>
   );
 }
