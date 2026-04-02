@@ -568,9 +568,14 @@
     "deregister_error": "Failed to deregister device.",
     "save_success": "Configuration saved.",
     "save_error": "Failed to save configuration.",
-    "guide_ssh": "SSH into your Raspberry Pi",
-    "guide_config": "Create ~/.litcrop.env with these values:",
-    "guide_capture": "Install and run capture.sh (see documentation)",
+    "field_refresh_token": "Auth Token (for Pi login)",
+    "refresh_token_hint": "This token lets the Pi authenticate with the cloud. Valid for 30 days.",
+    "refresh_token_unavailable": "Token not available — please log in again",
+    "copy_refresh_token": "Copy auth token",
+    "guide_download": "Download the config file for your Pi:",
+    "guide_download_button": "Download Config File",
+    "guide_copy_to_pi": "Copy the file to your Raspberry Pi:",
+    "guide_install": "SSH into Pi and install the capture script:",
     "guide_verify": "Check this page — device status will show Online after first heartbeat"
   },
   "profile_picture": {

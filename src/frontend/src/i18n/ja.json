@@ -568,9 +568,14 @@
     "deregister_error": "デバイスの解除に失敗しました。",
     "save_success": "設定を保存しました。",
     "save_error": "設定の保存に失敗しました。",
-    "guide_ssh": "Raspberry PiにSSHで接続",
-    "guide_config": "~/.litcrop.env を作成し、以下の値を設定：",
-    "guide_capture": "capture.sh をインストールして実行（ドキュメント参照）",
+    "field_refresh_token": "認証トークン（Pi用）",
+    "refresh_token_hint": "このトークンでPiがクラウドに認証できます。有効期限30日。",
+    "refresh_token_unavailable": "トークンが取得できません — 再ログインしてください",
+    "copy_refresh_token": "認証トークンをコピー",
+    "guide_download": "Pi用の設定ファイルをダウンロード：",
+    "guide_download_button": "設定ファイルをダウンロード",
+    "guide_copy_to_pi": "ファイルをRaspberry Piにコピー：",
+    "guide_install": "PiにSSH接続してキャプチャスクリプトをインストール：",
     "guide_verify": "このページで確認 — 最初のハートビート後にデバイスがオンラインになります"
   },
   "profile_picture": {
