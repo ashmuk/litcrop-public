@@ -266,9 +266,19 @@ function handler(event) {
       timeout: cdk.Duration.seconds(30), // Chat endpoint may take ~15s; 30s = safe buffer
       bundling: {
         externalModules: ['@aws-sdk/*'], // Node.js 20 Lambda includes AWS SDK v3
-        // sharp is loaded via dynamic import() only in avatar upload handler to avoid
-        // cold-start penalty on all API routes. nodeModules ensures native binaries are available.
+        // sharp uses native binaries that must match the Lambda runtime (linux-arm64).
+        // commandHooks reinstalls sharp with explicit platform flags after esbuild bundles.
         nodeModules: ['sharp'],
+        commandHooks: {
+          beforeBundling(): string[] { return []; },
+          beforeInstall(): string[] { return []; },
+          afterBundling(_inputDir: string, outputDir: string): string[] {
+            return [
+              `cd ${outputDir}`,
+              'npm install --cpu=arm64 --os=linux sharp',
+            ];
+          },
+        },
         format: OutputFormat.CJS,
         target: 'node20',
         minify: false,
