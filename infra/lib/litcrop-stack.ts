@@ -266,6 +266,9 @@ function handler(event) {
       timeout: cdk.Duration.seconds(30), // Chat endpoint may take ~15s; 30s = safe buffer
       bundling: {
         externalModules: ['@aws-sdk/*'], // Node.js 20 Lambda includes AWS SDK v3
+        // sharp is loaded via dynamic import() only in avatar upload handler to avoid
+        // cold-start penalty on all API routes. nodeModules ensures native binaries are available.
+        nodeModules: ['sharp'],
         format: OutputFormat.CJS,
         target: 'node20',
         minify: false,

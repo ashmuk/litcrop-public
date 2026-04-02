@@ -20,6 +20,13 @@ export type {
   Image,
   Tag,
   UserProfile,
+  DeviceStatus,
+  StorageStatus,
+  DeviceCapabilities,
+  Device,
+  DeviceRegistrationResponse,
+  DeviceConfigResponse,
+  DeviceListItem,
 } from './types/domain';
 
 // API response/error types
@@ -84,6 +91,12 @@ export {
   DDB_KEY_PREFIXES,
   ACTIVITY_TTL_DAYS,
   ENV_ADMIN_EMAILS,
+  DEVICE_STATUS_VALUES,
+  STORAGE_STATUS_VALUES,
+  MAX_NODE_NAME_LENGTH,
+  MIN_CAPTURE_INTERVAL,
+  MAX_CAPTURE_INTERVAL,
+  S3_AVATAR_PREFIX,
 } from './constants';
 
 // Config
@@ -120,6 +133,17 @@ export {
   TempUnitSchema,
   UpdateSettingsRequestSchema,
   UserSettingsResponseSchema,
+  DeviceStatusSchema,
+  StorageStatusSchema,
+  DeviceCapabilitiesSchema,
+  DeviceListItemSchema,
+  DeviceListResponseSchema,
+  DeviceRegistrationResponseSchema,
+  DeviceConfigResponseSchema,
+  RegisterDeviceRequestSchema,
+  UpdateDeviceRequestSchema,
+  DeviceHeartbeatRequestSchema,
+  ProfilePictureResponseSchema,
 } from './schemas/index';
 
 // Timezone utilities

@@ -105,6 +105,75 @@ export interface UserProfile {
   display_name: string;
   preferred_role: 'manager' | 'observer';
   created_at: string; // ISO 8601
+  profile_picture_key?: string;
+  profile_picture_thumb_key?: string;
+}
+
+// ── Device Management ────────────────────────────────────────────
+
+/** Device status — derived from last_seen_at vs capture_interval */
+export type DeviceStatus = 'online' | 'offline' | 'inactive';
+
+/** Device storage status */
+export type StorageStatus = 'ok' | 'low' | 'full';
+
+/** Device hardware capabilities — reported via first heartbeat */
+export interface DeviceCapabilities {
+  resolutions: string[];
+  has_battery_sensor: boolean;
+  has_pir_sensor: boolean;
+}
+
+/**
+ * Device entity — API-facing shape.
+ * DynamoDB stores active_window as flat fields (active_window_start, active_window_end).
+ * The DynamoDB service layer transforms to/from this nested shape for API responses.
+ */
+export interface Device {
+  device_id: string;
+  farm_id: string;
+  bed_id: string;
+  node_name: string;
+  status: DeviceStatus;
+  capture_interval: number;
+  resolution: string;
+  jpeg_quality: number;
+  active_window: { start: string; end: string };
+  trigger_type: 'scheduled';
+  last_seen_at: string | null;
+  battery_level: number | null;
+  wifi_signal_dbm: number | null;
+  storage_status: StorageStatus | null;
+  capabilities: DeviceCapabilities | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Device registration response — includes one-time API key */
+export interface DeviceRegistrationResponse {
+  device_id: string;
+  node_name: string;
+  bed_id: string;
+  device_api_key: string;
+  config_poll_url: string;
+  created_at: string;
+}
+
+/** Config poll response — Pi-facing, minimal fields */
+export interface DeviceConfigResponse {
+  capture_interval: number;
+  resolution: string;
+  jpeg_quality: number;
+  active_window: { start: string; end: string };
+  trigger_type: 'scheduled';
+  bed_id: string;
+  upload_url: string;
+  test_shot_requested: boolean;
+}
+
+/** Device list item — includes bed_name for display */
+export interface DeviceListItem extends Device {
+  bed_name: string;
 }
 
 // ── Join Requests ─────────────────────────────────────────────────
