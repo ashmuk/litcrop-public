@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop Beta-5 — Device Management</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Beta-5: Device Management Styles */
+    .device-card {
+      background: var(--color-surface);
+      border: var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .device-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .device-card__name-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .device-card__icon {
+      font-size: 20px;
+    }
+
+    .device-card__name {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot--online { background-color: var(--color-status-healthy); }
+    .status-dot--warning { background-color: var(--color-status-slow-growth); }
+    .status-dot--offline { background-color: var(--color-status-issue); }
+
+    .device-card__bed {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-700);
+    }
+
+    .device-card__last-seen {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .device-card__last-seen--stale {
+      color: var(--color-status-issue);
+    }
+
+    .health-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-2);
+    }
+
+    .health-cell {
+      text-align: center;
+      padding: var(--space-2);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+    }
+
+    .health-cell__icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .health-cell__value {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .health-cell__label {
+      font-size: 10px;
+      color: var(--color-gray-500);
+    }
+
+    .health-cell--warning .health-cell__value {
+      color: var(--color-status-slow-growth);
+    }
+
+    .health-cell--critical .health-cell__value {
+      color: var(--color-status-issue);
+    }
+
+    .health-cell--na {
+      opacity: 0.3;
+    }
+
+    .health-cell--na .health-cell__value {
+      color: var(--color-gray-500);
+    }
+
+    .device-card__actions {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: space-between;
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      padding: 0 var(--space-4);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      font-family: var(--font-family);
+      color: var(--color-primary);
+      background: transparent;
+      border: var(--border-default);
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+
+    .btn-ghost:hover { background-color: var(--color-gray-100); }
+
+    .btn-ghost:disabled,
+    .btn-ghost[aria-disabled="true"] {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-register {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-full);
+      background-color: var(--color-primary);
+      color: white;
+      font-size: 24px;
+      border: none;
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+
+    .btn-register:hover { background-color: var(--color-primary-dark); }
+
+    .setup-guide {
+      background: var(--color-gray-100);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      margin-top: var(--space-4);
+    }
+
+    .setup-guide__title {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-3);
+    }
+
+    .setup-guide__step {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-700);
+      line-height: var(--line-height-relaxed);
+      padding-left: var(--space-4);
+      position: relative;
+      margin-bottom: var(--space-2);
+    }
+
+    .setup-guide__step::before {
+      content: attr(data-step);
+      position: absolute;
+      left: 0;
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-primary);
+    }
+
+    /* Registration Success */
+    .key-field {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+      font-family: monospace;
+      font-size: var(--font-size-sm);
+      word-break: break-all;
+      color: var(--color-gray-900);
+    }
+
+    .key-field__value { flex: 1; }
+
+    .btn-copy {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 32px;
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      cursor: pointer;
+      font-size: 14px;
+      flex-shrink: 0;
+      transition: background-color var(--transition-fast);
+    }
+
+    .btn-copy:hover { background-color: var(--color-gray-100); }
+
+    .key-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      background: var(--color-status-slow-growth-bg);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-700);
+      line-height: var(--line-height-relaxed);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .form-label {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .form-input, .form-select {
+      height: var(--touch-target-min);
+      padding: 0 var(--space-3);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-family: var(--font-family);
+      background: var(--color-surface);
+      color: var(--color-gray-900);
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--focus-ring);
+    }
+
+    .section-divider {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: var(--space-4) 0 var(--space-2);
+      border-top: var(--border-default);
+      margin-top: var(--space-4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== SECTION 1: Device List (with devices) ===== -->
+  <header class="nav-header">
+    <a href="index.html" class="nav-header__back" aria-label="Back to mock-ups">&larr;</a>
+    <h1 class="nav-header__title">Device</h1>
+    <button class="btn-register" aria-label="Register new device">+</button>
+  </header>
+
+  <main style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);">
+
+    <!-- Online Device -->
+    <article class="device-card" role="article" aria-label="Kitchen Garden Cam, status: online">
+      <div class="device-card__header">
+        <div class="device-card__name-group">
+          <span class="device-card__icon" aria-hidden="true">&#x1F4F7;</span>
+          <span class="device-card__name">Kitchen Garden Cam</span>
+        </div>
+        <span class="status-dot status-dot--online" aria-hidden="true" title="Online"></span>
+      </div>
+
+      <div class="device-card__bed">Bed: A1 (Cherry Tomato)</div>
+      <div class="device-card__last-seen">Last image: 3 min ago</div>
+
+      <div class="health-grid" aria-label="Battery 85%, WiFi -42 dBm, Storage OK">
+        <div class="health-cell">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F50B;</span>
+          <div class="health-cell__value">85%</div>
+          <div class="health-cell__label">Battery</div>
+        </div>
+        <div class="health-cell">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4F6;</span>
+          <div class="health-cell__value">-42 dBm</div>
+          <div class="health-cell__label">WiFi</div>
+        </div>
+        <div class="health-cell">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4BE;</span>
+          <div class="health-cell__value">OK</div>
+          <div class="health-cell__label">Storage</div>
+        </div>
+      </div>
+
+      <div class="device-card__actions">
+        <button class="btn-ghost">Configure</button>
+        <button class="btn-ghost">Test Shot</button>
+      </div>
+    </article>
+
+    <!-- Offline Device -->
+    <article class="device-card" role="article" aria-label="Field Camera #2, status: offline">
+      <div class="device-card__header">
+        <div class="device-card__name-group">
+          <span class="device-card__icon" aria-hidden="true">&#x1F4F7;</span>
+          <span class="device-card__name">Field Camera #2</span>
+        </div>
+        <span class="status-dot status-dot--offline" aria-hidden="true" title="Offline"></span>
+      </div>
+
+      <div class="device-card__bed">Bed: B2 (Lettuce)</div>
+      <div class="device-card__last-seen device-card__last-seen--stale">Last image: 2 hours ago &#x26A0;&#xFE0F;</div>
+
+      <div class="health-grid" aria-label="Battery 12%, WiFi -78 dBm, Storage FULL">
+        <div class="health-cell health-cell--critical">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F50B;</span>
+          <div class="health-cell__value">12% &#x26A0;&#xFE0F;</div>
+          <div class="health-cell__label">Battery</div>
+        </div>
+        <div class="health-cell health-cell--critical">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4F6;</span>
+          <div class="health-cell__value">-78 dBm &#x26A0;&#xFE0F;</div>
+          <div class="health-cell__label">WiFi</div>
+        </div>
+        <div class="health-cell health-cell--critical">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4BE;</span>
+          <div class="health-cell__value">FULL &#x26A0;&#xFE0F;</div>
+          <div class="health-cell__label">Storage</div>
+        </div>
+      </div>
+
+      <div class="device-card__actions">
+        <button class="btn-ghost">Configure</button>
+        <button class="btn-ghost" disabled aria-disabled="true" title="Device is offline -- test shot unavailable">Test Shot</button>
+      </div>
+    </article>
+
+    <!-- Warning Device -->
+    <article class="device-card" role="article" aria-label="Greenhouse Cam, status: warning">
+      <div class="device-card__header">
+        <div class="device-card__name-group">
+          <span class="device-card__icon" aria-hidden="true">&#x1F4F7;</span>
+          <span class="device-card__name">Greenhouse Cam</span>
+        </div>
+        <span class="status-dot status-dot--warning" aria-hidden="true" title="Warning"></span>
+      </div>
+
+      <div class="device-card__bed">Bed: A3 (Cucumber)</div>
+      <div class="device-card__last-seen">Last image: 45 min ago</div>
+
+      <div class="health-grid" aria-label="Battery 28%, WiFi -55 dBm, Storage OK">
+        <div class="health-cell health-cell--warning">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F50B;</span>
+          <div class="health-cell__value">28%</div>
+          <div class="health-cell__label">Battery</div>
+        </div>
+        <div class="health-cell health-cell--warning">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4F6;</span>
+          <div class="health-cell__value">-55 dBm</div>
+          <div class="health-cell__label">WiFi</div>
+        </div>
+        <div class="health-cell">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4BE;</span>
+          <div class="health-cell__value">OK</div>
+          <div class="health-cell__label">Storage</div>
+        </div>
+      </div>
+
+      <div class="device-card__actions">
+        <button class="btn-ghost">Configure</button>
+        <button class="btn-ghost">Test Shot</button>
+      </div>
+    </article>
+
+    <!-- Wall-Powered Device (no battery sensor) -->
+    <article class="device-card" role="article" aria-label="Shed Cam, status: online">
+      <div class="device-card__header">
+        <div class="device-card__name-group">
+          <span class="device-card__icon" aria-hidden="true">&#x1F4F7;</span>
+          <span class="device-card__name">Shed Cam (wall-powered)</span>
+        </div>
+        <span class="status-dot status-dot--online" aria-hidden="true" title="Online"></span>
+      </div>
+
+      <div class="device-card__bed">Bed: B1 (Lettuce)</div>
+      <div class="device-card__last-seen">Last image: 8 min ago</div>
+
+      <div class="health-grid" aria-label="Battery N/A (wall-powered), WiFi -38 dBm, Storage OK">
+        <div class="health-cell health-cell--na">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F50B;</span>
+          <div class="health-cell__value">N/A</div>
+          <div class="health-cell__label">Battery</div>
+        </div>
+        <div class="health-cell">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4F6;</span>
+          <div class="health-cell__value">-38 dBm</div>
+          <div class="health-cell__label">WiFi</div>
+        </div>
+        <div class="health-cell">
+          <span class="health-cell__icon" aria-hidden="true">&#x1F4BE;</span>
+          <div class="health-cell__value">OK</div>
+          <div class="health-cell__label">Storage</div>
+        </div>
+      </div>
+
+      <div class="device-card__actions">
+        <button class="btn-ghost">Configure</button>
+        <button class="btn-ghost">Test Shot</button>
+      </div>
+    </article>
+
+  </main>
+
+  <!-- ===== SECTION 2: Empty State ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+  <div class="section-heading">Empty State (no devices)</div>
+
+  <div class="empty-state">
+    <span class="empty-state__icon">&#x1F4E1;</span>
+    <p class="empty-state__heading">No camera nodes registered</p>
+    <p class="empty-state__body">Connect a Raspberry Pi camera to start monitoring your farm.</p>
+    <button class="btn-primary">Register First Device</button>
+
+    <div class="setup-guide">
+      <div class="setup-guide__title">Quick Setup Guide</div>
+      <div class="setup-guide__step" data-step="1.">Set up your Pi with camera module</div>
+      <div class="setup-guide__step" data-step="2.">Install capture.sh</div>
+      <div class="setup-guide__step" data-step="3.">Register here to get your device API key</div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION 3: Registration Success ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+
+  <header class="nav-header">
+    <a href="#" class="nav-header__back" aria-label="Back">&larr;</a>
+    <h1 class="nav-header__title">Device Registered &#x2713;</h1>
+  </header>
+
+  <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4);">
+    <div style="text-align: center; padding: var(--space-4);">
+      <div style="font-size: 48px; margin-bottom: var(--space-2);">&#x2705;</div>
+      <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-gray-900);">Kitchen Garden Cam is ready!</div>
+      <div style="font-size: var(--font-size-sm); color: var(--color-gray-500); margin-top: var(--space-2);">Copy these values to your Pi config:</div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Device ID</div>
+      <div class="key-field">
+        <span class="key-field__value">dev-a1b2c3d4</span>
+        <button class="btn-copy" aria-label="Copy Device ID to clipboard">&#x1F4CB;</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">API Key (shown once -- save it now!)</div>
+      <div class="key-field">
+        <span class="key-field__value">dk_x7k9m2p4q8r1s5t3v6w0y8a3b5c7d9e1</span>
+        <button class="btn-copy" aria-label="Copy API Key to clipboard">&#x1F4CB;</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Config Poll URL</div>
+      <div class="key-field">
+        <span class="key-field__value">https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/api/v1/devices/dev-a1b2c3d4/config</span>
+        <button class="btn-copy" aria-label="Copy Config Poll URL to clipboard">&#x1F4CB;</button>
+      </div>
+    </div>
+
+    <div class="key-warning">
+      <span style="flex-shrink: 0;">&#x26A0;&#xFE0F;</span>
+      <span>The API key cannot be retrieved again. If lost, deregister and re-register the device.</span>
+    </div>
+
+    <button class="btn-primary" style="width: 100%;">Done</button>
+  </div>
+
+  <!-- ===== SECTION 4: Skeleton Loading ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+  <div class="section-heading">Loading State</div>
+
+  <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);">
+    <div class="skeleton" style="height: 200px; border-radius: var(--radius-lg);"></div>
+    <div class="skeleton" style="height: 200px; border-radius: var(--radius-lg);"></div>
+    <div class="skeleton" style="height: 200px; border-radius: var(--radius-lg);"></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast toast--success" style="position: relative; margin: var(--space-4);">
+    <span class="toast__icon">&#x2705;</span>
+    Copied!
+  </div>
+
+</body>
+</html>

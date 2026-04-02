@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop Beta-5 — Device Configuration</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .form-label {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+    }
+
+    .form-input, .form-select {
+      height: var(--touch-target-min);
+      padding: 0 var(--space-3);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-family: var(--font-family);
+      background: var(--color-surface);
+      color: var(--color-gray-900);
+      width: 100%;
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--focus-ring);
+    }
+
+    .section-divider {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: var(--space-4) 0 var(--space-2);
+      border-top: var(--border-default);
+      margin-top: var(--space-4);
+    }
+
+    .range-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .range-row input[type="range"] {
+      flex: 1;
+      height: 4px;
+      accent-color: var(--color-primary);
+    }
+
+    .range-value {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .time-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .time-row label {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-700);
+      min-width: 40px;
+    }
+
+    .time-row input[type="time"] {
+      height: var(--touch-target-min);
+      padding: 0 var(--space-3);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-family: var(--font-family);
+      background: var(--color-surface);
+      color: var(--color-gray-900);
+      flex: 1;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--font-size-base);
+      color: var(--color-gray-900);
+      cursor: pointer;
+    }
+
+    .radio-option--disabled {
+      color: var(--color-gray-500);
+      cursor: not-allowed;
+    }
+
+    .radio-option input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--color-primary);
+    }
+
+    .danger-zone {
+      border-top: 1px solid var(--color-status-issue);
+      padding-top: var(--space-4);
+      margin-top: var(--space-6);
+    }
+
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--touch-target-preferred);
+      padding: 0 var(--space-6);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      font-family: var(--font-family);
+      color: var(--color-status-issue);
+      border: 1px solid var(--color-status-issue);
+      background: transparent;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color var(--transition-fast);
+    }
+
+    .btn-danger:hover {
+      background-color: var(--color-status-issue-bg);
+    }
+
+    .form-hint {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Device Configuration ===== -->
+  <header class="nav-header">
+    <a href="device-list.html" class="nav-header__back" aria-label="Back to device list">&larr;</a>
+    <h1 class="nav-header__title">Configure: Kitchen Cam</h1>
+  </header>
+
+  <main style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4);">
+
+    <div class="form-group">
+      <label class="form-label" for="device-name">Device Name</label>
+      <input class="form-input" id="device-name" type="text" value="Kitchen Garden Cam">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="device-bed">Assigned Bed</label>
+      <select class="form-select" id="device-bed">
+        <option selected>A1 -- Cherry Tomato</option>
+        <option>A2 -- Basil</option>
+        <option>A3 -- Cucumber</option>
+        <option>B1 -- Lettuce</option>
+        <option>B2 -- Strawberry</option>
+        <option>B3 -- Eggplant</option>
+      </select>
+    </div>
+
+    <!-- Capture Settings -->
+    <div class="section-divider">Capture Settings</div>
+
+    <div class="form-group">
+      <label class="form-label" for="capture-interval">Capture Interval</label>
+      <select class="form-select" id="capture-interval">
+        <option>Every 15 minutes</option>
+        <option selected>Every 30 minutes</option>
+        <option>Every 60 minutes</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="resolution">Resolution</label>
+      <select class="form-select" id="resolution">
+        <option>1280 x 720 (HD)</option>
+        <option selected>1920 x 1080 (Full HD)</option>
+      </select>
+    </div>
+
+    <div class="range-group">
+      <label class="form-label" for="jpeg-quality">JPEG Quality</label>
+      <div class="range-row">
+        <input type="range" id="jpeg-quality" min="50" max="100" value="85" aria-label="JPEG quality: 85%">
+        <span class="range-value">85%</span>
+      </div>
+    </div>
+
+    <!-- Schedule -->
+    <div class="section-divider">Schedule</div>
+
+    <div class="form-group">
+      <div class="form-label">Active Window</div>
+      <div class="time-row">
+        <label for="time-start">Start:</label>
+        <input type="time" id="time-start" value="05:00">
+        <label for="time-end">End:</label>
+        <input type="time" id="time-end" value="20:00">
+      </div>
+      <div class="form-hint">Camera captures images only during this window.</div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">Trigger Type</div>
+      <div class="radio-group">
+        <label class="radio-option">
+          <input type="radio" name="trigger" checked>
+          Scheduled only
+        </label>
+        <label class="radio-option radio-option--disabled">
+          <input type="radio" name="trigger" disabled>
+          Motion detection (coming soon)
+        </label>
+        <div class="form-hint" style="padding-left: 28px;">Not supported by this device.</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" style="width: 100%; margin-top: var(--space-4);">Save Changes</button>
+
+    <!-- Danger Zone -->
+    <div class="danger-zone">
+      <button class="btn-danger" aria-label="Deregister Kitchen Garden Cam">Deregister Device</button>
+    </div>
+
+  </main>
+
+  <!-- ===== Registration Form (below separator) ===== -->
+  <div style="border-top: 4px solid var(--color-gray-300); margin-top: var(--space-8);"></div>
+
+  <header class="nav-header">
+    <a href="#" class="nav-header__back" aria-label="Back">&larr;</a>
+    <h1 class="nav-header__title">Register Device</h1>
+  </header>
+
+  <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4);">
+    <div class="form-group">
+      <label class="form-label" for="reg-name">Device Name *</label>
+      <input class="form-input" id="reg-name" type="text" placeholder="e.g., Kitchen Garden Cam">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="reg-bed">Assign to Bed *</label>
+      <select class="form-select" id="reg-bed">
+        <option value="" disabled selected>Select a bed...</option>
+        <option>A1 -- Cherry Tomato</option>
+        <option>A2 -- Basil</option>
+        <option>A3 -- Cucumber</option>
+        <option>B1 -- Lettuce</option>
+      </select>
+    </div>
+
+    <button class="btn-primary" style="width: 100%;">Register</button>
+  </div>
+
+</body>
+</html>

@@ -901,6 +901,28 @@ Beta-5 delivers two features:
 - No separate USER# partition for devices — devices belong to farms, not users. Farm membership controls device access.
 - `device_api_key_hash` stores a bcrypt hash of the API key (shown once at registration). The raw key is never stored.
 
+#### Device Capabilities
+
+Each device reports its hardware capabilities via the first heartbeat. The web UI uses this to disable unsupported config fields and hide unavailable health indicators.
+
+```json
+{
+  "capabilities": {
+    "resolutions": ["1920x1080", "1280x720"],
+    "has_battery_sensor": false,
+    "has_pir_sensor": false
+  }
+}
+```
+
+| Capability | Effect on Config UI | Effect on Health UI |
+|------------|-------------------|-------------------|
+| `resolutions` | Resolution dropdown shows only supported values | — |
+| `has_battery_sensor: false` | — | Battery cell shows "N/A" (dimmed) |
+| `has_pir_sensor: false` | Motion trigger radio disabled with "Not supported by this device" | — |
+
+Capabilities are stored on the DEVICE# entity as an optional `capabilities` JSON attribute. Devices that haven't sent a heartbeat yet default to full capabilities (all fields enabled).
+
 #### Future-Proofing (Optional Fields)
 
 These fields are defined as optional in the schema, reserved for Beta-6+:
@@ -915,7 +937,7 @@ These fields are defined as optional in the schema, reserved for Beta-6+:
 | 12 | Device Management | List devices for farm | Query PK=`FARM#{farmId}` SK begins_with `DEVICE#` |
 | 13 | Device Management | Get device by ID | Query GSI1 PK=`DEVICE#{deviceId}` SK=`#META` |
 | 14 | Config Poll (Pi) | Get device config | Query GSI1 PK=`DEVICE#{deviceId}` SK=`#META` — returns config fields only |
-| 15 | Device Health | Update device heartbeat | UpdateItem (last_seen_at, battery_level, wifi_signal_dbm, storage_status) |
+| 15 | Device Health | Update device heartbeat | UpdateItem (last_seen_at, battery_level, wifi_signal_dbm, storage_status, capabilities) |
 | 16 | Image Upload | Link upload to device | Image record includes `device_id` field (already has `node_id`, reuse as `device_id` reference) |
 
 ### 13.3 Device Authentication (Beta-5)

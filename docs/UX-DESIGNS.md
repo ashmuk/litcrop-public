@@ -3350,6 +3350,17 @@ Beta-5 introduces **device onboarding** — the first flow where a user bridges 
 
 **Offline device behavior**: When a device status is `offline` (red dot), the "Test Shot" button is disabled (`opacity: 0.4`, `cursor: not-allowed`) with tooltip: "Device is offline — test shot unavailable." The "Configure" button remains enabled (changes will take effect when the device comes back online).
 
+**Unsupported capability behavior**: The device reports its hardware capabilities via heartbeat. The UI adapts:
+
+| Capability Missing | Config Form | Health Display |
+|-------------------|-------------|----------------|
+| `has_battery_sensor: false` | No change (battery is health-only) | Battery cell shows "N/A" in `var(--color-gray-500)`, icon at `opacity: 0.3` |
+| `has_pir_sensor: false` | Motion trigger radio: disabled, label reads "Not supported by this device" in `var(--color-gray-500)` | No change |
+| `resolutions` has 1 entry | Resolution dropdown replaced with static text (no choice needed) | No change |
+| No capabilities yet (first boot) | All fields enabled with defaults | All health cells show "---" (awaiting first heartbeat) |
+
+Treatment: disabled fields use `opacity: 0.4`, `cursor: not-allowed`, and a hint below in `var(--font-size-xs)` / `var(--color-gray-500)`: "Not supported by this device."
+
 #### 15.1.6 Layout Specifications
 
 | Element | Spec |
@@ -3554,7 +3565,12 @@ Response (200):
         "battery_level": 85,
         "wifi_signal_dbm": -42,
         "storage_status": "ok",
-        "created_at": "2026-04-01T08:00:00Z"
+        "created_at": "2026-04-01T08:00:00Z",
+        "capabilities": {
+          "resolutions": ["1920x1080", "1280x720"],
+          "has_battery_sensor": true,
+          "has_pir_sensor": false
+        }
       }
     ]
   }
@@ -3623,7 +3639,12 @@ Request:
   Body: {
     "battery_level": 85,
     "wifi_signal_dbm": -42,
-    "storage_status": "ok"
+    "storage_status": "ok",
+    "capabilities": {                        // optional, sent on first heartbeat
+      "resolutions": ["1920x1080", "1280x720"],
+      "has_battery_sensor": true,
+      "has_pir_sensor": false
+    }
   }
 
 Response (200):
