@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop — How Device Connection Works</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .flow-container {
+      padding: var(--space-4);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .flow-title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-gray-900);
+      text-align: center;
+      margin-bottom: var(--space-6);
+    }
+
+    .flow-subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      text-align: center;
+      margin-bottom: var(--space-6);
+    }
+
+    /* Three columns: Farm | Cloud | You */
+    .flow-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+      text-align: center;
+    }
+
+    .flow-col-header {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      padding: var(--space-2);
+    }
+
+    .flow-col-icon {
+      font-size: 32px;
+      margin-bottom: var(--space-1);
+      display: block;
+    }
+
+    .flow-col-label {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+    }
+
+    /* Steps */
+    .flow-steps {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      position: relative;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      border: var(--border-default);
+      opacity: 0.3;
+      transform: translateY(8px);
+      animation: step-appear 0.5s ease forwards;
+    }
+
+    .flow-step:nth-child(1) { animation-delay: 0s; }
+    .flow-step:nth-child(2) { animation-delay: 2s; }
+    .flow-step:nth-child(3) { animation-delay: 4s; }
+    .flow-step:nth-child(4) { animation-delay: 6s; }
+    .flow-step:nth-child(5) { animation-delay: 8s; }
+
+    @keyframes step-appear {
+      0% { opacity: 0.3; transform: translateY(8px); }
+      20% { opacity: 1; transform: translateY(0); }
+      80% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0.6; transform: translateY(0); }
+    }
+
+    /* After full cycle, restart */
+    .flow-steps {
+      animation: reset-cycle 12s linear infinite;
+    }
+
+    @keyframes reset-cycle {
+      0% { opacity: 1; }
+      95% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+
+    .flow-step__number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      color: white;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+    }
+
+    .flow-step__content {
+      flex: 1;
+    }
+
+    .flow-step__title {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: 2px;
+    }
+
+    .flow-step__desc {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      line-height: var(--line-height-relaxed);
+    }
+
+    .flow-step__arrow {
+      font-size: var(--font-size-xs);
+      color: var(--color-primary);
+      font-family: monospace;
+      margin-top: 2px;
+    }
+
+    .flow-step__icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    /* Direction indicator */
+    .flow-direction {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .flow-direction--pi-to-cloud {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+    }
+
+    .flow-direction--cloud-to-you {
+      background: var(--color-status-healthy-bg);
+      color: var(--color-status-healthy);
+    }
+
+    .flow-direction--pi-local {
+      background: var(--color-status-slow-growth-bg);
+      color: var(--color-status-slow-growth);
+    }
+
+    /* Timing footer */
+    .flow-timing {
+      margin-top: var(--space-6);
+      padding: var(--space-4);
+      background: var(--color-gray-100);
+      border-radius: var(--radius-lg);
+      text-align: center;
+    }
+
+    .flow-timing__title {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-900);
+      margin-bottom: var(--space-2);
+    }
+
+    .flow-timing__schedule {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-4);
+    }
+
+    .flow-timing__item {
+      text-align: center;
+    }
+
+    .flow-timing__value {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+
+    .flow-timing__label {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .flow-step {
+        opacity: 0.8;
+        transform: none;
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav-header">
+    <a href="index.html" class="nav-header__back" aria-label="Back to mock-ups">&larr;</a>
+    <h1 class="nav-header__title">How It Works</h1>
+  </header>
+
+  <div class="flow-container">
+
+    <div class="flow-title">How Your Camera Connects</div>
+    <div class="flow-subtitle">Your Pi camera talks to the cloud over the internet.<br>You view everything from your phone or PC.</div>
+
+    <!-- Column headers -->
+    <div class="flow-columns">
+      <div class="flow-col-header">
+        <span class="flow-col-icon">&#x1F345;</span>
+        <div>Your Farm</div>
+        <div class="flow-col-label">Raspberry Pi</div>
+      </div>
+      <div class="flow-col-header">
+        <span class="flow-col-icon">&#x2601;&#xFE0F;</span>
+        <div>Cloud</div>
+        <div class="flow-col-label">AWS (Tokyo)</div>
+      </div>
+      <div class="flow-col-header">
+        <span class="flow-col-icon">&#x1F4F1;</span>
+        <div>You</div>
+        <div class="flow-col-label">Any device</div>
+      </div>
+    </div>
+
+    <!-- Animated steps -->
+    <div class="flow-steps">
+
+      <div class="flow-step">
+        <div class="flow-step__number">1</div>
+        <div class="flow-step__content">
+          <div class="flow-step__title">Check Settings</div>
+          <div class="flow-step__arrow">
+            <span class="flow-direction flow-direction--pi-to-cloud">Pi &#8594; Cloud</span>
+          </div>
+          <div class="flow-step__desc">
+            Pi asks the cloud: "What should I do?"<br>
+            Gets: capture interval, resolution, active hours
+          </div>
+        </div>
+        <div class="flow-step__icon">&#x2699;&#xFE0F;</div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step__number">2</div>
+        <div class="flow-step__content">
+          <div class="flow-step__title">Take Photo</div>
+          <div class="flow-step__arrow">
+            <span class="flow-direction flow-direction--pi-local">Pi (local)</span>
+          </div>
+          <div class="flow-step__desc">
+            Pi camera captures a JPEG image of your crops.<br>
+            &#x1F4F8; click! — stored temporarily on the Pi.
+          </div>
+        </div>
+        <div class="flow-step__icon">&#x1F4F7;</div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step__number">3</div>
+        <div class="flow-step__content">
+          <div class="flow-step__title">Upload Image</div>
+          <div class="flow-step__arrow">
+            <span class="flow-direction flow-direction--pi-to-cloud">Pi &#8594; Cloud</span>
+          </div>
+          <div class="flow-step__desc">
+            Photo uploaded to cloud storage (S3).<br>
+            Thumbnail generated automatically.
+          </div>
+        </div>
+        <div class="flow-step__icon">&#x2601;&#xFE0F;</div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step__number">4</div>
+        <div class="flow-step__content">
+          <div class="flow-step__title">Health Report</div>
+          <div class="flow-step__arrow">
+            <span class="flow-direction flow-direction--pi-to-cloud">Pi &#8594; Cloud</span>
+          </div>
+          <div class="flow-step__desc">
+            Pi sends battery level, WiFi signal, and storage status.<br>
+            &#x1F50B; 85% &nbsp; &#x1F4F6; -42 dBm &nbsp; &#x1F4BE; OK
+          </div>
+        </div>
+        <div class="flow-step__icon">&#x1F49A;</div>
+      </div>
+
+      <div class="flow-step">
+        <div class="flow-step__number">5</div>
+        <div class="flow-step__content">
+          <div class="flow-step__title">View Dashboard</div>
+          <div class="flow-step__arrow">
+            <span class="flow-direction flow-direction--cloud-to-you">Cloud &#8594; You</span>
+          </div>
+          <div class="flow-step__desc">
+            Open the app on any device — phone, tablet, or PC.<br>
+            See images, health, weather, and crop status.
+          </div>
+        </div>
+        <div class="flow-step__icon">&#x1F4F1;</div>
+      </div>
+
+    </div>
+
+    <!-- Timing -->
+    <div class="flow-timing">
+      <div class="flow-timing__title">This cycle repeats automatically</div>
+      <div class="flow-timing__schedule">
+        <div class="flow-timing__item">
+          <div class="flow-timing__value">30</div>
+          <div class="flow-timing__label">min interval</div>
+        </div>
+        <div class="flow-timing__item">
+          <div class="flow-timing__value">05:00–20:00</div>
+          <div class="flow-timing__label">active hours</div>
+        </div>
+        <div class="flow-timing__item">
+          <div class="flow-timing__value">~30</div>
+          <div class="flow-timing__label">photos/day</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key point -->
+    <div style="margin-top:var(--space-4);padding:var(--space-3);background:var(--color-primary-light);border-radius:var(--radius-lg);font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:var(--line-height-relaxed);text-align:center">
+      <strong>No same-network required.</strong><br>
+      Pi uses farm WiFi or LTE. You browse from anywhere.
+    </div>
+
+  </div>
+
+</body>
+</html>
