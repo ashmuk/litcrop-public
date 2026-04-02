@@ -9,6 +9,7 @@ import { getWeather } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
+import FarmLocationMap from './FarmLocationMap';
 
 // Cache reverse geocode results across mount/unmount cycles
 const geocodeCache = new Map<string, string | null>();
@@ -327,6 +328,19 @@ export default function WeatherView({ farmId }: Props) {
             </>
           )}
         </div>
+
+        {/* Farm location map */}
+        <div style="padding:var(--space-4) 0">
+          <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-500);margin-bottom:var(--space-2)">
+            {locationName ?? `${weather.latitude.toFixed(4)}, ${weather.longitude.toFixed(4)}`}
+          </div>
+          <FarmLocationMap
+            latitude={weather.latitude}
+            longitude={weather.longitude}
+            farmName={locationName ?? tl('weather.farm_location')}
+          />
+        </div>
+
       </div>
     </div>
   );
