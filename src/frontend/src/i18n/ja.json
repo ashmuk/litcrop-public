@@ -576,8 +576,17 @@
     "guide_download": "Pi用の設定ファイルをダウンロード：",
     "guide_download_button": "設定ファイルをダウンロード",
     "guide_copy_to_pi": "ファイルをRaspberry Piにコピー：",
-    "guide_install": "PiにSSH接続してキャプチャスクリプトをインストール：",
-    "guide_verify": "このページで確認 — 最初のハートビート後にデバイスがオンラインになります"
+    "guide_hint_replace_user": "「pi」をPiで設定したユーザー名に変更してください。",
+    "guide_hint_replace_host": "「raspberrypi.local」をPiのホスト名またはIPアドレスに変更してください。",
+    "guide_install": "Raspberry PiにSSH接続：",
+    "guide_test_title": "接続をテスト",
+    "guide_test_desc": "Pi（または任意のターミナル）でこのコマンドを実行してテストハートビートを送信：",
+    "guide_test_run_hint": "{\"acknowledged\":true} と表示されれば接続成功です！",
+    "copy_test_command": "テストコマンドをコピー",
+    "guide_verify_title": "デバイスページで確認",
+    "guide_verify_before": "オフライン",
+    "guide_verify_after": "オンライン",
+    "guide_verify_health": "バッテリー、WiFi、ストレージの値がPiから取得されます。"
   },
   "profile_picture": {
     "change": "写真を変更",

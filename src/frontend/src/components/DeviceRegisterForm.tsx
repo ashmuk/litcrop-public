@@ -266,7 +266,10 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
               <div>
                 <span>{t('device.guide_copy_to_pi')}</span>
                 <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-1);border:var(--border-default)">
-                  scp litcrop-{result.device_id}.env pi@raspberrypi.local:~/.litcrop.env
+                  scp litcrop-{result.device_id}.env <strong>pi</strong>@<strong>raspberrypi.local</strong>:~/.litcrop.env
+                </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
+                  {t('device.guide_hint_replace_user')}
                 </div>
               </div>
             </div>
@@ -276,15 +279,61 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
               <div>
                 <span>{t('device.guide_install')}</span>
                 <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-1);border:var(--border-default)">
-                  ssh pi@raspberrypi.local<br />
-                  curl -sL https://litcrop.example.com/install.sh | bash
+                  ssh <strong>pi</strong>@<strong>raspberrypi.local</strong>
+                </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
+                  {t('device.guide_hint_replace_host')}
                 </div>
               </div>
             </div>
 
             <div style="display:flex;gap:var(--space-2)">
               <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">4.</span>
-              <span>{t('device.guide_verify')}</span>
+              <div style="flex:1">
+                <span style="font-weight:var(--font-weight-semibold)">{t('device.guide_test_title')}</span>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1);margin-bottom:var(--space-2)">
+                  {t('device.guide_test_desc')}
+                </div>
+                <div style="position:relative">
+                  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:10px;margin-top:var(--space-1);border:var(--border-default);white-space:pre-wrap;word-break:break-all;max-height:120px;overflow-y:auto">
+{`curl -X POST \\
+  -H "Authorization: Bearer ${refreshToken ? refreshToken.slice(0, 20) + '...' : 'YOUR_TOKEN'}" \\
+  -H "X-Device-Key: ${result.device_api_key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"battery_level":85,"wifi_signal_dbm":-45,"storage_status":"ok"}' \\
+  ${result.config_poll_url.replace('/config', '/heartbeat')}`}
+                  </div>
+                  <button
+                    style="position:absolute;top:var(--space-1);right:var(--space-1);display:inline-flex;align-items:center;justify-content:center;width:32px;height:24px;border:var(--border-default);border-radius:var(--radius-sm);background:var(--color-surface);cursor:pointer;font-size:12px"
+                    onClick={() => {
+                      const cmd = `curl -X POST -H "Authorization: Bearer ${refreshToken || 'YOUR_TOKEN'}" -H "X-Device-Key: ${result.device_api_key}" -H "Content-Type: application/json" -d '{"battery_level":85,"wifi_signal_dbm":-45,"storage_status":"ok"}' ${result.config_poll_url.replace('/config', '/heartbeat')}`;
+                      navigator.clipboard.writeText(cmd);
+                      showToast(t('device.copied'), 'success');
+                    }}
+                    aria-label={t('device.copy_test_command')}
+                  >
+                    &#x1F4CB;
+                  </button>
+                </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
+                  {t('device.guide_test_run_hint')}
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:var(--space-2)">
+              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">5.</span>
+              <div>
+                <span style="font-weight:var(--font-weight-semibold)">{t('device.guide_verify_title')}</span>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-700);margin-top:var(--space-1);line-height:var(--line-height-relaxed)">
+                  <div style="display:flex;align-items:center;gap:var(--space-1);margin-bottom:2px">
+                    <span>&#x1F534;</span> <span style="color:var(--color-gray-500)">{t('device.guide_verify_before')}</span>
+                    <span style="margin:0 var(--space-1)">&#8594;</span>
+                    <span>&#x1F7E2;</span> <span>{t('device.guide_verify_after')}</span>
+                  </div>
+                  <div>{t('device.guide_verify_health')}</div>
+                </div>
+              </div>
             </div>
 
           </div>
