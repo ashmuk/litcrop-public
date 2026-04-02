@@ -343,7 +343,7 @@ describe('GET /api/v1/devices/:deviceId/config', () => {
   });
 
   it('test_shot_requested returned then cleared', async () => {
-    const deviceWithFlag = { ...deviceFixture, test_shot_requested: true };
+    const deviceWithFlag = { ...deviceWithHash, test_shot_requested: true };
     mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithFlag });
 
     const res = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
