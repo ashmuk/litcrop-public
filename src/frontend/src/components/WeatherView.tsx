@@ -175,7 +175,7 @@ export default function WeatherView({ farmId }: Props) {
       ))}
 
       {/* Desktop 2-column grid: left = current + hourly, right = 7-day + crop impact */}
-      <div class="weather-desktop-grid" style="padding-bottom:80px">
+      <div class="weather-desktop-grid">
         {/* Left column: current conditions + hourly */}
         <div class="weather-col-left">
           {/* Current conditions */}
@@ -333,7 +333,7 @@ export default function WeatherView({ farmId }: Props) {
       </div>
 
       {/* Farm location map — full width, outside the 2-column grid */}
-      <div style="padding:var(--space-4)">
+      <div style="padding:var(--space-4);padding-bottom:80px">
         <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-500);margin-bottom:var(--space-2)">
           {locationName ?? `${weather.latitude.toFixed(4)}, ${weather.longitude.toFixed(4)}`}
         </div>
