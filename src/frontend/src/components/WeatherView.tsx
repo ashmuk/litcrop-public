@@ -298,35 +298,37 @@ export default function WeatherView({ farmId }: Props) {
             ))}
           </div>
 
-          {/* Crop impact */}
-          {crop_impact.length > 0 && (
-            <>
-              <div class="section-heading">{tl('weather.crop_impact')}</div>
-              <div
-                style="padding:0 var(--space-4) var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"
-              >
-                {crop_impact.map((card, i) => (
-                  <div
-                    key={i}
-                    class={IMPACT_CSS[card.severity]}
-                    style="padding:var(--space-3);border-radius:var(--radius-md)"
-                    role="region"
-                    aria-label={card.title}
-                  >
-                    <div style="font-weight:var(--font-weight-semibold)">{translateWithFallback(IMPACT_I18N[card.title]?.title, card.title, tl)}</div>
-                    <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
-                      {translateWithFallback(IMPACT_I18N[card.title]?.desc, card.description, tl)}
-                    </div>
-                    {card.affected_beds.length > 0 && (
-                      <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
-                        {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => b.crop_type).join(', ')}
-                      </div>
-                    )}
+          {/* Crop impact — always shown */}
+          <div class="section-heading">{tl('weather.crop_impact')}</div>
+          <div
+            style="padding:0 var(--space-4) var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"
+          >
+            {crop_impact.length > 0 ? (
+              crop_impact.map((card, i) => (
+                <div
+                  key={i}
+                  class={IMPACT_CSS[card.severity]}
+                  style="padding:var(--space-3);border-radius:var(--radius-md)"
+                  role="region"
+                  aria-label={card.title}
+                >
+                  <div style="font-weight:var(--font-weight-semibold)">{translateWithFallback(IMPACT_I18N[card.title]?.title, card.title, tl)}</div>
+                  <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
+                    {translateWithFallback(IMPACT_I18N[card.title]?.desc, card.description, tl)}
                   </div>
-                ))}
+                  {card.affected_beds.length > 0 && (
+                    <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
+                      {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => b.crop_type).join(', ')}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div style="padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-status-healthy-bg);color:var(--color-status-healthy);font-size:var(--font-size-sm)">
+                &#x2705; {tl('weather.no_crop_impact')}
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
 

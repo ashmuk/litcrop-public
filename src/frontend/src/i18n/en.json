@@ -92,6 +92,7 @@
     "impact_frost_desc": "Frost-sensitive crops may be at risk. Check the forecast and consider protection.",
     "impact_heat_desc": "High temperatures may stress crops. Ensure adequate watering.",
     "impact_rain_desc": "Heavy rain expected. Check drainage and cover sensitive crops.",
+    "no_crop_impact": "No weather impact expected on your crops.",
     "farm_location": "Farm Location"
   },
   "settings": {
