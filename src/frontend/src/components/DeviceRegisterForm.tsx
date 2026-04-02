@@ -225,19 +225,21 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
           <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('device.refresh_token_hint')}</div>
         </div>
 
-        {/* Setup guide with download */}
+        {/* Setup guide — simplified 3-step flow */}
         <div style="background:var(--color-gray-100);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
           <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--space-3)">
             {t('device.setup_guide_title')}
           </div>
-          <div style="font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:var(--line-height-relaxed);display:flex;flex-direction:column;gap:var(--space-3)">
+          <div style="font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:var(--line-height-relaxed);display:flex;flex-direction:column;gap:var(--space-4)">
 
+            {/* Step 1: Download */}
             <div style="display:flex;gap:var(--space-2)">
-              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">1.</span>
-              <div>
-                <span>{t('device.guide_download')}</span>
+              <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--color-primary);color:white;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);flex-shrink:0">1</span>
+              <div style="flex:1">
+                <div style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">{t('device.guide_step1_title')}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">{t('device.guide_step1_desc')}</div>
                 <button
-                  style="display:block;margin-top:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-primary);color:white;border:none;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-family:inherit;cursor:pointer"
+                  style="display:block;margin-top:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-primary);color:white;border:none;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-family:inherit;cursor:pointer;width:100%"
                   onClick={() => {
                     const content = [
                       `export LITCROP_DEVICE_ID=${result.device_id}`,
@@ -261,78 +263,35 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
               </div>
             </div>
 
+            {/* Step 2: Copy to Pi + Test */}
             <div style="display:flex;gap:var(--space-2)">
-              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">2.</span>
-              <div>
-                <span>{t('device.guide_copy_to_pi')}</span>
-                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-1);border:var(--border-default)">
-                  scp litcrop-{result.device_id}.env <strong>pi</strong>@<strong>raspberrypi.local</strong>:~/.litcrop.env
-                </div>
-                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
-                  {t('device.guide_hint_replace_user')}
-                </div>
-              </div>
-            </div>
-
-            <div style="display:flex;gap:var(--space-2)">
-              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">3.</span>
-              <div>
-                <span>{t('device.guide_install')}</span>
-                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-1);border:var(--border-default)">
-                  ssh <strong>pi</strong>@<strong>raspberrypi.local</strong>
-                </div>
-                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
-                  {t('device.guide_hint_replace_host')}
-                </div>
-              </div>
-            </div>
-
-            <div style="display:flex;gap:var(--space-2)">
-              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">4.</span>
+              <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--color-primary);color:white;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);flex-shrink:0">2</span>
               <div style="flex:1">
-                <span style="font-weight:var(--font-weight-semibold)">{t('device.guide_test_title')}</span>
-                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1);margin-bottom:var(--space-2)">
-                  {t('device.guide_test_desc')}
+                <div style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">{t('device.guide_step2_title')}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">{t('device.guide_step2_desc')}</div>
+                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-2);border:var(--border-default);display:flex;flex-direction:column;gap:var(--space-1)">
+                  <div style="color:var(--color-gray-500)"># {t('device.guide_step2_copy')}</div>
+                  <div>scp litcrop-{result.device_id}.env pi@raspberrypi.local:~/.litcrop.env</div>
+                  <div style="color:var(--color-gray-500);margin-top:var(--space-1)"># {t('device.guide_step2_test')}</div>
+                  <div>source ~/.litcrop.env && ./test-device-heartbeat.sh</div>
                 </div>
-                <div style="position:relative">
-                  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:10px;margin-top:var(--space-1);border:var(--border-default);white-space:pre-wrap;word-break:break-all;max-height:120px;overflow-y:auto">
-{`curl -X POST \\
-  -H "Authorization: Bearer ${refreshToken ? refreshToken.slice(0, 20) + '...' : 'YOUR_TOKEN'}" \\
-  -H "X-Device-Key: ${result.device_api_key}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"battery_level":85,"wifi_signal_dbm":-45,"storage_status":"ok"}' \\
-  ${result.config_poll_url.replace('/config', '/heartbeat')}`}
-                  </div>
-                  <button
-                    style="position:absolute;top:var(--space-1);right:var(--space-1);display:inline-flex;align-items:center;justify-content:center;width:32px;height:24px;border:var(--border-default);border-radius:var(--radius-sm);background:var(--color-surface);cursor:pointer;font-size:12px"
-                    onClick={() => {
-                      const cmd = `curl -X POST -H "Authorization: Bearer ${refreshToken || 'YOUR_TOKEN'}" -H "X-Device-Key: ${result.device_api_key}" -H "Content-Type: application/json" -d '{"battery_level":85,"wifi_signal_dbm":-45,"storage_status":"ok"}' ${result.config_poll_url.replace('/config', '/heartbeat')}`;
-                      navigator.clipboard.writeText(cmd);
-                      showToast(t('device.copied'), 'success');
-                    }}
-                    aria-label={t('device.copy_test_command')}
-                  >
-                    &#x1F4CB;
-                  </button>
-                </div>
-                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">
-                  {t('device.guide_test_run_hint')}
-                </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">{t('device.guide_step2_hint')}</div>
               </div>
             </div>
 
+            {/* Step 3: Verify */}
             <div style="display:flex;gap:var(--space-2)">
-              <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">5.</span>
-              <div>
-                <span style="font-weight:var(--font-weight-semibold)">{t('device.guide_verify_title')}</span>
-                <div style="font-size:var(--font-size-xs);color:var(--color-gray-700);margin-top:var(--space-1);line-height:var(--line-height-relaxed)">
-                  <div style="display:flex;align-items:center;gap:var(--space-1);margin-bottom:2px">
-                    <span>&#x1F534;</span> <span style="color:var(--color-gray-500)">{t('device.guide_verify_before')}</span>
-                    <span style="margin:0 var(--space-1)">&#8594;</span>
-                    <span>&#x1F7E2;</span> <span>{t('device.guide_verify_after')}</span>
-                  </div>
-                  <div>{t('device.guide_verify_health')}</div>
+              <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--color-primary);color:white;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);flex-shrink:0">3</span>
+              <div style="flex:1">
+                <div style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">{t('device.guide_step3_title')}</div>
+                <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);padding:var(--space-2);background:var(--color-surface);border-radius:var(--radius-md);border:var(--border-default)">
+                  <span>&#x1F534;</span>
+                  <span style="color:var(--color-gray-500)">{t('device.guide_verify_before')}</span>
+                  <span>&#8594;</span>
+                  <span>&#x1F7E2;</span>
+                  <span style="font-weight:var(--font-weight-semibold)">{t('device.guide_verify_after')}</span>
                 </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">{t('device.guide_step3_desc')}</div>
               </div>
             </div>
 
