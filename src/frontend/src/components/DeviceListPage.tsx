@@ -20,7 +20,7 @@ import {
   type DeviceListItemResponse,
 } from '../lib/api';
 import { t } from '../i18n/i18n';
-import { useLocalFarmId } from '../lib/hooks';
+import { useLocalFarmId, getLocalFarmRole } from '../lib/hooks';
 import { showToast } from './Toast';
 import { formatRelativeTime } from '../lib/format';
 import DeviceRegisterForm from './DeviceRegisterForm';
@@ -76,12 +76,13 @@ function isStale(lastSeenAt: string | null): boolean {
 
 interface DeviceCardProps {
   device: DeviceListItemResponse;
+  canEdit: boolean;
   onConfigure: (deviceId: string) => void;
   onTestShot: (deviceId: string) => void;
   onDelete: (deviceId: string) => void;
 }
 
-function DeviceCard({ device, onConfigure, onTestShot }: DeviceCardProps) {
+function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProps) {
   const hasBattery = device.capabilities?.has_battery_sensor ?? false;
   const stale = isStale(device.last_seen_at);
   const isOffline = device.status === 'offline' || device.status === 'inactive';
@@ -204,28 +205,30 @@ function DeviceCard({ device, onConfigure, onTestShot }: DeviceCardProps) {
       </div>
 
       {/* Actions */}
-      <div
-        class="device-card__actions"
-        style="display:flex;gap:var(--space-2);justify-content:space-between"
-      >
-        <button
-          class="btn-ghost"
-          style="display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 var(--space-4);border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);font-family:var(--font-family);color:var(--color-primary);background:transparent;border:var(--border-default);cursor:pointer;flex:1"
-          onClick={() => onConfigure(device.device_id)}
+      {canEdit && (
+        <div
+          class="device-card__actions"
+          style="display:flex;gap:var(--space-2);justify-content:space-between"
         >
-          {t('device.action_configure')}
-        </button>
-        <button
-          class="btn-ghost"
-          style={`display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 var(--space-4);border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);font-family:var(--font-family);color:var(--color-primary);background:transparent;border:var(--border-default);cursor:pointer;flex:1${isOffline ? ';opacity:0.4;cursor:not-allowed;pointer-events:none' : ''}`}
-          disabled={isOffline}
-          aria-disabled={isOffline}
-          title={isOffline ? t('device.test_shot_offline') : undefined}
-          onClick={() => !isOffline && onTestShot(device.device_id)}
-        >
-          {t('device.action_test_shot')}
-        </button>
-      </div>
+          <button
+            class="btn-ghost"
+            style="display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 var(--space-4);border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);font-family:var(--font-family);color:var(--color-primary);background:transparent;border:var(--border-default);cursor:pointer;flex:1"
+            onClick={() => onConfigure(device.device_id)}
+          >
+            {t('device.action_configure')}
+          </button>
+          <button
+            class="btn-ghost"
+            style={`display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 var(--space-4);border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);font-family:var(--font-family);color:var(--color-primary);background:transparent;border:var(--border-default);cursor:pointer;flex:1${isOffline ? ';opacity:0.4;cursor:not-allowed;pointer-events:none' : ''}`}
+            disabled={isOffline}
+            aria-disabled={isOffline}
+            title={isOffline ? t('device.test_shot_offline') : undefined}
+            onClick={() => !isOffline && onTestShot(device.device_id)}
+          >
+            {t('device.action_test_shot')}
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -240,6 +243,8 @@ export default function DeviceListPage({ farmId }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);
+  const farmRole = getLocalFarmRole();
+  const canEdit = farmRole === 'admin' || farmRole === 'manager';
 
   useEffect(() => {
     let cancelled = false;
@@ -344,9 +349,11 @@ export default function DeviceListPage({ farmId }: Props) {
           <span class="empty-state__icon">📡</span>
           <p class="empty-state__heading">{t('device.empty_title')}</p>
           <p class="empty-state__body">{t('device.empty_body')}</p>
-          <button class="btn-primary" onClick={() => setShowRegister(true)}>
-            {t('device.empty_cta')}
-          </button>
+          {canEdit && (
+            <button class="btn-primary" onClick={() => setShowRegister(true)}>
+              {t('device.empty_cta')}
+            </button>
+          )}
           <div
             style="background:var(--color-gray-100);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-4);text-align:left;width:100%"
           >
@@ -379,18 +386,21 @@ export default function DeviceListPage({ farmId }: Props) {
     <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div class="section-heading">{t('device.title')}</div>
-        <button
-          style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-full);background-color:var(--color-primary);color:white;font-size:20px;border:none;cursor:pointer"
-          aria-label={t('device.empty_cta')}
-          onClick={() => setShowRegister(true)}
-        >
-          +
-        </button>
+        {canEdit && (
+          <button
+            style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-full);background-color:var(--color-primary);color:white;font-size:20px;border:none;cursor:pointer"
+            aria-label={t('device.empty_cta')}
+            onClick={() => setShowRegister(true)}
+          >
+            +
+          </button>
+        )}
       </div>
       {devices.map((device) => (
         <DeviceCard
           key={device.device_id}
           device={device}
+          canEdit={canEdit}
           onConfigure={handleConfigure}
           onTestShot={handleTestShot}
           onDelete={handleDelete}
