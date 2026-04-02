@@ -3076,6 +3076,579 @@ Phase D introduces new error conditions beyond the existing strategy (Section 4)
 
 ---
 
+---
+
+## 11. Beta-5: Device Management & Profile Picture — System Design
+
+> Added 2026-04-02 — system design for #210 (device configuration) and #160 (profile picture).
+> Architecture: ARCHITECTURE.md §13. UX: UX-DESIGNS.md §15.
+
+### 11.1 Sequence Diagrams
+
+#### 11.1.1 Device Registration
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AG as API Gateway
+    participant L as Lambda (Hono)
+    participant DB as DynamoDB
+    participant C as crypto
+
+    B->>AG: POST /api/v1/farms/{farmId}/devices
+    Note right of B: { node_name, bed_id }
+    AG->>AG: JWT Authorizer validates access token
+    AG->>L: Forward + JWT claims (sub, email)
+
+    L->>L: assertFarmAccess(userId, farmId, ['admin','manager'])
+    L->>DB: Query PK=FARM#{farmId} SK begins_with DEVICE#
+    DB-->>L: existing devices (count check: max 10)
+
+    L->>DB: Query GSI1 PK=BED#{bedId} SK=#META
+    DB-->>L: bed exists, no existing device on bed
+
+    L->>C: generateDeviceId() → "dev-" + nanoid(8)
+    L->>C: generateApiKey() → "dk_" + crypto.randomBytes(24).hex
+    L->>C: bcrypt.hash(apiKey, saltRounds=10)
+
+    L->>DB: PutItem {
+    Note right of L: PK=FARM#{farmId}, SK=DEVICE#{deviceId}<br/>GSI1PK=DEVICE#{deviceId}, GSI1SK=#META<br/>device_api_key_hash, node_name, bed_id,<br/>status: "inactive", defaults...
+    }
+
+    L->>L: emit('device.registered', { farmId, deviceId, nodeName })
+
+    L-->>B: 201 { device_id, device_api_key, bed_id, config_poll_url }
+    Note right of B: API key shown ONCE
+```
+
+#### 11.1.2 Config Poll (Pi → Cloud)
+
+```mermaid
+sequenceDiagram
+    participant Pi as Pi (capture.sh)
+    participant AG as API Gateway
+    participant L as Lambda (Hono)
+    participant DB as DynamoDB
+
+    Pi->>AG: GET /api/v1/devices/{deviceId}/config
+    Note right of Pi: Authorization: Bearer <access_token><br/>X-Device-Key: dk_xxx...
+
+    AG->>AG: JWT Authorizer validates access token
+    AG->>L: Forward + JWT claims
+
+    L->>DB: Query GSI1 PK=DEVICE#{deviceId} SK=#META
+    DB-->>L: device record
+
+    L->>L: bcrypt.compare(headerKey, device.device_api_key_hash)
+    Note right of L: If device not found → compare<br/>against dummy hash (timing safety)
+
+    alt Key valid
+        L-->>Pi: 200 { capture_interval, resolution,<br/>jpeg_quality, active_window, trigger_type,<br/>bed_id, upload_url, test_shot_requested }
+    else Key invalid
+        L-->>Pi: 401 Unauthorized
+    end
+```
+
+#### 11.1.3 Device Heartbeat
+
+```mermaid
+sequenceDiagram
+    participant Pi as Pi (capture.sh)
+    participant AG as API Gateway
+    participant L as Lambda (Hono)
+    participant DB as DynamoDB
+
+    Pi->>AG: POST /api/v1/devices/{deviceId}/heartbeat
+    Note right of Pi: Authorization: Bearer <access_token><br/>X-Device-Key: dk_xxx...<br/>{ battery_level, wifi_signal_dbm,<br/>storage_status, capabilities? }
+
+    AG->>AG: JWT validates
+    AG->>L: Forward
+
+    L->>L: Verify device key (bcrypt)
+
+    L->>DB: UpdateItem PK=FARM#{farmId} SK=DEVICE#{deviceId}
+    Note right of L: SET last_seen_at, battery_level,<br/>wifi_signal_dbm, storage_status,<br/>status = "online"<br/>+ capabilities (if provided, first heartbeat)
+
+    L-->>Pi: 200 { acknowledged: true }
+```
+
+#### 11.1.4 Image Upload with Device Verification
+
+```mermaid
+sequenceDiagram
+    participant Pi as Pi (capture.sh)
+    participant AG as API Gateway
+    participant L as Lambda (Hono)
+    participant S3 as S3 (images)
+    participant DB as DynamoDB
+
+    Pi->>AG: POST /api/v1/beds/{bedId}/images
+    Note right of Pi: Authorization: Bearer <access_token><br/>X-Device-Key: dk_xxx...<br/>multipart: image + metadata
+
+    AG->>AG: JWT validates
+    AG->>L: Forward
+
+    L->>L: Validate JPEG, size ≤ 2MB
+    L->>DB: Query GSI1 PK=BED#{bedId} → get farmId
+    L->>DB: Query PK=FARM#{farmId} SK begins_with DEVICE#
+    Note right of L: Find device matching X-Device-Key
+
+    alt Device key matches a registered device
+        L->>S3: PutObject (images/{farmId}/{bedId}/...)
+        L->>DB: PutItem (Image record, device_id field set)
+        L-->>Pi: 201 { id, url }
+    else No matching device key
+        L-->>Pi: 401 Unauthorized
+    end
+```
+
+#### 11.1.5 Profile Picture Upload
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AG as API Gateway
+    participant L as Lambda (Hono)
+    participant S as sharp
+    participant S3 as S3 (images)
+    participant DB as DynamoDB
+
+    B->>AG: POST /api/v1/me/profile-picture
+    Note right of B: multipart: image (JPEG/PNG, ≤ 1MB)
+
+    AG->>AG: JWT validates
+    AG->>L: Forward + claims (sub)
+
+    L->>L: Validate format (JPEG/PNG magic bytes) + size
+    L->>S: sharp(buffer).resize(150,150).jpeg()
+    S-->>L: thumbnail buffer (150×150)
+
+    L->>S3: PutObject images/avatars/{userId}/original.jpg
+    L->>S3: PutObject images/avatars/{userId}/thumb.jpg
+
+    L->>DB: UpdateItem PK=USER#{userId} SK=#PROFILE
+    Note right of L: SET profile_picture_key,<br/>profile_picture_thumb_key
+
+    L->>L: getSignedUrl(original), getSignedUrl(thumb)
+    L-->>B: 201 { profile_picture_url, profile_picture_thumb_url }
+```
+
+### 11.2 Component Interfaces
+
+#### 11.2.1 Shared Types (new/modified)
+
+```typescript
+// packages/shared/src/types/domain.ts — additions
+
+/** Device status */
+export type DeviceStatus = 'online' | 'offline' | 'inactive';
+
+/** Device storage status */
+export type StorageStatus = 'ok' | 'low' | 'full';
+
+/** Device hardware capabilities (reported via heartbeat) */
+export interface DeviceCapabilities {
+  resolutions: string[];          // e.g., ["1920x1080", "1280x720"]
+  has_battery_sensor: boolean;
+  has_pir_sensor: boolean;
+}
+
+/**
+ * Device entity — API-facing shape.
+ * DynamoDB stores active_window as flat fields (active_window_start, active_window_end).
+ * The DynamoDB service layer transforms to/from this nested shape for API responses.
+ */
+export interface Device {
+  device_id: string;
+  farm_id: string;
+  bed_id: string;
+  node_name: string;
+  status: DeviceStatus;
+  capture_interval: number;       // seconds
+  resolution: string;
+  jpeg_quality: number;           // 50-100
+  active_window: {                // nested in API responses; stored flat in DynamoDB
+    start: string;                // "HH:MM"
+    end: string;                  // "HH:MM"
+  };
+  trigger_type: 'scheduled';      // Beta-5: scheduled only
+  last_seen_at: string | null;    // ISO 8601
+  battery_level: number | null;
+  wifi_signal_dbm: number | null;
+  storage_status: StorageStatus | null;
+  capabilities: DeviceCapabilities | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Device registration response (includes one-time API key) */
+export interface DeviceRegistrationResponse {
+  device_id: string;
+  node_name: string;
+  bed_id: string;
+  device_api_key: string;         // shown ONCE, never stored in plaintext
+  config_poll_url: string;
+  created_at: string;
+}
+
+/** Config poll response (Pi-facing) */
+export interface DeviceConfigResponse {
+  capture_interval: number;
+  resolution: string;
+  jpeg_quality: number;
+  active_window: { start: string; end: string };
+  trigger_type: 'scheduled';
+  bed_id: string;
+  upload_url: string;
+  test_shot_requested: boolean;
+}
+
+/** Device list item (web UI-facing, includes health + bed name) */
+export interface DeviceListItem extends Device {
+  bed_name: string;
+}
+
+/** Extended UserProfile (with avatar fields) */
+export interface UserProfile {
+  user_id: string;
+  display_name: string;
+  preferred_role: string;
+  created_at: string;
+  profile_picture_key?: string;
+  profile_picture_thumb_key?: string;
+}
+
+/** Profile response (API-facing, with signed URLs) */
+export interface UserProfileResponse {
+  user_id: string;
+  display_name: string;
+  preferred_role: string;
+  created_at: string;
+  is_admin: boolean;
+  profile_picture_url: string | null;
+  profile_picture_thumb_url: string | null;
+}
+```
+
+#### 11.2.2 API Route Handlers
+
+```typescript
+// src/api/src/routes/devices.ts — new file
+
+import { Hono } from 'hono';
+
+const devices = new Hono();
+
+// POST /api/v1/farms/:farmId/devices — register
+// GET  /api/v1/farms/:farmId/devices — list
+// PATCH /api/v1/farms/:farmId/devices/:deviceId — update config
+// DELETE /api/v1/farms/:farmId/devices/:deviceId — deregister
+// POST /api/v1/farms/:farmId/devices/:deviceId/test-shot — request test
+
+// GET  /api/v1/devices/:deviceId/config — config poll (Pi)
+// POST /api/v1/devices/:deviceId/heartbeat — health update (Pi)
+
+export { devices };
+```
+
+```typescript
+// src/api/src/middleware/device-auth.ts — new file
+
+/**
+ * Device key verification middleware.
+ * Extracts X-Device-Key header, looks up device by ID,
+ * compares key via bcrypt. Uses dummy hash when device
+ * not found to prevent timing side-channel.
+ */
+export async function verifyDeviceKey(
+  deviceId: string,
+  headerKey: string,
+): Promise<{ valid: boolean; device?: Device }> {
+  const device = await db.getDeviceById(deviceId);
+
+  // Timing-safe: always compare, even if device not found
+  const hashToCompare = device?.device_api_key_hash ?? DUMMY_BCRYPT_HASH;
+  const valid = await bcrypt.compare(headerKey, hashToCompare);
+
+  return { valid: valid && !!device, device: device ?? undefined };
+}
+```
+
+#### 11.2.3 DynamoDB Service Extensions
+
+```typescript
+// src/api/src/services/dynamodb.ts — additions
+
+// Key builders
+const pk = {
+  // ... existing ...
+  device: (farmId: string) => `FARM#${farmId}`,
+};
+const sk = {
+  // ... existing ...
+  device: (deviceId: string) => `DEVICE#${deviceId}`,
+};
+
+// New methods:
+async function createDevice(device: Device & { device_api_key_hash: string }): Promise<void>
+async function getDeviceById(deviceId: string): Promise<Device | null>  // GSI1 query
+async function getDevicesForFarm(farmId: string): Promise<Device[]>     // PK query
+async function updateDeviceConfig(farmId: string, deviceId: string, updates: Partial<Device>): Promise<Device>
+async function updateDeviceHeartbeat(farmId: string, deviceId: string, health: HeartbeatPayload): Promise<void>
+async function deleteDevice(farmId: string, deviceId: string): Promise<void>
+async function setTestShotFlag(farmId: string, deviceId: string, requested: boolean): Promise<void>
+
+// Profile picture extensions:
+async function upsertUserProfile(userId: string, updates: Partial<UserProfile>): Promise<void>
+// Already exists — extend to accept profile_picture_key and profile_picture_thumb_key
+```
+
+#### 11.2.4 Frontend Components
+
+```typescript
+// src/frontend/src/components/DeviceListPage.tsx — replaces ManagePage.tsx
+
+interface Props { farmId: string; }
+
+// States: loading → empty | data | error
+// Fetches: GET /api/v1/farms/{farmId}/devices
+// Actions: navigate to register, navigate to config, request test shot
+// Renders: DeviceCard[] with health grid, status dot, action buttons
+```
+
+```typescript
+// src/frontend/src/components/DeviceRegisterForm.tsx — new
+
+interface Props { farmId: string; beds: Bed[]; onSuccess: (result: DeviceRegistrationResponse) => void; }
+
+// Two-step flow:
+// Step 1: Form (node_name + bed_id) → POST /farms/{farmId}/devices
+// Step 2: Success display (device_id, api_key, config_url) with copy buttons
+```
+
+```typescript
+// src/frontend/src/components/DeviceConfigForm.tsx — new
+
+interface Props { farmId: string; device: DeviceListItem; onSave: () => void; }
+
+// Renders config form with capability-aware field states
+// Disabled fields when capability missing (opacity: 0.4 + hint)
+// Danger zone: deregister with confirmation
+```
+
+```typescript
+// src/frontend/src/components/ProfilePicture.tsx — new
+
+interface Props { userId: string; displayName: string; currentUrl: string | null; }
+
+// States: no-picture (initials) | has-picture (avatar) | uploading (progress)
+// Upload: POST /api/v1/me/profile-picture (multipart)
+// Remove: DELETE /api/v1/me/profile-picture
+```
+
+```typescript
+// src/frontend/src/components/Avatar.tsx — new (shared)
+
+interface Props {
+  displayName: string;
+  thumbUrl: string | null;
+  size: 'hero' | 'list' | 'admin';  // 96px | 32px | 28px
+  userId?: string;                    // for deterministic color
+}
+
+// Renders: <img> if thumbUrl, initials fallback otherwise
+// Hero: 2-char initials, List/Admin: 1-char
+// Deterministic background color from userId hash
+```
+
+#### 11.2.5 Frontend API Client Extensions
+
+```typescript
+// src/frontend/src/lib/api.ts — additions
+
+// Device endpoints
+export async function getDevices(farmId: string): Promise<{ devices: DeviceListItem[] }>
+export async function registerDevice(farmId: string, data: { node_name: string; bed_id: string }): Promise<DeviceRegistrationResponse>
+export async function getDeviceConfig(deviceId: string): Promise<DeviceConfigResponse>
+export async function updateDevice(farmId: string, deviceId: string, data: Partial<Device>): Promise<DeviceListItem>
+export async function deleteDevice(farmId: string, deviceId: string): Promise<{ deleted: boolean }>
+export async function requestTestShot(farmId: string, deviceId: string): Promise<{ test_shot_requested: boolean }>
+
+// Profile picture endpoints
+export async function uploadProfilePicture(formData: FormData): Promise<{ profile_picture_url: string; profile_picture_thumb_url: string }>
+export async function deleteProfilePicture(): Promise<{ deleted: boolean }>
+```
+
+### 11.3 Component Interaction Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Frontend (Astro + Preact islands)                               │
+│                                                                 │
+│  DeviceListPage ──────→ DeviceRegisterForm                     │
+│       │                      │                                  │
+│       │ click "Configure"    │ POST /farms/{fId}/devices        │
+│       ▼                      ▼                                  │
+│  DeviceConfigForm       RegistrationSuccess                    │
+│       │                   (shows API key once)                  │
+│       │ PATCH /farms/{fId}/devices/{dId}                       │
+│       │                                                         │
+│  ProfilePage ──→ ProfilePicture ──→ Avatar (shared)            │
+│                      │                   │                      │
+│                      │ POST /me/         │ used in:             │
+│                      │ profile-picture   │ - MemberList         │
+│                      ▼                   │ - AdminDashboard     │
+│                  Upload flow             │ - ProfilePage        │
+│                                          │                      │
+└──────────────────────────────────────────┼──────────────────────┘
+                                           │
+┌──────────────────────────────────────────┼──────────────────────┐
+│ API (Hono on Lambda)                     │                      │
+│                                          ▼                      │
+│  routes/devices.ts ←─── middleware/device-auth.ts              │
+│       │                    (bcrypt verify + dummy hash)          │
+│       │                                                         │
+│  routes/me.ts (extended) ←── services/s3.ts                    │
+│       │                       (presigned URLs, avatar upload)   │
+│       ▼                                                         │
+│  services/dynamodb.ts                                           │
+│       │ DEVICE# entity (PK=FARM#, GSI1=DEVICE#)               │
+│       │ USER# profile (+ picture keys)                         │
+│       ▼                                                         │
+│  services/events.ts                                             │
+│       │ device.registered, device.deregistered,                │
+│       │ device.config_updated, user.profile_updated            │
+│       ▼                                                         │
+│  services/activity.ts (ACTIVITY# log)                          │
+│  services/notification.ts (SES email)                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                                           │
+┌──────────────────────────────────────────┼──────────────────────┐
+│ Pi (capture.sh)                          │                      │
+│                                          │                      │
+│  1. Read config: GET /devices/{dId}/config (+ JWT + device key)│
+│  2. Capture image (raspistill / libcamera)                     │
+│  3. Upload: POST /beds/{bId}/images (+ JWT + device key)       │
+│  4. Heartbeat: POST /devices/{dId}/heartbeat (+ capabilities)  │
+│  5. Refresh JWT if expired (Cognito refresh token)             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 11.4 File Change Summary
+
+| Action | File | Description |
+|--------|------|-------------|
+| **Create** | `src/api/src/routes/devices.ts` | 7 device endpoints |
+| **Create** | `src/api/src/middleware/device-auth.ts` | X-Device-Key verification with bcrypt |
+| **Create** | `src/frontend/src/components/DeviceListPage.tsx` | Replaces ManagePage.tsx |
+| **Create** | `src/frontend/src/components/DeviceRegisterForm.tsx` | Registration form + success display |
+| **Create** | `src/frontend/src/components/DeviceConfigForm.tsx` | Config editor with capability awareness |
+| **Create** | `src/frontend/src/components/ProfilePicture.tsx` | Avatar upload/remove component |
+| **Create** | `src/frontend/src/components/Avatar.tsx` | Shared avatar display (3 sizes) |
+| **Modify** | `src/api/src/services/dynamodb.ts` | +7 device methods, +profile picture fields |
+| **Modify** | `src/api/src/services/s3.ts` | +avatar upload/delete helpers |
+| **Modify** | `src/api/src/services/events.ts` | +4 device events |
+| **Modify** | `src/api/src/routes/me.ts` | +profile picture upload/delete endpoints, extend GET /me/profile |
+| **Modify** | `src/api/src/routes/farms.ts` | Extend GET /farms/{fId}/members to include avatar URLs |
+| **Modify** | `src/frontend/src/lib/api.ts` | +8 API client methods |
+| **Modify** | `src/frontend/src/pages/manage/index.astro` | Import DeviceListPage instead of ManagePage |
+| **Modify** | `src/frontend/src/components/ProfilePage.tsx` | Add ProfilePicture component |
+| **Modify** | `packages/shared/src/types/domain.ts` | +Device, DeviceCapabilities, extended UserProfile |
+| **Modify** | `packages/shared/src/schemas/index.ts` | +Device Zod schemas |
+| **Modify** | `src/thumbnail/handler.ts` | Add avatars/ prefix guard |
+| **Modify** | `infra/lib/litcrop-stack.ts` | +sharp in API Lambda bundle |
+| **Modify** | `src/frontend/src/i18n/en.json` | +device.* and profile.picture_* keys |
+| **Modify** | `src/frontend/src/i18n/ja.json` | +Japanese translations |
+| **Create** | `src/api/src/__tests__/devices.test.ts` | Device API unit tests |
+| **Create** | `src/api/src/__tests__/profile-picture.test.ts` | Profile picture API tests |
+| **Create** | `tests/contracts/devices.test.ts` | Device endpoint contract tests |
+| **Create** | `tests/contracts/profile.test.ts` | Profile picture contract tests |
+| **Modify** | `src/api/package.json` | Add bcrypt dependency |
+| **Modify** | `src/frontend/src/components/FarmMemberList.tsx` | Add Avatar to member rows |
+| **Modify** | `src/frontend/src/components/AdminDashboard.tsx` | Add Avatar to user table |
+| **Delete** | `src/frontend/src/components/ManagePage.tsx` | Replaced by DeviceListPage.tsx |
+
+**Total**: 11 create, 17 modify, 1 delete = **29 files**
+
+### 11.5 Event System Extensions
+
+```typescript
+// services/events.ts — new events added to TypedEventEmitter
+
+interface DeviceEventMap {
+  'device.registered':     { farmId: string; deviceId: string; nodeName: string; bedId: string; userId: string };
+  'device.deregistered':   { farmId: string; deviceId: string; nodeName: string; userId: string };
+  'device.config_updated': { farmId: string; deviceId: string; changes: string[]; userId: string };
+  'device.test_shot':      { farmId: string; deviceId: string; userId: string };
+}
+```
+
+These events flow through the existing notification and activity log services:
+- `services/notification.ts` — sends SES email to admin on device registration/deregistration
+- `services/activity.ts` — writes ACTIVITY# records for admin dashboard
+
+### 11.6 Zod Schema Additions
+
+```typescript
+// packages/shared/src/schemas/index.ts — new schemas
+
+export const DeviceCapabilitiesSchema = z.object({
+  resolutions: z.array(z.string()),
+  has_battery_sensor: z.boolean(),
+  has_pir_sensor: z.boolean(),
+});
+
+export const DeviceListItemSchema = z.object({
+  device_id: z.string(),
+  farm_id: z.string(),
+  bed_id: z.string(),
+  bed_name: z.string(),
+  node_name: z.string().min(1).max(64),
+  status: z.enum(['online', 'offline', 'inactive']),
+  capture_interval: z.number(),
+  resolution: z.string(),
+  jpeg_quality: z.number(),
+  active_window: z.object({ start: z.string(), end: z.string() }),
+  trigger_type: z.literal('scheduled'),
+  last_seen_at: z.string().nullable(),
+  battery_level: z.number().nullable(),
+  wifi_signal_dbm: z.number().nullable(),
+  storage_status: z.enum(['ok', 'low', 'full']).nullable(),
+  capabilities: DeviceCapabilitiesSchema.nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const DeviceRegistrationResponseSchema = z.object({
+  device_id: z.string(),
+  node_name: z.string().min(1).max(64),
+  bed_id: z.string(),
+  device_api_key: z.string(),
+  config_poll_url: z.string(),
+  created_at: z.string(),
+});
+
+export const DeviceConfigResponseSchema = z.object({
+  capture_interval: z.number(),
+  resolution: z.string(),
+  jpeg_quality: z.number(),
+  active_window: z.object({ start: z.string(), end: z.string() }),
+  trigger_type: z.literal('scheduled'),
+  bed_id: z.string(),
+  upload_url: z.string(),
+  test_shot_requested: z.boolean(),
+});
+
+export const ProfilePictureResponseSchema = z.object({
+  profile_picture_url: z.string(),
+  profile_picture_thumb_url: z.string(),
+});
+```
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Functional and non-functional requirements (expanded for MVP)
@@ -3090,3 +3663,4 @@ Phase D introduces new error conditions beyond the existing strategy (Section 4)
 - [PHASE-D-ARCHITECTURE.md](designs/PHASE-D-ARCHITECTURE.md) -- Phase D API & data model design
 
 > Updated 2026-03-22 for Phase D: +bed-grid system design, +farm creation sequences, +crop assignment flows, +component interaction diagram.
+> Updated 2026-04-02 for Beta-5: +device management sequences, +profile picture upload, +component interfaces, +22-file change summary.

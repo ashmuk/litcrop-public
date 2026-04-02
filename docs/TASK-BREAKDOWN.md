@@ -1300,3 +1300,119 @@ T-FE-C3 (lightbox) ──→ T-FE-C4 (integrate lightbox) ─────┤
 ```
 
 **Parallelism**: C1 and C3 can run in parallel (independent). C2 depends on C1. C4 and C5 depend on C3. C6 is the final gate.
+
+---
+
+## Beta-5: Device Management & Profile Picture
+
+> Added 2026-04-02 — task breakdown for #210 (Wave 0) and #160 (Wave 1).
+> System design: SYSTEM-DESIGN.md §11. Architecture: ARCHITECTURE.md §13.
+
+### Wave 0: Device Management (#210)
+
+#### Wave 0A: Shared + API Foundation
+
+| Task | Name | Size | Dependencies | Files |
+|------|------|------|-------------|-------|
+| T-B5-01 | Add Device types + Zod schemas to @litcrop/shared | S | — | `packages/shared/src/types/domain.ts`, `packages/shared/src/schemas/index.ts` |
+| T-B5-02 | DynamoDB service: device CRUD methods | M | T-B5-01 | `src/api/src/services/dynamodb.ts` |
+| T-B5-03 | Device auth middleware (bcrypt + dummy hash) | S | T-B5-01, T-B5-19 | `src/api/src/middleware/device-auth.ts` (new) |
+| T-B5-04 | Device API routes: register + list + delete | M | T-B5-02, T-B5-03 | `src/api/src/routes/devices.ts` (new) |
+| T-B5-05 | Device API routes: config poll + heartbeat | M | T-B5-02, T-B5-03 | `src/api/src/routes/devices.ts` |
+| T-B5-06 | Device API routes: update config + test-shot | S | T-B5-04 | `src/api/src/routes/devices.ts` |
+| T-B5-07 | Device events (registered/deregistered/config_updated/test_shot) | S | T-B5-04 | `src/api/src/services/events.ts` |
+| T-B5-08 | Thumbnail Lambda: add avatars/ prefix guard | XS | — | `src/thumbnail/handler.ts` |
+| T-B5-09 | API tests: device registration + config poll + heartbeat | M | T-B5-04, T-B5-05 | `src/api/src/__tests__/devices.test.ts` (new) |
+
+#### Wave 0B: Frontend — Device Management UI
+
+| Task | Name | Size | Dependencies | Files |
+|------|------|------|-------------|-------|
+| T-B5-10 | Frontend API client: device endpoints | S | T-B5-04 | `src/frontend/src/lib/api.ts` |
+| T-B5-11 | Avatar component (shared, 3 sizes) | S | — | `src/frontend/src/components/Avatar.tsx` (new) |
+| T-B5-12 | DeviceListPage: list + health grid + empty state | L | T-B5-10 | `src/frontend/src/components/DeviceListPage.tsx` (new) |
+| T-B5-13 | DeviceRegisterForm: name + bed + API key display | M | T-B5-10 | `src/frontend/src/components/DeviceRegisterForm.tsx` (new) |
+| T-B5-14 | DeviceConfigForm: config editor + capability awareness | M | T-B5-10 | `src/frontend/src/components/DeviceConfigForm.tsx` (new) |
+| T-B5-15 | Wire DeviceListPage into manage page + delete ManagePage | S | T-B5-12 | `src/frontend/src/pages/manage/index.astro`, delete `ManagePage.tsx` |
+| T-B5-16 | i18n: add device.* keys (EN + JA) | S | T-B5-12 | `src/frontend/src/i18n/en.json`, `ja.json` |
+| T-B5-17 | Contract tests: device endpoints | S | T-B5-09 | `tests/contracts/devices.test.ts` (new) |
+
+#### Wave 0C: Infrastructure
+
+| Task | Name | Size | Dependencies | Files |
+|------|------|------|-------------|-------|
+| T-B5-18 | CDK: add sharp to API Lambda bundle | S | — | `infra/lib/litcrop-stack.ts` |
+| T-B5-19 | Add bcrypt dependency to API Lambda | S | — | `src/api/package.json` |
+
+### Wave 1: Profile Picture (#160)
+
+| Task | Name | Size | Dependencies | Files |
+|------|------|------|-------------|-------|
+| T-B5-20 | API: profile picture upload + delete endpoints | M | T-B5-08, T-B5-18, T-B5-22 | `src/api/src/routes/me.ts` |
+| T-B5-21 | API: extend GET /me/profile + GET /members with avatar URLs | S | T-B5-20 | `src/api/src/routes/me.ts`, `src/api/src/routes/farms.ts` |
+| T-B5-22 | S3 service: avatar upload + delete helpers | S | T-B5-18 | `src/api/src/services/s3.ts` |
+| T-B5-23 | Frontend: ProfilePicture component (upload + remove) | M | T-B5-11, T-B5-21 | `src/frontend/src/components/ProfilePicture.tsx` (new) |
+| T-B5-24 | Frontend: integrate ProfilePicture + Avatar into ProfilePage | S | T-B5-23 | `src/frontend/src/components/ProfilePage.tsx` |
+| T-B5-25 | Frontend: Avatar in member lists + admin dashboard | S | T-B5-11, T-B5-21 | `src/frontend/src/components/FarmMemberList.tsx`, `src/frontend/src/components/AdminDashboard.tsx` |
+| T-B5-26 | i18n: add profile.picture_* keys (EN + JA) | XS | T-B5-23 | `src/frontend/src/i18n/en.json`, `ja.json` |
+| T-B5-27 | API tests: profile picture upload + delete | S | T-B5-20 | `src/api/src/__tests__/profile-picture.test.ts` (new) |
+| T-B5-28 | Contract tests: profile picture endpoints | S | T-B5-27 | `tests/contracts/profile.test.ts` |
+
+### Gate: Integration Verification
+
+| Task | Name | Size | Dependencies | Files |
+|------|------|------|-------------|-------|
+| T-B5-29 | Full test suite: all 439+ existing tests pass + new tests | S | T-B5-17, T-B5-28 | — |
+| T-B5-30 | Build verification: `npm run build` succeeds across all packages | XS | T-B5-29 | — |
+
+### Beta-5 Summary
+
+| Category | Tasks | Sizes |
+|----------|-------|-------|
+| Shared + API Foundation (Wave 0A) | T-B5-01 to T-B5-09 | 4S + 4M + 1XS |
+| Frontend Device UI (Wave 0B) | T-B5-10 to T-B5-17 | 5S + 2M + 1L |
+| Infrastructure (Wave 0C) | T-B5-18 to T-B5-19 | 2S |
+| Profile Picture (Wave 1) | T-B5-20 to T-B5-28 | 6S + 2M + 1XS |
+| Gate | T-B5-29 to T-B5-30 | 1S + 1XS |
+| **Total** | **30 tasks** | **18S + 8M + 1L + 3XS** |
+
+### Beta-5 Dependency DAG
+
+```
+Wave 0A (API Foundation):
+T-B5-01 (types) ──→ T-B5-02 (DDB) ──→ T-B5-04 (routes: register) ──→ T-B5-06 (config update)
+              └──→ T-B5-03 (auth) ──→ T-B5-05 (routes: poll+heartbeat)    │
+                                  ↑     └──→ T-B5-09 (API tests) ─────────┤
+                           T-B5-19 (bcrypt dep)                            │
+                   T-B5-07 (events) ←── T-B5-04                           │
+                   T-B5-08 (thumb guard) ──────────────────────────────────┤
+                                                                           │
+Wave 0B (Frontend):                                                        │
+T-B5-10 (API client) ←── T-B5-04                                          │
+T-B5-11 (Avatar) ─────────────────────────────────────────────────────┐    │
+T-B5-12 (DeviceList) ←── T-B5-10 ──→ T-B5-15 (wire into page) ──────┤    │
+T-B5-13 (RegisterForm) ←── T-B5-10                                   ├──→ T-B5-17 (contract tests)
+T-B5-14 (ConfigForm) ←── T-B5-10                                     │
+T-B5-16 (i18n) ←── T-B5-12                                           │
+                                                                       │
+Wave 0C (Infra):                                                       │
+T-B5-18 (sharp) ─────────────────────────────────────┐                 │
+T-B5-19 (bcrypt) ─→ T-B5-03                          │                 │
+                                                      │                 │
+Wave 1 (Profile Picture):                             │                 │
+T-B5-22 (S3 helpers) ←── T-B5-18 ──→ T-B5-20 (API) ──→ T-B5-21 (extend endpoints)
+T-B5-23 (ProfilePicture) ←── T-B5-11, T-B5-21 ──→ T-B5-24 (integrate)
+T-B5-25 (Avatar in lists) ←── T-B5-11, T-B5-21                        │
+T-B5-26 (i18n) ←── T-B5-23                                            │
+T-B5-27 (API tests) ←── T-B5-20 ──→ T-B5-28 (contract tests) ────────┤
+                                                                       │
+Gate:                                                                   │
+T-B5-29 (full test suite) ←── T-B5-17, T-B5-28 ──→ T-B5-30 (build) ──┘
+```
+
+**Parallelism opportunities**:
+- T-B5-01, T-B5-08, T-B5-11, T-B5-18, T-B5-19 can all start in parallel (no deps)
+- Wave 0A and Wave 0C run in parallel
+- Wave 0B starts once T-B5-04 delivers the API endpoints
+- Wave 1 starts once T-B5-18 (sharp) and T-B5-08 (thumb guard) are done
+- T-B5-11 (Avatar) is shared between Wave 0B and Wave 1 — build early
