@@ -3134,3 +3134,660 @@ No API key required. Rate limit: 10,000 requests/day (sufficient for MVP+).
 | **Crop Assignment** | Bottom sheet slides up. | Bottom sheet. | Centered modal, max-width 480px. |
 | **Profile** | Single column: farm cards stacked, "You" below. | Same. | 2-column: farm list left (360px), farm detail right (1fr). |
 | **List/Layout toggle** | In header, right-aligned. | Same. | Same. |
+
+---
+
+## 15. Beta-5: Device Management & Profile Picture — UX Designs
+
+> Added 2026-04-02 — UX specifications for #210 (device configuration UI + API) and #160 (profile picture).
+> Follows existing Design Principles P1-P4. Extends navigation from Section 4.1.
+> Architecture: ARCHITECTURE.md §13. Interview decisions: Option B registration, JWT credentials, config polling.
+
+### 15.0 Beta-5 Design Principles
+
+Beta-5 introduces **device onboarding** — the first flow where a user bridges physical hardware to the web interface. Additional principles:
+
+- **Copy-Friendly**: API keys and config values must be easy to copy on both mobile and desktop. Use monospace font, tap-to-copy with confirmation toast.
+- **Status at a Glance**: Device health (online/offline, battery, WiFi) follows the same visual language as bed status badges (P1). No new icon patterns — extend existing ones.
+- **Graceful Absence**: When no devices are registered, the empty state guides the user toward registration rather than showing a blank page.
+- **Non-Destructive Defaults**: Device deregistration requires confirmation. Config changes take effect on the next Pi poll cycle — the UI shows "pending" state until the device acknowledges.
+
+---
+
+### 15.1 Device Management Page (Replaces ManagePage)
+
+**Purpose**: Full device lifecycle — register, configure, monitor, and deregister camera nodes. Replaces the current read-only ManagePage that derives node data from Image records.
+
+**Navigation**: Accessed via existing "Device" tab in the bottom nav (renamed from "Manage" in Beta-2).
+
+#### 15.1.1 Wireframe — Device List (Mobile 375px)
+
+```
++------------------------------------------+
+| Device                          [+ Add]  |  <- Header with register button
++------------------------------------------+
+|                                          |
+| +--------------------------------------+ |
+| | 📷  Kitchen Garden Cam          🟢  | |  <- Node name + status dot
+| |                                      | |
+| | Bed: A1 (Cherry Tomato)             | |  <- Assigned bed
+| | Last image: 3 min ago               | |  <- Relative time
+| |                                      | |
+| | ┌──────┬──────┬──────┐              | |
+| | │ 🔋   │ 📶   │ 💾   │              | |  <- Health indicators
+| | │ 85%  │ -42  │ OK   │              | |
+| | │      │ dBm  │      │              | |
+| | └──────┴──────┴──────┘              | |
+| |                                      | |
+| | [Configure]              [Test Shot] | |  <- Action buttons
+| +--------------------------------------+ |
+|                                          |
+| +--------------------------------------+ |
+| | 📷  Field Camera #2            🔴  | |  <- Offline device
+| |                                      | |
+| | Bed: B2 (Lettuce)                   | |
+| | Last image: 2 hours ago    ⚠️       | |  <- Warning: stale
+| |                                      | |
+| | ┌──────┬──────┬──────┐              | |
+| | │ 🔋   │ 📶   │ 💾   │              | |
+| | │ 12%  │ -78  │ FULL │              | |  <- Low battery warning
+| | │ ⚠️   │ ⚠️   │ ⚠️   │              | |
+| | └──────┴──────┴──────┘              | |
+| |                                      | |
+| | [Configure]              [Test Shot] | |
+| +--------------------------------------+ |
+|                                          |
++------------------------------------------+
+```
+
+#### 15.1.2 Wireframe — Empty State (No Devices)
+
+```
++------------------------------------------+
+| Device                          [+ Add]  |
++------------------------------------------+
+|                                          |
+|              📡                          |
+|                                          |
+|     No camera nodes registered          |
+|                                          |
+|     Connect a Raspberry Pi camera       |
+|     to start monitoring your farm.      |
+|                                          |
+|     [  Register First Device  ]          |  <- Primary CTA
+|                                          |
+|     ┌──────────────────────────┐        |
+|     │ Quick Setup Guide        │        |
+|     │                          │        |
+|     │ 1. Set up your Pi with   │        |
+|     │    camera module          │        |
+|     │ 2. Install capture.sh    │        |
+|     │ 3. Register here to get  │        |
+|     │    your device API key   │        |
+|     └──────────────────────────┘        |
+|                                          |
++------------------------------------------+
+```
+
+#### 15.1.3 Wireframe — Device Registration Flow
+
+```
++------------------------------------------+
+| [<- Back]   Register Device              |
++------------------------------------------+
+|                                          |
+| Device Name *                            |
+| +--------------------------------------+ |
+| | Kitchen Garden Cam                   | |
+| +--------------------------------------+ |
+|                                          |
+| Assign to Bed *                          |
+| +--------------------------------------+ |
+| | ▼  A1 — Cherry Tomato               | |  <- Dropdown of farm beds
+| +--------------------------------------+ |
+|                                          |
+|           [  Register  ]                 |
+|                                          |
++------------------------------------------+
+
+         ↓ After successful registration ↓
+
++------------------------------------------+
+| [<- Back]   Device Registered  ✓         |
++------------------------------------------+
+|                                          |
+|  ✅  Kitchen Garden Cam is ready!       |
+|                                          |
+|  Copy these values to your Pi config:   |
+|                                          |
+|  Device ID                               |
+|  +--------------------------------------+|
+|  | dev-a1b2c3d4          [📋 Copy]     ||  <- Monospace, tap-to-copy
+|  +--------------------------------------+|
+|                                          |
+|  API Key (shown once — save it now!)     |
+|  +--------------------------------------+|
+|  | dk_x7k9m2p4q8r1s5t3v6w0y ⬤⬤⬤⬤    ||  <- Monospace, tap-to-copy
+|  | ⬤⬤⬤⬤⬤⬤⬤              [📋 Copy]     ||
+|  +--------------------------------------+|
+|                                          |
+|  Config Poll URL                         |
+|  +--------------------------------------+|
+|  | https://jpg5gd81uc...                ||
+|  | /api/v1/devices/dev-a1b.../config    ||
+|  |                          [📋 Copy]  ||
+|  +--------------------------------------+|
+|                                          |
+|  ⚠️ The API key cannot be retrieved     |
+|  again. If lost, deregister and          |
+|  re-register the device.                 |
+|                                          |
+|           [  Done  ]                     |
+|                                          |
++------------------------------------------+
+```
+
+#### 15.1.4 Wireframe — Device Configuration
+
+```
++------------------------------------------+
+| [<- Back]   Configure: Kitchen Cam       |
++------------------------------------------+
+|                                          |
+| Device Name                              |
+| +--------------------------------------+ |
+| | Kitchen Garden Cam                   | |
+| +--------------------------------------+ |
+|                                          |
+| Assigned Bed                             |
+| +--------------------------------------+ |
+| | ▼  A1 — Cherry Tomato               | |
+| +--------------------------------------+ |
+|                                          |
+| ── Capture Settings ──────────────────  |
+|                                          |
+| Capture Interval                         |
+| +--------------------------------------+ |
+| | ▼  Every 30 minutes                 | |  <- 15/30/60 min options
+| +--------------------------------------+ |
+|                                          |
+| Resolution                               |
+| +--------------------------------------+ |
+| | ▼  1920 × 1080 (Full HD)           | |
+| +--------------------------------------+ |
+|                                          |
+| JPEG Quality                             |
+| [====●================] 85%             |  <- Range slider
+|                                          |
+| ── Schedule ──────────────────────────  |
+|                                          |
+| Active Window                            |
+| Start: [05:00]  End: [20:00]            |  <- Time pickers
+|                                          |
+| Trigger Type                             |
+| (●) Scheduled only                      |  <- Radio (only option for Beta-5)
+| ( ) Motion detection (coming soon)       |  <- Disabled, grayed out
+|                                          |
+|           [  Save Changes  ]             |
+|                                          |
+| ── Danger Zone ───────────────────────  |
+|                                          |
+| [  Deregister Device  ]                 |  <- Red outline button
+|                                          |
++------------------------------------------+
+```
+
+#### 15.1.5 Device Status Indicators
+
+| Indicator | Healthy | Warning | Critical |
+|-----------|---------|---------|----------|
+| **Online/Offline** | 🟢 Green dot — last seen < 2× capture interval | 🟡 Amber dot — last seen < 4× interval | 🔴 Red dot — last seen > 4× interval |
+| **Battery** | 🔋 > 30% — default color | 🔋 10-30% — amber text | 🔋 < 10% — red text + ⚠️ icon |
+| **WiFi Signal** | 📶 > -50 dBm — default | 📶 -50 to -70 dBm — amber | 📶 < -70 dBm — red + ⚠️ |
+| **Storage** | 💾 "OK" — default | 💾 "LOW" — amber | 💾 "FULL" — red + ⚠️ |
+
+**Staleness rule**: If `last_seen_at` exceeds 2× the device's `capture_interval`, show warning. If it exceeds 4×, show critical (device likely offline or unreachable).
+
+**Offline device behavior**: When a device status is `offline` (red dot), the "Test Shot" button is disabled (`opacity: 0.4`, `cursor: not-allowed`) with tooltip: "Device is offline — test shot unavailable." The "Configure" button remains enabled (changes will take effect when the device comes back online).
+
+#### 15.1.6 Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Device card** | `background: var(--color-surface)`, `border: var(--border-default)`, `border-radius: var(--radius-lg)`, `padding: var(--space-4)`. Gap between cards: `var(--space-3)`. |
+| **Status dot** | `12px` circle, positioned top-right of card header. Green: `var(--color-status-healthy)`, Amber: `var(--color-status-slow-growth)`, Red: `var(--color-status-issue)`. |
+| **Health grid** | CSS Grid `grid-template-columns: 1fr 1fr 1fr`, `gap: var(--space-2)`. Each cell: `text-align: center`, `font-size: var(--font-size-xs)`. Icon above value. |
+| **Action buttons** | `height: 40px`, `font-size: var(--font-size-sm)`. "Configure" = ghost style. "Test Shot" = outline style. |
+| **Register button (+)** | Header right, `48px` touch target, `border-radius: var(--radius-full)`, `background: var(--color-primary)`, `color: white`. |
+| **Copy button** | `48px × 32px`, `border: var(--border-default)`, `border-radius: var(--radius-md)`. Icon: clipboard 16px. On tap: changes to checkmark for 2s + toast "Copied!". |
+| **API key field** | `font-family: monospace`, `font-size: var(--font-size-sm)`, `background: var(--color-gray-100)`, `padding: var(--space-3)`, `border-radius: var(--radius-md)`, `word-break: break-all`. |
+| **Danger zone** | `border-top: 1px solid var(--color-status-issue)`, `padding-top: var(--space-4)`, `margin-top: var(--space-6)`. Button: `color: var(--color-status-issue)`, `border: 1px solid var(--color-status-issue)`. |
+
+#### 15.1.7 Desktop Layout (1024px+)
+
+```
++--------------------------------------------------------------+
+| Device                                     [+ Register]      |
++--------------------------------------------------------------+
+| +------------------+  +------------------------------------+ |
+| | Device List      |  | Configuration Panel                | |
+| |                  |  |                                    | |
+| | [Kitchen Cam] 🟢|  | Kitchen Garden Cam                 | |
+| | [Field #2]   🔴 |  |                                    | |
+| |                  |  | Bed: A1 — Cherry Tomato            | |
+| |                  |  | Status: Online (3 min ago)         | |
+| |                  |  |                                    | |
+| |                  |  | ┌────────┬────────┬────────┐      | |
+| |                  |  | │ 🔋 85% │ 📶-42 │ 💾 OK  │      | |
+| |                  |  | └────────┴────────┴────────┘      | |
+| |                  |  |                                    | |
+| |                  |  | [Configure]  [Test Shot]           | |
+| +------------------+  +------------------------------------+ |
++--------------------------------------------------------------+
+```
+
+Desktop uses a master-detail layout: device list sidebar (280px fixed) + detail/config panel (1fr).
+
+---
+
+### 15.2 Profile Picture (#160)
+
+**Purpose**: Allow users to upload an avatar photo displayed on their profile, in member lists, and admin dashboard.
+
+#### 15.2.1 Wireframe — Profile Page (Avatar Section)
+
+```
++------------------------------------------+
+| Profile                                  |
++------------------------------------------+
+|                                          |
+|         +----------+                     |
+|         |          |                     |
+|         |   (AH)   |  <- Avatar circle   |
+|         |          |     (initials if     |
+|         +----------+      no picture)    |
+|         [📷 Change]                      |  <- Upload button
+|                                          |
+| Display Name                             |
+| +--------------------------------------+ |
+| | Ash Muk                              | |
+| +--------------------------------------+ |
+|                                          |
+| Email                                    |
+|   you@example.com                       |
+|                                          |
+| ── Your Farms ─────────────────────────  |
+```
+
+#### 15.2.2 Wireframe — Upload Flow
+
+```
++------------------------------------------+
+| [<- Back]   Profile Picture              |
++------------------------------------------+
+|                                          |
+|     +----------------------------+       |
+|     |                            |       |
+|     |     (current avatar        |       |
+|     |      or placeholder)       |       |  <- 200px circle preview
+|     |                            |       |
+|     +----------------------------+       |
+|                                          |
+|     [  Choose Photo  ]                   |  <- Opens file picker
+|                                          |
+|     Supported: JPEG, PNG                 |
+|     Max size: 1MB                        |
+|                                          |
++------------------------------------------+
+
+         ↓ After file selection ↓
+
++------------------------------------------+
+| [<- Back]   Profile Picture              |
++------------------------------------------+
+|                                          |
+|     +----------------------------+       |
+|     |                            |       |
+|     |     (preview of            |       |
+|     |      selected image)       |       |  <- 200px circle preview
+|     |                            |       |
+|     +----------------------------+       |
+|                                          |
+|     [  Upload  ]   [  Cancel  ]          |
+|                                          |
+|     ████████████░░░░░ 65%               |  <- Upload progress bar
+|                                          |
++------------------------------------------+
+```
+
+#### 15.2.3 Avatar Display Specifications
+
+| Context | Size | Fallback | Shape |
+|---------|------|----------|-------|
+| **Profile page** (hero) | 96px | Initials (2 chars, `font-size: 36px`) on `var(--color-primary-light)` bg | Circle |
+| **Member list** (farm members) | 32px | Initials (1 char, `font-size: 14px`) | Circle |
+| **Admin dashboard** (user table) | 28px | Initials (1 char, `font-size: 12px`) | Circle |
+| **Navigation header** (future) | 28px | Initials | Circle |
+
+**Initials logic**:
+- **Hero (96px)**: First letter of first word + first letter of second word of `display_name` (e.g., "Ash Muk" → "AM"). If single word, use first two letters (e.g., "Admin" → "AD"). If no display_name, first two characters of email.
+- **Lists (32px, 28px)**: First character of `display_name` only. If no display_name, first character of email.
+- If the derived character is a number, use "U" (User).
+
+**Color**: Fallback background uses a deterministic color from user_id hash — one of 8 muted colors from the palette, ensuring visual distinction in member lists.
+
+#### 15.2.4 Layout Specifications
+
+| Element | Spec |
+|---------|------|
+| **Avatar circle** | `border-radius: 50%`, `object-fit: cover`, `border: 2px solid var(--color-gray-300)`. Hero size: `96px`. List size: `32px`. |
+| **Change button** | Below avatar, `font-size: var(--font-size-sm)`, `color: var(--color-link)`. Camera icon 14px + "Change" text. |
+| **File picker** | Native `<input type="file" accept="image/jpeg,image/png">`, hidden — triggered by button click. |
+| **Preview** | `200px` circle with `object-fit: cover`. Shows selected image before upload. |
+| **Progress bar** | `height: 4px`, `border-radius: var(--radius-full)`, `background: var(--color-gray-100)`. Fill: `var(--color-primary)`. |
+| **Remove button** | Below uploaded avatar: "Remove photo" link, `color: var(--color-status-issue)`, `font-size: var(--font-size-sm)`. Requires confirmation tap. |
+
+#### 15.2.5 States
+
+| State | Behavior |
+|-------|----------|
+| **No avatar** | Show initials circle (deterministic color). "Add photo" link below. |
+| **Has avatar** | Show thumbnail (signed URL). "Change" and "Remove" links below. |
+| **Uploading** | Preview shown with progress bar. Buttons disabled. |
+| **Upload failed** | Toast error "Upload failed. Please try again." Preview reverts. |
+| **Removing** | Spinner on "Remove" link. On success: revert to initials. |
+
+---
+
+### 15.3 API Contracts (Beta-5)
+
+#### 15.3.1 Device Endpoints
+
+**POST /api/v1/farms/{farmId}/devices** — Register device
+
+```
+Request:
+  Headers: Authorization: Bearer <JWT>
+  Body: {
+    "node_name": "Kitchen Garden Cam",          // 1-64 chars
+    "bed_id": "bed-a1"                           // must exist in farm
+  }
+
+Response (201):
+  {
+    "device_id": "dev-a1b2c3d4",
+    "node_name": "Kitchen Garden Cam",
+    "bed_id": "bed-a1",
+    "device_api_key": "dk_x7k9m2p4q8r1s5t3v6w0y8a3b5c7d9e1",   // shown ONCE
+    "config_poll_url": "https://...api.../api/v1/devices/dev-a1b2c3d4/config",
+    "created_at": "2026-04-02T10:00:00Z"
+  }
+
+Errors:
+  400 — invalid node_name or bed_id not in farm
+  403 — observer role cannot register devices
+  409 — bed already has a device assigned (Beta-5: single camera per bed)
+  422 — farm already has 10 devices (Beta-5 limit)
+
+Note: Server applies defaults — capture_interval: 1800, resolution: "1920x1080",
+  jpeg_quality: 85, active_window: 05:00-20:00, trigger_type: "scheduled"
+```
+
+**GET /api/v1/farms/{farmId}/devices** — List devices
+
+```
+Response (200):
+  {
+    "devices": [
+      {
+        "device_id": "dev-a1b2c3d4",
+        "node_name": "Kitchen Garden Cam",
+        "bed_id": "bed-a1",
+        "bed_name": "A1 — Cherry Tomato",
+        "status": "online",
+        "capture_interval": 1800,
+        "resolution": "1920x1080",
+        "jpeg_quality": 85,
+        "active_window": { "start": "05:00", "end": "20:00" },
+        "trigger_type": "scheduled",
+        "last_seen_at": "2026-04-02T09:57:00Z",
+        "battery_level": 85,
+        "wifi_signal_dbm": -42,
+        "storage_status": "ok",
+        "created_at": "2026-04-01T08:00:00Z"
+      }
+    ]
+  }
+```
+
+**GET /api/v1/devices/{deviceId}/config** — Config poll (Pi calls this)
+
+```
+Request:
+  Headers:
+    Authorization: Bearer <JWT>
+    X-Device-Key: dk_x7k9m2p4q8r1s5t3v6w0y8a3b5c7d9e1
+
+Response (200):
+  {
+    "capture_interval": 1800,
+    "resolution": "1920x1080",
+    "jpeg_quality": 85,
+    "active_window": { "start": "05:00", "end": "20:00" },
+    "trigger_type": "scheduled",
+    "bed_id": "bed-a1",
+    "upload_url": "/api/v1/beds/bed-a1/images",
+    "test_shot_requested": false
+  }
+
+Errors:
+  401 — invalid JWT or device key
+  404 — device not found
+```
+
+**PATCH /api/v1/farms/{farmId}/devices/{deviceId}** — Update config
+
+```
+Request:
+  Body: {
+    "node_name"?: "New Name",
+    "bed_id"?: "bed-b2",
+    "capture_interval"?: 900,
+    "resolution"?: "1280x720",
+    "jpeg_quality"?: 75,
+    "active_window"?: { "start": "06:00", "end": "19:00" }
+  }
+
+Response (200):
+  { ...updated device object... }
+```
+
+**DELETE /api/v1/farms/{farmId}/devices/{deviceId}** — Deregister
+
+```
+Response (200):
+  { "deleted": true, "device_id": "dev-a1b2c3d4" }
+
+Errors:
+  403 — observer cannot delete
+  404 — device not found
+```
+
+**POST /api/v1/devices/{deviceId}/heartbeat** — Health update
+
+```
+Request:
+  Headers:
+    Authorization: Bearer <JWT>
+    X-Device-Key: dk_...
+  Body: {
+    "battery_level": 85,
+    "wifi_signal_dbm": -42,
+    "storage_status": "ok"
+  }
+
+Response (200):
+  { "acknowledged": true }
+```
+
+**POST /api/v1/farms/{farmId}/devices/{deviceId}/test-shot** — Request test capture
+
+```
+Response (200):
+  { "test_shot_requested": true, "device_id": "dev-a1b2c3d4" }
+```
+
+#### 15.3.2 Profile Picture Endpoints
+
+**POST /api/v1/me/profile-picture** — Upload avatar
+
+```
+Request:
+  Headers: Authorization: Bearer <JWT>
+  Body: multipart/form-data
+    image: (JPEG or PNG, max 1MB)
+
+Response (201):
+  {
+    "profile_picture_url": "https://...signed-url...",
+    "profile_picture_thumb_url": "https://...signed-url..."
+  }
+
+Errors:
+  400 — invalid format (not JPEG/PNG) or exceeds 1MB
+  413 — file too large
+```
+
+**DELETE /api/v1/me/profile-picture** — Remove avatar
+
+```
+Response (200):
+  { "deleted": true }
+```
+
+**GET /api/v1/me/profile** — Extended response (existing endpoint)
+
+```
+Response (200):
+  {
+    "user_id": "abc-123",
+    "display_name": "Ash Muk",
+    "preferred_role": "manager",
+    "created_at": "2026-03-20T...",
+    "is_admin": true,
+    "profile_picture_url": "https://...signed...",       // NEW — null if no picture
+    "profile_picture_thumb_url": "https://...signed..."   // NEW — null if no picture
+  }
+```
+
+**GET /api/v1/farms/{farmId}/members** — Extended response
+
+```
+Response (200):
+  {
+    "members": [
+      {
+        "user_id": "abc-123",
+        "display_name": "Ash Muk",
+        "role": "admin",
+        "joined_at": "...",
+        "profile_picture_thumb_url": "https://...signed..."  // NEW
+      }
+    ]
+  }
+```
+
+---
+
+### 15.4 i18n Keys (Beta-5)
+
+```json
+{
+  "device.title": "Device",
+  "device.add": "Register Device",
+  "device.empty_title": "No camera nodes registered",
+  "device.empty_body": "Connect a Raspberry Pi camera to start monitoring your farm.",
+  "device.empty_cta": "Register First Device",
+  "device.register_title": "Register Device",
+  "device.register_name": "Device Name",
+  "device.register_bed": "Assign to Bed",
+  "device.register_submit": "Register",
+  "device.registered_title": "Device Registered",
+  "device.registered_body": "Copy these values to your Pi config:",
+  "device.device_id": "Device ID",
+  "device.api_key": "API Key",
+  "device.api_key_warning": "The API key cannot be retrieved again. If lost, deregister and re-register the device.",
+  "device.config_url": "Config Poll URL",
+  "device.configure": "Configure",
+  "device.test_shot": "Test Shot",
+  "device.test_shot_requested": "Test shot requested — will capture on next poll cycle.",
+  "device.deregister": "Deregister Device",
+  "device.deregister_confirm": "This will disconnect the camera. You'll need to re-register to reconnect.",
+  "device.capture_interval": "Capture Interval",
+  "device.resolution": "Resolution",
+  "device.jpeg_quality": "JPEG Quality",
+  "device.active_window": "Active Window",
+  "device.trigger_type": "Trigger Type",
+  "device.scheduled_only": "Scheduled only",
+  "device.motion_coming": "Motion detection (coming soon)",
+  "device.save_changes": "Save Changes",
+  "device.config_saved": "Configuration saved. Changes take effect on next poll.",
+  "device.status_online": "Online",
+  "device.status_offline": "Offline",
+  "device.status_inactive": "Inactive",
+  "device.battery": "Battery",
+  "device.wifi": "WiFi",
+  "device.storage": "Storage",
+  "device.last_seen": "Last seen",
+  "device.bed_conflict": "This bed already has a device assigned.",
+  "device.copied": "Copied!",
+  "profile.picture_change": "Change photo",
+  "profile.picture_add": "Add photo",
+  "profile.picture_remove": "Remove photo",
+  "profile.picture_remove_confirm": "Remove your profile picture?",
+  "profile.picture_uploading": "Uploading...",
+  "profile.picture_upload_failed": "Upload failed. Please try again.",
+  "profile.picture_format": "Supported: JPEG, PNG. Max 1MB."
+}
+```
+
+---
+
+### 15.5 Accessibility Audit (Beta-5)
+
+| Element | ARIA | Keyboard | Contrast |
+|---------|------|----------|----------|
+| Device card | `role="article"`, `aria-label="{node_name}, status: {status}"` | Tab-focusable, Enter opens config | Status dot uses color + text label |
+| Status dot | `aria-hidden="true"` (redundant with text status) | — | Green/amber/red all > 3:1 on white |
+| Health indicators | `aria-label="Battery {level}%, WiFi {signal} dBm, Storage {status}"` | — | Icons paired with text values |
+| Copy button | `<button aria-label="Copy {field name} to clipboard">` | Tab + Enter | — |
+| API key field | `role="textbox"`, `aria-readonly="true"`, `aria-label="Device API key"` | Selectable, Ctrl+A to select all | Monospace on gray bg: 7:1 |
+| Register form | Standard form pattern (§5.7) | Tab order: name → bed → submit | — |
+| Avatar (no picture) | `role="img"`, `aria-label="{display_name} avatar"` | — | Initials on colored bg > 4.5:1 |
+| Avatar upload | `<button aria-label="Upload profile picture">` | Tab + Enter opens file dialog | — |
+| Config slider (JPEG quality) | `<input type="range" aria-label="JPEG quality: {value}%">` | Arrow keys adjust | — |
+| Deregister button | `aria-label="Deregister {node_name}"` | Tab + Enter, requires confirmation | Red on white > 7:1 |
+
+---
+
+### 15.6 Component State Matrix (Beta-5)
+
+| Component | Loading | Empty | Data | Error | Updating |
+|-----------|---------|-------|------|-------|----------|
+| **DeviceList** | 3 skeleton cards | Empty state + setup guide | Device cards | Error banner + retry | — |
+| **DeviceCard** | — | — | Health + actions | — | Pulsing status dot |
+| **DeviceRegister** | — | Form (name + bed) | Success (key display) | Validation errors | Submit spinner |
+| **DeviceConfig** | Skeleton form | — | Populated form | Save error toast | Save spinner |
+| **ProfilePicture** | Skeleton circle | Initials fallback | Avatar image | Upload error toast | Progress bar |
+
+---
+
+### 15.7 Responsive Layout (Beta-5)
+
+| Component | Mobile (375px) | Tablet (768px) | Desktop (1024px+) |
+|-----------|---------------|----------------|-------------------|
+| **Device list** | Single column, stacked cards | Same, wider cards | Master-detail: sidebar list (280px) + detail panel (1fr) |
+| **Device config** | Full-screen push | Same | Detail panel replaces device info |
+| **Registration** | Full-screen push | Same | Modal, max-width 480px |
+| **Key display** | Full-width, scrollable monospace | Same | Inline, no scroll needed |
+| **Profile avatar** | Centered above name, 96px | Same | Left-aligned in 2-column layout, 96px |

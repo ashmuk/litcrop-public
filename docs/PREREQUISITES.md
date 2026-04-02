@@ -145,9 +145,38 @@ These items are documented for awareness but do not block PoC:
 
 ---
 
+## 7. Beta-5 Prerequisites (Device Management + Profile Picture)
+
+> Added 2026-04-02 — review checklist for Beta-5 architecture delta (§13 in ARCHITECTURE.md).
+
+### Architecture Review (Beta-5 Delta)
+
+- [ ] **DEVICE# entity design**: PK under `FARM#` partition, GSI1 for direct lookup. Optional fields for future IoT Core migration. (§13.2)
+- [ ] **Two-factor device auth**: JWT (user-level) + device API key (device-level, bcrypt-hashed). Acceptable for Beta-5? (§13.3)
+- [ ] **Config polling model**: Pi calls `GET /devices/{id}/config` on each capture cycle (no WebSocket/MQTT). Acceptable latency for config changes? (§13.4)
+- [ ] **7 new API endpoints**: Register, list, config poll, update config, delete, heartbeat, test-shot. (§13.4)
+- [ ] **Profile picture in images bucket**: Reuses existing S3 bucket with `avatars/` prefix. No new bucket needed. (§13.5)
+- [ ] **Inline thumbnail generation**: sharp added to API Lambda bundle (+1.8MB, +50ms cold start). Acceptable? (§13.5)
+- [ ] **Cost impact**: $0.00/month delta — within budget constraint. (§13.7)
+
+### Infrastructure & Access (Beta-5)
+
+- [ ] **SES sender verified**: `admin@example.com` must be verified in SES sandbox (already done 2026-04-01)
+- [ ] **Pi hardware available**: Raspberry Pi Zero 2 W with camera module, WiFi configured, `capture.sh` script ready
+- [ ] **Pi network access**: Can reach API Gateway endpoint (`https://jpg5gd81uc.execute-api.ap-northeast-1.amazonaws.com/`) from field WiFi
+- [ ] **No new AWS resources needed**: All changes are within existing CDK stack (DynamoDB items, S3 prefix, Lambda bundle)
+
+### Manual Approvals (Beta-5)
+
+- [ ] **Device API key scheme**: `dk_` prefix + 32 random chars, shown once at registration, bcrypt-hashed. User accepts responsibility for key management on Pi.
+- [ ] **sharp in API Lambda**: Adding image processing to the main API Lambda increases bundle size. Alternative: separate "avatar Lambda" (adds CDK complexity). Recommendation: inline is simpler for Beta-5 scale.
+- [ ] **Scope confirmation**: Single camera per bed, scheduled capture only, JWT auth. Multi-camera and IoT Core deferred to Beta-6+.
+
+---
+
 ## Next Steps
 
 After all prerequisites are confirmed:
-1. Proceed to **Step 3: UX/UI Design** (`/cc-design` continues with my-designer)
-2. Then **Step 4-7: Planning and Task Breakdown**
-3. Then **Step 8: Implementation** (`/cc-implement` with my-builder)
+1. Proceed to **Step 3: UX/UI & API Design** (`/cc-design` continues)
+2. Then **Step 4: Mock-ups** → **Step 5: System Design** → **Step 6: Task Breakdown** → **Step 7: Execution Plan**
+3. Then **Step 8: Implementation** (`/cc-implement`)
