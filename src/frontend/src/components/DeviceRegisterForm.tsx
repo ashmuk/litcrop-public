@@ -24,9 +24,17 @@ export interface Props {
 
 type Step = 'form' | 'success';
 
+// Read auth tokens for Pi config (Option C — expose to user for copy-to-Pi)
+const REFRESH_TOKEN_KEY = 'litcrop_refresh_token';
+const COGNITO_CLIENT_ID = (typeof import.meta !== 'undefined' && (import.meta as { env?: Record<string, string> }).env?.PUBLIC_COGNITO_CLIENT_ID) || '';
+
 export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Props) {
   const [step, setStep] = useState<Step>('form');
   const [result, setResult] = useState<DeviceRegistrationResult | null>(null);
+
+  // Get refresh token from localStorage for Pi config
+  const refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) ?? '' : '';
+  const cognitoClientId = COGNITO_CLIENT_ID;
 
   // ── Form state ─────────────────────────────────────────────────
   const [nodeName, setNodeName] = useState('');
@@ -197,33 +205,88 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
           <span>{t('device.api_key_warning')}</span>
         </div>
 
-        {/* Setup guide */}
+        {/* Auth token for Pi */}
+        <div style="display:flex;flex-direction:column;gap:var(--space-1)">
+          <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">
+            {t('device.field_refresh_token')}
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3);background:var(--color-gray-100);border-radius:var(--radius-md);font-family:monospace;font-size:var(--font-size-xs);word-break:break-all;border:var(--border-default)">
+            <span style="flex:1;max-height:60px;overflow:hidden">{refreshToken || t('device.refresh_token_unavailable')}</span>
+            {refreshToken && (
+              <button
+                style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:32px;border:var(--border-default);border-radius:var(--radius-md);background:var(--color-surface);cursor:pointer;font-size:14px;flex-shrink:0"
+                onClick={() => { navigator.clipboard.writeText(refreshToken); showToast(t('device.copied'), 'success'); }}
+                aria-label={t('device.copy_refresh_token')}
+              >
+                &#x1F4CB;
+              </button>
+            )}
+          </div>
+          <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('device.refresh_token_hint')}</div>
+        </div>
+
+        {/* Setup guide with download */}
         <div style="background:var(--color-gray-100);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
           <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--space-3)">
             {t('device.setup_guide_title')}
           </div>
-          <div style="font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:var(--line-height-relaxed);display:flex;flex-direction:column;gap:var(--space-2)">
+          <div style="font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:var(--line-height-relaxed);display:flex;flex-direction:column;gap:var(--space-3)">
+
             <div style="display:flex;gap:var(--space-2)">
               <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">1.</span>
-              <span>{t('device.guide_ssh')}</span>
+              <div>
+                <span>{t('device.guide_download')}</span>
+                <button
+                  style="display:block;margin-top:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-primary);color:white;border:none;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-family:inherit;cursor:pointer"
+                  onClick={() => {
+                    const content = [
+                      `LITCROP_DEVICE_ID=${result.device_id}`,
+                      `LITCROP_API_KEY=${result.device_api_key}`,
+                      `LITCROP_CONFIG_URL=${result.config_poll_url}`,
+                      `LITCROP_REFRESH_TOKEN=${refreshToken || 'PASTE_YOUR_TOKEN_HERE'}`,
+                      `LITCROP_COGNITO_CLIENT_ID=${cognitoClientId}`,
+                      `LITCROP_COGNITO_REGION=ap-northeast-1`,
+                    ].join('\n');
+                    const blob = new Blob([content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `litcrop-${result.device_id}.env`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  &#x1F4E5; {t('device.guide_download_button')}
+                </button>
+              </div>
             </div>
+
             <div style="display:flex;gap:var(--space-2)">
               <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">2.</span>
-              <span>{t('device.guide_config')}</span>
+              <div>
+                <span>{t('device.guide_copy_to_pi')}</span>
+                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-1);border:var(--border-default)">
+                  scp litcrop-{result.device_id}.env pi@raspberrypi.local:~/.litcrop.env
+                </div>
+              </div>
             </div>
-            <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-3);font-family:monospace;font-size:var(--font-size-xs);white-space:pre-wrap;word-break:break-all;border:var(--border-default)">
-{`LITCROP_DEVICE_ID=${result.device_id}
-LITCROP_API_KEY=${result.device_api_key}
-LITCROP_CONFIG_URL=${result.config_poll_url}`}
-            </div>
+
             <div style="display:flex;gap:var(--space-2)">
               <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">3.</span>
-              <span>{t('device.guide_capture')}</span>
+              <div>
+                <span>{t('device.guide_install')}</span>
+                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-1);border:var(--border-default)">
+                  ssh pi@raspberrypi.local<br />
+                  curl -sL https://litcrop.example.com/install.sh | bash
+                </div>
+              </div>
             </div>
+
             <div style="display:flex;gap:var(--space-2)">
               <span style="font-weight:var(--font-weight-semibold);color:var(--color-primary);min-width:20px">4.</span>
               <span>{t('device.guide_verify')}</span>
             </div>
+
           </div>
         </div>
 
