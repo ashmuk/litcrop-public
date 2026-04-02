@@ -29,11 +29,11 @@
     "scheduled": "定期撮影"
   },
   "screens": {
-    "farm_overview": "農場概要",
+    "farm_overview": "農園概要",
     "plot_detail": "ベッド詳細",
     "image_timeline": "画像履歴",
     "weather": "天気予報",
-    "setup": "農場設定",
+    "setup": "農園設定",
     "settings": "アプリ設定"
   },
   "buttons": {
@@ -47,13 +47,13 @@
   },
   "farm": {
     "no_plots": "ベッドがありません",
-    "no_plots_body": "最初の作物ベッドを追加して、農場のモニタリングを始めましょう。",
+    "no_plots_body": "最初の作物ベッドを追加して、農園のモニタリングを始めましょう。",
     "no_beds": "ベッドがありません",
-    "no_beds_body": "ベッドグリッド付きの農場を作成して、作物のモニタリングを始めましょう。",
-    "error_loading": "農場データを読み込めませんでした",
+    "no_beds_body": "ベッドグリッド付きの農園を作成して、作物のモニタリングを始めましょう。",
+    "error_loading": "農園データを読み込めませんでした",
     "error_body": "接続を確認して、もう一度お試しください。",
-    "loading": "農場データを読み込み中…",
-    "refreshed": "農場データを更新しました"
+    "loading": "農園データを読み込み中…",
+    "refreshed": "農園データを更新しました"
   },
   "plot": {
     "tag_this": "この画像にタグを付ける：",
@@ -92,7 +92,7 @@
     "impact_frost_desc": "霜に弱い作物にリスクがあります。予報を確認し、保護対策をご検討ください。",
     "impact_heat_desc": "高温による作物へのストレスが予想されます。十分な水やりをしてください。",
     "impact_rain_desc": "大雨の予報です。排水を確認し、繊細な作物を保護してください。",
-    "farm_location": "農場の位置"
+    "farm_location": "農園の位置"
   },
   "settings": {
     "theme": "テーマ",
@@ -115,18 +115,18 @@
     }
   },
   "setup": {
-    "farm_name": "農場名",
+    "farm_name": "農園名",
     "location": "場所",
     "latitude": "緯度",
     "longitude": "経度",
     "elevation": "標高（メートル）",
     "description": "説明",
     "climate_zone": "気候区分",
-    "save_success": "農場設定を保存しました",
+    "save_success": "農園設定を保存しました",
     "gps_detected": "位置情報を取得しました",
     "gps_failed": "位置情報を取得できませんでした",
     "gps_unsupported": "位置情報に対応していません",
-    "name_required": "農場名を入力してください",
+    "name_required": "農園名を入力してください",
     "location_required": "緯度と経度を入力してください",
     "climate_tropical": "熱帯",
     "climate_subtropical": "亜熱帯",
@@ -134,7 +134,7 @@
     "climate_boreal": "亜寒帯・極地"
   },
   "chat": {
-    "placeholder": "農場について質問する…",
+    "placeholder": "農園について質問する…",
     "send": "送信",
     "thinking": "考え中…",
     "error": "応答を取得できませんでした。もう一度お試しください。",
@@ -143,7 +143,7 @@
     "network_error": "ネットワークエラー。接続を確認してください。",
     "suggestion_1": "今日確認すべきことは？",
     "suggestion_2": "今週の霜のリスクは？",
-    "suggestion_3": "農場の状態はどうですか？"
+    "suggestion_3": "農園の状態はどうですか？"
   },
   "timelapse": {
     "title": "タイムラプス",
@@ -231,40 +231,40 @@
     }
   },
   "map": {
-    "title": "農場の位置",
-    "instruction": "地図をスクロールするかGPSを使って農場の位置を設定してください。",
+    "title": "農園の位置",
+    "instruction": "地図をスクロールするかGPSを使って農園の位置を設定してください。",
     "gps_button": "GPSを使う",
     "elevation_auto": "標高を自動検出しました",
     "elevation_failed": "標高を取得できませんでした",
     "fallback": "地図を読み込めませんでした。座標を手動で入力してください。"
   },
   "wizard": {
-    "new_farm": "新しい農場",
-    "step_name": "農場に名前を付ける",
+    "new_farm": "新しい農園",
+    "step_name": "農園に名前を付ける",
     "step_location": "位置を設定",
     "step_review": "確認して作成",
     "next": "次へ",
-    "create": "農場を作成",
-    "success": "農場を作成しました！",
-    "switch_prompt": "新しい農場に切り替えますか？"
+    "create": "農園を作成",
+    "success": "農園を作成しました！",
+    "switch_prompt": "新しい農園に切り替えますか？"
   },
   "profile": {
     "title": "プロフィール",
-    "farms": "あなたの農場",
+    "farms": "あなたの農園",
     "you": "あなた",
-    "new_farm": "新しい農場",
+    "new_farm": "新しい農園",
     "switch": "切替",
     "active": "アクティブ",
-    "no_farms": "まだ農場に所属していません。",
+    "no_farms": "まだ農園に所属していません。",
     "delete_farm": "削除",
     "confirm_delete": "本当に削除しますか？この操作は取り消せません。",
-    "farm_deleted": "農場を削除しました",
-    "delete_error": "農場を削除できませんでした",
+    "farm_deleted": "農園を削除しました",
+    "delete_error": "農園を削除できませんでした",
     "leave_farm": "退出",
-    "confirm_leave": "この農場から退出しますか？後で再参加できます。",
-    "farm_left": "農場から退出しました",
-    "leave_error": "農場から退出できませんでした",
-    "farm_limit": "フリープラン: 農場は2つまで",
+    "confirm_leave": "この農園から退出しますか？後で再参加できます。",
+    "farm_left": "農園から退出しました",
+    "leave_error": "農園から退出できませんでした",
+    "farm_limit": "フリープラン: 農園は2つまで",
     "location": "位置",
     "elevation": "標高",
     "elevation_short": "標高",
@@ -284,9 +284,9 @@
     "delete_account": {
       "expand_button": "アカウント削除",
       "title": "アカウント削除",
-      "description": "アカウントを完全に削除し、すべての農場から退会します。唯一のメンバーである農場は削除されます。この操作は元に戻せません。",
-      "sole_member_warning": "以下の農場の唯一のメンバーです。農場は完全に削除されます：",
-      "admin_transfer_warning": "以下の管理者である農場は、別のメンバーに引き継がれるか、唯一のメンバーである場合は削除されます：",
+      "description": "アカウントを完全に削除し、すべての農園から退会します。唯一のメンバーである農園は削除されます。この操作は元に戻せません。",
+      "sole_member_warning": "以下の農園の唯一のメンバーです。農園は完全に削除されます：",
+      "admin_transfer_warning": "以下の管理者である農園は、別のメンバーに引き継がれるか、唯一のメンバーである場合は削除されます：",
       "admin_transfer_to": "管理者は{{name}}に移行されます",
       "confirm_prompt": "確認のため、以下に DELETE MY ACCOUNT と入力してください：",
       "confirm_placeholder": "DELETE MY ACCOUNT",
@@ -339,12 +339,12 @@
     "notifications_title": "メール通知設定",
     "notifications_description": "管理者メール通知のトリガーとなるイベントを設定します。",
     "notifications_section_user": "ユーザーイベント",
-    "notifications_section_farm": "農場イベント",
+    "notifications_section_farm": "農園イベント",
     "notifications_section_join": "参加リクエストイベント",
     "notifications_user_signup": "新規ユーザー登録",
     "notifications_account_deleted": "ユーザーアカウント削除",
-    "notifications_farm_created": "新しい農場の作成",
-    "notifications_farm_deleted": "農場の削除",
+    "notifications_farm_created": "新しい農園の作成",
+    "notifications_farm_deleted": "農園の削除",
     "notifications_join_request_submitted": "参加リクエスト送信",
     "notifications_join_request_approved": "参加リクエスト承認",
     "notifications_join_request_rejected": "参加リクエスト拒否",
@@ -361,9 +361,9 @@
     "activity_filter_search": "検索...",
     "activity_filter_reset": "フィルターをリセット",
     "activity_event_user_signup": "ユーザー登録",
-    "activity_event_farm_created": "農場作成",
-    "activity_event_farm_deleted": "農場削除",
-    "activity_event_farm_updated": "農場更新",
+    "activity_event_farm_created": "農園作成",
+    "activity_event_farm_deleted": "農園削除",
+    "activity_event_farm_updated": "農園更新",
     "activity_event_bed_updated": "ベッド更新",
     "activity_event_image_uploaded": "画像アップロード",
     "activity_event_tag_created": "タグ作成",
@@ -400,7 +400,7 @@
       "step2": "メール確認",
       "step3": "完了",
       "role_label": "利用形態",
-      "role_manager": "農場管理者",
+      "role_manager": "農園管理者",
       "role_reader": "作業スタッフ",
       "language": "言語",
       "temp_unit": "温度単位"
@@ -484,7 +484,7 @@
     "title": "デバイス",
     "add": "デバイスを登録",
     "empty_title": "カメラノードが登録されていません",
-    "empty_body": "Raspberry Piカメラを接続して農場の監視を始めましょう。",
+    "empty_body": "Raspberry Piカメラを接続して農園の監視を始めましょう。",
     "empty_cta": "最初のデバイスを登録",
     "register_title": "デバイスを登録",
     "register_button": "登録",
