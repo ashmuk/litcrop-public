@@ -6,7 +6,8 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
-import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES, CROP_TYPES } from '@litcrop/shared';
+import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
+import CropAutocomplete from './CropAutocomplete';
 import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '../lib/api';
 import { getLocalFarmRole } from '../lib/hooks';
 import { showToast } from './Toast';
@@ -301,13 +302,11 @@ export default function BedDetail() {
         <div class="crop-info" style="display:flex;flex-direction:column;gap:var(--space-3)">
           <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold)">{bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}</h2>
           <div class="form-group">
-            <label class="form-label" for="crop-type">{t('plot.crop_type')}</label>
-            <select id="crop-type" class="form-input" value={cropForm.crop_type} onChange={(e) => setCropForm({ ...cropForm, crop_type: (e.target as HTMLSelectElement).value })}>
-              <option value="">—</option>
-              {CROP_TYPES.map((c) => (
-                <option key={c} value={c}>{t(`add_plot.crop_types.${c}`)}</option>
-              ))}
-            </select>
+            <label class="form-label">{t('plot.crop_type')}</label>
+            <CropAutocomplete
+              value={cropForm.crop_type}
+              onChange={(v) => setCropForm({ ...cropForm, crop_type: v })}
+            />
           </div>
           <div class="form-group">
             <label class="form-label" for="crop-variety">{t('plot.crop_variety')}</label>
