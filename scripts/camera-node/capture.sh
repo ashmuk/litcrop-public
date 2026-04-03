@@ -2,89 +2,160 @@
 # ──────────────────────────────────────────────────────────────────
 # LitCrop Camera Node — Capture & Upload Script
 #
-# Captures a JPEG image using rpicam-still, then uploads it to the
-# LitCrop API. Designed for Raspberry Pi Zero 2 W with Camera Module 3.
+# Full cycle: poll config → capture photo → upload → heartbeat.
+# Designed for Raspberry Pi Zero 2 W with Camera Module 3.
 #
 # Usage:
-#   ./capture.sh                    # Single capture + upload
-#   ./capture.sh --loop             # Continuous loop (use with systemd/cron)
+#   ~/litcrop/capture.sh              # Single cycle
+#   ~/litcrop/capture.sh --loop       # Continuous (for cron/systemd)
 #
-# Configuration: /etc/litcrop/node.conf (or env vars)
+# Configuration: ~/litcrop/.env (downloaded from web UI)
 # ──────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
-# ── Configuration ────────────────────────────────────────────────
+LITCROP_DIR="${HOME}/litcrop"
+ENV_FILE="${LITCROP_DIR}/.env"
+IMAGES_DIR="${LITCROP_DIR}/images"
+LOG_DIR="${LITCROP_DIR}/logs"
+LOG_FILE="${LOG_DIR}/capture.log"
+MAX_LOG_SIZE=1048576  # 1 MB — rotate when exceeded
 
-CONFIG_FILE="${LITCROP_CONFIG:-/etc/litcrop/node.conf}"
+# ── Load .env ───────────────────────────────────────────────────
 
-# Defaults (overridden by config file or env vars)
-NODE_ID="${NODE_ID:-field-01-camera-01}"
-BED_ID="${BED_ID:-}"
-API_BASE_URL="${API_BASE_URL:-}"
-AUTH_TOKEN="${AUTH_TOKEN:-}"
-TRIGGER="${TRIGGER:-scheduled}"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "[ERROR] Missing ${ENV_FILE}. Download from LitCrop web UI → Devices → Setup." >&2
+    exit 1
+fi
+
+# Source .env (expects export KEY=VALUE format from web UI download)
+set -a
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+set +a
+
+# ── Validate required vars ──────────────────────────────────────
+
+for var in DEVICE_ID BED_ID API_BASE_URL AUTH_TOKEN; do
+    if [ -z "${!var:-}" ]; then
+        echo "[ERROR] ${var} is required. Check ${ENV_FILE}" >&2
+        exit 1
+    fi
+done
+
+# Defaults for optional vars
 CAPTURE_WIDTH="${CAPTURE_WIDTH:-1920}"
 CAPTURE_HEIGHT="${CAPTURE_HEIGHT:-1080}"
 JPEG_QUALITY="${JPEG_QUALITY:-75}"
-INTERVAL_SECONDS="${INTERVAL_SECONDS:-600}"
-SPOOL_DIR="${SPOOL_DIR:-/var/spool/litcrop}"
+NODE_ID="${NODE_ID:-${DEVICE_ID}}"
+TRIGGER="${TRIGGER:-scheduled}"
 MAX_RETRY="${MAX_RETRY:-3}"
-LOG_FILE="${LOG_FILE:-/var/log/litcrop-node.log}"
 
-# Load config file if it exists (safe key=value parser — no arbitrary code execution)
-if [ -f "$CONFIG_FILE" ]; then
-    while IFS='=' read -r key value; do
-        # Skip comments and empty lines
-        [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
-        # Strip surrounding quotes
-        value="${value%\"}"
-        value="${value#\"}"
-        # Only set known config keys
-        case "$key" in
-            NODE_ID|BED_ID|API_BASE_URL|AUTH_TOKEN|TRIGGER|\
-            CAPTURE_WIDTH|CAPTURE_HEIGHT|JPEG_QUALITY|INTERVAL_SECONDS|\
-            SPOOL_DIR|MAX_RETRY|LOG_FILE|REFRESH_TOKEN|COGNITO_CLIENT_ID|AWS_REGION)
-                export "$key=$value"
-                ;;
-        esac
-    done < "$CONFIG_FILE"
-fi
+# ── Logging ─────────────────────────────────────────────────────
 
-# ── Validation ───────────────────────────────────────────────────
-
-if [ -z "$BED_ID" ]; then
-    echo "[ERROR] BED_ID is required. Set in $CONFIG_FILE or as env var." >&2
-    exit 1
-fi
-
-if [ -z "$API_BASE_URL" ]; then
-    echo "[ERROR] API_BASE_URL is required. Set in $CONFIG_FILE or as env var." >&2
-    exit 1
-fi
-
-if [ -z "$AUTH_TOKEN" ]; then
-    echo "[ERROR] AUTH_TOKEN is required. Set in $CONFIG_FILE or as env var." >&2
-    exit 1
-fi
-
-# ── Setup ────────────────────────────────────────────────────────
-
-mkdir -p "$SPOOL_DIR"
-UPLOAD_URL="${API_BASE_URL}/api/v1/beds/${BED_ID}/images"
+mkdir -p "$IMAGES_DIR" "$LOG_DIR"
 
 log() {
     local msg="[$(date -Iseconds)] $1"
     echo "$msg" | tee -a "$LOG_FILE"
 }
 
-# ── Capture ──────────────────────────────────────────────────────
+rotate_log() {
+    if [ -f "$LOG_FILE" ] && [ "$(stat -c%s "$LOG_FILE" 2>/dev/null || stat -f%z "$LOG_FILE" 2>/dev/null || echo 0)" -gt "$MAX_LOG_SIZE" ]; then
+        mv "$LOG_FILE" "${LOG_FILE}.1"
+        log "[LOG] Rotated log file"
+    fi
+}
+
+# ── Token refresh ───────────────────────────────────────────────
+
+refresh_token() {
+    if [ -z "${REFRESH_TOKEN:-}" ] || [ -z "${COGNITO_CLIENT_ID:-}" ]; then
+        return 0  # No refresh config — skip silently
+    fi
+
+    local region="${AWS_REGION:-ap-northeast-1}"
+    local endpoint="https://cognito-idp.${region}.amazonaws.com/"
+
+    local response
+    response=$(curl -s -X POST "$endpoint" \
+        -H "Content-Type: application/x-amz-json-1.1" \
+        -H "X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth" \
+        -d "{
+            \"AuthFlow\": \"REFRESH_TOKEN_AUTH\",
+            \"ClientId\": \"${COGNITO_CLIENT_ID}\",
+            \"AuthParameters\": {
+                \"REFRESH_TOKEN\": \"${REFRESH_TOKEN}\"
+            }
+        }" --connect-timeout 10 --max-time 15 2>/dev/null) || return 1
+
+    local new_token
+    new_token=$(echo "$response" | grep -o '"AccessToken":"[^"]*"' | cut -d'"' -f4)
+
+    if [ -n "$new_token" ]; then
+        AUTH_TOKEN="$new_token"
+        # Update .env file with new token
+        sed -i "s|^export AUTH_TOKEN=.*|export AUTH_TOKEN=\"${new_token}\"|" "$ENV_FILE"
+        log "[AUTH] Token refreshed"
+    else
+        log "[AUTH] Token refresh failed"
+        return 1
+    fi
+}
+
+# ── Config polling ──────────────────────────────────────────────
+
+poll_config() {
+    local config_url="${API_BASE_URL}/api/v1/devices/${DEVICE_ID}/config"
+
+    local response
+    response=$(curl -s -w "\n%{http_code}" \
+        -H "Authorization: Bearer ${AUTH_TOKEN}" \
+        "$config_url" --connect-timeout 10 --max-time 15 2>/dev/null) || return 1
+
+    local http_code body
+    http_code=$(echo "$response" | tail -1)
+    body=$(echo "$response" | sed '$d')
+
+    if [ "$http_code" = "200" ] && [ -n "$body" ]; then
+        # Parse config JSON with jq if available
+        if command -v jq &>/dev/null; then
+            local w h q
+            w=$(echo "$body" | jq -r '.resolution_width // empty' 2>/dev/null)
+            h=$(echo "$body" | jq -r '.resolution_height // empty' 2>/dev/null)
+            q=$(echo "$body" | jq -r '.jpeg_quality // empty' 2>/dev/null)
+
+            [ -n "$w" ] && CAPTURE_WIDTH="$w"
+            [ -n "$h" ] && CAPTURE_HEIGHT="$h"
+            [ -n "$q" ] && JPEG_QUALITY="$q"
+
+            # Check for test shot request
+            local test_shot
+            test_shot=$(echo "$body" | jq -r '.test_shot_requested // false' 2>/dev/null)
+            if [ "$test_shot" = "true" ]; then
+                TRIGGER="test_shot"
+                log "[CONFIG] Test shot requested"
+            fi
+
+            log "[CONFIG] Applied: ${CAPTURE_WIDTH}x${CAPTURE_HEIGHT} q${JPEG_QUALITY}"
+        else
+            log "[CONFIG] jq not installed — using defaults"
+        fi
+    elif [ "$http_code" = "401" ]; then
+        log "[CONFIG] Auth expired — refreshing token"
+        refresh_token
+    else
+        log "[CONFIG] Poll failed (HTTP ${http_code}) — using defaults"
+    fi
+}
+
+# ── Capture ─────────────────────────────────────────────────────
 
 capture() {
     local timestamp
     timestamp=$(date -Iseconds)
     local filename="${NODE_ID}_${timestamp//[:]/-}.jpg"
-    local filepath="${SPOOL_DIR}/${filename}"
+    local filepath="${IMAGES_DIR}/${filename}"
 
     log "[CAPTURE] ${CAPTURE_WIDTH}x${CAPTURE_HEIGHT} q${JPEG_QUALITY} → ${filename}"
 
@@ -107,117 +178,147 @@ capture() {
     size=$(stat -c%s "$filepath" 2>/dev/null || stat -f%z "$filepath" 2>/dev/null)
     log "[CAPTURE] OK — ${size} bytes"
 
-    # Write sidecar timestamp file so upload_spool() doesn't need to parse the filename
-    echo "$timestamp" > "${filepath%.jpg}.ts"
-
     echo "$filepath"
 }
 
-# ── Upload ───────────────────────────────────────────────────────
+# ── Upload ──────────────────────────────────────────────────────
 
 upload() {
     local filepath="$1"
-    local captured_at="$2"
+    local captured_at
+    captured_at=$(date -Iseconds)
     local attempt=0
     local delay=1
+    local upload_url="${API_BASE_URL}/api/v1/beds/${BED_ID}/images"
 
-    # Write auth header to a temp file so the token is not visible in the process list
     local curl_config response_file
     curl_config=$(mktemp)
     chmod 600 "$curl_config"
     printf 'header = "Authorization: Bearer %s"\n' "$AUTH_TOKEN" > "$curl_config"
-
     response_file=$(mktemp)
-    chmod 600 "$response_file"
 
     while [ $attempt -lt "$MAX_RETRY" ]; do
         attempt=$((attempt + 1))
-        log "[UPLOAD] Attempt ${attempt}/${MAX_RETRY} → ${UPLOAD_URL}"
+        log "[UPLOAD] Attempt ${attempt}/${MAX_RETRY}"
 
         local http_code
         http_code=$(curl -s -o "$response_file" -w "%{http_code}" \
             -K "$curl_config" \
-            -X POST "$UPLOAD_URL" \
+            -X POST "$upload_url" \
             -F "image=@${filepath}" \
             -F "captured_at=${captured_at}" \
             -F "node_id=${NODE_ID}" \
             -F "trigger=${TRIGGER}" \
             --connect-timeout 10 \
-            --max-time 30 \
+            --max-time 60 \
             2>> "$LOG_FILE")
 
         if [ "$http_code" = "201" ]; then
             log "[UPLOAD] OK — HTTP 201"
-            rm -f "$curl_config" "$response_file"
-            rm -f "$filepath"
-            rm -f "${filepath%.jpg}.ts"  # Remove sidecar timestamp file
+            rm -f "$curl_config" "$response_file" "$filepath"
             return 0
+        elif [ "$http_code" = "401" ]; then
+            log "[UPLOAD] Auth expired — refreshing"
+            refresh_token
+            printf 'header = "Authorization: Bearer %s"\n' "$AUTH_TOKEN" > "$curl_config"
         else
             log "[UPLOAD] FAILED — HTTP ${http_code}"
-            if [ -s "$response_file" ]; then
-                cat "$response_file" >> "$LOG_FILE"
-                echo "" >> "$LOG_FILE"
-            fi
+        fi
 
-            if [ $attempt -lt "$MAX_RETRY" ]; then
-                log "[UPLOAD] Retrying in ${delay}s..."
-                sleep "$delay"
-                delay=$((delay * 2))
-            fi
+        if [ $attempt -lt "$MAX_RETRY" ]; then
+            sleep "$delay"
+            delay=$((delay * 2))
         fi
     done
 
     rm -f "$curl_config" "$response_file"
-
-    log "[UPLOAD] FAILED after ${MAX_RETRY} attempts — file kept in spool: ${filepath}"
+    log "[UPLOAD] FAILED after ${MAX_RETRY} attempts — kept in spool: ${filepath}"
     return 1
 }
 
-# ── Upload Spool (retry queued files) ────────────────────────────
+# ── Heartbeat ───────────────────────────────────────────────────
+
+send_heartbeat() {
+    local heartbeat_url="${API_BASE_URL}/api/v1/devices/${DEVICE_ID}/heartbeat"
+
+    # WiFi signal strength
+    local wifi_dbm="null"
+    if command -v iwconfig &>/dev/null; then
+        wifi_dbm=$(iwconfig wlan0 2>/dev/null | grep -oP '(?<=Signal level=)-?\d+' || echo "null")
+    fi
+
+    # Storage status
+    local storage="ok"
+    local usage_pct
+    usage_pct=$(df -h / | awk 'NR==2 {print $5+0}')
+    if [ "$usage_pct" -gt 90 ]; then
+        storage="full"
+    elif [ "$usage_pct" -gt 80 ]; then
+        storage="low"
+    fi
+
+    # Battery (UPS HAT if connected)
+    local battery="null"
+    battery=$(cat /sys/class/power_supply/*/capacity 2>/dev/null | head -1 || echo "null")
+
+    local payload="{\"wifi_dbm\":${wifi_dbm},\"storage\":\"${storage}\",\"battery_pct\":${battery}}"
+
+    curl -s -o /dev/null \
+        -H "Authorization: Bearer ${AUTH_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -X POST "$heartbeat_url" \
+        -d "$payload" \
+        --connect-timeout 10 \
+        --max-time 15 \
+        2>/dev/null && log "[HEARTBEAT] OK" || log "[HEARTBEAT] Failed (non-critical)"
+}
+
+# ── Upload spool (retry queued files) ───────────────────────────
 
 upload_spool() {
     local count=0
-    for file in "$SPOOL_DIR"/*.jpg; do
+    for file in "$IMAGES_DIR"/*.jpg; do
         [ -f "$file" ] || continue
         count=$((count + 1))
-
-        # Read timestamp from sidecar file; fall back to file mtime if missing
-        local captured_at
-        captured_at=$(cat "${file%.jpg}.ts" 2>/dev/null || date -Iseconds)
-
-        upload "$file" "$captured_at" || true
+        upload "$file" || true
     done
-
-    if [ $count -gt 0 ]; then
-        log "[SPOOL] Processed ${count} queued file(s)"
-    fi
+    [ $count -gt 0 ] && log "[SPOOL] Processed ${count} queued file(s)"
 }
 
-# ── Main ─────────────────────────────────────────────────────────
+# ── Main ────────────────────────────────────────────────────────
 
 run_once() {
-    log "[START] node=${NODE_ID} bed=${BED_ID} trigger=${TRIGGER}"
+    rotate_log
+    log "[START] device=${DEVICE_ID} bed=${BED_ID} trigger=${TRIGGER}"
 
-    # First, try to upload any queued files from previous failed attempts
+    # 1. Refresh token if needed
+    refresh_token || true
+
+    # 2. Poll config for latest settings
+    poll_config || true
+
+    # 3. Upload any queued files
     upload_spool
 
-    # Capture new image
+    # 4. Capture new image
     local filepath
-    filepath=$(capture) || return 1
+    filepath=$(capture) || { send_heartbeat; return 1; }
 
-    local captured_at
-    captured_at=$(date -Iseconds)
+    # 5. Upload
+    upload "$filepath" || true
 
-    # Upload
-    upload "$filepath" "$captured_at"
+    # 6. Heartbeat
+    send_heartbeat
+
+    log "[DONE]"
 }
 
 if [ "${1:-}" = "--loop" ]; then
-    log "[LOOP] Starting continuous capture every ${INTERVAL_SECONDS}s"
+    INTERVAL="${INTERVAL_SECONDS:-600}"
+    log "[LOOP] Starting continuous capture every ${INTERVAL}s"
     while true; do
         run_once || true
-        log "[LOOP] Sleeping ${INTERVAL_SECONDS}s..."
-        sleep "$INTERVAL_SECONDS"
+        sleep "$INTERVAL"
     done
 else
     run_once

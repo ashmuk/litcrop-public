@@ -1,56 +1,30 @@
 # ──────────────────────────────────────────────────────────────────
-# LitCrop Camera Node Configuration
+# LitCrop Camera Node — Environment Configuration
 #
-# Copy to /etc/litcrop/node.conf and fill in your values.
-# All values can also be set as environment variables.
+# This file is downloaded from the LitCrop web UI when you register
+# a device. Copy it to ~/litcrop/.env on your Raspberry Pi.
+#
+# All values are in export KEY=VALUE format for bash sourcing.
 # ──────────────────────────────────────────────────────────────────
 
-# ── Required ─────────────────────────────────────────────────────
+# ── Required (filled in by web UI download) ─────────────────────
 
-# Camera node identifier (1-64 alphanumeric chars, hyphens, underscores)
-NODE_ID="field-01-camera-01"
+export DEVICE_ID=""
+export BED_ID=""
+export API_BASE_URL="https://<your-api-gateway-url>"
+export AUTH_TOKEN=""
+export NODE_ID=""
 
-# Target bed UUID (from LitCrop app — Profile → Farm → tap bed)
-BED_ID=""
+# ── Token refresh ───────────────────────────────────────────────
 
-# LitCrop API base URL (no trailing slash)
-# Find your API URL in the CDK stack outputs or CloudFormation console.
-API_BASE_URL="https://<your-api-gateway-url>"
+export REFRESH_TOKEN=""
+export COGNITO_CLIENT_ID=""
+export AWS_REGION="ap-northeast-1"
 
-# Cognito JWT access token (see docs/CAMERA-NODE-SETUP.md §4 for how to obtain)
-AUTH_TOKEN=""
+# ── Optional (can be left as defaults) ──────────────────────────
 
-# ── Optional ─────────────────────────────────────────────────────
-
-# Capture trigger type: "scheduled" or "motion"
-TRIGGER="scheduled"
-
-# Image resolution
-CAPTURE_WIDTH="1920"
-CAPTURE_HEIGHT="1080"
-
-# JPEG quality (1-100, lower = smaller file)
-JPEG_QUALITY="75"
-
-# Capture interval in seconds (default: 600 = 10 minutes)
-INTERVAL_SECONDS="600"
-
-# Local spool directory for queued uploads
-SPOOL_DIR="/var/spool/litcrop"
-
-# Maximum upload retry attempts per image
-MAX_RETRY="3"
-
-# Log file path
-LOG_FILE="/var/log/litcrop-node.log"
-
-# ── Token refresh (optional) ──────────────────────────────────────
-
-# Cognito refresh token (used by refresh-token.sh to renew AUTH_TOKEN every 50 min)
-REFRESH_TOKEN=""
-
-# Cognito app client ID (from CDK stack outputs)
-COGNITO_CLIENT_ID=""
-
-# AWS region (default: ap-northeast-1)
-AWS_REGION="ap-northeast-1"
+# export CAPTURE_WIDTH="1920"
+# export CAPTURE_HEIGHT="1080"
+# export JPEG_QUALITY="75"
+# export TRIGGER="scheduled"
+# export MAX_RETRY="3"
