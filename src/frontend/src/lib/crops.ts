@@ -39,12 +39,15 @@ export function getCropName(cropType: string | undefined | null): string {
 /** Combined display string: "🍅 Tomato". Returns '' if no crop. */
 export function getCropDisplay(cropType: string | undefined | null): string {
   if (!cropType) return '';
-  return `${getCropEmoji(cropType)} ${getCropName(cropType)}`;
+  const entry = CROP_MAP.get(cropType);
+  if (!entry) return `🌱 ${cropType}`;
+  const locale = getLocale();
+  return `${entry.emoji} ${entry[locale]}`;
 }
 
 /**
  * Search crops by substring match on EN or JA name.
- * Empty query returns all crops (for "show all on focus" behavior).
+ * Empty query returns the first `limit` crops.
  * Romaji-to-kana transliteration is out of scope for v1.
  */
 export function searchCrops(query: string, limit = 10): CropEntry[] {
@@ -57,8 +60,9 @@ export function searchCrops(query: string, limit = 10): CropEntry[] {
 export function normalizeCropType(input: string): string {
   if (!input) return '';
   const lower = input.toLowerCase();
+  if (CROP_MAP.has(lower)) return lower; // O(1) fast path for known ids
   const match = CROPS.find(
-    (c) => c.id === lower || c.en.toLowerCase() === lower || c.ja === input,
+    (c) => c.en.toLowerCase() === lower || c.ja === input,
   );
   return match?.id ?? input;
 }

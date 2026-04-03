@@ -11,9 +11,8 @@
  */
 
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { CROPS, CROP_MAP, QUICK_SELECT_CROPS, searchCrops, getCropEmoji, getCropName, normalizeCropType } from '../lib/crops';
-import { getLocale } from '../i18n/i18n';
-import { t } from '../i18n/i18n';
+import { CROPS, CROP_MAP, QUICK_SELECT_CROPS, searchCrops, getCropName, normalizeCropType } from '../lib/crops';
+import { getLocale, t } from '../i18n/i18n';
 import type { CropEntry } from '../lib/crops';
 
 interface CropAutocompleteProps {
@@ -24,10 +23,7 @@ interface CropAutocompleteProps {
 
 export default function CropAutocomplete({ value, onChange, placeholder }: CropAutocompleteProps) {
   const locale = getLocale();
-  const [inputText, setInputText] = useState(() => {
-    const entry = CROP_MAP.get(value);
-    return entry ? entry[locale] : value;
-  });
+  const [inputText, setInputText] = useState(() => getCropName(value) || value);
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<CropEntry[]>([]);
   const [highlightIdx, setHighlightIdx] = useState(-1);
@@ -40,18 +36,17 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
 
   // Sync input text when value prop changes externally
   useEffect(() => {
-    const entry = CROP_MAP.get(value);
-    setInputText(entry ? entry[locale] : value);
+    setInputText(getCropName(value) || value);
   }, [value, locale]);
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
   function doSearch(query: string) {
-    if (!query) {
-      // Show all crops grouped by category
-      setResults(CROPS);
-    } else {
-      setResults(searchCrops(query, 10));
-    }
-    setHighlightIdx(-1);
+    setResults(query ? searchCrops(query, 10) : CROPS);
+    if (highlightIdx !== -1) setHighlightIdx(-1);
   }
 
   function handleInput(e: Event) {
@@ -94,9 +89,7 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
         if (normalized !== value) {
           onChange(normalized);
         }
-        // Update display text to match normalized value
-        const entry = CROP_MAP.get(normalized);
-        setInputText(entry ? entry[locale] : normalized);
+        setInputText(getCropName(normalized) || normalized);
       }
     }, 200);
   }
@@ -123,11 +116,10 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
       return;
     }
 
-    const flatResults = results;
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightIdx((prev) => Math.min(prev + 1, flatResults.length - 1));
+        setHighlightIdx((prev) => Math.min(prev + 1, results.length - 1));
         break;
       case 'ArrowUp':
         e.preventDefault();
@@ -135,8 +127,8 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
         break;
       case 'Enter':
         e.preventDefault();
-        if (highlightIdx >= 0 && highlightIdx < flatResults.length) {
-          selectCrop(flatResults[highlightIdx]);
+        if (highlightIdx >= 0 && highlightIdx < results.length) {
+          selectCrop(results[highlightIdx]);
         }
         break;
       case 'Escape':
@@ -153,14 +145,18 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
 
   // Scroll highlighted item into view
   useEffect(() => {
-    if (highlightIdx >= 0 && listRef.current) {
-      const item = listRef.current.children[highlightIdx] as HTMLElement | undefined;
-      item?.scrollIntoView({ block: 'nearest' });
+    if (highlightIdx >= 0) {
+      document.getElementById(`crop-option-${highlightIdx}`)?.scrollIntoView({ block: 'nearest' });
     }
   }, [highlightIdx]);
 
   // Group results by category when showing full list (no filter)
   const showGrouped = !inputText && results.length > 10;
+
+  // O(1) index lookup for grouped render (avoids O(n²) indexOf)
+  const entryIndexMap = showGrouped
+    ? new Map(results.map((e, i) => [e.id, i]))
+    : null;
 
   const grouped = showGrouped
     ? results.reduce<Record<string, CropEntry[]>>((acc, c) => {
@@ -244,7 +240,7 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
                     {t(`bed.category.${category}`)}
                   </div>
                   {entries.map((entry) => {
-                    const idx = results.indexOf(entry);
+                    const idx = entryIndexMap!.get(entry.id) ?? -1;
                     return (
                       <div
                         key={entry.id}

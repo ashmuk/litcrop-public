@@ -337,7 +337,7 @@ export default function BedDetail() {
             {bed.crop_type && (
               <>
                 <dt>{t('plot.crop_type')}</dt>
-                <dd>{bed.crop_type}</dd>
+                <dd>{getCropDisplay(bed.crop_type)}</dd>
               </>
             )}
             {bed.crop_variety && (
