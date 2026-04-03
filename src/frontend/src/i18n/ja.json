@@ -389,7 +389,18 @@
     "crop_saved": "作物を更新しました",
     "save_error": "変更を保存できませんでした",
     "grid_rows": "行数",
-    "grid_cols": "列数"
+    "grid_cols": "列数",
+    "select_crop": "作物名を検索または入力...",
+    "category": {
+      "grain": "穀物",
+      "fruit": "果物",
+      "vegetable": "野菜",
+      "root": "根菜・球根",
+      "leafy": "葉物野菜",
+      "legume": "豆類",
+      "herb": "ハーブ",
+      "other": "その他"
+    }
   },
   "auth": {
     "login": {

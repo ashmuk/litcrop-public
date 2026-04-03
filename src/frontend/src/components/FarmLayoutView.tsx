@@ -9,6 +9,7 @@ import type { FarmResponse } from '@litcrop/shared';
 import { getFarm } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
+import { getCropDisplay, getCropName } from '../lib/crops';
 import { useLocalFarmId } from '../lib/hooks';
 
 export interface Props {
@@ -119,7 +120,7 @@ export default function FarmLayoutView({ farmId }: Props) {
                 href={`/beds/view?id=${bed.id}`}
                 class={STATUS_CSS[bed.latest_status]}
                 style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80px;border-radius:var(--radius-md);padding:var(--space-2);text-decoration:none;gap:var(--space-1);border:2px solid transparent"
-                aria-label={`${bed.name}${bed.crop_type ? ` — ${bed.crop_type}` : ''}, ${t(`status.${bed.latest_status}`)}`}
+                aria-label={`${bed.name}${bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}, ${t(`status.${bed.latest_status}`)}`}
               >
                 <span style="font-size:20px;line-height:1" aria-hidden="true">
                   {STATUS_ICONS[bed.latest_status]}
@@ -132,7 +133,7 @@ export default function FarmLayoutView({ farmId }: Props) {
                 <span
                   style="font-size:var(--font-size-xs);text-align:center;line-height:1.2;color:var(--color-gray-700)"
                 >
-                  {bed.crop_type || t('bed.empty')}
+                  {getCropDisplay(bed.crop_type) || t('bed.empty')}
                 </span>
               </a>
             );

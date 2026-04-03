@@ -16,6 +16,10 @@ type TranslationTree = { [key: string]: string | TranslationTree };
 const translations: Record<Locale, TranslationTree> = { en, ja };
 
 /** Resolve locale from <html data-locale> attribute or localStorage, fallback to 'en'. */
+export function getLocale(): Locale {
+  return detectLocale();
+}
+
 function detectLocale(): Locale {
   if (typeof document !== 'undefined') {
     const attr = document.documentElement.getAttribute('data-locale');

@@ -9,6 +9,7 @@ import type { FarmBedItem, WeatherResponse, BedStatus } from '@litcrop/shared';
 import { getFarm, getBeds, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
+import { getCropDisplay, getCropName } from '../lib/crops';
 import { useLocalFarmId, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { translateCondition, conditionToEmoji, formatRelativeTime } from '../lib/format';
 
@@ -180,7 +181,7 @@ export default function FarmOverview({ farmId }: Props) {
                 key={bed.id}
                 href={`/beds/view?id=${bed.id}`}
                 class="plot-tile"
-                aria-label={`${bed.name}${bed.crop_type ? ` — ${bed.crop_type}` : ''}, ${t(`status.${bed.latest_status}`)}`}
+                aria-label={`${bed.name}${bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}, ${t(`status.${bed.latest_status}`)}`}
               >
                 <div class="plot-tile__thumb">
                   {bed.latest_image?.thumbnail_url ? (
@@ -191,7 +192,7 @@ export default function FarmOverview({ farmId }: Props) {
                 </div>
                 <div class="plot-tile__info">
                   <div class="plot-tile__crop-name">
-                    {bed.crop_type || t('bed.empty')}
+                    {getCropDisplay(bed.crop_type) || t('bed.empty')}
                   </div>
                   <div class="plot-tile__plot-label">
                     {bed.name}{bed.crop_variety ? ` — ${bed.crop_variety}` : ''}

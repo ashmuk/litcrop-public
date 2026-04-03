@@ -389,7 +389,18 @@
     "crop_saved": "Crop updated",
     "save_error": "Could not save changes",
     "grid_rows": "Rows",
-    "grid_cols": "Columns"
+    "grid_cols": "Columns",
+    "select_crop": "Search or type a crop name...",
+    "category": {
+      "grain": "Grain",
+      "fruit": "Fruit",
+      "vegetable": "Vegetable",
+      "root": "Root & Bulb",
+      "leafy": "Leafy Green",
+      "legume": "Legume",
+      "herb": "Herb",
+      "other": "Other"
+    }
   },
   "auth": {
     "login": {
