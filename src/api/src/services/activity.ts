@@ -472,6 +472,19 @@ function fromPayload<T extends AppEventType>(
         farm_id: String(p['farm_id'] ?? ''),
       };
 
+    case 'diary.created':
+    case 'diary.updated':
+    case 'diary.deleted':
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'diary_entry',
+        target_id: String(p['entry_id'] ?? ''),
+        target_name: '',
+        farm_id: String(p['farm_id'] ?? ''),
+      };
+
     default:
       return {
         event_type: type,
@@ -506,6 +519,9 @@ const ALL_EVENT_TYPES: AppEventType[] = [
   'device.deregistered',
   'device.config_updated',
   'device.test_shot',
+  'diary.created',
+  'diary.updated',
+  'diary.deleted',
 ];
 
 let _initialized = false;

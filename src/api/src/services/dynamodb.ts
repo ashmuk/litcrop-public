@@ -11,7 +11,7 @@ import {
   DeleteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit, Device, DeviceStatus, StorageStatus, DeviceCapabilities } from '@litcrop/shared';
+import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit, Device, DeviceStatus, StorageStatus, DeviceCapabilities, DiaryEntry, DiaryCategory, CostItem } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES, DEMO_FARM_ID } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
@@ -59,6 +59,7 @@ const sk = {
   settings: () => DDB_KEY_PREFIXES.SETTINGS,
   joinRequest: (userId: string) => `${DDB_KEY_PREFIXES.JOIN_REQUEST}${userId}`,
   device: (deviceId: string) => `${DDB_KEY_PREFIXES.DEVICE}${deviceId}`,
+  diary: (date: string, entryId: string) => `${DDB_KEY_PREFIXES.DIARY}${date}#${entryId}`,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────
@@ -1645,6 +1646,193 @@ export class DynamoRepository {
       }),
     );
     return result.Count ?? 0;
+  }
+
+  // ── Diary ─────────────────────────────────────────────────────────
+
+  private itemToDiaryEntry(item: Record<string, unknown>, entryId: string): DiaryEntry {
+    return {
+      id: (item['id'] as string) ?? entryId,
+      farm_id: item['farm_id'] as string,
+      date: item['date'] as string,
+      category: item['category'] as DiaryCategory,
+      description: item['description'] as string,
+      time_spent_minutes: (item['time_spent_minutes'] as number) ?? null,
+      bed_id: (item['bed_id'] as string) ?? null,
+      photo_ids: (item['photo_ids'] as string[]) ?? [],
+      costs: (item['costs'] as CostItem[]) ?? [],
+      created_by: item['created_by'] as string,
+      created_at: item['created_at'] as string,
+      updated_at: item['updated_at'] as string,
+    };
+  }
+
+  async createDiaryEntry(
+    farmId: string,
+    entryId: string,
+    data: {
+      date: string;
+      category: DiaryCategory;
+      description: string;
+      time_spent_minutes: number | null;
+      bed_id: string | null;
+      photo_ids: string[];
+      costs: CostItem[];
+      created_by: string;
+    },
+  ): Promise<DiaryEntry> {
+    const now = new Date().toISOString();
+    const item = {
+      PK: pk.farm(farmId),
+      SK: sk.diary(data.date, entryId),
+      GSI1PK: `${DDB_KEY_PREFIXES.DIARY}${entryId}`,
+      GSI1SK: DDB_KEY_PREFIXES.META,
+      id: entryId,
+      farm_id: farmId,
+      date: data.date,
+      category: data.category,
+      description: data.description,
+      time_spent_minutes: data.time_spent_minutes,
+      bed_id: data.bed_id,
+      photo_ids: data.photo_ids,
+      costs: data.costs,
+      created_by: data.created_by,
+      created_at: now,
+      updated_at: now,
+    };
+    await ddb.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: item,
+      ConditionExpression: 'attribute_not_exists(SK)',
+    }));
+    return {
+      id: entryId,
+      farm_id: farmId,
+      ...data,
+      created_at: now,
+      updated_at: now,
+    };
+  }
+
+  async getDiaryEntryById(entryId: string): Promise<DiaryEntry | null> {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: GSI1_INDEX,
+        KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK = :sk',
+        ExpressionAttributeValues: {
+          ':pk': `${DDB_KEY_PREFIXES.DIARY}${entryId}`,
+          ':sk': DDB_KEY_PREFIXES.META,
+        },
+        Limit: 1,
+      }),
+    );
+    const item = result.Items?.[0];
+    if (!item) return null;
+    const id = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.DIARY);
+    return this.itemToDiaryEntry(item, id);
+  }
+
+  async getDiaryEntries(
+    farmId: string,
+    from: string,
+    to: string,
+    limit = 20,
+    cursor?: string,
+  ): Promise<{ items: DiaryEntry[]; nextCursor: string | null }> {
+    const queryInput: QueryCommandInput = {
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND SK BETWEEN :from AND :to',
+      ExpressionAttributeValues: {
+        ':pk': pk.farm(farmId),
+        ':from': `${DDB_KEY_PREFIXES.DIARY}${from}`,
+        ':to': `${DDB_KEY_PREFIXES.DIARY}${to}~`,
+      },
+      ScanIndexForward: false,
+      Limit: limit,
+    };
+
+    if (cursor) {
+      try {
+        queryInput.ExclusiveStartKey = decodeCursor(cursor, pk.farm(farmId));
+      } catch {
+        // Malformed base64url, non-JSON, or PK mismatch: treat as a client error
+        const badCursor = new Error('Invalid cursor format');
+        badCursor.name = 'ValidationException';
+        throw badCursor;
+      }
+    }
+
+    const result = await ddb.send(new QueryCommand(queryInput));
+    const items = (result.Items ?? []).map((item) => {
+      const id = extractIdFromSk(item['SK'] as string, DDB_KEY_PREFIXES.DIARY);
+      return this.itemToDiaryEntry(item, id);
+    });
+
+    const nextCursor = result.LastEvaluatedKey
+      ? encodeCursor(result.LastEvaluatedKey)
+      : null;
+
+    return { items, nextCursor };
+  }
+
+  async updateDiaryEntry(
+    farmId: string,
+    entryId: string,
+    date: string,
+    updates: Partial<{
+      category: DiaryCategory;
+      description: string;
+      time_spent_minutes: number | null;
+      bed_id: string | null;
+      photo_ids: string[];
+      costs: CostItem[];
+    }>,
+  ): Promise<DiaryEntry> {
+    // Split into SET (non-null values) and REMOVE (null values) per updateBed pattern.
+    const setExpressions: string[] = ['#updated_at = :now'];
+    const removeExpressions: string[] = [];
+    const names: Record<string, string> = { '#updated_at': 'updated_at' };
+    const values: Record<string, unknown> = { ':now': new Date().toISOString() };
+
+    for (const [key, val] of Object.entries(updates)) {
+      if (val === undefined) continue;
+      names[`#${key}`] = key;
+      if (val === null) {
+        // null means "clear field" — use REMOVE
+        removeExpressions.push(`#${key}`);
+      } else {
+        setExpressions.push(`#${key} = :${key}`);
+        values[`:${key}`] = val;
+      }
+    }
+
+    const parts: string[] = [];
+    if (setExpressions.length > 0) parts.push(`SET ${setExpressions.join(', ')}`);
+    if (removeExpressions.length > 0) parts.push(`REMOVE ${removeExpressions.join(', ')}`);
+
+    const result = await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.diary(date, entryId) },
+        UpdateExpression: parts.join(' '),
+        ExpressionAttributeNames: names,
+        ...(Object.keys(values).length > 0 ? { ExpressionAttributeValues: values } : {}),
+        ConditionExpression: 'attribute_exists(PK)',
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return this.itemToDiaryEntry(result.Attributes as Record<string, unknown>, entryId);
+  }
+
+  async deleteDiaryEntry(farmId: string, entryId: string, date: string): Promise<void> {
+    await ddb.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.diary(date, entryId) },
+        ConditionExpression: 'attribute_exists(PK)',
+      }),
+    );
   }
 
   /** Create or replace notification preferences for a user. */

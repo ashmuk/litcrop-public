@@ -56,6 +56,10 @@ export const DEFAULT_NOTIFICATION_PREFS: Record<AppEventType, boolean> = {
   'device.deregistered': false,
   'device.config_updated': false,
   'device.test_shot': false,
+  // Diary events (Beta-7 — activity log only)
+  'diary.created': false,
+  'diary.updated': false,
+  'diary.deleted': false,
 };
 
 // ── Email subject map ───────────────────────────────────────────

@@ -13,6 +13,7 @@ import usageRouter from './routes/usage';
 import adminRouter from './routes/admin';
 import meRouter from './routes/me';
 import { farmDevicesRouter, deviceRouter } from './routes/devices';
+import diaryRouter from './routes/diary';
 
 // ── Notification subscriptions (must import to initialize) ──────
 // This side-effect import registers all event subscribers at module load time.
@@ -181,5 +182,10 @@ app.route('/api/v1/farms', farmDevicesRouter);
 // GET /api/v1/devices/:deviceId/config
 // POST /api/v1/devices/:deviceId/heartbeat
 app.route('/api/v1/devices', deviceRouter);
+
+// Diary management (farm-scoped, Beta-7)
+// POST|GET /api/v1/farms/:farmId/diary
+// GET|PATCH|DELETE /api/v1/farms/:farmId/diary/:entryId
+app.route('/api/v1/farms', diaryRouter);
 
 export default app;
