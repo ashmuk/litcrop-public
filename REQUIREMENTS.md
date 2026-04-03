@@ -622,3 +622,93 @@ Hub-and-spoke pattern with auth gateway and onboarding entry point. Auth screens
 | **MVP+ (total)** | **87** | **38** | **10** | **7** |
 
 > Updated 2026-03-25 (Beta-2). PoC requirements carry forward; MVP additions marked `[MVP]`, MVP+ additions marked `[MVP+]`. Phase D flattened Field→Bed→Plot to Farm→Bed. Phase B added multi-farm membership.
+
+---
+
+## Beta-6 Addition: Searchable Crop Library (#216 + #257)
+
+> Added 2026-04-03 by `/cc-define`
+
+### Context
+
+Current crop selection is a dropdown with 8 hardcoded options. Users need broader selection (100+ crops) with bilingual search (EN/JA) and visual emoji icons on display pages.
+
+### Current State
+
+| Aspect | Current |
+|--------|---------|
+| Crop types | 8 hardcoded in `CROP_TYPES` constant |
+| Data model | `crop_type?: string` — free text, no enum constraint |
+| API validation | `z.string().min(1).max(100)` — accepts any string |
+| Selection UI | `<select>` dropdown in BedDetail edit form |
+| Display | Plain text on Crops list, Layout grid, Bed detail |
+| Icons | None — only status badges have emoji icons |
+| i18n | 8 crop labels in EN + JA |
+
+### Functional Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| CR-01 | Bundled crop data file with 100+ crops, each having: EN name, JA name, emoji icon, category | MUST |
+| CR-02 | Searchable autocomplete input replacing the dropdown in BedDetail edit form | MUST |
+| CR-03 | Search works in both English and Japanese (match on either language) | MUST |
+| CR-04 | Top-8 crops shown as quick-select chips above the search input | MUST |
+| CR-05 | Free-text entry allowed for crops not in the library | MUST |
+| CR-06 | Crop emoji icons displayed on Crops list page (FarmOverview) | MUST |
+| CR-07 | Crop emoji icons displayed on Layout grid (FarmLayoutView) | MUST |
+| CR-08 | Crop emoji icon displayed on Bed detail page header | SHOULD |
+| CR-09 | No additional AWS cost (bundled JSON, no API calls) | MUST |
+| CR-10 | Categories for organizing crops: grain, fruit, vegetable, root, leafy, legume, herb, other | SHOULD |
+
+### Non-Functional Requirements
+
+| ID | Requirement |
+|----|-------------|
+| NF-01 | Crop data file < 20KB (fast load, no lazy loading needed) |
+| NF-02 | Autocomplete renders < 16ms per keystroke |
+| NF-03 | Works offline (no network dependency for crop list) |
+| NF-04 | Accessible: keyboard navigation, ARIA labels for autocomplete |
+
+### Constraints
+
+| ID | Constraint |
+|----|------------|
+| C-01 | No backend changes — `crop_type` stays as free `string` |
+| C-02 | No breaking change — existing 8 crop types must remain valid |
+| C-03 | No external API dependency (OpenFarm, AGROVOC deferred) |
+| C-04 | Emoji icons must be visible in all 3 themes (light/dark/earthy) |
+
+### Touchpoints (files to modify)
+
+| File | Change |
+|------|--------|
+| New: `src/frontend/src/data/crops.json` | Crop library data (100+ entries) |
+| New: `src/frontend/src/lib/crops.ts` | Lookup helpers, search function, icon mapping |
+| `src/frontend/src/components/BedDetail.tsx` | Replace `<select>` with autocomplete component |
+| `src/frontend/src/components/FarmOverview.tsx` | Add crop emoji next to crop name |
+| `src/frontend/src/components/FarmLayoutView.tsx` | Add crop emoji in grid cells |
+| `packages/shared/src/constants.ts` | Keep `CROP_TYPES` for backward compat (quick-select chips) |
+| `src/frontend/src/i18n/en.json` | Not needed if crops.json has EN names inline |
+| `src/frontend/src/i18n/ja.json` | Not needed if crops.json has JA names inline |
+
+### Data Schema (proposed for crops.json)
+
+```json
+{
+  "id": "tomato",
+  "en": "Tomato",
+  "ja": "トマト",
+  "emoji": "🍅",
+  "category": "vegetables"
+}
+```
+
+### Acceptance Criteria (from issues)
+
+- [ ] User can search and select from 100+ crop types
+- [ ] Search works in both English and Japanese
+- [ ] Current quick-select crops remain as shortcuts
+- [ ] Free-text entry still allowed for unlisted crops
+- [ ] No additional AWS cost
+- [ ] Crop emoji icons visible on Crops list and Layout grid
+- [ ] Icons work in all 3 themes
