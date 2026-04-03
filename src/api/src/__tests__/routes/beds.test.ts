@@ -25,6 +25,7 @@ vi.mock('../../services/s3', () => ({
   getSignedThumbnailUrl: vi.fn(),
   uploadImage: vi.fn(),
   deleteImage: vi.fn(),
+  buildStorageKey: vi.fn().mockReturnValue('images/f0/bd0/2026/01/01/test-img.jpg'),
 }));
 
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';

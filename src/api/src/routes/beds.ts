@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage, deleteImage } from '../services/s3';
+import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage, deleteImage, buildStorageKey } from '../services/s3';
 import {
   NotFoundError,
   ValidationError,
@@ -331,26 +331,15 @@ router.post('/:bedId/images', async (c) => {
     }
   }
 
-  // Upload to S3 + write DynamoDB
+  // Write DynamoDB first, then upload to S3.
+  // Order matters: the S3 upload triggers the thumbnail Lambda via S3 event,
+  // which queries GSI1 for the image record. If DynamoDB isn't written yet,
+  // the Lambda silently skips and thumbnail_key is never set (#258).
   const imageId = crypto.randomUUID();
   const uploadedAt = new Date().toISOString();
   const capturedAtIso = capturedDate.toISOString();
   const contentType = ACCEPTED_IMAGE_CONTENT_TYPE;
-
-  let storageKey: string;
-  try {
-    storageKey = await uploadImage(
-      bed.farm_id,
-      bedId,
-      imageId,
-      capturedAtIso,
-      buffer,
-      contentType,
-    );
-  } catch (err) {
-    console.error('[s3 upload error]', err);
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  const storageKey = buildStorageKey(bed.farm_id, bedId, imageId, capturedAtIso);
 
   let image: Image;
   try {
@@ -366,8 +355,20 @@ router.post('/:bedId/images', async (c) => {
     });
   } catch (err) {
     console.error('[dynamo createImage error]', err);
-    // Rollback: remove the S3 object that has no metadata record
-    try { await deleteImage(storageKey); } catch { /* best-effort */ }
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  try {
+    await uploadImage(
+      bed.farm_id,
+      bedId,
+      imageId,
+      capturedAtIso,
+      buffer,
+      contentType,
+    );
+  } catch (err) {
+    console.error('[s3 upload error]', err);
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
