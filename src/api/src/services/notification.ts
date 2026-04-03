@@ -49,6 +49,7 @@ export const DEFAULT_NOTIFICATION_PREFS: Record<AppEventType, boolean> = {
   'tag.created': false,
   'member.joined': false,
   'member.removed': false,
+  'member.role_changed': false,
   'user.profile_updated': false,
   // Device events (Beta-5 — activity log only)
   'device.registered': false,
