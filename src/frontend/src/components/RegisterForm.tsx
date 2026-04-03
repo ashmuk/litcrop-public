@@ -77,7 +77,7 @@ export default function RegisterForm() {
   const [step1Loading, setStep1Loading] = useState(false);
 
   // Preference state
-  const [role, setRole] = useState<'manager' | 'observer'>('observer');
+  const [role, setRole] = useState<'owner' | 'staff'>('staff');
   const [promoCode, setPromoCode] = useState('');
   const [promoValid, setPromoValid] = useState(false);
   const [promoChecking, setPromoChecking] = useState(false);
@@ -131,7 +131,7 @@ export default function RegisterForm() {
     if (!trimmed) {
       setPromoError('');
       setPromoValid(false);
-      setRole('observer');
+      setRole('staff');
       return;
     }
     setPromoChecking(true);
@@ -143,7 +143,7 @@ export default function RegisterForm() {
       } else {
         setPromoValid(false);
         setPromoError(t('auth.register.promo_invalid'));
-        setRole('observer');
+        setRole('staff');
       }
       setPromoChecking(false);
     }, 400);
@@ -453,11 +453,11 @@ export default function RegisterForm() {
         <label class="form-label">{t('auth.register.role_label')}</label>
         <div style="display:flex;gap:var(--space-3)">
           <label style={{display:'flex',alignItems:'center',gap:'var(--space-1)',cursor: promoValid ? 'pointer' : 'not-allowed',opacity: promoValid ? 1 : 0.4}}>
-            <input type="radio" name="role" value="manager" checked={role === 'manager'} onChange={() => setRole('manager')} disabled={!promoValid} />
-            {t('auth.register.role_manager')}
+            <input type="radio" name="role" value="owner" checked={role === 'owner'} onChange={() => setRole('owner')} disabled={!promoValid} />
+            {t('auth.register.role_owner')}
           </label>
           <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-            <input type="radio" name="role" value="observer" checked={role === 'observer'} onChange={() => setRole('observer')} />
+            <input type="radio" name="role" value="staff" checked={role === 'staff'} onChange={() => setRole('staff')} />
             {t('auth.register.role_reader')}
           </label>
         </div>
@@ -474,7 +474,7 @@ export default function RegisterForm() {
             value={promoCode}
             onInput={(e) => {
               setPromoCode((e.target as HTMLInputElement).value);
-              if (promoValid) { setPromoValid(false); setRole('observer'); }
+              if (promoValid) { setPromoValid(false); setRole('staff'); }
               setPromoError('');
             }}
             placeholder={t('auth.register.promo_placeholder')}

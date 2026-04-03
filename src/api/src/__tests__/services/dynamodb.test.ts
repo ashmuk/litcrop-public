@@ -317,14 +317,14 @@ describe('createFarm', () => {
     expect(userItem['PK']).toBe(`USER#${USER_ID}`);
     expect(typeof userItem['SK']).toBe('string');
     expect((userItem['SK'] as string).startsWith('FARM_MEMBER#')).toBe(true);
-    expect(userItem['role']).toBe('manager');
+    expect(userItem['role']).toBe('owner');
     // Item 2: farm→member index record (FARM# PK, MEMBER# SK)
     const memberPut = items[2]['Put'] as Record<string, unknown>;
     const memberItem = memberPut['Item'] as Record<string, unknown>;
     expect((memberItem['PK'] as string).startsWith('FARM#')).toBe(true);
     expect((memberItem['SK'] as string).startsWith('MEMBER#')).toBe(true);
     expect(memberItem['user_id']).toBe(USER_ID);
-    expect(memberItem['role']).toBe('manager');
+    expect(memberItem['role']).toBe('owner');
   });
 
   it('calls createBedsForFarm after the TransactWrite', async () => {
@@ -412,14 +412,14 @@ describe('getFarmsForUser', () => {
       PK: `USER#${USER_ID}`,
       SK: `FARM_MEMBER#${FARM_ID}`,
       farm_id: FARM_ID,
-      role: 'manager',
+      role: 'owner',
       joined_at: '2026-03-17T00:00:00.000Z',
     };
     ddbMock.on(QueryCommand).resolves({ Items: [memberItem] });
     const result = await repo.getFarmsForUser(USER_ID);
     expect(result).toHaveLength(1);
     expect(result[0].farm_id).toBe(FARM_ID);
-    expect(result[0].role).toBe('manager');
+    expect(result[0].role).toBe('owner');
     expect(result[0].user_id).toBe(USER_ID);
   });
 
@@ -447,13 +447,13 @@ describe('getFarmMembership', () => {
       PK: `USER#${USER_ID}`,
       SK: `FARM_MEMBER#${FARM_ID}`,
       farm_id: FARM_ID,
-      role: 'observer',
+      role: 'staff',
       joined_at: '2026-03-17T00:00:00.000Z',
     };
     ddbMock.on(GetCommand).resolves({ Item: memberItem });
     const result = await repo.getFarmMembership(USER_ID, FARM_ID);
     expect(result).not.toBeNull();
-    expect(result!.role).toBe('observer');
+    expect(result!.role).toBe('staff');
     expect(result!.farm_id).toBe(FARM_ID);
     expect(result!.user_id).toBe(USER_ID);
   });
@@ -473,10 +473,10 @@ describe('getFarmMembership', () => {
 describe('addFarmMember', () => {
   it('writes both USER# and FARM# records in a single TransactWrite', async () => {
     ddbMock.on(TransactWriteCommand).resolves({});
-    const result = await repo.addFarmMember(USER_ID, FARM_ID, 'observer');
+    const result = await repo.addFarmMember(USER_ID, FARM_ID, 'staff');
     expect(result.user_id).toBe(USER_ID);
     expect(result.farm_id).toBe(FARM_ID);
-    expect(result.role).toBe('observer');
+    expect(result.role).toBe('staff');
 
     const calls = ddbMock.commandCalls(TransactWriteCommand);
     const items = calls[0].args[0].input.TransactItems as Array<Record<string, unknown>>;
@@ -603,7 +603,7 @@ describe('deleteAccount', () => {
     ]);
     vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
       { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
-      { user_id: OTHER_USER_ID, role: 'manager', joined_at: '2026-02-01T00:00:00.000Z' },
+      { user_id: OTHER_USER_ID, role: 'owner', joined_at: '2026-02-01T00:00:00.000Z' },
     ]);
 
     const summary = await repo.deleteAccount(USER_ID);
@@ -629,7 +629,7 @@ describe('deleteAccount', () => {
     ]);
     vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
       { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
-      { user_id: OTHER_USER_ID, role: 'observer', joined_at: '2026-02-01T00:00:00.000Z' },
+      { user_id: OTHER_USER_ID, role: 'staff', joined_at: '2026-02-01T00:00:00.000Z' },
     ]);
 
     await repo.deleteAccount(USER_ID);
@@ -647,11 +647,11 @@ describe('deleteAccount', () => {
     vi.spyOn(repo, 'getMyJoinRequests').mockResolvedValue([]);
 
     vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
-      { user_id: USER_ID, farm_id: FARM_ID, role: 'observer', joined_at: '2026-01-01T00:00:00.000Z' },
+      { user_id: USER_ID, farm_id: FARM_ID, role: 'staff', joined_at: '2026-01-01T00:00:00.000Z' },
     ]);
     vi.spyOn(repo, 'getFarmMembers').mockResolvedValue([
       { user_id: OTHER_USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
-      { user_id: USER_ID, role: 'observer', joined_at: '2026-02-01T00:00:00.000Z' },
+      { user_id: USER_ID, role: 'staff', joined_at: '2026-02-01T00:00:00.000Z' },
     ]);
 
     const summary = await repo.deleteAccount(USER_ID);
@@ -674,17 +674,17 @@ describe('deleteAccount', () => {
     vi.spyOn(repo, 'getFarmsForUser').mockResolvedValue([
       { user_id: USER_ID, farm_id: FARM_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },    // sole member
       { user_id: USER_ID, farm_id: FARM_ID_2, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' }, // admin + others
-      { user_id: USER_ID, farm_id: FARM_ID_3, role: 'observer', joined_at: '2026-01-01T00:00:00.000Z' }, // non-admin
+      { user_id: USER_ID, farm_id: FARM_ID_3, role: 'staff', joined_at: '2026-01-01T00:00:00.000Z' }, // non-admin
     ]);
     vi.spyOn(repo, 'getFarmMembers')
       .mockResolvedValueOnce([{ user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' }]) // FARM_ID: sole
       .mockResolvedValueOnce([
         { user_id: USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
-        { user_id: OTHER_USER_ID, role: 'manager', joined_at: '2026-02-01T00:00:00.000Z' },
+        { user_id: OTHER_USER_ID, role: 'owner', joined_at: '2026-02-01T00:00:00.000Z' },
       ])
       .mockResolvedValueOnce([
         { user_id: OTHER_USER_ID, role: 'admin', joined_at: '2026-01-01T00:00:00.000Z' },
-        { user_id: USER_ID, role: 'observer', joined_at: '2026-02-01T00:00:00.000Z' },
+        { user_id: USER_ID, role: 'staff', joined_at: '2026-02-01T00:00:00.000Z' },
       ]);
 
     const summary = await repo.deleteAccount(USER_ID);

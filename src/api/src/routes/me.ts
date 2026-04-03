@@ -29,7 +29,7 @@ router.get('/profile', async (c) => {
     const { profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
     return c.json({ ...rest, is_admin: isAdmin, profile_picture_url: profilePictureUrl, profile_picture_thumb_url: profilePictureThumbUrl });
   }
-  return c.json({ user_id: userId, display_name: '', preferred_role: 'observer' as const, created_at: null, is_admin: isAdmin, profile_picture_url: null, profile_picture_thumb_url: null });
+  return c.json({ user_id: userId, display_name: '', preferred_role: 'staff' as const, created_at: null, is_admin: isAdmin, profile_picture_url: null, profile_picture_thumb_url: null });
 });
 
 // PATCH /api/v1/me/profile

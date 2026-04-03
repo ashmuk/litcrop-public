@@ -181,7 +181,7 @@ describe('activity subscriptions — recordActivity', () => {
       ['bed.updated', { bed_id: 'b1', bed_name: 'B1', farm_id: 'f1', farm_name: 'F1', changed_fields: [] }],
       ['image.uploaded', { image_id: 'i1', bed_id: 'b1', bed_name: 'B1', farm_id: 'f1', farm_name: 'F1' }],
       ['tag.created', { image_id: 'i1', tag_value: 'healthy', farm_id: 'f1', farm_name: 'F1' }],
-      ['member.joined', { farm_id: 'f1', farm_name: 'F1', role: 'observer' }],
+      ['member.joined', { farm_id: 'f1', farm_name: 'F1', role: 'staff' }],
       ['member.removed', { farm_id: 'f1', farm_name: 'F1', removed_user_id: 'u2', removed_user_name: 'Bob' }],
       ['join_request.submitted', { farm_id: 'f1', farm_name: 'F1', requester_name: 'Carol' }],
       ['join_request.approved', { farm_id: 'f1', farm_name: 'F1', target_user_id: 'u3', target_user_name: 'Dave' }],

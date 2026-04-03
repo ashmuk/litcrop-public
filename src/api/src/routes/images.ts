@@ -45,7 +45,7 @@ async function assertImageWriteAccess(image: Image, userId: string): Promise<Bed
     throw new ServiceUnavailableError('Storage service unavailable');
   }
   try {
-    await assertFarmAccess(bed.farm_id, userId, ['admin', 'manager']);
+    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner']);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Image not found: ${image.id}`);

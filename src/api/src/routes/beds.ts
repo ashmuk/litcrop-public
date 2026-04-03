@@ -46,10 +46,10 @@ async function assertBedAccess(bed: Bed, userId: string, isAdmin?: boolean): Pro
   }
 }
 
-/** Verify caller has admin or manager role for the farm containing this bed (write operations). */
+/** Verify caller has admin or owner role for the farm containing this bed (write operations). */
 async function assertBedWriteAccess(bed: Bed, userId: string): Promise<void> {
   try {
-    await assertFarmAccess(bed.farm_id, userId, ['admin', 'manager']);
+    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner']);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Bed not found: ${bed.id}`);

@@ -390,7 +390,7 @@ export default function ProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
-  const [preferredRole, setPreferredRole] = useState<'manager' | 'observer' | null>(null);
+  const [preferredRole, setPreferredRole] = useState<'owner' | 'staff' | null>(null);
   const [editingFarmName, setEditingFarmName] = useState<string | null>(null);
   const [farmNameDraft, setFarmNameDraft] = useState('');
   const [savingFarmName, setSavingFarmName] = useState(false);
@@ -417,8 +417,8 @@ export default function ProfilePage() {
           try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
           document.documentElement.setAttribute('data-locale', activeFarm.locale);
         }
-        // Fetch pending join request counts for admin/manager farms (non-blocking)
-        const adminFarms = (list as FarmWithRole[]).filter((f) => f.role === 'admin' || f.role === 'manager');
+        // Fetch pending join request counts for admin/owner farms (non-blocking)
+        const adminFarms = (list as FarmWithRole[]).filter((f) => f.role === 'admin' || f.role === 'owner');
         if (adminFarms.length > 0) {
           Promise.all(
             adminFarms.map((f) => getJoinRequests(f.id).then((r) => [f.id, r.length] as const).catch(() => [f.id, 0] as const)),
@@ -448,8 +448,8 @@ export default function ProfilePage() {
       if (p.is_admin) setIsSystemAdmin(true);
       setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
-      if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {
-        // Pending role takes precedence over API fallback ('observer')
+      if (pendingRole && (pendingRole === 'owner' || pendingRole === 'staff') && !p.created_at) {
+        // Pending role takes precedence over API fallback ('staff')
         setPreferredRole(pendingRole);
         updateMyProfile({ preferred_role: pendingRole })
           .then(() => { localStorage.removeItem('litcrop-pendingRole'); })
@@ -644,15 +644,15 @@ export default function ProfilePage() {
   }
 
   // Determine if user should see farm creation UI
-  // Show for: managers (by preferredRole), system admins, users with admin/manager farm roles,
+  // Show for: owners (by preferredRole), system admins, users with admin/owner farm roles,
   // or users with zero farms (they need a way to get started regardless of role)
-  // Hide for: observers who already belong to at least one farm
-  const hasManagerRole = farms.some((f) => f.role === 'admin' || f.role === 'manager');
+  // Hide for: staff who already belong to at least one farm
+  const hasOwnerRole = farms.some((f) => f.role === 'admin' || f.role === 'owner');
   const hasNoFarms = !loading && farms.length === 0;
-  const isObserverOnly = preferredRole !== 'manager' && !isSystemAdmin && !hasManagerRole && !hasNoFarms;
+  const isStaffOnly = preferredRole !== 'owner' && !isSystemAdmin && !hasOwnerRole && !hasNoFarms;
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
-  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
+  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'owner')).length;
   const atFarmLimit = ownedCount >= FREE_PLAN_MAX_OWNED_FARMS;
 
   if (showWizard) {
@@ -687,7 +687,7 @@ export default function ProfilePage() {
           <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-3)">
             {farms.map((farm) => {
               const isActive = farm.id === activeFarmId;
-              const isAdmin = farm.role === 'admin' || farm.role === 'manager';
+              const isAdmin = farm.role === 'admin' || farm.role === 'owner';
               const isDemoFarm = farm.id === DEMO_FARM_ID;
               const isConfirming = confirmDelete === farm.id;
               const isConfirmingLeave = confirmLeave === farm.id;
@@ -901,7 +901,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {!isObserverOnly && (
+        {!isStaffOnly && (
           <>
             <button
               class="btn-primary"

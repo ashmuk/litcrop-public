@@ -83,7 +83,7 @@ export default function BedDetail() {
       ? new URLSearchParams(window.location.search).get('id') ?? ''
       : '';
 
-  const isReadOnly = getLocalFarmRole() === 'observer';
+  const isReadOnly = getLocalFarmRole() === 'staff';
 
   useEffect(() => {
     if (!bedId) return;

@@ -65,7 +65,7 @@ const farmFixture = {
 const membershipFixture = {
   user_id: TEST_USER_ID,
   farm_id: FARM_ID,
-  role: 'manager' as const,
+  role: 'owner' as const,
   joined_at: '2026-03-17T00:00:00.000Z',
   farm_name: 'Test Farm',
 };
@@ -99,7 +99,7 @@ beforeEach(() => {
 describe('GET /api/v1/farms', () => {
   it('returns 200 with array containing the farm when found', async () => {
     vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([
-      { user_id: TEST_USER_ID, farm_id: FARM_ID, role: 'manager', joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, farm_id: FARM_ID, role: 'owner', joined_at: '2026-03-17T00:00:00.000Z' },
     ]);
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
 
@@ -313,7 +313,7 @@ describe('POST /api/v1/farms/:farmId/members', () => {
   const addedMemberFixture = {
     user_id: NEW_USER_ID,
     farm_id: FARM_ID,
-    role: 'observer' as const,
+    role: 'staff' as const,
     joined_at: '2026-03-22T00:00:00.000Z',
   };
 
@@ -324,12 +324,12 @@ describe('POST /api/v1/farms/:farmId/members', () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'staff' }),
     });
     expect(res.status).toBe(201);
     const body = await res.json() as { user_id: string; role: string };
     expect(body.user_id).toBe(NEW_USER_ID);
-    expect(body.role).toBe('observer');
+    expect(body.role).toBe('staff');
   });
 
   it('returns 409 when user is already a member', async () => {
@@ -341,7 +341,7 @@ describe('POST /api/v1/farms/:farmId/members', () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'staff' }),
     });
     expect(res.status).toBe(409);
     const body = await res.json() as { error: { code: string } };
@@ -368,7 +368,7 @@ describe('POST /api/v1/farms/:farmId/members', () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'staff' }),
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };
@@ -383,7 +383,7 @@ describe('POST /api/v1/farms/:farmId/members', () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'staff' }),
     });
     expect(res.status).toBe(404);
   });
@@ -393,14 +393,14 @@ describe('POST /api/v1/farms/:farmId/members', () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       user_id: TEST_USER_ID,
       farm_id: FARM_ID,
-      role: 'observer' as const,
+      role: 'staff' as const,
       joined_at: '2026-03-17T00:00:00.000Z',
     });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'observer' }),
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'staff' }),
     });
     expect(res.status).toBe(404);
   });
@@ -415,8 +415,8 @@ describe('DELETE /api/v1/farms/:farmId/members/me', () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
     // Manager leaving: must have another manager so the sole-owner check passes
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
-      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
-      { user_id: 'other-user', role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, role: 'owner' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: 'other-user', role: 'owner' as const, joined_at: '2026-03-17T00:00:00.000Z' },
     ]);
     vi.mocked(dynamoRepo.removeFarmMember).mockResolvedValue(undefined);
 
@@ -452,10 +452,10 @@ describe('DELETE /api/v1/farms/:farmId/members/me', () => {
   it('returns 400 when manager is the only owner', async () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       ...membershipFixture,
-      role: 'manager' as const,
+      role: 'owner' as const,
     });
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
-      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, role: 'owner' as const, joined_at: '2026-03-17T00:00:00.000Z' },
     ]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members/me`, {
@@ -498,7 +498,7 @@ describe('DELETE /api/v1/farms/:farmId/members/me', () => {
 describe('GET /api/v1/farms/:farmId/members', () => {
   it('returns 200 with members array for any member', async () => {
     const membersList = [
-      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, role: 'owner' as const, joined_at: '2026-03-17T00:00:00.000Z' },
     ];
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue(membersList);
 
@@ -506,18 +506,18 @@ describe('GET /api/v1/farms/:farmId/members', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: unknown[] };
     expect(body.data).toHaveLength(1);
-    expect((body.data[0] as Record<string, unknown>)['role']).toBe('manager');
+    expect((body.data[0] as Record<string, unknown>)['role']).toBe('owner');
     expect((body.data[0] as Record<string, unknown>)['display_name']).toBe('');
   });
 
   it('enriches members with display_name from user profile', async () => {
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
-      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, role: 'owner' as const, joined_at: '2026-03-17T00:00:00.000Z' },
     ]);
     vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({
       user_id: TEST_USER_ID,
       display_name: 'Tanaka',
-      preferred_role: 'manager',
+      preferred_role: 'owner',
       created_at: '2026-03-17T00:00:00.000Z',
     });
 
@@ -529,7 +529,7 @@ describe('GET /api/v1/farms/:farmId/members', () => {
 
   it('returns empty display_name when profile lookup fails', async () => {
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
-      { user_id: TEST_USER_ID, role: 'manager' as const, joined_at: '2026-03-17T00:00:00.000Z' },
+      { user_id: TEST_USER_ID, role: 'owner' as const, joined_at: '2026-03-17T00:00:00.000Z' },
     ]);
     vi.mocked(dynamoRepo.getUserProfile).mockRejectedValue(new Error('DynamoDB down'));
 
@@ -543,7 +543,7 @@ describe('GET /api/v1/farms/:farmId/members', () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       user_id: TEST_USER_ID,
       farm_id: FARM_ID,
-      role: 'observer' as const,
+      role: 'staff' as const,
       joined_at: '2026-03-17T00:00:00.000Z',
     });
     vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([]);
@@ -658,7 +658,7 @@ describe('DELETE /api/v1/farms/:farmId — admin bypass', () => {
 
 describe('assertFarmAccess — requiredRoles with admin', () => {
   it('admin passes when requiredRoles includes admin', async () => {
-    // PATCH /farms/:farmId uses requiredRoles ['admin', 'manager']
+    // PATCH /farms/:farmId uses requiredRoles ['admin', 'owner']
     // but does NOT pass isAdmin, so admin without membership gets 404
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(otherFarm);
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
@@ -745,7 +745,7 @@ describe('join_request events emission', () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
     vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
     vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
-    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Alice', preferred_role: 'observer', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Alice', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
     vi.mocked(dynamoRepo.createJoinRequest).mockResolvedValue(undefined);
 
     await app.request(`/api/v1/farms/${FARM_ID}/join`, {
@@ -770,7 +770,7 @@ describe('join_request events emission', () => {
 
     vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
     vi.mocked(dynamoRepo.approveJoinRequest).mockResolvedValue(undefined);
-    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Bob', preferred_role: 'observer', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Bob', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
 
     await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
       method: 'PATCH',
@@ -794,7 +794,7 @@ describe('join_request events emission', () => {
     appEvents.on('join_request.rejected', listener);
 
     vi.mocked(dynamoRepo.rejectJoinRequest).mockResolvedValue(undefined);
-    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Carol', preferred_role: 'observer', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Carol', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
 
     await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
       method: 'PATCH',

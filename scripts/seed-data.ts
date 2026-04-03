@@ -86,7 +86,7 @@ async function seedFarm() {
     PK: `USER#${DEMO_USER_ID}`,
     SK: `FARM_MEMBER#${FARM_ID}`,
     farm_id: FARM_ID,
-    role: 'manager',
+    role: 'owner',
     joined_at: CREATED_AT,
   });
 
@@ -95,7 +95,7 @@ async function seedFarm() {
     PK: pk.farm(FARM_ID),
     SK: `MEMBER#${DEMO_USER_ID}`,
     user_id: DEMO_USER_ID,
-    role: 'manager',
+    role: 'owner',
     joined_at: CREATED_AT,
   });
 }

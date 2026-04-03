@@ -34,7 +34,7 @@ export type Theme = 'light' | 'dark' | 'earthy' | 'system';
 export type TempUnit = 'C' | 'F';
 
 /** Farm membership role */
-export type FarmRole = 'admin' | 'manager' | 'observer';
+export type FarmRole = 'admin' | 'owner' | 'staff';
 
 /** Farm membership record — links a user to a farm with a role */
 export interface FarmMember {
@@ -103,7 +103,7 @@ export interface Tag {
 export interface UserProfile {
   user_id: string;
   display_name: string;
-  preferred_role: 'manager' | 'observer';
+  preferred_role: 'owner' | 'staff';
   created_at: string; // ISO 8601
   profile_picture_key?: string;
   profile_picture_thumb_key?: string;

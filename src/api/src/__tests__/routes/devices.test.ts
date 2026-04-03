@@ -63,7 +63,7 @@ const farmFixture = {
 const membershipFixture = {
   user_id: TEST_USER_ID,
   farm_id: FARM_ID,
-  role: 'manager' as const,
+  role: 'owner' as const,
   joined_at: '2026-04-01T00:00:00Z',
 };
 
@@ -215,7 +215,7 @@ describe('POST /api/v1/farms/:farmId/devices', () => {
   });
 
   it('observer role → 404', async () => {
-    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'observer' as const });
+    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'staff' as const });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/devices`, {
       method: 'POST',
@@ -281,7 +281,7 @@ describe('GET /api/v1/farms/:farmId/devices', () => {
   });
 
   it('observer can list → 200', async () => {
-    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'observer' as const });
+    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'staff' as const });
     mockRepo.getDevicesForFarm.mockResolvedValue([deviceFixture]);
     mockRepo.getBedsForFarm.mockResolvedValue([bedFixture]);
 
@@ -521,7 +521,7 @@ describe('PATCH /api/v1/farms/:farmId/devices/:deviceId', () => {
   });
 
   it('observer role → 404', async () => {
-    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'observer' as const });
+    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'staff' as const });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/devices/${DEVICE_ID}`, {
       method: 'PATCH',
@@ -562,7 +562,7 @@ describe('DELETE /api/v1/farms/:farmId/devices/:deviceId', () => {
   });
 
   it('observer role → 404', async () => {
-    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'observer' as const });
+    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'staff' as const });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/devices/${DEVICE_ID}`, {
       method: 'DELETE',
@@ -591,7 +591,7 @@ describe('POST /api/v1/farms/:farmId/devices/:deviceId/test-shot', () => {
   });
 
   it('observer role → 404', async () => {
-    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'observer' as const });
+    mockRepo.getFarmMembership.mockResolvedValue({ ...membershipFixture, role: 'staff' as const });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/devices/${DEVICE_ID}/test-shot`, {
       method: 'POST',

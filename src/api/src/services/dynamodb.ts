@@ -184,7 +184,7 @@ function itemToUserProfile(item: Record<string, unknown>, userId: string): UserP
   return {
     user_id: userId,
     display_name: (item['display_name'] as string) ?? '',
-    preferred_role: (item['preferred_role'] as UserProfile['preferred_role']) ?? 'observer',
+    preferred_role: (item['preferred_role'] as UserProfile['preferred_role']) ?? 'staff',
     created_at: (item['created_at'] as string) ?? '',
     profile_picture_key: item['profile_picture_key'] as string | undefined,
     profile_picture_thumb_key: item['profile_picture_thumb_key'] as string | undefined,
@@ -639,7 +639,7 @@ export class DynamoRepository {
               ConditionExpression: 'attribute_not_exists(PK)',
             },
           },
-          ...buildMembershipItems(userId, farmId, 'manager', joinedAt),
+          ...buildMembershipItems(userId, farmId, 'owner', joinedAt),
         ],
       }),
     );
@@ -1192,7 +1192,7 @@ export class DynamoRepository {
               ExpressionAttributeValues: { ':approved': 'approved', ':pending': 'pending', ':now': now, ':by': resolvedBy },
             },
           },
-          ...buildMembershipItems(userId, farmId, 'observer', now),
+          ...buildMembershipItems(userId, farmId, 'staff', now),
         ],
       }),
     );
@@ -1347,9 +1347,9 @@ export class DynamoRepository {
           .filter((m) => m.user_id !== userId)
           .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
 
-        // Prefer managers over regular members; fall back to longest-tenured member
+        // Prefer owners over regular members; fall back to longest-tenured member
         const successor =
-          otherMembers.find((m) => m.role === 'manager') ?? otherMembers[0];
+          otherMembers.find((m) => m.role === 'owner') ?? otherMembers[0];
 
         await this.updateMemberRole(farmId, successor.user_id, 'admin');
         await this.removeFarmMember(userId, farmId);
