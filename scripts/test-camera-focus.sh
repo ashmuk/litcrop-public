@@ -90,9 +90,11 @@ for i in $(seq 1 "$SHOT_COUNT"); do
 
   echo "--- Shot $i of $SHOT_COUNT ($TIMESTAMP) ---"
 
-  # Capture (try libcamera first, fall back to raspistill)
+  # Capture (try rpicam-still first, then libcamera, then raspistill)
   echo "  📸 Capturing..."
-  if command -v libcamera-jpeg &>/dev/null; then
+  if command -v rpicam-still &>/dev/null; then
+    rpicam-still -o "$FILENAME" --width "$WIDTH" --height "$HEIGHT" -q "$QUALITY" --nopreview -t 1000 2>/dev/null
+  elif command -v libcamera-jpeg &>/dev/null; then
     libcamera-jpeg -o "$FILENAME" --width "$WIDTH" --height "$HEIGHT" -q "$QUALITY" --nopreview -t 1000 2>/dev/null
   elif command -v raspistill &>/dev/null; then
     raspistill -o "$FILENAME" -w "$WIDTH" -h "$HEIGHT" -q "$QUALITY" -t 1000 2>/dev/null
