@@ -48,8 +48,19 @@ async function resolveBedName(bedId: string | null): Promise<string | null> {
 }
 
 /** Build the full diary entry response shape */
-async function buildEntryResponse(entry: DiaryEntry) {
-  const bed_name = await resolveBedName(entry.bed_id);
+async function buildEntryResponse(
+  entry: DiaryEntry,
+  bedNameCache?: Map<string, string | null>,
+) {
+  let bed_name: string | null = null;
+  if (entry.bed_id) {
+    if (bedNameCache?.has(entry.bed_id)) {
+      bed_name = bedNameCache.get(entry.bed_id) ?? null;
+    } else {
+      bed_name = await resolveBedName(entry.bed_id);
+      bedNameCache?.set(entry.bed_id, bed_name);
+    }
+  }
   return {
     id: entry.id,
     farm_id: entry.farm_id,
@@ -68,6 +79,40 @@ async function buildEntryResponse(entry: DiaryEntry) {
   };
 }
 
+/**
+ * Fetch a diary entry, verify farm scope (IDOR guard), and check creator/role auth.
+ * Shared by GET single, PATCH, and DELETE handlers.
+ */
+async function loadAndAuthorizeEntry(
+  farmId: string,
+  entryId: string,
+  userId: string,
+  isAdmin: boolean,
+  membership: { role: string },
+  requireWrite: boolean,
+): Promise<DiaryEntry> {
+  let entry: DiaryEntry | null;
+  try {
+    entry = await dynamoRepo.getDiaryEntryById(entryId);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  if (!entry || entry.farm_id !== farmId) {
+    throw new NotFoundError('Diary entry not found');
+  }
+
+  if (requireWrite) {
+    const isCreator = entry.created_by === userId;
+    const isPrivileged = !isAdmin && (membership.role === 'admin' || membership.role === 'owner');
+    if (!isCreator && !isPrivileged) {
+      throw new NotFoundError('Diary entry not found');
+    }
+  }
+
+  return entry;
+}
+
 // ── POST /:farmId/diary — Create entry ───────────────────────────
 
 diaryRouter.post('/:farmId/diary', async (c) => {
@@ -83,7 +128,6 @@ diaryRouter.post('/:farmId/diary', async (c) => {
 
   const { bed_id, photo_ids } = parsed.data;
 
-  // Validate bed belongs to this farm
   if (bed_id) {
     let bed;
     try {
@@ -99,35 +143,25 @@ diaryRouter.post('/:farmId/diary', async (c) => {
     }
   }
 
-  // Validate each photo belongs to a bed in this farm
   if (photo_ids.length > 0) {
-    for (const imageId of photo_ids) {
+    await Promise.all(photo_ids.map(async (imageId) => {
       let image;
       try {
         image = await dynamoRepo.getImageById(imageId);
       } catch (err) {
-        if (err instanceof NotFoundError) {
-          throw new ValidationError(`Photo not found: ${imageId}`);
-        }
+        if (err instanceof NotFoundError) throw new ValidationError(`Photo not found: ${imageId}`);
         throw new ServiceUnavailableError('Storage service unavailable');
       }
-      // Resolve the image's bed to check farm ownership
-      if (!image.bed_id) {
-        throw new ValidationError(`Photo not found in this farm: ${imageId}`);
-      }
+      if (!image.bed_id) throw new ValidationError(`Photo not found in this farm: ${imageId}`);
       let imageBed;
       try {
         imageBed = await dynamoRepo.getBedById(image.bed_id);
       } catch (err) {
-        if (err instanceof NotFoundError) {
-          throw new ValidationError(`Photo not found in this farm: ${imageId}`);
-        }
+        if (err instanceof NotFoundError) throw new ValidationError(`Photo not found in this farm: ${imageId}`);
         throw new ServiceUnavailableError('Storage service unavailable');
       }
-      if (imageBed.farm_id !== farmId) {
-        throw new ValidationError(`Photo not found in this farm: ${imageId}`);
-      }
-    }
+      if (imageBed.farm_id !== farmId) throw new ValidationError(`Photo not found in this farm: ${imageId}`);
+    }));
   }
 
   const entryId = randomUUID();
@@ -204,28 +238,12 @@ diaryRouter.get('/:farmId/diary', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  // Resolve bed names and compute cost totals; filter by category client-side
-  const entries = await Promise.all(
-    result.items.map(async (entry) => {
-      const bed_name = await resolveBedName(entry.bed_id);
-      return {
-        id: entry.id,
-        farm_id: entry.farm_id,
-        date: entry.date,
-        category: entry.category,
-        description: entry.description,
-        time_spent_minutes: entry.time_spent_minutes,
-        bed_id: entry.bed_id,
-        bed_name,
-        photo_ids: entry.photo_ids,
-        costs: entry.costs,
-        cost_total: calcCostTotal(entry),
-        created_by: entry.created_by,
-        created_at: entry.created_at,
-        updated_at: entry.updated_at,
-      };
-    }),
-  );
+  // Deduplicate bed lookups across entries sharing the same bed_id
+  const bedNameCache = new Map<string, string | null>();
+  const entries = [];
+  for (const entry of result.items) {
+    entries.push(await buildEntryResponse(entry, bedNameCache));
+  }
 
   const filtered = category ? entries.filter(e => e.category === category) : entries;
 
@@ -245,24 +263,9 @@ diaryRouter.get('/:farmId/diary/:entryId', async (c) => {
   const { userId, isAdmin } = getAuthContext(c);
   const farmId = c.req.param('farmId');
   const entryId = c.req.param('entryId');
-  await assertFarmAccess(farmId, userId, undefined, isAdmin);
+  const { membership } = await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
-  let entry: DiaryEntry | null;
-  try {
-    entry = await dynamoRepo.getDiaryEntryById(entryId);
-  } catch (err) {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-
-  if (!entry) {
-    throw new NotFoundError('Diary entry not found');
-  }
-
-  // IDOR guard: entry must belong to the requested farm
-  if (entry.farm_id !== farmId) {
-    throw new NotFoundError('Diary entry not found');
-  }
-
+  const entry = await loadAndAuthorizeEntry(farmId, entryId, userId, isAdmin, membership, false);
   const response = await buildEntryResponse(entry);
   return c.json(response);
 });
@@ -275,29 +278,7 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
   const entryId = c.req.param('entryId');
   const { membership } = await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
-  let entry: DiaryEntry | null;
-  try {
-    entry = await dynamoRepo.getDiaryEntryById(entryId);
-  } catch (err) {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-
-  if (!entry) {
-    throw new NotFoundError('Diary entry not found');
-  }
-
-  // IDOR guard
-  if (entry.farm_id !== farmId) {
-    throw new NotFoundError('Diary entry not found');
-  }
-
-  // Authorization: creator or admin/owner
-  const isCreator = entry.created_by === userId;
-  // isPrivileged = farm admin/owner (NOT platform admin — synthetic membership must not grant write)
-  const isPrivileged = !isAdmin && (membership.role === 'admin' || membership.role === 'owner');
-  if (!isCreator && !isPrivileged) {
-    throw new NotFoundError('Diary entry not found');
-  }
+  const entry = await loadAndAuthorizeEntry(farmId, entryId, userId, isAdmin, membership, true);
 
   const body = await c.req.json<Record<string, unknown>>();
   const parsed = UpdateDiaryEntrySchema.safeParse(body);
@@ -305,7 +286,6 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
     throw new ValidationError('Invalid diary entry data', { issues: parsed.error.issues });
   }
 
-  // Validate bed ownership if bed_id is being changed
   if (parsed.data.bed_id !== undefined && parsed.data.bed_id !== null) {
     let bed;
     try {
@@ -353,29 +333,7 @@ diaryRouter.delete('/:farmId/diary/:entryId', async (c) => {
   const entryId = c.req.param('entryId');
   const { membership } = await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
-  let entry: DiaryEntry | null;
-  try {
-    entry = await dynamoRepo.getDiaryEntryById(entryId);
-  } catch (err) {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-
-  if (!entry) {
-    throw new NotFoundError('Diary entry not found');
-  }
-
-  // IDOR guard
-  if (entry.farm_id !== farmId) {
-    throw new NotFoundError('Diary entry not found');
-  }
-
-  // Authorization: creator or admin/owner
-  const isCreator = entry.created_by === userId;
-  // isPrivileged = farm admin/owner (NOT platform admin — synthetic membership must not grant write)
-  const isPrivileged = !isAdmin && (membership.role === 'admin' || membership.role === 'owner');
-  if (!isCreator && !isPrivileged) {
-    throw new NotFoundError('Diary entry not found');
-  }
+  const entry = await loadAndAuthorizeEntry(farmId, entryId, userId, isAdmin, membership, true);
 
   try {
     await dynamoRepo.deleteDiaryEntry(farmId, entryId, entry.date);

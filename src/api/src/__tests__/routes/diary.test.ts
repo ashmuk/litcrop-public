@@ -225,6 +225,7 @@ describe('POST /api/v1/farms/:farmId/diary', () => {
       storage_key: `images/${FARM_ID}/${BED_ID}/${IMAGE_ID}.jpg`,
       trigger: 'scheduled',
       content_type: 'image/jpeg',
+      size_bytes: 12345,
     });
     // Override getBedById for the image's bed resolution to return a bed from a different farm
     mockRepo.getBedById.mockResolvedValue({ ...bedFixture, farm_id: 'other-farm' });
