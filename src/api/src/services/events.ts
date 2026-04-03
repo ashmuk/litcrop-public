@@ -103,6 +103,7 @@ export interface MemberRoleChangedPayload {
   farm_id: string;
   farm_name: string;
   target_user_id: string;
+  target_user_name: string;
   old_role: string;
   new_role: string;
 }

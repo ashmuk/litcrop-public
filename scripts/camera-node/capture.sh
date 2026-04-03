@@ -28,11 +28,23 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Source .env (expects export KEY=VALUE format from web UI download)
-set -a
-# shellcheck source=/dev/null
-source "$ENV_FILE"
-set +a
+# Safe key=value parser — only accepts known keys, no arbitrary code execution
+while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+    # Strip 'export ' prefix if present
+    key="${key#export }"
+    key="${key// /}"
+    # Strip surrounding quotes
+    value="${value%\"}"
+    value="${value#\"}"
+    case "$key" in
+        DEVICE_ID|BED_ID|API_BASE_URL|AUTH_TOKEN|NODE_ID|TRIGGER|\
+        CAPTURE_WIDTH|CAPTURE_HEIGHT|JPEG_QUALITY|INTERVAL_SECONDS|\
+        MAX_RETRY|REFRESH_TOKEN|COGNITO_CLIENT_ID|AWS_REGION)
+            export "$key=$value"
+            ;;
+    esac
+done < "$ENV_FILE"
 
 # ── Validate required vars ──────────────────────────────────────
 
@@ -77,25 +89,27 @@ refresh_token() {
     local region="${AWS_REGION:-ap-northeast-1}"
     local endpoint="https://cognito-idp.${region}.amazonaws.com/"
 
+    # Pipe request body via stdin to keep tokens out of process list
     local response
-    response=$(curl -s -X POST "$endpoint" \
+    response=$(printf '{"AuthFlow":"REFRESH_TOKEN_AUTH","ClientId":"%s","AuthParameters":{"REFRESH_TOKEN":"%s"}}' \
+        "$COGNITO_CLIENT_ID" "$REFRESH_TOKEN" | \
+        curl -s -X POST "$endpoint" \
         -H "Content-Type: application/x-amz-json-1.1" \
         -H "X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth" \
-        -d "{
-            \"AuthFlow\": \"REFRESH_TOKEN_AUTH\",
-            \"ClientId\": \"${COGNITO_CLIENT_ID}\",
-            \"AuthParameters\": {
-                \"REFRESH_TOKEN\": \"${REFRESH_TOKEN}\"
-            }
-        }" --connect-timeout 10 --max-time 15 2>/dev/null) || return 1
+        --data-binary @- --connect-timeout 10 --max-time 15 2>/dev/null) || return 1
 
+    # Use IdToken (not AccessToken) — API Gateway JWT authorizer checks the
+    # `aud` claim which only exists in Cognito ID tokens.
     local new_token
-    new_token=$(echo "$response" | grep -o '"AccessToken":"[^"]*"' | cut -d'"' -f4)
+    new_token=$(echo "$response" | grep -o '"IdToken":"[^"]*"' | cut -d'"' -f4)
 
     if [ -n "$new_token" ]; then
         AUTH_TOKEN="$new_token"
-        # Update .env file with new token
-        sed -i "s|^export AUTH_TOKEN=.*|export AUTH_TOKEN=\"${new_token}\"|" "$ENV_FILE"
+        # Update .env file with new token (awk avoids sed delimiter issues with JWTs)
+        awk -v token="$new_token" '{
+            if ($0 ~ /^export AUTH_TOKEN=/) print "export AUTH_TOKEN=\"" token "\""
+            else print
+        }' "$ENV_FILE" > "${ENV_FILE}.tmp" && mv "${ENV_FILE}.tmp" "$ENV_FILE"
         log "[AUTH] Token refreshed"
     else
         log "[AUTH] Token refresh failed"
@@ -108,10 +122,15 @@ refresh_token() {
 poll_config() {
     local config_url="${API_BASE_URL}/api/v1/devices/${DEVICE_ID}/config"
 
+    local curl_cfg
+    curl_cfg=$(mktemp); chmod 600 "$curl_cfg"
+    printf 'header = "Authorization: Bearer %s"\n' "$AUTH_TOKEN" > "$curl_cfg"
+
     local response
     response=$(curl -s -w "\n%{http_code}" \
-        -H "Authorization: Bearer ${AUTH_TOKEN}" \
-        "$config_url" --connect-timeout 10 --max-time 15 2>/dev/null) || return 1
+        -K "$curl_cfg" \
+        "$config_url" --connect-timeout 10 --max-time 15 2>/dev/null) || { rm -f "$curl_cfg"; return 1; }
+    rm -f "$curl_cfg"
 
     local http_code body
     http_code=$(echo "$response" | tail -1)
@@ -257,20 +276,30 @@ send_heartbeat() {
         storage="low"
     fi
 
-    # Battery (UPS HAT if connected)
+    # Battery (UPS HAT if connected) — validate numeric
     local battery="null"
-    battery=$(cat /sys/class/power_supply/*/capacity 2>/dev/null | head -1 || echo "null")
+    local raw_battery
+    raw_battery=$(cat /sys/class/power_supply/*/capacity 2>/dev/null | head -1 || echo "")
+    [[ "$raw_battery" =~ ^[0-9]+$ ]] && battery="$raw_battery"
+
+    # Validate wifi_dbm is numeric
+    [[ ! "$wifi_dbm" =~ ^-?[0-9]+$ ]] && wifi_dbm="null"
 
     local payload="{\"wifi_dbm\":${wifi_dbm},\"storage\":\"${storage}\",\"battery_pct\":${battery}}"
 
-    curl -s -o /dev/null \
-        -H "Authorization: Bearer ${AUTH_TOKEN}" \
-        -H "Content-Type: application/json" \
+    # Use -K config file to keep token out of process list
+    local hb_cfg
+    hb_cfg=$(mktemp); chmod 600 "$hb_cfg"
+    printf 'header = "Authorization: Bearer %s"\nheader = "Content-Type: application/json"\n' "$AUTH_TOKEN" > "$hb_cfg"
+
+    echo "$payload" | curl -s -o /dev/null \
+        -K "$hb_cfg" \
         -X POST "$heartbeat_url" \
-        -d "$payload" \
+        --data-binary @- \
         --connect-timeout 10 \
         --max-time 15 \
         2>/dev/null && log "[HEARTBEAT] OK" || log "[HEARTBEAT] Failed (non-critical)"
+    rm -f "$hb_cfg"
 }
 
 # ── Upload spool (retry queued files) ───────────────────────────

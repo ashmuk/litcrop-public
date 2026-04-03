@@ -690,6 +690,7 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
 
   await dynamoRepo.updateMemberRole(farmId, targetUserId, 'owner');
 
+  const targetProfile = await dynamoRepo.getUserProfile(targetUserId).catch(() => null);
   appEvents.emit('member.role_changed', {
     type: 'member.role_changed',
     timestamp: new Date().toISOString(),
@@ -699,6 +700,7 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
       farm_id: farmId,
       farm_name: farm.name,
       target_user_id: targetUserId,
+      target_user_name: targetProfile?.display_name ?? '',
       old_role: 'staff',
       new_role: 'owner',
     },

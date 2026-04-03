@@ -380,7 +380,7 @@ function fromPayload<T extends AppEventType>(
         actor_email: event.actor_email,
         target_type: 'user',
         target_id: String(p['target_user_id'] ?? ''),
-        target_name: '',
+        target_name: String(p['target_user_name'] ?? ''),
         farm_id: String(p['farm_id'] ?? ''),
         details: { old_role: p['old_role'], new_role: p['new_role'] },
       };

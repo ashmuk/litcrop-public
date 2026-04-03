@@ -37,6 +37,7 @@ vi.mock('../../services/dynamodb', () => ({
     approveJoinRequest: vi.fn(),
     rejectJoinRequest: vi.fn(),
     createBedsForPositions: vi.fn(),
+    updateMemberRole: vi.fn(),
   },
 }));
 
@@ -490,6 +491,106 @@ describe('DELETE /api/v1/farms/:farmId/members/me', () => {
       method: 'DELETE',
     });
     expect(res.status).toBe(401);
+  });
+});
+
+// ── PATCH /api/v1/farms/:farmId/members/:targetUserId ────────────
+
+describe('PATCH /api/v1/farms/:farmId/members/:targetUserId', () => {
+  const TARGET_USER_ID = 'target-user-00000000000000000002';
+
+  const staffMembershipFixture = {
+    user_id: TARGET_USER_ID,
+    farm_id: FARM_ID,
+    role: 'staff' as const,
+    joined_at: '2026-03-17T00:00:00.000Z',
+  };
+
+  it('owner promotes staff to owner → 200 with role: owner', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(membershipFixture); // caller check (assertFarmAccess)
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(staffMembershipFixture); // target check
+    vi.mocked(dynamoRepo.updateMemberRole).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'owner' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { user_id: string; farm_id: string; role: string };
+    expect(body.role).toBe('owner');
+    expect(body.user_id).toBe(TARGET_USER_ID);
+    expect(body.farm_id).toBe(FARM_ID);
+  });
+
+  it('returns 404 when caller is staff (assertFarmAccess denies)', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'staff' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'owner' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when target is already owner', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(membershipFixture); // caller
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce({
+      user_id: TARGET_USER_ID,
+      farm_id: FARM_ID,
+      role: 'owner' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    }); // target already owner
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'owner' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toMatch(/Only staff members can be promoted/);
+  });
+
+  it('returns 404 when target is not a member', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(membershipFixture); // caller
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(null); // target not found
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'owner' }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error.message).toMatch(/Member not found/);
+  });
+
+  it('returns 400 when role value is not owner', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture); // caller passes access check
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'staff' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toMatch(/Only promotion to 'owner' is supported/);
   });
 });
 
