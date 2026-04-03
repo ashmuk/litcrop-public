@@ -2,48 +2,34 @@
 # ──────────────────────────────────────────────────────────────────
 # LitCrop Camera Node — Install Script
 #
-# Run ON THE PI after copying this directory to the Pi.
-# Sets up directories, installs scripts, creates config, and
-# optionally configures a systemd timer for scheduled capture.
+# Sets up ~/litcrop/ directory structure, installs capture.sh,
+# and configures a cron job for scheduled capture.
+# Does NOT require sudo for the core setup.
 #
 # Usage:
-#   # From your dev machine — copy the camera-node directory to the Pi:
-#   scp -r scripts/camera-node litcrop@litcrop-cam-01.local:/tmp/litcrop-install
+#   curl -sL https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/install.sh | bash
 #
-#   # SSH into the Pi and run:
-#   ssh litcrop@litcrop-cam-01.local
-#   cd /tmp/litcrop-install
-#   sudo bash install.sh
+#   Or manually:
+#   scp scripts/camera-node/* pi@host:/tmp/litcrop-setup/
+#   ssh pi@host "bash /tmp/litcrop-setup/install.sh"
 #
-# What this script does:
-#   1. Creates /opt/litcrop/, /etc/litcrop/, /var/spool/litcrop/
-#   2. Copies capture.sh and refresh-token.sh to /opt/litcrop/
-#   3. Creates /etc/litcrop/node.conf from template (if not exists)
-#   4. Installs curl (if missing)
-#   5. Optionally sets up systemd timer for scheduled capture
-#   6. Optionally installs AWS CLI for token refresh
+# After install, copy your .env file:
+#   scp litcrop-dev-xxx.env pi@host:~/litcrop/.env
 # ──────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
-# Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 
-# ── Check root ───────────────────────────────────────────────────
-
-if [ "$(id -u)" -ne 0 ]; then
-    error "This script must be run as root (use: sudo bash install.sh)"
-    exit 1
-fi
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LITCROP_DIR="${HOME}/litcrop"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd 2>/dev/null || echo "/tmp/litcrop-setup")"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -51,159 +37,113 @@ echo "║   LitCrop Camera Node — Install          ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
-# ── Step 1: Create directories ───────────────────────────────────
+# ── Step 1: Create ~/litcrop/ structure ─────────────────────────
 
-info "Creating directories..."
-mkdir -p /opt/litcrop
-mkdir -p /etc/litcrop
-mkdir -p /var/spool/litcrop
-mkdir -p /var/log
+info "Creating ${LITCROP_DIR}/ directory structure..."
+mkdir -p "${LITCROP_DIR}"
+mkdir -p "${LITCROP_DIR}/images"
+mkdir -p "${LITCROP_DIR}/logs"
+chmod 700 "${LITCROP_DIR}"
 
-chmod 700 /opt/litcrop /etc/litcrop /var/spool/litcrop
+# ── Step 2: Install capture script ──────────────────────────────
 
-# ── Step 2: Install scripts ──────────────────────────────────────
-
-info "Installing capture script → /opt/litcrop/capture.sh"
-cp "${SCRIPT_DIR}/capture.sh" /opt/litcrop/capture.sh
-chmod 700 /opt/litcrop/capture.sh
-
-info "Installing refresh script → /opt/litcrop/refresh-token.sh"
-cp "${SCRIPT_DIR}/refresh-token.sh" /opt/litcrop/refresh-token.sh
-chmod 700 /opt/litcrop/refresh-token.sh
-
-# ── Step 3: Create config ────────────────────────────────────────
-
-if [ -f /etc/litcrop/node.conf ]; then
-    warn "Config exists at /etc/litcrop/node.conf — skipping (not overwriting)"
+if [ -f "${SCRIPT_DIR}/capture.sh" ]; then
+    info "Installing capture.sh from local files"
+    cp "${SCRIPT_DIR}/capture.sh" "${LITCROP_DIR}/capture.sh"
 else
-    info "Creating config → /etc/litcrop/node.conf"
-    cp "${SCRIPT_DIR}/node.conf.example" /etc/litcrop/node.conf
-    chown root:root /etc/litcrop/node.conf
-    chmod 600 /etc/litcrop/node.conf
-    warn "You MUST edit /etc/litcrop/node.conf before first run!"
-    warn "  Required: BED_ID, API_BASE_URL, AUTH_TOKEN"
+    info "Downloading capture.sh from GitHub..."
+    curl -sL "https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/capture.sh" \
+        -o "${LITCROP_DIR}/capture.sh" || {
+        error "Failed to download capture.sh"
+        exit 1
+    }
 fi
+chmod 700 "${LITCROP_DIR}/capture.sh"
 
-# ── Step 4: Install dependencies ─────────────────────────────────
+# ── Step 3: Check dependencies ──────────────────────────────────
+
+echo ""
+info "Checking dependencies..."
 
 if command -v curl &>/dev/null; then
-    info "curl is installed"
+    info "  curl — installed"
 else
-    info "Installing curl..."
-    apt-get update -qq && apt-get install -y -qq curl
+    warn "  curl — NOT found. Install: sudo apt install curl"
 fi
 
-# ── Step 5: Verify camera ────────────────────────────────────────
+if command -v jq &>/dev/null; then
+    info "  jq — installed"
+else
+    warn "  jq — NOT found (optional, for config polling). Install: sudo apt install jq"
+fi
+
+# ── Step 4: Check camera ────────────────────────────────────────
 
 echo ""
 info "Checking camera..."
+
 if command -v rpicam-still &>/dev/null; then
-    info "rpicam-still is available"
-    # Try to detect camera
+    info "  rpicam-still — available"
     if rpicam-hello --list-cameras 2>&1 | grep -q "Available cameras : 0"; then
-        warn "No camera detected! Check the ribbon cable connection."
+        warn "  No camera detected! Check ribbon cable."
     else
-        info "Camera detected"
+        info "  Camera detected"
     fi
 elif command -v libcamera-still &>/dev/null; then
-    warn "Found libcamera-still (older Pi OS). Creating symlink to rpicam-still..."
-    ln -sf "$(command -v libcamera-still)" /usr/local/bin/rpicam-still
-    info "Symlink created: rpicam-still → libcamera-still"
+    warn "  Found libcamera-still (older Pi OS)"
+    warn "  Create symlink: sudo ln -sf \$(command -v libcamera-still) /usr/local/bin/rpicam-still"
 else
-    warn "No camera tools found. Install with: sudo apt install rpicam-apps-lite"
+    warn "  No camera tools found. Install: sudo apt install rpicam-apps-lite"
 fi
 
-# ── Step 6: Systemd timer (optional) ─────────────────────────────
+# ── Step 5: Set up cron job ─────────────────────────────────────
 
 echo ""
-read -rp "Set up systemd timer for scheduled capture? [y/N] " setup_timer
+CRON_LINE="*/30 5-20 * * * ${LITCROP_DIR}/capture.sh >> ${LITCROP_DIR}/logs/capture.log 2>&1"
 
-if [[ "$setup_timer" =~ ^[Yy]$ ]]; then
-    read -rp "Capture interval in minutes [10]: " interval_min
-    interval_min="${interval_min:-10}"
-
-    if ! [[ "$interval_min" =~ ^[0-9]+$ ]] || [ "$interval_min" -lt 1 ] || [ "$interval_min" -gt 1440 ]; then
-        error "Invalid interval: must be 1-1440"
-        exit 1
-    fi
-
-    info "Creating systemd service..."
-    cat > /etc/systemd/system/litcrop-capture.service << 'EOF'
-[Unit]
-Description=LitCrop Camera Capture
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/opt/litcrop/capture.sh
-User=root
-StandardOutput=append:/var/log/litcrop-node.log
-StandardError=append:/var/log/litcrop-node.log
-EOF
-
-    info "Creating systemd timer (every ${interval_min} minutes)..."
-    cat > /etc/systemd/system/litcrop-capture.timer << EOF
-[Unit]
-Description=LitCrop Capture Timer (every ${interval_min} minutes)
-
-[Timer]
-OnCalendar=*:0/${interval_min}
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
-    systemctl daemon-reload
-    info "Timer created. Enable after configuring node.conf:"
-    echo "    sudo systemctl enable litcrop-capture.timer"
-    echo "    sudo systemctl start litcrop-capture.timer"
-fi
-
-# ── Step 7: Token refresh cron (optional) ─────────────────────────
-
-echo ""
-read -rp "Set up token refresh cron (every 50 minutes)? [y/N] " setup_refresh
-
-if [[ "$setup_refresh" =~ ^[Yy]$ ]]; then
-    if command -v aws &>/dev/null; then
-        info "AWS CLI is installed"
-    else
-        warn "AWS CLI not found. Installing..."
-        apt-get install -y -qq awscli
-        info "AWS CLI installed"
-    fi
-
-    # Add cron entry (idempotent — check if already exists)
-    CRON_LINE="*/50 * * * * /opt/litcrop/refresh-token.sh"
-    if crontab -l 2>/dev/null | grep -qF "refresh-token.sh"; then
-        warn "Token refresh cron already exists — skipping"
-    else
+if crontab -l 2>/dev/null | grep -qF "capture.sh"; then
+    warn "Cron job already exists — skipping"
+else
+    read -rp "Set up cron job for scheduled capture every 30 min (5am-8pm)? [Y/n] " setup_cron
+    setup_cron="${setup_cron:-Y}"
+    if [[ "$setup_cron" =~ ^[Yy]$ ]]; then
         (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
-        info "Token refresh cron added (every 50 minutes)"
+        info "Cron job added: every 30 minutes, 5am-8pm"
+    else
+        info "Skipped cron setup — you can add manually later:"
+        echo "    (crontab -l; echo '${CRON_LINE}') | crontab -"
     fi
-
-    warn "You MUST set REFRESH_TOKEN and COGNITO_CLIENT_ID in /etc/litcrop/node.conf"
 fi
 
-# ── Done ─────────────────────────────────────────────────────────
+# ── Step 6: Check for .env ──────────────────────────────────────
+
+echo ""
+if [ -f "${LITCROP_DIR}/.env" ]; then
+    info ".env file found"
+else
+    warn "No .env file found at ${LITCROP_DIR}/.env"
+    warn "Download from: LitCrop web app → Devices → your device → Download .env"
+    warn "Then copy to Pi:  scp litcrop-dev-xxx.env pi@$(hostname):~/litcrop/.env"
+fi
+
+# ── Done ────────────────────────────────────────────────────────
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
 echo "║   Installation complete!                  ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
+echo "Directory structure:"
+echo "  ~/litcrop/"
+echo "  ├── .env             ← credentials (download from web UI)"
+echo "  ├── capture.sh       ← capture + upload + heartbeat"
+echo "  ├── images/          ← photo spool (auto-cleaned after upload)"
+echo "  └── logs/"
+echo "      └── capture.log  ← rotated at 1 MB"
+echo ""
 echo "Next steps:"
-echo "  1. Edit config:    sudo nano /etc/litcrop/node.conf"
-echo "     Set: BED_ID, API_BASE_URL, AUTH_TOKEN"
-echo "     (See docs/CAMERA-NODE-SETUP.md §4-5 for how to get these values)"
-echo ""
-echo "  2. Test capture:   sudo /opt/litcrop/capture.sh"
-echo "     Check log:      cat /var/log/litcrop-node.log"
-echo ""
-echo "  3. Start timer:    sudo systemctl enable --now litcrop-capture.timer"
-echo "     Check status:   systemctl status litcrop-capture.timer"
-echo ""
-echo "  4. Verify in app:  Open LitCrop → your bed → image should appear"
+echo "  1. Copy .env:     scp litcrop-dev-xxx.env pi@$(hostname):~/litcrop/.env"
+echo "  2. Test capture:  ~/litcrop/capture.sh"
+echo "  3. Check log:     cat ~/litcrop/logs/capture.log"
+echo "  4. Verify in app: Open LitCrop → your bed → image should appear"
 echo ""

@@ -373,6 +373,18 @@ function fromPayload<T extends AppEventType>(
         details: { removed_user_id: p['removed_user_id'], removed_user_name: p['removed_user_name'] },
       };
 
+    case 'member.role_changed':
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'user',
+        target_id: String(p['target_user_id'] ?? ''),
+        target_name: String(p['target_user_name'] ?? ''),
+        farm_id: String(p['farm_id'] ?? ''),
+        details: { old_role: p['old_role'], new_role: p['new_role'] },
+      };
+
     case 'join_request.submitted':
       return {
         event_type: type,
@@ -488,6 +500,7 @@ const ALL_EVENT_TYPES: AppEventType[] = [
   'tag.created',
   'member.joined',
   'member.removed',
+  'member.role_changed',
   'user.profile_updated',
   'device.registered',
   'device.deregistered',

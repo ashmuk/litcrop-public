@@ -57,5 +57,5 @@ export interface ChatMessageRequest {
 /** PATCH /api/v1/me/profile */
 export interface UpdateProfileRequest {
   display_name?: string;
-  preferred_role?: 'manager' | 'observer';
+  preferred_role?: 'owner' | 'staff';
 }

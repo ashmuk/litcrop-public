@@ -37,7 +37,7 @@ export const LocaleSchema = z.enum(['en', 'ja']);
 
 export const ThemeSchema = z.enum(['light', 'dark', 'earthy', 'system']);
 
-export const FarmRoleSchema = z.enum(['admin', 'manager', 'observer']);
+export const FarmRoleSchema = z.enum(['admin', 'owner', 'staff']);
 
 // ── Farm schemas ─────────────────────────────────────────────────
 
@@ -315,7 +315,7 @@ export const ChatResponseSchema = z.object({
 /** PATCH /api/v1/me/profile — request body */
 export const UpdateProfileRequestSchema = z.object({
   display_name: z.string().min(1).max(100).optional(),
-  preferred_role: z.enum(['manager', 'observer']).optional(),
+  preferred_role: z.enum(['owner', 'staff']).optional(),
 });
 
 // ── Settings schema ──────────────────────────────────────────────

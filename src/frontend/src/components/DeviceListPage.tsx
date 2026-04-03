@@ -244,7 +244,7 @@ export default function DeviceListPage({ farmId }: Props) {
 
   const effectiveFarmId = useLocalFarmId(farmId);
   const farmRole = getLocalFarmRole();
-  const canEdit = farmRole === 'admin' || farmRole === 'manager';
+  const canEdit = farmRole === 'admin' || farmRole === 'owner';
 
   useEffect(() => {
     let cancelled = false;

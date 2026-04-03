@@ -83,7 +83,7 @@ beforeEach(() => {
     async (_userId: string, farmId: string) => ({
       user_id: TEST_USER_ID,
       farm_id: farmId,
-      role: 'manager' as const,
+      role: 'owner' as const,
       joined_at: '2026-03-17T00:00:00.000Z',
     }),
   );

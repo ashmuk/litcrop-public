@@ -49,7 +49,7 @@ export const farmDevicesRouter = new Hono();
 farmDevicesRouter.post('/:farmId/devices', async (c) => {
   const { userId, userEmail, isAdmin } = getAuthContext(c);
   const farmId = c.req.param('farmId');
-  await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
+  await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   const body = await c.req.json();
   const parsed = RegisterDeviceRequestSchema.safeParse(body);
@@ -133,7 +133,7 @@ farmDevicesRouter.patch('/:farmId/devices/:deviceId', async (c) => {
   const { userId, userEmail, isAdmin } = getAuthContext(c);
   const farmId = c.req.param('farmId');
   const deviceId = c.req.param('deviceId');
-  await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
+  await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   const body = await c.req.json();
   const parsed = UpdateDeviceRequestSchema.safeParse(body);
@@ -179,7 +179,7 @@ farmDevicesRouter.delete('/:farmId/devices/:deviceId', async (c) => {
   const { userId, userEmail, isAdmin } = getAuthContext(c);
   const farmId = c.req.param('farmId');
   const deviceId = c.req.param('deviceId');
-  await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
+  await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   // Get device name for the event before deleting
   const device = await dynamoRepo.getDeviceById(deviceId);
@@ -205,7 +205,7 @@ farmDevicesRouter.post('/:farmId/devices/:deviceId/test-shot', async (c) => {
   const { userId, userEmail, isAdmin } = getAuthContext(c);
   const farmId = c.req.param('farmId');
   const deviceId = c.req.param('deviceId');
-  await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
+  await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   await dynamoRepo.setTestShotFlag(farmId, deviceId, true);
 

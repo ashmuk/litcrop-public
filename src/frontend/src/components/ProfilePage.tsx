@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount, promoteMember } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -231,7 +231,7 @@ function DeleteAccountSection({ farms }: DeleteAccountSectionProps) {
     // We don't have member counts directly on the farm object, so we show all
     // admin farms as potentially requiring transfer or deletion. The warning
     // text uses the generic "sole member or transfer" language from the design.
-    return f.role === 'admin';
+    return f.role === 'admin' || f.role === 'owner';
   });
 
   function handleOpen() {
@@ -381,6 +381,8 @@ export default function ProfilePage() {
   const [showWizard, setShowWizard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
+  const [confirmPromote, setConfirmPromote] = useState<string | null>(null); // user_id being promoted
+  const [promoting, setPromoting] = useState(false);
   const [expandedFarm, setExpandedFarm] = useState<string | null>(null);
   const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -390,7 +392,7 @@ export default function ProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
-  const [preferredRole, setPreferredRole] = useState<'manager' | 'observer' | null>(null);
+  const [preferredRole, setPreferredRole] = useState<'owner' | 'staff' | null>(null);
   const [editingFarmName, setEditingFarmName] = useState<string | null>(null);
   const [farmNameDraft, setFarmNameDraft] = useState('');
   const [savingFarmName, setSavingFarmName] = useState(false);
@@ -417,8 +419,8 @@ export default function ProfilePage() {
           try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
           document.documentElement.setAttribute('data-locale', activeFarm.locale);
         }
-        // Fetch pending join request counts for admin/manager farms (non-blocking)
-        const adminFarms = (list as FarmWithRole[]).filter((f) => f.role === 'admin' || f.role === 'manager');
+        // Fetch pending join request counts for admin/owner farms (non-blocking)
+        const adminFarms = (list as FarmWithRole[]).filter((f) => f.role === 'admin' || f.role === 'owner');
         if (adminFarms.length > 0) {
           Promise.all(
             adminFarms.map((f) => getJoinRequests(f.id).then((r) => [f.id, r.length] as const).catch(() => [f.id, 0] as const)),
@@ -448,8 +450,8 @@ export default function ProfilePage() {
       if (p.is_admin) setIsSystemAdmin(true);
       setCachedIsAdmin(p.is_admin === true);
       // Sync pending role from registration (no auth token was available post-confirm)
-      if (pendingRole && (pendingRole === 'manager' || pendingRole === 'observer') && !p.created_at) {
-        // Pending role takes precedence over API fallback ('observer')
+      if (pendingRole && (pendingRole === 'owner' || pendingRole === 'staff') && !p.created_at) {
+        // Pending role takes precedence over API fallback ('staff')
         setPreferredRole(pendingRole);
         updateMyProfile({ preferred_role: pendingRole })
           .then(() => { localStorage.removeItem('litcrop-pendingRole'); })
@@ -644,15 +646,15 @@ export default function ProfilePage() {
   }
 
   // Determine if user should see farm creation UI
-  // Show for: managers (by preferredRole), system admins, users with admin/manager farm roles,
+  // Show for: owners (by preferredRole), system admins, users with admin/owner farm roles,
   // or users with zero farms (they need a way to get started regardless of role)
-  // Hide for: observers who already belong to at least one farm
-  const hasManagerRole = farms.some((f) => f.role === 'admin' || f.role === 'manager');
+  // Hide for: staff who already belong to at least one farm
+  const hasOwnerRole = farms.some((f) => f.role === 'admin' || f.role === 'owner');
   const hasNoFarms = !loading && farms.length === 0;
-  const isObserverOnly = preferredRole !== 'manager' && !isSystemAdmin && !hasManagerRole && !hasNoFarms;
+  const isStaffOnly = preferredRole !== 'owner' && !isSystemAdmin && !hasOwnerRole && !hasNoFarms;
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
-  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
+  const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'owner')).length;
   const atFarmLimit = ownedCount >= FREE_PLAN_MAX_OWNED_FARMS;
 
   if (showWizard) {
@@ -687,7 +689,7 @@ export default function ProfilePage() {
           <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-3)">
             {farms.map((farm) => {
               const isActive = farm.id === activeFarmId;
-              const isAdmin = farm.role === 'admin' || farm.role === 'manager';
+              const isAdmin = farm.role === 'admin' || farm.role === 'owner';
               const isDemoFarm = farm.id === DEMO_FARM_ID;
               const isConfirming = confirmDelete === farm.id;
               const isConfirmingLeave = confirmLeave === farm.id;
@@ -881,9 +883,50 @@ export default function ProfilePage() {
                                     {m.display_name || m.user_id.slice(0, 8) + '...'}
                                   </span>
                                 </div>
-                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px;flex-shrink:0">
-                                  {t(`profile.role_${m.role}`)}
-                                </span>
+                                <div style="display:flex;align-items:center;gap:var(--space-1);flex-shrink:0">
+                                  <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">
+                                    {t(`profile.role_${m.role}`)}
+                                  </span>
+                                  {isAdmin && m.role === 'staff' && confirmPromote !== m.user_id && (
+                                    <button
+                                      class="btn-secondary"
+                                      style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
+                                      onClick={(e) => { e.stopPropagation(); setConfirmPromote(m.user_id); }}
+                                    >
+                                      ⬆ {t('profile.promote')}
+                                    </button>
+                                  )}
+                                  {confirmPromote === m.user_id && (
+                                    <div style="display:flex;align-items:center;gap:var(--space-1)">
+                                      <button
+                                        class="btn-primary"
+                                        style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
+                                        disabled={promoting}
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setPromoting(true);
+                                          try {
+                                            await promoteMember(farm.id, m.user_id);
+                                            setFarmMembers((prev) => prev?.map((fm) =>
+                                              fm.user_id === m.user_id ? { ...fm, role: 'owner' as const } : fm
+                                            ) ?? null);
+                                            setConfirmPromote(null);
+                                          } catch { /* API error — button stays */ }
+                                          setPromoting(false);
+                                        }}
+                                      >
+                                        {promoting ? '…' : t('profile.promote_confirm')}
+                                      </button>
+                                      <button
+                                        class="btn-secondary"
+                                        style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
+                                        onClick={(e) => { e.stopPropagation(); setConfirmPromote(null); }}
+                                      >
+                                        {t('common.cancel')}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -901,7 +944,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {!isObserverOnly && (
+        {!isStaffOnly && (
           <>
             <button
               class="btn-primary"

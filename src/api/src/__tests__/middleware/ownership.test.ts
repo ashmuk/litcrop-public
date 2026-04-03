@@ -93,7 +93,7 @@ function authHeader(userId: string): string {
 const ownerMembershipFixture = {
   user_id: OWNER_USER_ID,
   farm_id: FARM_ID,
-  role: 'manager' as const,
+  role: 'owner' as const,
   joined_at: '2026-03-17T00:00:00.000Z',
 };
 

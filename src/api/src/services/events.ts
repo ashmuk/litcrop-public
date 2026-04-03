@@ -99,6 +99,15 @@ export interface UserProfileUpdatedPayload {
   changed_fields?: string[];
 }
 
+export interface MemberRoleChangedPayload {
+  farm_id: string;
+  farm_name: string;
+  target_user_id: string;
+  target_user_name: string;
+  old_role: string;
+  new_role: string;
+}
+
 // ── Device event payloads (Beta-5) ──────────────────────────────
 
 export interface DeviceRegisteredPayload {
@@ -143,6 +152,7 @@ export interface AppEventMap {
   'tag.created':             AppEvent<'tag.created', TagCreatedPayload>;
   'member.joined':           AppEvent<'member.joined', MemberJoinedPayload>;
   'member.removed':          AppEvent<'member.removed', MemberRemovedPayload>;
+  'member.role_changed':     AppEvent<'member.role_changed', MemberRoleChangedPayload>;
   'user.profile_updated':    AppEvent<'user.profile_updated', UserProfileUpdatedPayload>;
 
   // Device events (Beta-5)

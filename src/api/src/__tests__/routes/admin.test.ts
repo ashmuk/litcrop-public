@@ -72,7 +72,7 @@ const statsFixture = { farms: 5, users: 8, beds: 17 };
 const profileFixture = {
   user_id: 'user-1',
   display_name: 'Test User',
-  preferred_role: 'manager' as const,
+  preferred_role: 'owner' as const,
   created_at: '2026-03-01T00:00:00Z',
 };
 

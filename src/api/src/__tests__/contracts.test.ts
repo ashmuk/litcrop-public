@@ -137,7 +137,7 @@ const tagSeed = {
 const membershipSeed = {
   user_id: TEST_USER_ID,
   farm_id: FARM_ID,
-  role: 'manager' as const,
+  role: 'owner' as const,
   joined_at: '2026-01-01T00:00:00.000Z',
   farm_name: 'Contract Test Farm',
 };

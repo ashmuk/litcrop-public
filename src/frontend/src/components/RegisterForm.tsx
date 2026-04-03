@@ -54,6 +54,10 @@ function mapConfirmError(err: unknown): string {
   return t('auth.errors.generic');
 }
 
+// ── Promo code (soft barrier for beta field testing) ─────────────
+
+const PROMO_CODE = 'LITCROP2026';
+
 // ── Component ─────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
@@ -73,7 +77,12 @@ export default function RegisterForm() {
   const [step1Loading, setStep1Loading] = useState(false);
 
   // Preference state
-  const [role, setRole] = useState<'manager' | 'observer'>('observer');
+  const [role, setRole] = useState<'owner' | 'staff'>('staff');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoValid, setPromoValid] = useState(false);
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const promoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [regLocale, setRegLocale] = useState<'en' | 'ja'>(() => {
     try { const s = localStorage.getItem('litcrop-locale'); return s === 'ja' ? 'ja' : 'en'; } catch { return 'en'; }
   });
@@ -116,6 +125,29 @@ export default function RegisterForm() {
         return s - 1;
       });
     }, 1000);
+  }
+
+  function handlePromoCheck() {
+    const trimmed = promoCode.trim().toUpperCase();
+    if (!trimmed) {
+      setPromoError('');
+      setPromoValid(false);
+      setRole('staff');
+      return;
+    }
+    setPromoChecking(true);
+    if (promoTimerRef.current) clearTimeout(promoTimerRef.current);
+    promoTimerRef.current = setTimeout(() => {
+      if (trimmed === PROMO_CODE) {
+        setPromoValid(true);
+        setPromoError('');
+      } else {
+        setPromoValid(false);
+        setPromoError(t('auth.register.promo_invalid'));
+        setRole('staff');
+      }
+      setPromoChecking(false);
+    }, 400);
   }
 
   // ── Step 1: Sign up ───────────────────────────────────────────
@@ -421,15 +453,55 @@ export default function RegisterForm() {
       <div class="form-group">
         <label class="form-label">{t('auth.register.role_label')}</label>
         <div style="display:flex;gap:var(--space-3)">
-          <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-            <input type="radio" name="role" value="manager" checked={role === 'manager'} onChange={() => setRole('manager')} />
-            {t('auth.register.role_manager')}
+          <label style={{display:'flex',alignItems:'center',gap:'var(--space-1)',cursor: promoValid ? 'pointer' : 'not-allowed',opacity: promoValid ? 1 : 0.4}}>
+            <input type="radio" name="role" value="owner" checked={role === 'owner'} onChange={() => setRole('owner')} disabled={!promoValid} />
+            {t('auth.register.role_owner')}
           </label>
           <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-            <input type="radio" name="role" value="observer" checked={role === 'observer'} onChange={() => setRole('observer')} />
-            {t('auth.register.role_reader')}
+            <input type="radio" name="role" value="staff" checked={role === 'staff'} onChange={() => setRole('staff')} />
+            {t('auth.register.role_staff')}
           </label>
         </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reg-promo">{t('auth.register.promo_label')}</label>
+        <div style="display:flex;gap:var(--space-2)">
+          <input
+            id="reg-promo"
+            type="text"
+            class={`form-input${promoError ? ' form-input--error' : ''}`}
+            style="flex:1"
+            value={promoCode}
+            onInput={(e) => {
+              setPromoCode((e.target as HTMLInputElement).value);
+              if (promoValid) { setPromoValid(false); setRole('staff'); }
+              setPromoError('');
+            }}
+            placeholder={t('auth.register.promo_placeholder')}
+            autocomplete="off"
+          />
+          <button
+            type="button"
+            class="btn-secondary"
+            style="white-space:nowrap"
+            onClick={handlePromoCheck}
+            disabled={promoChecking || !promoCode.trim()}
+          >
+            {promoChecking ? '…' : t('auth.register.promo_check')}
+          </button>
+        </div>
+        {promoError && (
+          <span class="form-error"><span aria-hidden="true">⚠</span> {promoError}</span>
+        )}
+        {promoValid && (
+          <span class="form-success" style="color:var(--color-success,#16a34a);font-size:var(--text-sm)">
+            ✓ {t('auth.register.promo_valid')}
+          </span>
+        )}
+        <span class="form-hint" style="font-size:var(--text-xs);color:var(--color-text-muted,#6b7280)">
+          {t('auth.register.promo_hint')}
+        </span>
       </div>
 
       <div style="display:flex;gap:var(--space-3)">

@@ -82,7 +82,7 @@ beforeEach(() => {
   vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
     user_id: TEST_USER_ID,
     farm_id: FARM_ID,
-    role: 'manager' as const,
+    role: 'owner' as const,
     joined_at: '2026-03-17T00:00:00.000Z',
   });
 });
@@ -211,7 +211,7 @@ describe('POST /api/v1/images/:imageId/tags', () => {
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       user_id: TEST_USER_ID,
       farm_id: FARM_ID,
-      role: 'observer' as const,
+      role: 'staff' as const,
       joined_at: '2026-03-17T00:00:00.000Z',
     });
 

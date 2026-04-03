@@ -233,3 +233,70 @@ All deployed via IaC (CDK), reproducible and CI/CD-ready.
 - [ ] All 439+ existing tests pass + new device/profile tests
 - [ ] `npm run build` succeeds across all packages
 - [ ] Total monthly cost remains under $5 ceiling
+
+## Roadmap (decided 2026-04-03)
+
+### Sprint Order
+```
+Beta-5 ✅ → Beta-6 → Beta-7 → Beta-8 → Infra Sprint → Production
+```
+Build all features on mvp stack, test thoroughly, then one clean infrastructure transition.
+
+### Beta-6: Pi Setup + Refinements
+| Issue | Title | Priority |
+|-------|-------|----------|
+| #233 | Pi ~/litcrop/ setup — capture.sh + install.sh | High |
+| #232 | Internal role rename (manager→owner, observer→staff) | High |
+| #216 | Searchable crop library | Medium |
+| #250 | Manager promote observer button | Medium |
+| #242 | Device flow animation (mockup ready) | Low |
+
+Exit criteria:
+- [ ] Pi captures and uploads photos automatically via cron
+- [ ] Internal roles renamed with DynamoDB migration
+- [ ] Crop selector is searchable
+- [ ] Manager can promote observer to owner
+
+### Beta-7: Farm Diary
+| Issue | Title |
+|-------|-------|
+| #245 | Farm Diary — parent feature |
+| #246 | Work log with categories + cost tracking |
+| #247 | Calendar + crop timeline Gantt chart |
+
+New nav tab: 🌿 Crops → ⛅ Weather → 📓 Diary → 📡 Device → 👤 Profile
+
+Exit criteria:
+- [ ] User can log daily farm work with categories and costs
+- [ ] Calendar shows entries + crop lifecycle overlay
+- [ ] Gantt chart visualizes crop timelines
+
+### Beta-8: ROI + Backlog
+| Issue | Title |
+|-------|-------|
+| #248 | ROI dashboard — cost analysis + harvest tracking |
+| #183 | AI chat on all pages |
+| #168 | Soft delete pattern |
+
+### Pre-Production Audit (#256)
+Run after Beta-7, before Infra Sprint:
+- Codebase quality (ESLint, TypeScript strict, dead code, deps)
+- Architecture review (DynamoDB patterns, API inventory, event system)
+- Security audit (OWASP, auth flow, input validation, XSS)
+- Test coverage gaps (edge cases, error paths, integration)
+- Performance (Lambda cold start, Lighthouse, DynamoDB capacity)
+- Accessibility (WCAG 2.1 AA, keyboard, contrast)
+- i18n completeness (key audit + CI check)
+- Documentation (all docs up to date)
+- Operational readiness (alarms, billing, CI/CD, rollback)
+
+Deliverable: docs/feedback/PRE-PROD-AUDIT.md → Go/No-Go recommendation
+
+### Infra Sprint: Production Launch
+| Issue | Title |
+|-------|-------|
+| #238 | Custom domain |
+| #239 | Production resource naming |
+| #240 | Install.sh URL finalization |
+
+Plus: fix any MUST-FIX findings from pre-production audit (#256)

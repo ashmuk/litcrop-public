@@ -312,7 +312,7 @@ describe('GET /api/v1/me/profile (avatar URLs)', () => {
     mockRepo.getUserProfile.mockResolvedValue({
       user_id: TEST_USER_ID,
       display_name: 'Test User',
-      preferred_role: 'manager' as const,
+      preferred_role: 'owner' as const,
       created_at: '2026-04-01T00:00:00Z',
       profile_picture_key: 'images/avatars/test/original.jpg',
       profile_picture_thumb_key: 'images/avatars/test/thumb.jpg',
@@ -331,7 +331,7 @@ describe('GET /api/v1/me/profile (avatar URLs)', () => {
     mockRepo.getUserProfile.mockResolvedValue({
       user_id: TEST_USER_ID,
       display_name: 'Test User',
-      preferred_role: 'manager' as const,
+      preferred_role: 'owner' as const,
       created_at: '2026-04-01T00:00:00Z',
     });
     const res = await app.request('/api/v1/me/profile', { headers: authHeaders() });

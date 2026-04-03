@@ -284,7 +284,7 @@ router.get('/:farmId/join-requests', async (c) => {
   const { userId } = getAuthContext(c);
   const status = c.req.query('status') ?? 'pending';
 
-  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const requests = await dynamoRepo.getJoinRequestsForFarm(farmId, status);
   return c.json({ data: requests });
@@ -296,7 +296,7 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
   const { farmId, targetUserId } = c.req.param();
   const { userId, userEmail } = getAuthContext(c);
 
-  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const body = await c.req.json();
   const action = body['action'];
@@ -456,7 +456,7 @@ router.post('/', async (c) => {
   let ownedCount: number;
   try {
     const farms = await dynamoRepo.getFarmsForUser(userId);
-    ownedCount = farms.filter(f => f.farm_id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'manager')).length;
+    ownedCount = farms.filter(f => f.farm_id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'owner')).length;
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
@@ -510,7 +510,7 @@ router.patch('/:farmId', async (c) => {
   const { farmId } = c.req.param();
   const { userId, userEmail } = getAuthContext(c);
 
-  const { farm: oldFarm } = await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  const { farm: oldFarm } = await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const body = await c.req.json<Record<string, unknown>>();
 
@@ -578,8 +578,8 @@ router.delete('/:farmId', async (c) => {
     throw new ValidationError('The demo farm cannot be deleted');
   }
 
-  // System admin can delete any farm; farm admin/manager can delete their own
-  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'manager'], isAdmin);
+  // System admin can delete any farm; farm admin/owner can delete their own
+  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   try {
     await dynamoRepo.deleteFarm(farmId);
@@ -604,8 +604,8 @@ router.post('/:farmId/members', async (c) => {
   const { farmId } = c.req.param();
   const { userId, userEmail } = getAuthContext(c);
 
-  // Only admin or manager can add members
-  await assertFarmAccess(farmId, userId, ['admin', 'manager']);
+  // Only admin or owner can add members
+  await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const body = await c.req.json<Record<string, unknown>>();
 
@@ -664,6 +664,51 @@ router.post('/:farmId/members', async (c) => {
   return c.json(member, 201);
 });
 
+// ── PATCH /api/v1/farms/:farmId/members/:userId ─────────────────
+// Promote a staff member to owner (admin/owner only, staff→owner only)
+
+router.patch('/:farmId/members/:targetUserId', async (c) => {
+  const { farmId, targetUserId } = c.req.param();
+  const { userId, userEmail } = getAuthContext(c);
+
+  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'owner']);
+
+  const body = await c.req.json<Record<string, unknown>>();
+  const newRole = body['role'];
+  if (newRole !== 'owner') {
+    throw new ValidationError("Only promotion to 'owner' is supported");
+  }
+
+  // Verify target is a current member with staff role
+  const targetMembership = await dynamoRepo.getFarmMembership(targetUserId, farmId);
+  if (!targetMembership) {
+    throw new NotFoundError('Member not found');
+  }
+  if (targetMembership.role !== 'staff') {
+    throw new ValidationError('Only staff members can be promoted');
+  }
+
+  await dynamoRepo.updateMemberRole(farmId, targetUserId, 'owner');
+
+  const targetProfile = await dynamoRepo.getUserProfile(targetUserId).catch(() => null);
+  appEvents.emit('member.role_changed', {
+    type: 'member.role_changed',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      farm_id: farmId,
+      farm_name: farm.name,
+      target_user_id: targetUserId,
+      target_user_name: targetProfile?.display_name ?? '',
+      old_role: 'staff',
+      new_role: 'owner',
+    },
+  });
+
+  return c.json({ user_id: targetUserId, farm_id: farmId, role: 'owner' });
+});
+
 // ── DELETE /api/v1/farms/:farmId/members/me ─────────────────────
 
 router.delete('/:farmId/members/me', async (c) => {
@@ -681,11 +726,11 @@ router.delete('/:farmId/members/me', async (c) => {
     throw new NotFoundError('Not a member of this farm');
   }
 
-  // If manager (farm owner), check there are other managers
-  if (membership.role === 'manager') {
+  // If owner, check there are other owners
+  if (membership.role === 'owner') {
     const members = await dynamoRepo.getFarmMembers(farmId);
-    const otherManagers = members.filter(m => m.role === 'manager' && m.user_id !== userId);
-    if (otherManagers.length === 0) {
+    const otherOwners = members.filter(m => m.role === 'owner' && m.user_id !== userId);
+    if (otherOwners.length === 0) {
       throw new ValidationError('Cannot leave: you are the only owner. Delete the farm or transfer ownership first.');
     }
   }

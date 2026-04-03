@@ -43,14 +43,14 @@ export function setLocalFarmList(farms: FarmListItem[]): void {
 
 /**
  * Return the role the current user has for the active farm.
- * Reads from the cached farm list. Defaults to 'observer' when unknown,
+ * Reads from the cached farm list. Defaults to 'staff' when unknown,
  * so UI write controls are hidden until the list is loaded.
  */
 export function getLocalFarmRole(): FarmRole {
   const farmId = typeof window !== 'undefined' ? localStorage.getItem(LS_FARM_ID) : null;
-  if (!farmId) return 'observer';
+  if (!farmId) return 'staff';
   const match = useLocalFarmList().find((f) => f.id === farmId);
-  return match?.role ?? 'observer';
+  return match?.role ?? 'staff';
 }
 
 // ── Admin cache ───────────────────────────────────────────────────
