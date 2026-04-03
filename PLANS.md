@@ -278,6 +278,20 @@ Exit criteria:
 | #183 | AI chat on all pages |
 | #168 | Soft delete pattern |
 
+### Pre-Production Audit (#256)
+Run after Beta-7, before Infra Sprint:
+- Codebase quality (ESLint, TypeScript strict, dead code, deps)
+- Architecture review (DynamoDB patterns, API inventory, event system)
+- Security audit (OWASP, auth flow, input validation, XSS)
+- Test coverage gaps (edge cases, error paths, integration)
+- Performance (Lambda cold start, Lighthouse, DynamoDB capacity)
+- Accessibility (WCAG 2.1 AA, keyboard, contrast)
+- i18n completeness (key audit + CI check)
+- Documentation (all docs up to date)
+- Operational readiness (alarms, billing, CI/CD, rollback)
+
+Deliverable: docs/feedback/PRE-PROD-AUDIT.md → Go/No-Go recommendation
+
 ### Infra Sprint: Production Launch
 | Issue | Title |
 |-------|-------|
@@ -285,4 +299,4 @@ Exit criteria:
 | #239 | Production resource naming |
 | #240 | Install.sh URL finalization |
 
-Plus: production refinements (i18n audit, error messages, API consistency, sharp Lambda layer)
+Plus: fix any MUST-FIX findings from pre-production audit (#256)

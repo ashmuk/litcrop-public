@@ -31,6 +31,12 @@
 
 ---
 
+## Pre-Production Audit
+
+- [#256](https://github.com/ashmuk/litcrop/issues/256) **chore: holistic project analysis and quality review before production** `type:docs` `priority:high`
+
+---
+
 ## Infra Sprint: Production Launch
 
 - [#238](https://github.com/ashmuk/litcrop/issues/238) **feat(infra): set up custom domain for production site** `area:infra` `type:infra` `priority:high`
