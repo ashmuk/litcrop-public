@@ -64,6 +64,7 @@ vi.mock('../services/s3', () => ({
   getSignedThumbnailUrl: vi.fn(),
   uploadImage: vi.fn(),
   deleteImage: vi.fn(),
+  buildStorageKey: vi.fn().mockReturnValue('images/f0/bd0/2026/01/01/test-img.jpg'),
 }));
 
 vi.mock('../services/budget', () => ({
