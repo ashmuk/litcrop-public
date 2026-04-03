@@ -887,7 +887,7 @@ export default function ProfilePage() {
                                   <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">
                                     {t(`profile.role_${m.role}`)}
                                   </span>
-                                  {isAdmin && m.role !== 'admin' && m.user_id !== userId && confirmRoleChange?.userId !== m.user_id && (
+                                  {isAdmin && m.role !== 'admin' && m.user_id !== currentUser?.sub && confirmRoleChange?.userId !== m.user_id && (
                                     <button
                                       class="btn-secondary"
                                       style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
