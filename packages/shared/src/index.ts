@@ -27,6 +27,10 @@ export type {
   DeviceRegistrationResponse,
   DeviceConfigResponse,
   DeviceListItem,
+  DiaryCategory,
+  CostItem,
+  DiaryEntry,
+  DiaryEntryResponse,
 } from './types/domain';
 
 // API response/error types
@@ -144,6 +148,13 @@ export {
   UpdateDeviceRequestSchema,
   DeviceHeartbeatRequestSchema,
   ProfilePictureResponseSchema,
+  DiaryCategorySchema,
+  CostItemSchema,
+  CreateDiaryEntrySchema,
+  UpdateDiaryEntrySchema,
+  DiaryListQuerySchema,
+  DiaryEntryResponseSchema,
+  DiaryListResponseSchema,
 } from './schemas/index';
 
 // Timezone utilities

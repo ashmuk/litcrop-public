@@ -191,6 +191,42 @@ export interface JoinRequest {
   resolved_by: string | null;
 }
 
+// ── Diary (Beta-7) ──────────────────────────────────────────────
+
+/** Diary entry work category */
+export type DiaryCategory =
+  | 'planting' | 'watering' | 'fertilizing' | 'harvesting'
+  | 'weeding' | 'pest_control' | 'maintenance' | 'purchase' | 'other';
+
+/** Cost item embedded in a diary entry */
+export interface CostItem {
+  item: string;
+  amount: number;
+  currency: 'JPY' | 'USD';
+}
+
+/** Diary entry — daily farm work log */
+export interface DiaryEntry {
+  id: string;
+  farm_id: string;
+  date: string;           // YYYY-MM-DD (farm local date)
+  category: DiaryCategory;
+  description: string;
+  time_spent_minutes: number | null;
+  bed_id: string | null;
+  photo_ids: string[];
+  costs: CostItem[];
+  created_by: string;
+  created_at: string;     // ISO 8601
+  updated_at: string;     // ISO 8601
+}
+
+/** Diary entry response — includes resolved bed_name and cost_total */
+export interface DiaryEntryResponse extends DiaryEntry {
+  bed_name: string | null;
+  cost_total: number;
+}
+
 export interface DiscoverableFarm {
   id: string;
   name: string;

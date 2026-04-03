@@ -467,6 +467,84 @@ export const DeviceHeartbeatRequestSchema = z.object({
   capabilities: DeviceCapabilitiesSchema.optional(),
 });
 
+// ── Diary schemas (Beta-7) ───────────────────────────────────────
+
+export const DiaryCategorySchema = z.enum([
+  'planting', 'watering', 'fertilizing', 'harvesting',
+  'weeding', 'pest_control', 'maintenance', 'purchase', 'other',
+]);
+
+export const CostItemSchema = z.object({
+  item: z.string().min(1).max(100).trim(),
+  amount: z.number().min(0).max(99_999_999),
+  currency: z.enum(['JPY', 'USD']),
+});
+
+/** POST /api/v1/farms/:farmId/diary — request body */
+export const CreateDiaryEntrySchema = z.object({
+  date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+    .refine(s => !isNaN(Date.parse(s)), { message: 'Invalid calendar date' })
+    .refine(s => {
+      const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+      return s <= tomorrow;
+    }, { message: 'Date cannot be more than 1 day in the future' }),
+  category: DiaryCategorySchema,
+  description: z.string().min(1).max(1000).trim(),
+  time_spent_minutes: z.number().int().min(1).max(1440).nullable().optional(),
+  bed_id: z.string().uuid().nullable().optional(),
+  photo_ids: z.array(z.string().uuid()).max(5).default([]),
+  costs: z.array(CostItemSchema).max(10).default([]),
+});
+
+/** PATCH /api/v1/farms/:farmId/diary/:entryId — request body */
+export const UpdateDiaryEntrySchema = CreateDiaryEntrySchema
+  .omit({ date: true })
+  .partial();
+
+/** GET /api/v1/farms/:farmId/diary — query params */
+export const DiaryListQuerySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  category: DiaryCategorySchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().optional(),
+}).refine(data => {
+  if (data.from && data.to) {
+    const diff = (Date.parse(data.to) - Date.parse(data.from)) / 86_400_000;
+    return diff >= 0 && diff <= 366;
+  }
+  return true;
+}, { message: 'Date range must be 0-366 days' });
+
+/** Diary entry response shape — for contract tests */
+export const DiaryEntryResponseSchema = z.object({
+  id: z.string(),
+  farm_id: z.string(),
+  date: z.string(),
+  category: DiaryCategorySchema,
+  description: z.string(),
+  time_spent_minutes: z.number().nullable(),
+  bed_id: z.string().nullable(),
+  bed_name: z.string().nullable(),
+  photo_ids: z.array(z.string()),
+  costs: z.array(CostItemSchema),
+  cost_total: z.number(),
+  created_by: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/** Paginated diary list response */
+export const DiaryListResponseSchema = z.object({
+  data: z.array(DiaryEntryResponseSchema),
+  meta: z.object({
+    count: z.number(),
+    limit: z.number(),
+    next_cursor: z.string().nullable(),
+  }),
+});
+
 // ── Profile picture schemas (Beta-5) ─────────────────────────────
 
 /** POST /api/v1/me/profile-picture (201) */
