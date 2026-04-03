@@ -403,6 +403,12 @@
       "role_label": "I am a...",
       "role_manager": "Farm Manager",
       "role_reader": "Staff",
+      "promo_label": "Promotional code",
+      "promo_placeholder": "Enter code (optional)",
+      "promo_check": "Verify",
+      "promo_invalid": "Invalid promotional code",
+      "promo_valid": "Code accepted — Farm Manager role unlocked",
+      "promo_hint": "Have a code? Enter it to unlock the Farm Manager role.",
       "language": "Language",
       "temp_unit": "Temperature"
     },

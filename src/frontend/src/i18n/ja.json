@@ -403,6 +403,12 @@
       "role_label": "利用形態",
       "role_manager": "農園管理者",
       "role_reader": "作業スタッフ",
+      "promo_label": "プロモーションコード",
+      "promo_placeholder": "コードを入力（任意）",
+      "promo_check": "確認",
+      "promo_invalid": "無効なプロモーションコード",
+      "promo_valid": "コード承認 — 農園管理者ロールが選択可能になりました",
+      "promo_hint": "コードをお持ちですか？入力して農園管理者ロールを有効にしてください。",
       "language": "言語",
       "temp_unit": "温度単位"
     },
