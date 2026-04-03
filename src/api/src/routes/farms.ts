@@ -142,6 +142,8 @@ function bedToSummary(bed: Bed) {
     crop_type: bed.crop_type ?? null,
     crop_variety: bed.crop_variety ?? null,
     latest_status: bed.latest_status,
+    planted_at: bed.planted_at ?? null,
+    expected_harvest: bed.expected_harvest ?? null,
   };
 }
 

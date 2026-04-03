@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitCrop — Sprint Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --accent: #6c63ff;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --cyan: #06b6d4;
+    --pink: #ec4899;
+    --gray: #6b7280;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --dim: #4b5563;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; background: var(--bg); color: var(--text); padding: 24px; line-height: 1.5; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .full { grid-column: 1 / -1; }
+
+  /* Status bar */
+  .status-row { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px; min-width: 140px; }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 2px; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.accent { color: var(--accent); }
+
+  /* Sprint timeline */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 18px; }
+  .tl-item:last-child { margin-bottom: 0; }
+  .tl-dot { position: absolute; left: -21px; top: 5px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid; }
+  .tl-dot.done { background: var(--green); border-color: var(--green); }
+  .tl-dot.next { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px rgba(108,99,255,0.5); animation: pulse 2s infinite; }
+  .tl-dot.queued { background: transparent; border-color: var(--dim); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 4px rgba(108,99,255,0.3); } 50% { box-shadow: 0 0 12px rgba(108,99,255,0.7); } }
+  .tl-title { font-weight: 600; font-size: 0.9rem; }
+  .tl-title.done { color: var(--green); }
+  .tl-title.next { color: #fff; }
+  .tl-title.queued { color: var(--dim); }
+  .tl-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .tl-tag { display: inline-block; font-size: 0.65rem; padding: 1px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+  .tl-tag.complete { background: rgba(34,197,94,0.15); color: var(--green); }
+  .tl-tag.active { background: rgba(108,99,255,0.2); color: #a5a0ff; }
+  .tl-tag.pending { background: rgba(75,85,99,0.3); color: var(--dim); }
+
+  /* Issue table */
+  .issue-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .issue-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .issue-table td { padding: 8px 8px; border-bottom: 1px solid rgba(42,45,58,0.5); vertical-align: top; }
+  .issue-num { color: var(--accent); font-weight: 600; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .badge.api { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .badge.frontend { background: rgba(236,72,153,0.15); color: var(--pink); }
+  .badge.infra { background: rgba(249,115,22,0.15); color: var(--orange); }
+  .badge.docs { background: rgba(156,163,175,0.15); color: var(--muted); }
+  .badge.feature { background: rgba(6,182,212,0.15); color: var(--cyan); }
+  .badge.size-l { background: rgba(239,68,68,0.12); color: var(--red); }
+  .badge.size-m { background: rgba(234,179,8,0.12); color: var(--yellow); }
+  .badge.hi { background: rgba(239,68,68,0.15); color: var(--red); }
+
+  /* Work breakdown */
+  .wb-group { margin-bottom: 16px; }
+  .wb-group-title { font-size: 0.78rem; font-weight: 600; color: var(--cyan); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .wb-item { display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; padding: 4px 0; color: var(--text); }
+  .wb-item .check { color: var(--dim); flex-shrink: 0; }
+  .wb-note { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+  /* Constraints */
+  .constraint { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 0.8rem; border-bottom: 1px solid rgba(42,45,58,0.4); }
+  .constraint:last-child { border-bottom: none; }
+  .c-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .c-label { font-weight: 600; }
+  .c-detail { color: var(--muted); font-size: 0.75rem; }
+
+  /* Recommended actions */
+  .action-list { list-style: none; counter-reset: act; }
+  .action-list li { counter-increment: act; position: relative; padding: 10px 0 10px 32px; border-bottom: 1px solid rgba(42,45,58,0.4); font-size: 0.82rem; }
+  .action-list li:last-child { border-bottom: none; }
+  .action-list li::before { content: counter(act); position: absolute; left: 0; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .action-cmd { display: inline-block; background: rgba(108,99,255,0.12); color: #a5a0ff; padding: 1px 6px; border-radius: 3px; font-size: 0.75rem; margin-left: 4px; }
+
+  .footer { margin-top: 28px; font-size: 0.7rem; color: var(--dim); text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>LitCrop Sprint Dashboard</h1>
+<p class="subtitle">Project status as of 2026-04-03 &middot; v0.36 &middot; Beta-6 complete &middot; develop branch clean</p>
+
+<!-- Key Metrics -->
+<div class="status-row">
+  <div class="stat">
+    <div class="stat-label">Current Version</div>
+    <div class="stat-value accent">v0.36</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Tests Passing</div>
+    <div class="stat-value green">547</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Open Issues</div>
+    <div class="stat-value yellow">11</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Next Sprint</div>
+    <div class="stat-value blue">Beta-7</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">AWS Budget</div>
+    <div class="stat-value green">&le;$1.18/mo</div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- Sprint Roadmap Timeline -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Sprint Roadmap</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot done"></div>
+        <div class="tl-title done">Beta-6 <span class="tl-tag complete">COMPLETE</span></div>
+        <div class="tl-desc">Role rename, promo gate, Pi scripts, crop library, thumbnail fix, promote/demote</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot next"></div>
+        <div class="tl-title next">Beta-7 — Farm Diary <span class="tl-tag active">UP NEXT</span></div>
+        <div class="tl-desc">#245 #246 #247 &mdash; Work log + calendar + cost tracking. Biggest sprint: new DynamoDB entity, new API domain, new nav tab.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot queued"></div>
+        <div class="tl-title queued">Beta-8 — ROI &amp; Extras <span class="tl-tag pending">QUEUED</span></div>
+        <div class="tl-desc">#248 ROI dashboard + Gantt chart + season comparison</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot queued"></div>
+        <div class="tl-title queued">Infra Sprint <span class="tl-tag pending">QUEUED</span></div>
+        <div class="tl-desc">#238 custom domain, #239 prod resources, #240 install URL</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot queued"></div>
+        <div class="tl-title queued">Pre-Prod Audit <span class="tl-tag pending">QUEUED</span></div>
+        <div class="tl-desc">#256 holistic quality review + production refinements checklist</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Beta-7 Issue Board -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--blue)"></span> Beta-7 Issues (In Scope)</div>
+    <table class="issue-table">
+      <thead><tr><th>#</th><th>Title</th><th>Scope</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="issue-num">#245</span></td>
+          <td>Farm Diary — epic (parent)</td>
+          <td><span class="badge api">api</span> <span class="badge frontend">frontend</span></td>
+          <td><span class="badge size-l">L</span></td>
+        </tr>
+        <tr>
+          <td><span class="issue-num">#246</span></td>
+          <td>Work Log — daily entries + cost tracking</td>
+          <td><span class="badge api">api</span> <span class="badge frontend">frontend</span></td>
+          <td><span class="badge size-l">L</span></td>
+        </tr>
+        <tr>
+          <td><span class="issue-num">#247</span></td>
+          <td>Farm Calendar + crop timeline</td>
+          <td><span class="badge frontend">frontend</span></td>
+          <td><span class="badge size-m">M</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:16px; padding-top:12px; border-top: 1px solid var(--border);">
+      <div class="card-title" style="margin-bottom:10px"><span class="dot" style="background:var(--dim)"></span> Deferred (Not Beta-7)</div>
+      <table class="issue-table">
+        <thead><tr><th>#</th><th>Title</th><th>Sprint</th></tr></thead>
+        <tbody>
+          <tr><td><span class="issue-num" style="color:var(--dim)">#248</span></td><td style="color:var(--dim)">ROI Dashboard</td><td style="color:var(--dim)">Beta-8</td></tr>
+          <tr><td><span class="issue-num" style="color:var(--dim)">#183</span></td><td style="color:var(--dim)">AI Chat (all pages)</td><td style="color:var(--dim)">PENDING</td></tr>
+          <tr><td><span class="issue-num" style="color:var(--dim)">#168</span></td><td style="color:var(--dim)">Soft Delete</td><td style="color:var(--dim)">PENDING</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Work Breakdown -->
+  <div class="card full">
+    <div class="card-title"><span class="dot" style="background:var(--cyan)"></span> Beta-7 Work Breakdown</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+
+      <div class="wb-group">
+        <div class="wb-group-title">Phase 0: Design (required first)</div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>/cc-define — requirements for #245</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>/cc-design — architecture + UX + API contracts</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>ADR for diary data model (DynamoDB schema)</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Design doc → docs/designs/BETA7-DESIGN.md</span></div>
+        <div class="wb-note">Per user rule: visual design docs must precede implementation</div>
+      </div>
+
+      <div class="wb-group">
+        <div class="wb-group-title">#246 Work Log (API + Frontend)</div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>DynamoDB entity: DIARY#{date}#{id}</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>CRUD endpoints: POST/GET/PATCH/DELETE /diary</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Zod schemas + validation</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Cost array: { item, amount, currency }</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>/diary page — list view grouped by date</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Entry form: date, category, bed, photo, costs</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Bottom nav: add Diary tab (5th position)</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>i18n keys (en.json + ja.json)</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Unit + integration tests</span></div>
+      </div>
+
+      <div class="wb-group">
+        <div class="wb-group-title">#247 Farm Calendar (Frontend)</div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Monthly grid — pure CSS/Preact</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Day dots (color-coded by category)</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Tap day → show entries</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Crop timeline bars (planted → harvest)</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Weather overlay markers</span></div>
+        <div class="wb-item"><span class="check">&#9744;</span> <span>Calendar tests + a11y</span></div>
+        <div class="wb-note">Gantt chart deferred to Beta-8 (#248)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Constraints & Risks -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--orange)"></span> Constraints &amp; Risks</div>
+    <div class="constraint">
+      <span class="c-icon">&#x1F4B0;</span>
+      <div><div class="c-label">AWS Budget: &le;$1.18/mo ($5 ceiling)</div><div class="c-detail">New DynamoDB table operations must fit within existing provisioned capacity. No new Lambda functions unless necessary.</div></div>
+    </div>
+    <div class="constraint">
+      <span class="c-icon">&#x1F4D0;</span>
+      <div><div class="c-label">Design-first mandate</div><div class="c-detail">Architecture + UX docs must be reviewed before any implementation begins. Store in docs/designs/BETA7-DESIGN.md.</div></div>
+    </div>
+    <div class="constraint">
+      <span class="c-icon">&#x1F4CA;</span>
+      <div><div class="c-label">Largest sprint to date</div><div class="c-detail">New DynamoDB entity, new API domain (/diary), new nav tab, 9 categories, cost tracking — more surface area than any previous beta.</div></div>
+    </div>
+    <div class="constraint">
+      <span class="c-icon">&#x1F517;</span>
+      <div><div class="c-label">Cross-feature integrations</div><div class="c-detail">Calendar pulls from beds API (planted_at), weather API, and diary API — three data sources on one view.</div></div>
+    </div>
+    <div class="constraint">
+      <span class="c-icon">&#x1F30F;</span>
+      <div><div class="c-label">Bilingual i18n (EN/JA)</div><div class="c-detail">9 work categories + all diary UI strings need both locales. Previous beta had 3 rounds of i18n fixes — audit carefully.</div></div>
+    </div>
+  </div>
+
+  <!-- Recommended Actions -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--green)"></span> Recommended Actions</div>
+    <ol class="action-list">
+      <li>
+        <strong>Run design pipeline for Farm Diary</strong><br>
+        <span class="action-cmd">/cc-define</span> for #245 requirements, then <span class="action-cmd">/cc-design</span> for architecture + UX + API contracts.
+      </li>
+      <li>
+        <strong>Create ADR for diary data model</strong><br>
+        Document DynamoDB schema decision: DIARY#/COST# entities under FARM# partition. Evaluate GSI needs for date-range queries.
+      </li>
+      <li>
+        <strong>Implement #246 Work Log first</strong><br>
+        Core API + frontend. This is the foundation — calendar (#247) depends on diary entries existing.
+      </li>
+      <li>
+        <strong>Implement #247 Calendar second</strong><br>
+        Monthly grid + diary dots + crop timeline bars. Weather overlay optional stretch goal.
+      </li>
+      <li>
+        <strong>Review + remediate cycle</strong><br>
+        <span class="action-cmd">/simplify</span> &rarr; <span class="action-cmd">/cc-review</span> &rarr; <span class="action-cmd">/cc-remediate</span> per batch, matching Beta-6 pipeline.
+      </li>
+      <li>
+        <strong>Deploy crop library frontend</strong><br>
+        From Beta-6 — may not have been deployed yet (noted in restart point as immediate action).
+      </li>
+    </ol>
+  </div>
+
+</div>
+
+<div class="footer">LitCrop Sprint Dashboard &middot; Generated 2026-04-03 &middot; Source: GitHub Issues + Memory</div>
+
+</body>
+</html>

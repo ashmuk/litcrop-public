@@ -10,6 +10,15 @@
    ============================================================ */
 
 /* ----------------------------------------------------------
+   Narrow viewport (< 360px): hide tab labels when 6 tabs are present
+   to prevent overflow (Beta-7: Diary tab is the 5th; Admin is 6th)
+   ---------------------------------------------------------- */
+@media (max-width: 359px) {
+  .tab-bar__label { display: none; }
+  .tab-bar__icon { font-size: 1.25rem; }
+}
+
+/* ----------------------------------------------------------
    T-DESK-01: Breakpoint system
    ---------------------------------------------------------- */
 
@@ -363,4 +372,12 @@
     padding-top: var(--space-8);
     padding-bottom: var(--space-8);
   }
+}
+
+/* ----------------------------------------------------------
+   T-DESK-07: Diary Calendar + Crop Timeline
+   ---------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .calendar__cell { min-height: 48px; }
+  .crop-timeline__label { width: 120px; }
 }

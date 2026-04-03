@@ -16,12 +16,13 @@ import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 
 export interface Props {
-  activeTab?: 'farm' | 'weather' | 'manage' | 'setup' | 'admin';
+  activeTab?: 'farm' | 'weather' | 'diary' | 'manage' | 'setup' | 'admin';
 }
 
 const NAV_ITEMS: { tab: Props['activeTab']; href: string; icon: string; labelKey: string }[] = [
   { tab: 'farm',     href: '/',         icon: '🌾', labelKey: 'nav.farm' },
   { tab: 'weather',  href: '/weather',  icon: '⛅', labelKey: 'nav.weather' },
+  { tab: 'diary',    href: '/diary',    icon: '📓', labelKey: 'nav.diary' },
   { tab: 'manage',   href: '/manage/',  icon: '📡', labelKey: 'nav.manage' },
   { tab: 'setup',    href: '/profile/', icon: '🌱', labelKey: 'nav.setup' },
 ];

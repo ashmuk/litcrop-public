@@ -134,6 +134,27 @@ export interface DeviceTestShotPayload {
   device_id: string;
 }
 
+// ── Diary event payloads (Beta-7) ──────────────────────────────
+
+export interface DiaryEntryCreatedPayload {
+  farm_id: string;
+  entry_id: string;
+  category: string;
+  date: string;
+}
+
+export interface DiaryEntryUpdatedPayload {
+  farm_id: string;
+  entry_id: string;
+  changed_fields: string[];
+}
+
+export interface DiaryEntryDeletedPayload {
+  farm_id: string;
+  entry_id: string;
+  date: string;
+}
+
 // ── Event type map ──────────────────────────────────────────────
 
 export interface AppEventMap {
@@ -160,6 +181,11 @@ export interface AppEventMap {
   'device.deregistered':     AppEvent<'device.deregistered', DeviceDeregisteredPayload>;
   'device.config_updated':   AppEvent<'device.config_updated', DeviceConfigUpdatedPayload>;
   'device.test_shot':        AppEvent<'device.test_shot', DeviceTestShotPayload>;
+
+  // Diary events (Beta-7)
+  'diary.created':           AppEvent<'diary.created', DiaryEntryCreatedPayload>;
+  'diary.updated':           AppEvent<'diary.updated', DiaryEntryUpdatedPayload>;
+  'diary.deleted':           AppEvent<'diary.deleted', DiaryEntryDeletedPayload>;
 }
 
 export type AppEventType = keyof AppEventMap;

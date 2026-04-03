@@ -1,0 +1,12 @@
+---
+/**
+ * Farm Diary Page — Beta-7
+ * Work log: list view (default) and calendar view (Batch 3).
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DiaryPage from '../components/DiaryPage';
+---
+
+<BaseLayout title="LitCrop — Diary" activeTab="diary">
+  <DiaryPage client:load />
+</BaseLayout>

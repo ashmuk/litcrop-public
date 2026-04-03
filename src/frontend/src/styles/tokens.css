@@ -121,6 +121,16 @@
 
   /* Focus Ring */
   --focus-ring: 0 0 0 3px rgba(27, 107, 58, 0.5);
+  /* Diary category colors (Beta-7) */
+  --diary-planting: #22c55e;
+  --diary-watering: #3b82f6;
+  --diary-fertilizing: #a855f7;
+  --diary-harvesting: #f59e0b;
+  --diary-weeding: #84cc16;
+  --diary-pest: #ef4444;
+  --diary-maintenance: #6b7280;
+  --diary-purchase: #f97316;
+  --diary-other: #9ca3af;
 }
 
 /* ----------------------------------------------------------

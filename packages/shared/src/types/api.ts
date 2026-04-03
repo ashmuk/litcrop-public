@@ -57,6 +57,8 @@ export interface FarmBed {
   crop_type: string | null;
   crop_variety: string | null;
   latest_status: BedStatus;
+  planted_at?: string | null;
+  expected_harvest?: string | null;
 }
 
 /** GET /api/v1/farms/{farmId} */
