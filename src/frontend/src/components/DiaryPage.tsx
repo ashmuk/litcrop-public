@@ -23,31 +23,13 @@ import DiaryEntryForm from './DiaryEntryForm';
 import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
 import { CATEGORY_META, getLocale } from '../lib/diary';
+import { formatCurrency, groupByDate } from '../lib/diary-utils';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
 const LS_VIEW_KEY = 'litcrop-diary-view';
 const LS_FARM_ID = 'litcrop-farmId';
 
-function formatCurrency(amount: number, currency: 'JPY' | 'USD'): string {
-  if (currency === 'JPY') return `¥${amount.toLocaleString()}`;
-  return `$${amount.toFixed(2)}`;
-}
-
-/** Group entries by date, sorted newest-first. */
-function groupByDate(entries: DiaryEntryResponse[]): [string, DiaryEntryResponse[]][] {
-  const map = new Map<string, DiaryEntryResponse[]>();
-  for (const entry of entries) {
-    const group = map.get(entry.date);
-    if (group) {
-      group.push(entry);
-    } else {
-      map.set(entry.date, [entry]);
-    }
-  }
-  // Sort groups newest first
-  return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
-}
 
 function formatDateLabel(date: string): string {
   const d = new Date(date + 'T00:00:00');
@@ -310,7 +292,7 @@ export default function DiaryPage() {
 
   // ── Render states ───────────────────────────────────────────────
 
-  const grouped = useMemo(() => groupByDate(entries), [entries]);
+  const grouped = useMemo(() => [...groupByDate(entries).entries()], [entries]);
   const selectedEntries = useMemo(
     () => (selectedDate ? entries.filter((e) => e.date === selectedDate) : []),
     [entries, selectedDate],

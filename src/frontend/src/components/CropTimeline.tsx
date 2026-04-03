@@ -6,6 +6,7 @@
  */
 
 import { t } from '../i18n/i18n';
+import { computeBarPosition } from '../lib/diary-utils';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -28,32 +29,6 @@ interface Props {
 /** Parse a YYYY-MM-DD string into a Date (local midnight). */
 function parseDate(s: string): Date {
   return new Date(s + 'T00:00:00');
-}
-
-/**
- * Compute left% and width% for a bar that spans [start, end]
- * relative to the visible month [monthStart, monthEnd].
- * Returns null if there is no overlap with the month.
- */
-function computeBarPosition(
-  planted: Date,
-  harvest: Date,
-  monthStart: Date,
-  monthEnd: Date,
-): { left: number; width: number } | null {
-  // Clamp bar to visible month
-  const barStart = planted < monthStart ? monthStart : planted;
-  const barEnd = harvest > monthEnd ? monthEnd : harvest;
-
-  if (barStart >= barEnd) return null; // >= catches planted === harvest (zero-width)
-
-  const totalMs = monthEnd.getTime() - monthStart.getTime();
-  if (totalMs <= 0) return null;
-
-  const left = ((barStart.getTime() - monthStart.getTime()) / totalMs) * 100;
-  const width = ((barEnd.getTime() - barStart.getTime()) / totalMs) * 100;
-
-  return { left: Math.max(0, left), width: Math.max(0.5, width) }; // min 0.5% visible
 }
 
 // ── Component ─────────────────────────────────────────────────────

@@ -35,6 +35,8 @@ import {
   WeatherResponseSchema,
   ChatResponseSchema,
   UsageResponseSchema,
+  DiaryEntryResponseSchema,
+  DiaryListResponseSchema,
 } from '@litcrop/shared';
 
 vi.mock('../services/dynamodb', () => ({
@@ -625,5 +627,37 @@ describe('zod contract: GET /api/v1/usage', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(() => UsageResponseSchema.parse(body)).not.toThrow();
+  });
+});
+
+// ── Diary contracts (Beta-7) ─────────────────────────────────────
+
+describe('Diary contracts (Beta-7)', () => {
+  it('DiaryEntryResponseSchema validates a complete entry', () => {
+    const entry = {
+      id: 'entry-uuid',
+      farm_id: 'farm-uuid',
+      date: '2026-04-03',
+      category: 'planting',
+      description: 'Planted tomatoes',
+      time_spent_minutes: 45,
+      bed_id: 'bed-uuid',
+      bed_name: 'A1',
+      photo_ids: [],
+      costs: [{ item: 'Seeds', amount: 500, currency: 'JPY' }],
+      cost_total: 500,
+      created_by: 'user-uuid',
+      created_at: '2026-04-03T09:00:00Z',
+      updated_at: '2026-04-03T09:00:00Z',
+    };
+    expect(DiaryEntryResponseSchema.safeParse(entry).success).toBe(true);
+  });
+
+  it('DiaryListResponseSchema validates paginated list', () => {
+    const list = {
+      data: [],
+      meta: { count: 0, limit: 50, next_cursor: null },
+    };
+    expect(DiaryListResponseSchema.safeParse(list).success).toBe(true);
   });
 });
