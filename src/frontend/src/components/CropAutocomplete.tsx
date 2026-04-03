@@ -79,9 +79,14 @@ export default function CropAutocomplete({ value, onChange, placeholder }: CropA
     setHighlightIdx(-1);
   }
 
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => { if (blurTimerRef.current) clearTimeout(blurTimerRef.current); };
+  }, []);
+
   function handleBlur() {
     // Delay to allow click on dropdown items to fire first
-    setTimeout(() => {
+    blurTimerRef.current = setTimeout(() => {
       if (!containerRef.current?.contains(document.activeElement)) {
         setOpen(false);
         // Normalize free-text on blur

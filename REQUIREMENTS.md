@@ -652,7 +652,7 @@ Current crop selection is a dropdown with 8 hardcoded options. Users need broade
 | CR-01 | Bundled crop data file with 100+ crops, each having: EN name, JA name, emoji icon, category | MUST |
 | CR-02 | Searchable autocomplete input replacing the dropdown in BedDetail edit form | MUST |
 | CR-03 | Search works in both English and Japanese (match on either language) | MUST |
-| CR-04 | Top-8 crops shown as quick-select chips above the search input | MUST |
+| CR-04 | Top 7 crops shown as quick-select chips (excluding "other" — free-text serves that role) | MUST |
 | CR-05 | Free-text entry allowed for crops not in the library | MUST |
 | CR-06 | Crop emoji icons displayed on Crops list page (FarmOverview) | MUST |
 | CR-07 | Crop emoji icons displayed on Layout grid (FarmLayoutView) | MUST |

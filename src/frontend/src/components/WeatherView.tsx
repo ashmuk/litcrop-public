@@ -319,7 +319,7 @@ export default function WeatherView({ farmId }: Props) {
                   </div>
                   {card.affected_beds.length > 0 && (
                     <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
-                      {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => getCropName(b.crop_type)).join(', ')}
+                      {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => getCropName(b.crop_type)).filter(Boolean).join(', ')}
                     </div>
                   )}
                 </div>
