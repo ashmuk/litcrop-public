@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount, promoteMember } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount, changeMemberRole } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -381,8 +381,8 @@ export default function ProfilePage() {
   const [showWizard, setShowWizard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
-  const [confirmPromote, setConfirmPromote] = useState<string | null>(null); // user_id being promoted
-  const [promoting, setPromoting] = useState(false);
+  const [confirmRoleChange, setConfirmRoleChange] = useState<{ userId: string; action: 'promote' | 'demote' } | null>(null);
+  const [changingRole, setChangingRole] = useState(false);
   const [expandedFarm, setExpandedFarm] = useState<string | null>(null);
   const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -887,42 +887,46 @@ export default function ProfilePage() {
                                   <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">
                                     {t(`profile.role_${m.role}`)}
                                   </span>
-                                  {isAdmin && m.role === 'staff' && confirmPromote !== m.user_id && (
+                                  {isAdmin && m.role !== 'admin' && m.user_id !== userId && confirmRoleChange?.userId !== m.user_id && (
                                     <button
                                       class="btn-secondary"
                                       style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
-                                      onClick={(e) => { e.stopPropagation(); setConfirmPromote(m.user_id); }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmRoleChange({ userId: m.user_id, action: m.role === 'staff' ? 'promote' : 'demote' });
+                                      }}
                                     >
-                                      ⬆ {t('profile.promote')}
+                                      {m.role === 'staff' ? `⬆ ${t('profile.promote')}` : `⬇ ${t('profile.demote')}`}
                                     </button>
                                   )}
-                                  {confirmPromote === m.user_id && (
+                                  {confirmRoleChange?.userId === m.user_id && (
                                     <div style="display:flex;align-items:center;gap:var(--space-1)">
                                       <button
-                                        class="btn-primary"
+                                        class={confirmRoleChange.action === 'promote' ? 'btn-primary' : 'btn-danger'}
                                         style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
-                                        disabled={promoting}
+                                        disabled={changingRole}
                                         onClick={async (e) => {
                                           e.stopPropagation();
-                                          setPromoting(true);
+                                          setChangingRole(true);
+                                          const newRole = confirmRoleChange.action === 'promote' ? 'owner' : 'staff';
                                           try {
-                                            await promoteMember(farm.id, m.user_id);
+                                            await changeMemberRole(farm.id, m.user_id, newRole);
                                             setFarmMembers((prev) => prev?.map((fm) =>
-                                              fm.user_id === m.user_id ? { ...fm, role: 'owner' as const } : fm
+                                              fm.user_id === m.user_id ? { ...fm, role: newRole as FarmRole } : fm
                                             ) ?? null);
-                                            setConfirmPromote(null);
+                                            setConfirmRoleChange(null);
                                           } catch { /* API error — button stays */ }
-                                          setPromoting(false);
+                                          setChangingRole(false);
                                         }}
                                       >
-                                        {promoting ? '…' : t('profile.promote_confirm')}
+                                        {changingRole ? '…' : confirmRoleChange.action === 'promote' ? t('profile.promote_confirm') : t('profile.demote_confirm')}
                                       </button>
                                       <button
                                         class="btn-secondary"
                                         style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
-                                        onClick={(e) => { e.stopPropagation(); setConfirmPromote(null); }}
+                                        onClick={(e) => { e.stopPropagation(); setConfirmRoleChange(null); }}
                                       >
-                                        {t('common.cancel')}
+                                        {t('buttons.cancel')}
                                       </button>
                                     </div>
                                   )}

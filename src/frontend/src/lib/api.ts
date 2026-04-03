@@ -162,9 +162,9 @@ export async function getFarmMembers(farmId: string): Promise<FarmMemberItem[]> 
   return res.data;
 }
 
-/** PATCH /api/v1/farms/:farmId/members/:userId — promote a member */
-export async function promoteMember(farmId: string, userId: string): Promise<void> {
-  await request('PATCH', `/farms/${farmId}/members/${userId}`, { role: 'owner' });
+/** PATCH /api/v1/farms/:farmId/members/:userId — change member role */
+export async function changeMemberRole(farmId: string, userId: string, role: 'owner' | 'staff'): Promise<void> {
+  await request('PATCH', `/farms/${farmId}/members/${userId}`, { role });
 }
 
 /** POST /api/v1/farms/:farmId/members — add a member to a farm */

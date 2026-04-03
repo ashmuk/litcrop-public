@@ -665,7 +665,7 @@ router.post('/:farmId/members', async (c) => {
 });
 
 // ── PATCH /api/v1/farms/:farmId/members/:userId ─────────────────
-// Promote a staff member to owner (admin/owner only, staff→owner only)
+// Change a member's role (admin/owner only, staff↔owner)
 
 router.patch('/:farmId/members/:targetUserId', async (c) => {
   const { farmId, targetUserId } = c.req.param();
@@ -675,20 +675,37 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
 
   const body = await c.req.json<Record<string, unknown>>();
   const newRole = body['role'];
-  if (newRole !== 'owner') {
-    throw new ValidationError("Only promotion to 'owner' is supported");
+  if (newRole !== 'owner' && newRole !== 'staff') {
+    throw new ValidationError("Role must be 'owner' or 'staff'");
   }
 
-  // Verify target is a current member with staff role
+  // Cannot change your own role
+  if (targetUserId === userId) {
+    throw new ValidationError('Cannot change your own role');
+  }
+
   const targetMembership = await dynamoRepo.getFarmMembership(targetUserId, farmId);
   if (!targetMembership) {
     throw new NotFoundError('Member not found');
   }
-  if (targetMembership.role !== 'staff') {
-    throw new ValidationError('Only staff members can be promoted');
+  if (targetMembership.role === 'admin') {
+    throw new ValidationError('Cannot change admin role');
+  }
+  if (targetMembership.role === newRole) {
+    throw new ValidationError(`Member is already ${newRole}`);
   }
 
-  await dynamoRepo.updateMemberRole(farmId, targetUserId, 'owner');
+  // When demoting, ensure at least one other owner remains
+  if (newRole === 'staff') {
+    const members = await dynamoRepo.getFarmMembers(farmId);
+    const otherOwners = members.filter(m => (m.role === 'owner' || m.role === 'admin') && m.user_id !== targetUserId);
+    if (otherOwners.length === 0) {
+      throw new ValidationError('Cannot demote: farm must have at least one owner');
+    }
+  }
+
+  const oldRole = targetMembership.role;
+  await dynamoRepo.updateMemberRole(farmId, targetUserId, newRole);
 
   const targetProfile = await dynamoRepo.getUserProfile(targetUserId).catch(() => null);
   appEvents.emit('member.role_changed', {
@@ -701,12 +718,12 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
       farm_name: farm.name,
       target_user_id: targetUserId,
       target_user_name: targetProfile?.display_name ?? '',
-      old_role: 'staff',
-      new_role: 'owner',
+      old_role: oldRole,
+      new_role: newRole,
     },
   });
 
-  return c.json({ user_id: targetUserId, farm_id: farmId, role: 'owner' });
+  return c.json({ user_id: targetUserId, farm_id: farmId, role: newRole });
 });
 
 // ── DELETE /api/v1/farms/:farmId/members/me ─────────────────────
