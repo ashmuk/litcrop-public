@@ -267,6 +267,8 @@
     "leave_error": "Could not leave farm",
     "promote": "Promote",
     "promote_confirm": "Yes, promote to Owner",
+    "demote": "Demote",
+    "demote_confirm": "Yes, demote to Staff",
     "farm_limit": "Free plan: up to 2 farms",
     "location": "Location",
     "elevation": "Elevation",

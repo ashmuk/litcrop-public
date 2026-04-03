@@ -559,7 +559,7 @@ describe('PATCH /api/v1/farms/:farmId/members/:targetUserId', () => {
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string; message: string } };
     expect(body.error.code).toBe('VALIDATION_ERROR');
-    expect(body.error.message).toMatch(/Only staff members can be promoted/);
+    expect(body.error.message).toMatch(/already owner/);
   });
 
   it('returns 404 when target is not a member', async () => {
@@ -578,9 +578,49 @@ describe('PATCH /api/v1/farms/:farmId/members/:targetUserId', () => {
     expect(body.error.message).toMatch(/Member not found/);
   });
 
-  it('returns 400 when role value is not owner', async () => {
+  it('returns 400 when role value is invalid', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
-    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture); // caller passes access check
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(membershipFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'admin' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toMatch(/must be 'owner' or 'staff'/);
+  });
+
+  it('demotes owner to staff', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(membershipFixture); // caller is owner
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce({ user_id: TARGET_USER_ID, farm_id: FARM_ID, role: 'owner', joined_at: '2026-01-01T00:00:00Z' }); // target is owner
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TEST_USER_ID, role: 'owner', joined_at: '2026-01-01T00:00:00Z' },
+      { user_id: TARGET_USER_ID, role: 'owner', joined_at: '2026-01-01T00:00:00Z' },
+    ]);
+    vi.mocked(dynamoRepo.updateMemberRole).mockResolvedValue();
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ role: 'staff' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['role']).toBe('staff');
+  });
+
+  it('returns 400 when demoting the last owner', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(membershipFixture); // caller (admin via assertFarmAccess)
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce({ user_id: TARGET_USER_ID, farm_id: FARM_ID, role: 'owner', joined_at: '2026-01-01T00:00:00Z' });
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: TARGET_USER_ID, role: 'owner', joined_at: '2026-01-01T00:00:00Z' },
+    ]);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/members/${TARGET_USER_ID}`, {
       method: 'PATCH',
@@ -589,8 +629,7 @@ describe('PATCH /api/v1/farms/:farmId/members/:targetUserId', () => {
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string; message: string } };
-    expect(body.error.code).toBe('VALIDATION_ERROR');
-    expect(body.error.message).toMatch(/Only promotion to 'owner' is supported/);
+    expect(body.error.message).toMatch(/at least one owner/);
   });
 });
 

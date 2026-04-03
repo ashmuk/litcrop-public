@@ -267,6 +267,8 @@
     "leave_error": "農園から退出できませんでした",
     "promote": "昇格",
     "promote_confirm": "オーナーに昇格しますか？",
+    "demote": "降格",
+    "demote_confirm": "スタッフに降格しますか？",
     "farm_limit": "フリープラン: 農園は2つまで",
     "location": "位置",
     "elevation": "標高",
