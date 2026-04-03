@@ -578,7 +578,7 @@ router.delete('/:farmId', async (c) => {
     throw new ValidationError('The demo farm cannot be deleted');
   }
 
-  // System admin can delete any farm; farm admin/manager can delete their own
+  // System admin can delete any farm; farm admin/owner can delete their own
   const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   try {
@@ -604,7 +604,7 @@ router.post('/:farmId/members', async (c) => {
   const { farmId } = c.req.param();
   const { userId, userEmail } = getAuthContext(c);
 
-  // Only admin or manager can add members
+  // Only admin or owner can add members
   await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const body = await c.req.json<Record<string, unknown>>();
@@ -671,8 +671,7 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
   const { farmId, targetUserId } = c.req.param();
   const { userId, userEmail } = getAuthContext(c);
 
-  // Only admin or owner can promote
-  await assertFarmAccess(farmId, userId, ['admin', 'owner']);
+  const { farm } = await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const body = await c.req.json<Record<string, unknown>>();
   const newRole = body['role'];
@@ -691,7 +690,6 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
 
   await dynamoRepo.updateMemberRole(farmId, targetUserId, 'owner');
 
-  const farmForEvent = await dynamoRepo.getFarm(farmId).catch(() => null);
   appEvents.emit('member.role_changed', {
     type: 'member.role_changed',
     timestamp: new Date().toISOString(),
@@ -699,7 +697,7 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
     actor_email: userEmail,
     payload: {
       farm_id: farmId,
-      farm_name: farmForEvent?.name ?? '',
+      farm_name: farm.name,
       target_user_id: targetUserId,
       old_role: 'staff',
       new_role: 'owner',

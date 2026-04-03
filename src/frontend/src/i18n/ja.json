@@ -404,7 +404,7 @@
       "step3": "完了",
       "role_label": "利用形態",
       "role_owner": "農園オーナー",
-      "role_reader": "作業スタッフ",
+      "role_staff": "作業スタッフ",
       "promo_label": "プロモーションコード",
       "promo_placeholder": "コードを入力（任意）",
       "promo_check": "確認",

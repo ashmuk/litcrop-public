@@ -231,7 +231,7 @@ function DeleteAccountSection({ farms }: DeleteAccountSectionProps) {
     // We don't have member counts directly on the farm object, so we show all
     // admin farms as potentially requiring transfer or deletion. The warning
     // text uses the generic "sole member or transfer" language from the design.
-    return f.role === 'admin';
+    return f.role === 'admin' || f.role === 'owner';
   });
 
   function handleOpen() {

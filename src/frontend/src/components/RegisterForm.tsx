@@ -82,6 +82,7 @@ export default function RegisterForm() {
   const [promoValid, setPromoValid] = useState(false);
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoError, setPromoError] = useState('');
+  const promoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [regLocale, setRegLocale] = useState<'en' | 'ja'>(() => {
     try { const s = localStorage.getItem('litcrop-locale'); return s === 'ja' ? 'ja' : 'en'; } catch { return 'en'; }
   });
@@ -135,8 +136,8 @@ export default function RegisterForm() {
       return;
     }
     setPromoChecking(true);
-    // Small delay to give a "checking" feel
-    setTimeout(() => {
+    if (promoTimerRef.current) clearTimeout(promoTimerRef.current);
+    promoTimerRef.current = setTimeout(() => {
       if (trimmed === PROMO_CODE) {
         setPromoValid(true);
         setPromoError('');
@@ -458,7 +459,7 @@ export default function RegisterForm() {
           </label>
           <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
             <input type="radio" name="role" value="staff" checked={role === 'staff'} onChange={() => setRole('staff')} />
-            {t('auth.register.role_reader')}
+            {t('auth.register.role_staff')}
           </label>
         </div>
       </div>

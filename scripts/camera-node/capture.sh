@@ -297,18 +297,18 @@ run_once() {
     # 2. Poll config for latest settings
     poll_config || true
 
-    # 3. Upload any queued files
-    upload_spool
-
-    # 4. Capture new image
+    # 3. Capture new image (prioritize timely shot over spool drain)
     local filepath
     filepath=$(capture) || { send_heartbeat; return 1; }
 
-    # 5. Upload
+    # 4. Upload
     upload "$filepath" || true
 
-    # 6. Heartbeat
+    # 5. Heartbeat
     send_heartbeat
+
+    # 6. Drain any queued files from previous failed uploads
+    upload_spool
 
     log "[DONE]"
 }

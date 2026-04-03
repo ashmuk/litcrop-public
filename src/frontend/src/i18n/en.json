@@ -404,7 +404,7 @@
       "step3": "Done",
       "role_label": "I am a...",
       "role_owner": "Farm Owner",
-      "role_reader": "Staff",
+      "role_staff": "Staff",
       "promo_label": "Promotional code",
       "promo_placeholder": "Enter code (optional)",
       "promo_check": "Verify",
