@@ -673,6 +673,35 @@
   pointer-events: none;
 }
 
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--touch-target-preferred);
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family);
+  background-color: var(--color-status-issue, #dc2626);
+  color: #FFFFFF;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-danger:hover {
+  filter: brightness(0.85);
+}
+
+.btn-danger:disabled,
+.btn-danger[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* ----------------------------------------------------------
    14. Crop Info Definition List
    ---------------------------------------------------------- */
