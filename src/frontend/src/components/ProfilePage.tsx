@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
 import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount } from '../lib/api';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount, promoteMember } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
 import { t } from '../i18n/i18n';
@@ -381,6 +381,8 @@ export default function ProfilePage() {
   const [showWizard, setShowWizard] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
+  const [confirmPromote, setConfirmPromote] = useState<string | null>(null); // user_id being promoted
+  const [promoting, setPromoting] = useState(false);
   const [expandedFarm, setExpandedFarm] = useState<string | null>(null);
   const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -881,9 +883,50 @@ export default function ProfilePage() {
                                     {m.display_name || m.user_id.slice(0, 8) + '...'}
                                   </span>
                                 </div>
-                                <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px;flex-shrink:0">
-                                  {t(`profile.role_${m.role}`)}
-                                </span>
+                                <div style="display:flex;align-items:center;gap:var(--space-1);flex-shrink:0">
+                                  <span class="badge status-healthy" style="font-size:var(--font-size-xs);padding:1px 6px">
+                                    {t(`profile.role_${m.role}`)}
+                                  </span>
+                                  {isAdmin && m.role === 'staff' && confirmPromote !== m.user_id && (
+                                    <button
+                                      class="btn-secondary"
+                                      style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
+                                      onClick={(e) => { e.stopPropagation(); setConfirmPromote(m.user_id); }}
+                                    >
+                                      ⬆ {t('profile.promote')}
+                                    </button>
+                                  )}
+                                  {confirmPromote === m.user_id && (
+                                    <div style="display:flex;align-items:center;gap:var(--space-1)">
+                                      <button
+                                        class="btn-primary"
+                                        style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
+                                        disabled={promoting}
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setPromoting(true);
+                                          try {
+                                            await promoteMember(farm.id, m.user_id);
+                                            setFarmMembers((prev) => prev?.map((fm) =>
+                                              fm.user_id === m.user_id ? { ...fm, role: 'owner' as const } : fm
+                                            ) ?? null);
+                                            setConfirmPromote(null);
+                                          } catch { /* API error — button stays */ }
+                                          setPromoting(false);
+                                        }}
+                                      >
+                                        {promoting ? '…' : t('profile.promote_confirm')}
+                                      </button>
+                                      <button
+                                        class="btn-secondary"
+                                        style="font-size:var(--font-size-xs);padding:1px 6px;line-height:1.4"
+                                        onClick={(e) => { e.stopPropagation(); setConfirmPromote(null); }}
+                                      >
+                                        {t('common.cancel')}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>

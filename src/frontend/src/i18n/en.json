@@ -265,6 +265,8 @@
     "confirm_leave": "Leave this farm? You can rejoin later.",
     "farm_left": "Left farm",
     "leave_error": "Could not leave farm",
+    "promote": "Promote",
+    "promote_confirm": "Yes, promote to Owner",
     "farm_limit": "Free plan: up to 2 farms",
     "location": "Location",
     "elevation": "Elevation",

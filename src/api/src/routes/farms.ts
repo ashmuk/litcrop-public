@@ -664,6 +664,51 @@ router.post('/:farmId/members', async (c) => {
   return c.json(member, 201);
 });
 
+// ── PATCH /api/v1/farms/:farmId/members/:userId ─────────────────
+// Promote a staff member to owner (admin/owner only, staff→owner only)
+
+router.patch('/:farmId/members/:targetUserId', async (c) => {
+  const { farmId, targetUserId } = c.req.param();
+  const { userId, userEmail } = getAuthContext(c);
+
+  // Only admin or owner can promote
+  await assertFarmAccess(farmId, userId, ['admin', 'owner']);
+
+  const body = await c.req.json<Record<string, unknown>>();
+  const newRole = body['role'];
+  if (newRole !== 'owner') {
+    throw new ValidationError("Only promotion to 'owner' is supported");
+  }
+
+  // Verify target is a current member with staff role
+  const targetMembership = await dynamoRepo.getFarmMembership(targetUserId, farmId);
+  if (!targetMembership) {
+    throw new NotFoundError('Member not found');
+  }
+  if (targetMembership.role !== 'staff') {
+    throw new ValidationError('Only staff members can be promoted');
+  }
+
+  await dynamoRepo.updateMemberRole(farmId, targetUserId, 'owner');
+
+  const farmForEvent = await dynamoRepo.getFarm(farmId).catch(() => null);
+  appEvents.emit('member.role_changed', {
+    type: 'member.role_changed',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      farm_id: farmId,
+      farm_name: farmForEvent?.name ?? '',
+      target_user_id: targetUserId,
+      old_role: 'staff',
+      new_role: 'owner',
+    },
+  });
+
+  return c.json({ user_id: targetUserId, farm_id: farmId, role: 'owner' });
+});
+
 // ── DELETE /api/v1/farms/:farmId/members/me ─────────────────────
 
 router.delete('/:farmId/members/me', async (c) => {

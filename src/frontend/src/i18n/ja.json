@@ -265,6 +265,8 @@
     "confirm_leave": "この農園から退出しますか？後で再参加できます。",
     "farm_left": "農園から退出しました",
     "leave_error": "農園から退出できませんでした",
+    "promote": "昇格",
+    "promote_confirm": "オーナーに昇格しますか？",
     "farm_limit": "フリープラン: 農園は2つまで",
     "location": "位置",
     "elevation": "標高",
