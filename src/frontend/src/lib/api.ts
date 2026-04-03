@@ -556,6 +556,75 @@ export async function requestTestShot(
   return request<{ test_shot_requested: boolean }>('POST', `/farms/${farmId}/devices/${deviceId}/test-shot`);
 }
 
+// ── Diary (Beta-7) ──────────────────────────────────────────────
+
+export interface DiaryEntryResponse {
+  id: string;
+  farm_id: string;
+  date: string;
+  category: string;
+  description: string;
+  time_spent_minutes: number | null;
+  bed_id: string | null;
+  bed_name: string | null;
+  photo_ids: string[];
+  costs: { item: string; amount: number; currency: 'JPY' | 'USD' }[];
+  cost_total: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiaryListResponse {
+  data: DiaryEntryResponse[];
+  meta: { count: number; limit: number; next_cursor: string | null };
+}
+
+export async function getDiaryEntries(
+  farmId: string,
+  params?: { from?: string; to?: string; category?: string; limit?: number; cursor?: string },
+): Promise<DiaryListResponse> {
+  const query = new URLSearchParams();
+  if (params?.from) query.set('from', params.from);
+  if (params?.to) query.set('to', params.to);
+  if (params?.category) query.set('category', params.category);
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.cursor) query.set('cursor', params.cursor);
+  const qs = query.toString();
+  return request<DiaryListResponse>('GET', `/farms/${farmId}/diary${qs ? `?${qs}` : ''}`);
+}
+
+export async function getDiaryEntry(farmId: string, entryId: string): Promise<DiaryEntryResponse> {
+  return request<DiaryEntryResponse>('GET', `/farms/${farmId}/diary/${entryId}`);
+}
+
+export async function createDiaryEntry(
+  farmId: string,
+  data: {
+    date: string;
+    category: string;
+    description: string;
+    time_spent_minutes?: number | null;
+    bed_id?: string | null;
+    photo_ids?: string[];
+    costs?: { item: string; amount: number; currency: 'JPY' | 'USD' }[];
+  },
+): Promise<DiaryEntryResponse> {
+  return request<DiaryEntryResponse>('POST', `/farms/${farmId}/diary`, data);
+}
+
+export async function updateDiaryEntry(
+  farmId: string,
+  entryId: string,
+  data: Record<string, unknown>,
+): Promise<DiaryEntryResponse> {
+  return request<DiaryEntryResponse>('PATCH', `/farms/${farmId}/diary/${entryId}`, data);
+}
+
+export async function deleteDiaryEntry(farmId: string, entryId: string): Promise<void> {
+  await request<void>('DELETE', `/farms/${farmId}/diary/${entryId}`);
+}
+
 // ── Profile Picture (Beta-5) ────────────────────────────────────
 
 export interface ProfilePictureResult {

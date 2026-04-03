@@ -19,7 +19,7 @@ export interface Props {
   locale?: 'en' | 'ja';
   theme?: 'light' | 'dark' | 'earthy' | 'system';
   /** Marks the active tab bar item. Defaults to 'farm'. */
-  activeTab?: 'farm' | 'weather' | 'manage' | 'setup' | 'admin';
+  activeTab?: 'farm' | 'weather' | 'diary' | 'manage' | 'setup' | 'admin';
   /** If set, the element with this ID gets its textContent patched with the farm name from localStorage. */
   farmNameTitleId?: string;
   /** Prefix before the farm name (e.g. '🌾 ' or '⛅ Weather — '). */
@@ -74,7 +74,7 @@ const {
         try {
           // Inline translation map for nav + common static labels (ja only for PoC)
           var JA = {
-            'nav.farm': '作物', 'nav.weather': '天気',
+            'nav.farm': '作物', 'nav.weather': '天気', 'nav.diary': '日誌',
             'nav.setup': 'プロフィール', 'nav.manage': 'デバイス', 'nav.admin': '管理',
             'nav.layout': 'レイアウト',
             'page.weather': '⛅ 天気', 'page.device': '📡 デバイス'
@@ -135,6 +135,16 @@ const {
       >
         <span class="tab-bar__icon" aria-hidden="true">⛅</span>
         <span class="tab-bar__label" data-i18n="nav.weather">Weather</span>
+      </a>
+
+      <a
+        href="/diary"
+        class={`tab-bar__item${activeTab === 'diary' ? ' tab-bar__item--active' : ''}`}
+        aria-label="Farm diary"
+        aria-current={activeTab === 'diary' ? 'page' : undefined}
+      >
+        <span class="tab-bar__icon" aria-hidden="true">📓</span>
+        <span class="tab-bar__label" data-i18n="nav.diary">Diary</span>
       </a>
 
       <a

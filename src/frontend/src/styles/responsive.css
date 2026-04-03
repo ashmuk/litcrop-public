@@ -10,6 +10,15 @@
    ============================================================ */
 
 /* ----------------------------------------------------------
+   Narrow viewport (< 360px): hide tab labels when 6 tabs are present
+   to prevent overflow (Beta-7: Diary tab is the 5th; Admin is 6th)
+   ---------------------------------------------------------- */
+@media (max-width: 359px) {
+  .tab-bar__label { display: none; }
+  .tab-bar__icon { font-size: 1.25rem; }
+}
+
+/* ----------------------------------------------------------
    T-DESK-01: Breakpoint system
    ---------------------------------------------------------- */
 
