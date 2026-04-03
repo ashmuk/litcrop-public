@@ -9,6 +9,7 @@ import type { FarmBedItem, WeatherResponse, BedStatus } from '@litcrop/shared';
 import { getFarm, getBeds, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
+import { getCropDisplay } from '../lib/crops';
 import { useLocalFarmId, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { translateCondition, conditionToEmoji, formatRelativeTime } from '../lib/format';
 
@@ -191,7 +192,7 @@ export default function FarmOverview({ farmId }: Props) {
                 </div>
                 <div class="plot-tile__info">
                   <div class="plot-tile__crop-name">
-                    {bed.crop_type || t('bed.empty')}
+                    {getCropDisplay(bed.crop_type) || t('bed.empty')}
                   </div>
                   <div class="plot-tile__plot-label">
                     {bed.name}{bed.crop_variety ? ` — ${bed.crop_variety}` : ''}

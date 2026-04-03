@@ -9,6 +9,7 @@ import type { FarmResponse } from '@litcrop/shared';
 import { getFarm } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
+import { getCropDisplay } from '../lib/crops';
 import { useLocalFarmId } from '../lib/hooks';
 
 export interface Props {
@@ -132,7 +133,7 @@ export default function FarmLayoutView({ farmId }: Props) {
                 <span
                   style="font-size:var(--font-size-xs);text-align:center;line-height:1.2;color:var(--color-gray-700)"
                 >
-                  {bed.crop_type || t('bed.empty')}
+                  {getCropDisplay(bed.crop_type) || t('bed.empty')}
                 </span>
               </a>
             );

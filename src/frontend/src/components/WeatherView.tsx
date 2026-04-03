@@ -9,6 +9,7 @@ import { getWeather } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
+import { getCropName } from '../lib/crops';
 import FarmLocationMap from './FarmLocationMap';
 
 // Cache reverse geocode results across mount/unmount cycles
@@ -318,7 +319,7 @@ export default function WeatherView({ farmId }: Props) {
                   </div>
                   {card.affected_beds.length > 0 && (
                     <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">
-                      {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => b.crop_type).join(', ')}
+                      {card.affected_beds.map((b: { id: string; name: string; crop_type: string }) => getCropName(b.crop_type)).join(', ')}
                     </div>
                   )}
                 </div>

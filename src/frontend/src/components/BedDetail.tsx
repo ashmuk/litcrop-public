@@ -8,6 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
 import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
+import { getCropDisplay } from '../lib/crops';
 import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '../lib/api';
 import { getLocalFarmRole } from '../lib/hooks';
 import { showToast } from './Toast';
@@ -256,7 +257,7 @@ export default function BedDetail() {
     );
   }
 
-  const cropLabel = bed.crop_type || t('bed.no_crop');
+  const cropLabel = getCropDisplay(bed.crop_type) || t('bed.no_crop');
 
   return (
     <>
