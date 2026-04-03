@@ -15,11 +15,14 @@
  */
 
 import { useState, useEffect, useMemo } from 'preact/hooks';
-import { getDiaryEntries, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
+import { getDiaryEntries, getBeds, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
+import type { FarmBedItem } from '@litcrop/shared';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import DiaryEntryForm from './DiaryEntryForm';
-import { CATEGORY_META } from '../lib/diary';
+import DiaryCalendar from './DiaryCalendar';
+import CropTimeline from './CropTimeline';
+import { CATEGORY_META, getLocale } from '../lib/diary';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -44,11 +47,6 @@ function groupByDate(entries: DiaryEntryResponse[]): [string, DiaryEntryResponse
   }
   // Sort groups newest first
   return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
-}
-
-/** Format a YYYY-MM-DD date string into a readable label. */
-function getLocale(): string {
-  return document.documentElement.getAttribute('data-locale') || 'en';
 }
 
 function formatDateLabel(date: string): string {
@@ -209,6 +207,10 @@ export default function DiaryPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntryResponse | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [beds, setBeds] = useState<FarmBedItem[]>([]);
 
   // Initialise farmId and view from localStorage
   useEffect(() => {
@@ -237,8 +239,43 @@ export default function DiaryPage() {
   }
 
   useEffect(() => {
-    loadEntries();
-  }, [farmId]);
+    if (farmId && view === 'list') {
+      loadEntries();
+    }
+  }, [farmId, view]);
+
+  // Fetch beds when calendar view is active (guard: skip if already loaded)
+  useEffect(() => {
+    if (view === 'calendar' && farmId && beds.length === 0) {
+      getBeds(farmId).then(setBeds).catch(() => {});
+    }
+  }, [view, farmId]);
+
+  // Fetch the displayed month's entries when in calendar view
+  useEffect(() => {
+    if (view === 'calendar' && farmId) {
+      const from = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+      const to = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      getDiaryEntries(farmId, { from, to }).then((res) => setEntries(res.data)).catch(() => {});
+    }
+  }, [view, farmId, calYear, calMonth]);
+
+  function handlePrevMonth() {
+    setSelectedDate(null);
+    if (calMonth === 0) { setCalYear((y) => y - 1); setCalMonth(11); }
+    else setCalMonth((m) => m - 1);
+  }
+
+  function handleNextMonth() {
+    setSelectedDate(null);
+    if (calMonth === 11) { setCalYear((y) => y + 1); setCalMonth(0); }
+    else setCalMonth((m) => m + 1);
+  }
+
+  function handleDaySelect(date: string) {
+    setSelectedDate((prev) => (prev === date ? null : date));
+  }
 
   function switchView(next: ViewMode) {
     setView(next);
@@ -274,6 +311,10 @@ export default function DiaryPage() {
   // ── Render states ───────────────────────────────────────────────
 
   const grouped = useMemo(() => groupByDate(entries), [entries]);
+  const selectedEntries = useMemo(
+    () => (selectedDate ? entries.filter((e) => e.date === selectedDate) : []),
+    [entries, selectedDate],
+  );
 
   return (
     <div class="diary-page">
@@ -338,7 +379,7 @@ export default function DiaryPage() {
         </div>
       )}
 
-      {!loading && !error && entries.length === 0 && (
+      {!loading && !error && entries.length === 0 && view === 'list' && (
         <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
           <div class="empty-state__icon" aria-hidden="true">📓</div>
           <p class="empty-state__title">{t('diary.empty')}</p>
@@ -379,12 +420,42 @@ export default function DiaryPage() {
         </div>
       )}
 
-      {!loading && !error && entries.length > 0 && view === 'calendar' && (
-        <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
-          <div class="empty-state__icon" aria-hidden="true">📅</div>
-          <p class="empty-state__title">{t('diary.calendar')}</p>
-          <p class="empty-state__body">{t('diary.calendar_coming_soon')}</p>
-        </div>
+      {!loading && !error && view === 'calendar' && (
+        <>
+          <DiaryCalendar
+            entries={entries}
+            year={calYear}
+            month={calMonth}
+            onDaySelect={handleDaySelect}
+            selectedDate={selectedDate}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+          />
+          <CropTimeline beds={beds} year={calYear} month={calMonth} />
+          {selectedDate && (
+            <div class="diary-list">
+              <h3 class="diary-date-group__header" style={{ padding: '0 var(--space-4) var(--space-2)', fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-500)' }}>
+                {formatDateLabel(selectedDate)}
+              </h3>
+              {selectedEntries.map((entry) => (
+                <DiaryEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  expanded={expandedId === entry.id}
+                  onExpand={() => setExpandedId(entry.id)}
+                  onCollapse={() => setExpandedId(null)}
+                  onEdit={() => handleEdit(entry)}
+                  onDeleted={() => handleEntryDeleted(entry.id)}
+                />
+              ))}
+              {selectedEntries.length === 0 && (
+                <p style={{ padding: '0 var(--space-4)', color: 'var(--color-gray-500)', fontSize: 'var(--font-size-sm)' }}>
+                  {t('diary.empty')}
+                </p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Diary entry form (bottom sheet) */}

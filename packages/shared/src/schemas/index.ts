@@ -111,6 +111,8 @@ export const FarmBedItemSchema = z.object({
   crop_variety: z.string().nullable(),
   latest_status: BedStatusSchema,
   latest_image: LatestImageThumbnailSchema.nullable(),
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
 });
 
 /** GET /api/v1/farms/:farmId/beds — envelope */

@@ -373,3 +373,11 @@
     padding-bottom: var(--space-8);
   }
 }
+
+/* ----------------------------------------------------------
+   T-DESK-07: Diary Calendar + Crop Timeline
+   ---------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .calendar__cell { min-height: 48px; }
+  .crop-timeline__label { width: 120px; }
+}

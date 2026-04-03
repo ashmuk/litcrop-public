@@ -1794,3 +1794,144 @@
     to   { opacity: 1; transform: translate(-50%, -50%); }
   }
 }
+
+/* ----------------------------------------------------------
+   38. Calendar — Beta-7 (T3.2)
+   ---------------------------------------------------------- */
+
+.calendar {
+  background-color: var(--color-surface);
+}
+
+.calendar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar__day-label {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-gray-500));
+  padding: var(--space-1) 0;
+}
+
+.calendar__cell {
+  min-height: 40px;
+  padding: 4px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.calendar__cell:hover {
+  background-color: var(--color-gray-100);
+}
+
+.calendar__cell--today {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.calendar__cell--selected {
+  background: var(--color-primary-light, rgba(34, 197, 94, 0.12));
+}
+
+.calendar__cell--outside {
+  opacity: 0.3;
+}
+
+.calendar__cell:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.calendar__dots {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.calendar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ----------------------------------------------------------
+   39. Crop Timeline — Beta-7 (T3.3)
+   ---------------------------------------------------------- */
+
+.crop-timeline {
+  margin-top: var(--space-4);
+}
+
+.crop-timeline__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
+}
+
+.crop-timeline__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 4px;
+  height: 24px;
+}
+
+.crop-timeline__label {
+  font-size: var(--font-size-xs);
+  width: 80px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.crop-timeline__track {
+  flex: 1;
+  height: 12px;
+  background: var(--color-surface-alt, #f3f4f6);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.crop-timeline__bar {
+  position: absolute;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 4px;
+  text-decoration: none;
+  display: block;
+}
+
+.crop-timeline__bar:hover {
+  opacity: 0.8;
+}
+
+.crop-timeline__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-danger, #ef4444);
+  z-index: 1;
+}

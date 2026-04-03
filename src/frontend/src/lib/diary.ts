@@ -1,3 +1,8 @@
+/** Read active locale from DOM (set by BaseLayout) */
+export function getLocale(): string {
+  return document.documentElement.getAttribute('data-locale') || 'en';
+}
+
 /** Diary category metadata — shared by DiaryPage and DiaryEntryForm */
 export const CATEGORY_META: Record<string, { icon: string; color: string; key: string }> = {
   planting:     { icon: '🌱', color: '#22c55e', key: 'planting' },
