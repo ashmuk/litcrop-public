@@ -11,6 +11,7 @@ import { t } from '../i18n/i18n';
 import { TAG_ICONS } from '../lib/status';
 import { formatDate } from '../lib/format';
 import Lightbox from './Lightbox';
+import { displaySrc } from '../lib/image';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -201,7 +202,7 @@ export default function ImageViewer() {
               aria-label={`View image from ${formatDate(s.captured_at)}`}
               aria-current={s.id === imageId ? 'true' : undefined}
             >
-              <img src={s.thumbnail_url ?? undefined} alt="" loading="lazy" />
+              <img src={displaySrc(s)} alt="" loading="lazy" />
             </button>
           ))}
         </div>

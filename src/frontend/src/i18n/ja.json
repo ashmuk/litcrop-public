@@ -610,7 +610,7 @@
     "guide_verify_after": "オンライン"
   },
   "diary": {
-    "title": "農場日誌",
+    "title": "農園日誌",
     "empty": "まだ記録がありません",
     "empty_cta": "最初の作業を記録しましょう",
     "add": "新しい記録",
@@ -637,6 +637,7 @@
     "calendar": "カレンダー",
     "list": "一覧",
     "crop_timeline": "作物タイムライン",
+    "crop_timeline_empty": "畝に植付日と収穫予定日を設定すると、タイムラインが表示されます。",
     "error_loading": "記録を読み込めませんでした",
     "error_body": "接続を確認して、もう一度お試しください。",
     "error_description_required": "内容を入力してください。",

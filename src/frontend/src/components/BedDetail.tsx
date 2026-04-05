@@ -13,6 +13,7 @@ import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '
 import { getLocalFarmRole } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
+import { displaySrc, fullSrc } from '../lib/image';
 import { TAG_ICONS } from '../lib/status';
 import { formatDate, formatDateShort } from '../lib/format';
 import Lightbox from './Lightbox';
@@ -87,6 +88,12 @@ export default function BedDetail() {
 
   const isReadOnly = getLocalFarmRole() === 'staff';
 
+  // Set i18n title immediately on mount (before API returns)
+  useEffect(() => {
+    const titleEl = document.getElementById('bed-title');
+    if (titleEl) titleEl.textContent = t('screens.plot_detail');
+  }, []);
+
   useEffect(() => {
     if (!bedId) return;
     let cancelled = false;
@@ -101,6 +108,9 @@ export default function BedDetail() {
         setBed(bedData);
         setImages(imagesData.data);
         setNextCursor(imagesData.meta.next_cursor);
+        // Update nav header title with bed name and i18n screen label
+        const titleEl = document.getElementById('bed-title');
+        if (titleEl) titleEl.textContent = bedData.name ?? t('screens.plot_detail');
         // Reflect most recent tag as active
         if (bedData.latest_image?.tags?.length) {
           const lastTag = bedData.latest_image.tags[bedData.latest_image.tags.length - 1];
@@ -431,18 +441,14 @@ export default function BedDetail() {
                 <div
                   key={img.id}
                   class={`thumb-item${img.latest_tag ? ` thumb-item--tagged-${TAG_THUMB_CSS[img.latest_tag]}` : ''}`}
-                  onClick={() => img.thumbnail_url && setLightboxSrc(img.thumbnail_url)}
+                  onClick={() => setLightboxSrc(fullSrc(img))}
                   style="cursor:pointer"
                   role="button"
                   tabIndex={0}
                   aria-label={`View image from ${formatDateShort(img.captured_at)}`}
-                  onKeyDown={(e) => e.key === 'Enter' && img.thumbnail_url && setLightboxSrc(img.thumbnail_url)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') setLightboxSrc(fullSrc(img)); }}
                 >
-                  {img.thumbnail_url ? (
-                    <img src={img.thumbnail_url} alt="" loading="lazy" />
-                  ) : (
-                    <span style="font-size:24px" aria-hidden="true">📷</span>
-                  )}
+                  <img src={displaySrc(img)} alt="" loading="lazy" />
                   <div class="thumb-item__date">{formatDateShort(img.captured_at)}</div>
                   {img.trigger === 'motion' && (
                     <div class="thumb-item__motion">

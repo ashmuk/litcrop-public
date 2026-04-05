@@ -637,6 +637,7 @@
     "calendar": "Calendar",
     "list": "List",
     "crop_timeline": "Crop Timeline",
+    "crop_timeline_empty": "Set planted and harvest dates on your beds to see the timeline.",
     "error_loading": "Could not load diary entries",
     "error_body": "Check your connection and try again.",
     "error_description_required": "Description is required.",

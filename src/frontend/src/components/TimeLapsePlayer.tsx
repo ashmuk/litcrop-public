@@ -13,6 +13,7 @@ import type { ImageListItem } from '@litcrop/shared';
 import { getImages } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { formatDateShort, formatFrameTime } from '../lib/format';
+import { displaySrc, fullSrc } from '../lib/image';
 import Lightbox from './Lightbox';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -247,10 +248,11 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
     setPreloadCount(0);
     preloadedRef.current = new Array(frames.length).fill(false);
 
-    // Build URL list, tracking which frame indices have valid thumbnails
+    // Build URL list — use thumbnail when available, fall back to full URL
     const urlsWithIndex: { url: string; idx: number }[] = [];
     for (let i = 0; i < frames.length; i++) {
-      if (frames[i].thumbnail_url) urlsWithIndex.push({ url: frames[i].thumbnail_url as string, idx: i });
+      const src = frames[i].thumbnail_url ?? frames[i].url;
+      if (src) urlsWithIndex.push({ url: src, idx: i });
     }
 
     const loader = preloadImages(
@@ -429,13 +431,13 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
         <>
           {/* Frame */}
           <div class="timelapse__frame-container">
-            {currentFrame.thumbnail_url ? (
+            {(currentFrame.thumbnail_url || currentFrame.url) ? (
               <img
-                src={currentFrame.thumbnail_url}
+                src={displaySrc(currentFrame)}
                 alt={`${cropType} - ${formatFrameTime(currentFrame.captured_at)}`}
                 class="timelapse__frame-img"
                 onClick={() => {
-                  if (status === 'paused') setLightboxSrc(currentFrame.thumbnail_url);
+                  if (status === 'paused') setLightboxSrc(fullSrc(currentFrame));
                 }}
                 style={status === 'paused' ? 'cursor:pointer' : undefined}
               />

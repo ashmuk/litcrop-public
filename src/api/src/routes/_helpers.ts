@@ -53,12 +53,16 @@ export async function assertFarmAccess(
 }
 
 export async function makeLatestImage(image: Image) {
-  const thumbnail_url = image.thumbnail_key
-    ? await getSignedThumbnailUrl(image.thumbnail_key)
-    : null;
+  const [thumbnail_url, url] = await Promise.all([
+    image.thumbnail_key
+      ? getSignedThumbnailUrl(image.thumbnail_key)
+      : Promise.resolve(null),
+    getSignedImageUrl(image.storage_key),
+  ]);
   return {
     id: image.id,
     thumbnail_url,
+    url,
     captured_at: image.captured_at,
     trigger: image.trigger,
   };

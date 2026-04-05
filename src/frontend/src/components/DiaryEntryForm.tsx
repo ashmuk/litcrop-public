@@ -225,7 +225,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
           </div>
 
           {/* Form */}
-          <form class="bottom-sheet__form" onSubmit={handleSubmit} noValidate>
+          <form id="diary-form" class="bottom-sheet__form" onSubmit={handleSubmit} noValidate>
             {/* Date */}
             <div class="form-group">
               <label class="form-label" for="diary-date">{t('diary.date')}</label>
@@ -371,16 +371,19 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 {formError}
               </p>
             )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              class="btn btn--primary btn--full"
-              disabled={submitting}
-            >
-              {submitting ? '…' : t('diary.save')}
-            </button>
           </form>
+        </div>
+
+        {/* Sticky footer — always visible on iPhone */}
+        <div class="bottom-sheet__footer">
+          <button
+            type="submit"
+            form="diary-form"
+            class="btn btn--primary btn--full"
+            disabled={submitting}
+          >
+            {submitting ? '…' : t('diary.save')}
+          </button>
         </div>
       </div>
     </>

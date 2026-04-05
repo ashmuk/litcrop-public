@@ -36,7 +36,17 @@ function parseDate(s: string): Date {
 export default function CropTimeline({ beds, year, month }: Props) {
   // Only beds with both planted_at and expected_harvest
   const eligible = beds.filter((b) => b.planted_at && b.expected_harvest);
-  if (eligible.length === 0) return null;
+  if (eligible.length === 0) {
+    if (beds.length === 0) return null; // no beds at all — nothing to show
+    return (
+      <div class="crop-timeline" style={{ padding: '0 var(--space-4)' }}>
+        <div class="crop-timeline__title">{t('diary.crop_timeline')}</div>
+        <p class="crop-timeline__empty">
+          {t('diary.crop_timeline_empty')}
+        </p>
+      </div>
+    );
+  }
 
   // Month boundaries
   const monthStart = new Date(year, month, 1, 0, 0, 0);
