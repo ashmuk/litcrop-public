@@ -85,9 +85,22 @@ export default function CropTimeline({ beds, entries = [], year, month }: Props)
 
   if (rows.length === 0) return null;
 
+  // Month label + week markers
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const daysInMonth = monthEnd.getDate();
+  const weekDays = [7, 14, 21].filter((d) => d < daysInMonth);
+  const weekTicks = weekDays.map((d) => (d / daysInMonth) * 100);
+
   return (
     <div class="crop-timeline">
-      <div class="crop-timeline__title">{t('diary.crop_timeline')}</div>
+      <div class="crop-timeline__title">{t('diary.crop_timeline')} — {monthNames[month]} {year}</div>
+      {/* Week markers header */}
+      <div class="crop-timeline__markers" style={{ paddingLeft: 'var(--crop-timeline-label-w, 80px)' }}>
+        <span class="crop-timeline__marker-label" style={{ left: '0%' }}>1</span>
+        {weekDays.map((d, i) => (
+          <span key={d} class="crop-timeline__marker-label" style={{ left: `${weekTicks[i]}%` }}>{d}</span>
+        ))}
+      </div>
       {rows.map(({ bed, reservedPos, actualPos, actual }) => (
         <div key={bed.id} class="crop-timeline__row">
           <div
@@ -100,6 +113,10 @@ export default function CropTimeline({ beds, entries = [], year, month }: Props)
             )}
           </div>
           <div class="crop-timeline__track">
+            {/* Week tick lines */}
+            {weekTicks.map((pct) => (
+              <div key={pct} class="crop-timeline__week-tick" style={{ left: `${pct}%` }} aria-hidden="true" />
+            ))}
             {todayPct !== null && (
               <div class="crop-timeline__today" style={{ left: `${todayPct}%` }} aria-hidden="true" />
             )}

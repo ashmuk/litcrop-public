@@ -101,7 +101,7 @@ function DiaryEntryCard({ entry, expanded, canEdit, onExpand, onCollapse, onEdit
 
   return (
     <div
-      class={`diary-entry${expanded ? ' diary-entry--expanded' : ''}`}
+      class={`diary-entry${expanded ? ' diary-entry--expanded' : ''} diary-entry--${entry.entry_type ?? 'actual'}`}
       onClick={expanded ? onCollapse : onExpand}
       role="button"
       tabIndex={0}
@@ -119,9 +119,14 @@ function DiaryEntryCard({ entry, expanded, canEdit, onExpand, onCollapse, onEdit
           <span aria-hidden="true">{meta.icon}</span>
           <span>{categoryLabel}</span>
         </div>
-        {costDisplay && (
-          <span class="diary-entry__cost">{costDisplay}</span>
-        )}
+        <div class="diary-entry__header-end">
+          <span class={`diary-entry__badge diary-entry__badge--${entry.entry_type ?? 'actual'}`}>
+            {entry.entry_type === 'reserved' ? t('diary.tab_reserved') : t('diary.tab_actual')}
+          </span>
+          {costDisplay && (
+            <span class="diary-entry__cost">{costDisplay}</span>
+          )}
+        </div>
       </div>
 
       {/* Description (truncated in collapsed state) */}
@@ -216,6 +221,7 @@ export default function DiaryPage() {
   const [filterCategory, setFilterCategory] = useState<string>(() => {
     try { return localStorage.getItem(LS_FILTER_CAT) ?? ''; } catch { return ''; }
   });
+  const [activeTab, setActiveTab] = useState<'all' | 'reserved' | 'actual'>('all');
 
   // Initialise farmId and view from localStorage (synchronous-first)
   useEffect(() => {
@@ -343,13 +349,23 @@ export default function DiaryPage() {
 
   // ── Render states ───────────────────────────────────────────────
 
-  const filteredEntries = useMemo(() => {
+  // Pre-filter by bed + category (shared across all tabs)
+  const preFiltered = useMemo(() => {
     return entries.filter((e) => {
       if (filterBed && (filterBed === BED_FILTER_NONE ? e.bed_id : e.bed_id !== filterBed)) return false;
       if (filterCategory && e.category !== filterCategory) return false;
       return true;
     });
   }, [entries, filterBed, filterCategory]);
+
+  // Then filter by active tab
+  const filteredEntries = useMemo(() => {
+    if (activeTab === 'all') return preFiltered;
+    return preFiltered.filter((e) => (e.entry_type ?? 'actual') === activeTab);
+  }, [preFiltered, activeTab]);
+
+  const reservedCount = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'reserved').length, [preFiltered]);
+  const actualCount = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'actual').length, [preFiltered]);
 
   const grouped = useMemo(() => [...groupByDate(filteredEntries).entries()], [filteredEntries]);
   const selectedEntries = useMemo(
@@ -395,6 +411,30 @@ export default function DiaryPage() {
           </button>
         </div>
       </div>
+
+      {/* Entry type tabs (#287) */}
+      {view === 'list' && !loading && !error && entries.length > 0 && (
+        <div class="diary-pane-tabs">
+          <button
+            class={`diary-pane-tab diary-pane-tab--all${activeTab === 'all' ? ' diary-pane-tab--active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            {t('diary.tab_all')} <span class="diary-pane-tab__count">{preFiltered.length}</span>
+          </button>
+          <button
+            class={`diary-pane-tab diary-pane-tab--reserved${activeTab === 'reserved' ? ' diary-pane-tab--active' : ''}`}
+            onClick={() => setActiveTab('reserved')}
+          >
+            {t('diary.tab_reserved')} <span class="diary-pane-tab__count">{reservedCount}</span>
+          </button>
+          <button
+            class={`diary-pane-tab diary-pane-tab--actual${activeTab === 'actual' ? ' diary-pane-tab--active' : ''}`}
+            onClick={() => setActiveTab('actual')}
+          >
+            {t('diary.tab_actual')} <span class="diary-pane-tab__count">{actualCount}</span>
+          </button>
+        </div>
+      )}
 
       {/* Filter bar — list view only */}
       {view === 'list' && !loading && !error && entries.length > 0 && (

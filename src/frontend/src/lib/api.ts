@@ -565,6 +565,7 @@ export interface DiaryEntryResponse {
   farm_id: string;
   date: string;
   category: string;
+  entry_type: 'reserved' | 'actual';
   description: string;
   time_spent_minutes: number | null;
   bed_id: string | null;

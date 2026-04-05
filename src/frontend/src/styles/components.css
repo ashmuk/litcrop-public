@@ -1584,6 +1584,12 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.diary-entry__header-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .diary-entry__cost {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -1946,6 +1952,175 @@
 }
 
 /* ----------------------------------------------------------
+   39a. Diary Entry Type Toggle — #287
+   ---------------------------------------------------------- */
+
+.diary-radio-toggle {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.diary-radio-toggle__option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: var(--color-surface);
+  transition: border-color 0.15s, background 0.15s;
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.diary-radio-toggle__option:hover {
+  border-color: var(--color-gray-300);
+}
+
+.diary-radio-toggle__option--reserved.diary-radio-toggle__option--checked {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.diary-radio-toggle__option--actual.diary-radio-toggle__option--checked {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.diary-radio-toggle__dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-gray-300);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.diary-radio-toggle__option--checked .diary-radio-toggle__dot {
+  border-color: currentColor;
+}
+
+.diary-radio-toggle__option--checked .diary-radio-toggle__dot::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.diary-radio-toggle__option--reserved.diary-radio-toggle__option--checked {
+  color: #d97706;
+}
+
+.diary-radio-toggle__option--actual.diary-radio-toggle__option--checked {
+  color: #16a34a;
+}
+
+.diary-radio-toggle__label {
+  font-weight: var(--font-weight-medium);
+  display: block;
+}
+
+.diary-radio-toggle__hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  display: block;
+}
+
+.diary-smart-hint {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Entry card type badges */
+.diary-entry__badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diary-entry__badge--reserved {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.diary-entry__badge--actual {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+/* Entry card type borders */
+.diary-entry--reserved {
+  border-left: 3px solid #f59e0b;
+}
+
+.diary-entry--actual {
+  border-left: 3px solid #22c55e;
+}
+
+/* Entry type tabs */
+.diary-pane-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--color-gray-100);
+  padding: 0 var(--space-4);
+}
+
+.diary-pane-tab {
+  flex: 1;
+  padding: var(--space-2) var(--space-2);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-500);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s ease;
+}
+
+.diary-pane-tab--all.diary-pane-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.diary-pane-tab--reserved.diary-pane-tab--active {
+  color: #d97706;
+  border-bottom-color: #f59e0b;
+}
+
+.diary-pane-tab--actual.diary-pane-tab--active {
+  color: #16a34a;
+  border-bottom-color: #22c55e;
+}
+
+.diary-pane-tab__count {
+  display: inline-block;
+  background: var(--color-gray-100);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: var(--font-size-xs);
+  margin-left: 4px;
+  font-weight: var(--font-weight-medium);
+}
+
+/* ----------------------------------------------------------
    39. Crop Timeline — Beta-7 (T3.3)
    ---------------------------------------------------------- */
 
@@ -2041,6 +2216,29 @@
   top: 0;
   z-index: 3;
   background: transparent;
+}
+
+.crop-timeline__markers {
+  position: relative;
+  height: 14px;
+  margin-bottom: 2px;
+}
+
+.crop-timeline__marker-label {
+  position: absolute;
+  font-size: 9px;
+  color: var(--color-gray-500);
+  font-weight: var(--font-weight-semibold);
+  transform: translateX(-50%);
+}
+
+.crop-timeline__week-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-gray-200);
+  z-index: 0;
 }
 
 .crop-timeline__today {

@@ -23,6 +23,8 @@ import {
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { CATEGORY_META, CATEGORY_KEYS } from '../lib/diary';
+import { estimateHarvestDate } from '@litcrop/shared';
+import type { DiaryEntryType } from '@litcrop/shared';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -42,7 +44,11 @@ export interface Props {
 // ── Helpers ───────────────────────────────────────────────────────
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // ── Component ─────────────────────────────────────────────────────
@@ -55,6 +61,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
 
   // ── Form state ────────────────────────────────────────────────
   const [date, setDate] = useState(entry?.date ?? todayIso());
+  const [entryType, setEntryType] = useState<DiaryEntryType>(entry?.entry_type ?? 'actual');
   const [category, setCategory] = useState(entry?.category ?? 'planting');
   const [description, setDescription] = useState(entry?.description ?? '');
   const [timeSpent, setTimeSpent] = useState(
@@ -162,6 +169,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
     const payload = {
       date,
       category,
+      entry_type: entryType,
       description: description.trim(),
       time_spent_minutes: timeSpent ? parseInt(timeSpent, 10) || null : null,
       bed_id: bedId || null,
@@ -234,10 +242,49 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 type="date"
                 class="form-input"
                 value={date}
-                onInput={(e) => setDate((e.target as HTMLInputElement).value)}
+                onInput={(e) => {
+                  const newDate = (e.target as HTMLInputElement).value;
+                  setDate(newDate);
+                  if (!isEdit) {
+                    setEntryType(newDate > todayIso() ? 'reserved' : 'actual');
+                  }
+                }}
                 required
               />
             </div>
+
+            {/* Entry Type Toggle (#287) */}
+            <fieldset class="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
+              <legend class="form-label">{t('diary.entry_type')}</legend>
+              <div class="diary-radio-toggle" role="radiogroup">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={entryType === 'reserved'}
+                  class={`diary-radio-toggle__option diary-radio-toggle__option--reserved${entryType === 'reserved' ? ' diary-radio-toggle__option--checked' : ''}`}
+                  onClick={() => setEntryType('reserved')}
+                >
+                  <span class="diary-radio-toggle__dot" />
+                  <span>
+                    <span class="diary-radio-toggle__label">{t('diary.entry_reserved')}</span>
+                    <span class="diary-radio-toggle__hint">{t('diary.entry_reserved_hint')}</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={entryType === 'actual'}
+                  class={`diary-radio-toggle__option diary-radio-toggle__option--actual${entryType === 'actual' ? ' diary-radio-toggle__option--checked' : ''}`}
+                  onClick={() => setEntryType('actual')}
+                >
+                  <span class="diary-radio-toggle__dot" />
+                  <span>
+                    <span class="diary-radio-toggle__label">{t('diary.entry_actual')}</span>
+                    <span class="diary-radio-toggle__hint">{t('diary.entry_actual_hint')}</span>
+                  </span>
+                </button>
+              </div>
+            </fieldset>
 
             {/* Category */}
             <div class="form-group">
@@ -294,6 +341,19 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 ))}
               </select>
             </div>
+
+            {/* Smart default hint (#287) */}
+            {entryType === 'reserved' && category === 'planting' && bedId && (() => {
+              const bed = beds.find((b) => b.id === bedId);
+              const harvestDate = bed?.crop_type ? estimateHarvestDate(date, bed.crop_type) : null;
+              if (!harvestDate) return null;
+              return (
+                <div class="diary-smart-hint">
+                  <span>💡</span>
+                  <span>{bed!.crop_type}: {t('diary.harvest_estimate')} <strong>{harvestDate}</strong></span>
+                </div>
+              );
+            })()}
 
             {/* Time spent (optional) */}
             <div class="form-group">
@@ -381,7 +441,9 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
             class="btn btn--primary btn--full"
             disabled={submitting}
           >
-            {submitting ? '…' : t('diary.save')}
+            {submitting
+              ? '…'
+              : t(entryType === 'reserved' ? 'diary.save_reserved' : 'diary.save_actual')}
           </button>
         </div>
       </div>
