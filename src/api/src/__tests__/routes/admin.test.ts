@@ -343,4 +343,20 @@ describe('DELETE /api/v1/admin/users/:userId', () => {
     });
     expect(res.status).toBe(404);
   });
+
+  it('deleteAccount failure → 503', async () => {
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({
+      user_id: TARGET_USER_ID,
+      display_name: 'Target',
+      preferred_role: 'staff',
+      created_at: '2026-01-01T00:00:00Z',
+    });
+    vi.mocked(dynamoRepo.deleteAccount).mockRejectedValue(new Error('DynamoDB timeout'));
+
+    const res = await app.request(`/api/v1/admin/users/${TARGET_USER_ID}`, {
+      method: 'DELETE',
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(503);
+  });
 });

@@ -269,6 +269,7 @@ describe('buildActualDatesMap', () => {
     farm_id: 'f1',
     date: '2026-04-10',
     category: 'planting',
+    entry_type: 'actual' as const,
     description: 'test',
     time_spent_minutes: null,
     bed_id: 'bed-1',
@@ -339,5 +340,27 @@ describe('buildActualDatesMap', () => {
 
   it('returns empty map for empty entries', () => {
     expect(buildActualDatesMap([]).size).toBe(0);
+  });
+
+  it('excludes reserved entries from actual dates map', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', category: 'planting', date: '2026-05-01', entry_type: 'reserved' as const }),
+    ]);
+    expect(map.size).toBe(0);
+  });
+
+  it('includes actual entries and excludes reserved — mixed input', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', category: 'planting', date: '2026-04-01', entry_type: 'actual' as const }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'planting', date: '2026-05-15', entry_type: 'reserved' as const }),
+    ]);
+    expect(map.get('bed-1')?.planted).toBe('2026-04-01');
+  });
+
+  it('treats entries without entry_type as actual (backward compat)', () => {
+    const entry = makeEntry({ bed_id: 'bed-1', category: 'planting', date: '2026-04-01' });
+    delete (entry as Record<string, unknown>)['entry_type'];
+    const map = buildActualDatesMap([entry]);
+    expect(map.get('bed-1')?.planted).toBe('2026-04-01');
   });
 });

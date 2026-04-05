@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CROPS, CROP_MAP, getCropMeta } from '../crop-library';
+import { CROPS, CROP_MAP, getCropMeta, estimateHarvestDate } from '../crop-library';
 import type { CropEntry } from '../crop-library';
 
 describe('CROPS data', () => {
@@ -87,5 +87,36 @@ describe('getCropMeta', () => {
     const other = getCropMeta('other');
     expect(other).toBeDefined();
     expect(other!.days_to_harvest_min).toBeUndefined();
+  });
+});
+
+describe('estimateHarvestDate', () => {
+  it('calculates harvest date for known crop', () => {
+    // tomato: days_to_harvest_max = 85
+    expect(estimateHarvestDate('2026-04-01', 'tomato')).toBe('2026-06-25');
+  });
+
+  it('returns null for unknown crop', () => {
+    expect(estimateHarvestDate('2026-04-01', 'unicorn_fruit')).toBeNull();
+  });
+
+  it('returns null for crop without harvest data (other)', () => {
+    expect(estimateHarvestDate('2026-04-01', 'other')).toBeNull();
+  });
+
+  it('returns null for crop without harvest data (tea)', () => {
+    expect(estimateHarvestDate('2026-04-01', 'tea')).toBeNull();
+  });
+
+  it('handles month boundary correctly', () => {
+    // rice: days_to_harvest_max = 150
+    const result = estimateHarvestDate('2026-01-01', 'rice');
+    expect(result).toBe('2026-05-31');
+  });
+
+  it('handles year boundary', () => {
+    // cabbage: days_to_harvest_max = 90
+    const result = estimateHarvestDate('2026-11-01', 'cabbage');
+    expect(result).toBe('2027-01-30');
   });
 });

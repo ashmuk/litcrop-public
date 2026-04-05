@@ -860,4 +860,17 @@ describe('entry_type reserved/actual (#287)', () => {
     });
     expect(mockRepo.updateBed).toHaveBeenCalled();
   });
+
+  it('PATCH entry_type from actual to reserved does NOT trigger bed sync', async () => {
+    mockRepo.getDiaryEntryById.mockResolvedValue(entryFixture);
+    mockRepo.updateDiaryEntry.mockResolvedValue({ ...entryFixture, entry_type: 'reserved' as const });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ entry_type: 'reserved' }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockRepo.updateBed).not.toHaveBeenCalled();
+  });
 });

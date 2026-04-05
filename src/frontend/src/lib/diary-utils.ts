@@ -120,6 +120,7 @@ export function buildActualDatesMap(
 
   for (const entry of entries) {
     if (!entry.bed_id) continue;
+    if ((entry.entry_type ?? 'actual') === 'reserved') continue;
     if (entry.category !== 'planting' && entry.category !== 'harvesting') continue;
 
     const existing = map.get(entry.bed_id) ?? {};
