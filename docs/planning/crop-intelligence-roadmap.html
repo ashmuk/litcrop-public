@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitCrop — Crop Intelligence Roadmap</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b;
+    --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b;
+    --purple: #a855f7; --pink: #ec4899; --red: #ef4444;
+    --cyan: #06b6d4; --teal: #14b8a6;
+    --radius: 12px; --gap: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 24px; min-height: 100vh; }
+
+  .header { text-align: center; margin-bottom: 32px; }
+  .header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; }
+  .header .subtitle { color: var(--text2); font-size: 0.875rem; }
+  .header .date { color: var(--text3); font-size: 0.75rem; margin-top: 4px; }
+
+  /* Sprint Scope Banner */
+  .sprint-banner { display: flex; gap: 12px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
+  .sprint-badge { padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+  .sprint-this { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .sprint-next { background: rgba(148,163,184,0.1); color: var(--text3); border: 1px solid rgba(148,163,184,0.2); }
+
+  /* Milestone Pipeline */
+  .pipeline { display: flex; gap: 8px; align-items: stretch; margin-bottom: 32px; overflow-x: auto; padding-bottom: 8px; }
+  .milestone { flex: 1; min-width: 160px; background: var(--surface); border-radius: var(--radius); padding: 16px; position: relative; border-top: 3px solid var(--text3); }
+  .milestone.active { border-top-color: var(--green); }
+  .milestone.planned { border-top-color: var(--blue); }
+  .milestone.deferred { border-top-color: var(--text3); opacity: 0.5; }
+  .milestone .tag { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3); margin-bottom: 6px; }
+  .milestone.active .tag { color: var(--green); }
+  .milestone.planned .tag { color: var(--blue); }
+  .milestone h3 { font-size: 0.9rem; margin-bottom: 8px; line-height: 1.3; }
+  .milestone p { font-size: 0.75rem; color: var(--text2); line-height: 1.5; }
+  .milestone .issue { font-size: 0.7rem; color: var(--cyan); margin-top: 8px; }
+  .arrow { display: flex; align-items: center; color: var(--text3); font-size: 1.2rem; }
+
+  /* Section headers */
+  .section-title { font-size: 1.1rem; font-weight: 600; margin: 28px 0 16px; padding-left: 12px; border-left: 3px solid var(--blue); }
+
+  /* Reserved vs Actual UX Diagram */
+  .ux-diagram { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-bottom: 28px; }
+  @media (max-width: 700px) { .ux-diagram { grid-template-columns: 1fr; } }
+  .ux-card { background: var(--surface); border-radius: var(--radius); padding: 20px; border: 1px solid var(--surface2); }
+  .ux-card h4 { font-size: 0.95rem; margin-bottom: 4px; }
+  .ux-card .source { font-size: 0.7rem; color: var(--text3); margin-bottom: 12px; }
+  .ux-card.reserved { border-left: 4px solid var(--amber); }
+  .ux-card.actual { border-left: 4px solid var(--green); }
+  .ux-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; font-size: 0.8rem; color: var(--text2); line-height: 1.4; }
+  .ux-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .reserved .dot { background: var(--amber); }
+  .actual .dot { background: var(--green); }
+
+  /* Gantt Preview */
+  .gantt-preview { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 28px; }
+  .gantt-preview h4 { font-size: 0.85rem; margin-bottom: 16px; color: var(--text2); }
+  .gantt-row { display: flex; align-items: center; margin-bottom: 8px; }
+  .gantt-label { width: 80px; font-size: 0.75rem; color: var(--text2); flex-shrink: 0; }
+  .gantt-track { flex: 1; height: 24px; background: rgba(255,255,255,0.03); border-radius: 4px; position: relative; overflow: hidden; }
+  .gantt-bar { position: absolute; height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: rgba(255,255,255,0.9); }
+  .gantt-bar.reserved-bar { background: repeating-linear-gradient(90deg, rgba(245,158,11,0.3) 0px, rgba(245,158,11,0.3) 6px, transparent 6px, transparent 10px); border: 1px dashed var(--amber); top: 2px; height: calc(100% - 4px); }
+  .gantt-bar.actual-bar { background: rgba(34,197,94,0.5); border: 1px solid var(--green); top: 2px; height: calc(100% - 4px); }
+  .gantt-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); left: 35%; z-index: 2; }
+  .gantt-legend { display: flex; gap: 16px; margin-top: 12px; justify-content: center; }
+  .gantt-legend span { font-size: 0.7rem; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+  .gantt-legend .swatch { width: 20px; height: 10px; border-radius: 3px; }
+
+  /* Data Flow */
+  .flow { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 28px; }
+  .flow-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .flow-box { padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+  .flow-box.page { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.25); }
+  .flow-box.data { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.25); }
+  .flow-box.component { background: rgba(6,182,212,0.15); color: var(--cyan); border: 1px solid rgba(6,182,212,0.25); }
+  .flow-box.api { background: rgba(236,72,153,0.15); color: var(--pink); border: 1px solid rgba(236,72,153,0.25); }
+  .flow-arrow { color: var(--text3); font-size: 0.85rem; }
+
+  /* Issues Table */
+  .issues { background: var(--surface); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
+  .issues table { width: 100%; border-collapse: collapse; }
+  .issues th { text-align: left; padding: 10px 14px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3); background: var(--surface2); }
+  .issues td { padding: 10px 14px; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.04); }
+  .issues td:first-child { font-weight: 600; color: var(--cyan); }
+  .issues .size { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+  .issues .size-s { background: rgba(34,197,94,0.15); color: var(--green); }
+  .issues .size-m { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .issues .size-l { background: rgba(239,68,68,0.15); color: var(--red); }
+  .sprint-label { font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; }
+  .sprint-label.this { background: rgba(34,197,94,0.15); color: var(--green); }
+  .sprint-label.next { background: rgba(148,163,184,0.1); color: var(--text3); }
+
+  /* Privacy Note */
+  .note-card { background: var(--surface); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; border-left: 4px solid var(--amber); }
+  .note-card h4 { font-size: 0.85rem; margin-bottom: 6px; }
+  .note-card p { font-size: 0.78rem; color: var(--text2); line-height: 1.5; }
+  .note-card .tag-label { display: inline-block; font-size: 0.65rem; padding: 2px 8px; border-radius: 3px; background: rgba(245,158,11,0.15); color: var(--amber); margin-bottom: 8px; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 16px; color: var(--text3); font-size: 0.7rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Crop Intelligence Roadmap</h1>
+  <div class="subtitle">Reserved vs Actual + Smart Defaults + AI Foundation</div>
+  <div class="date">Sprint Planning — 2026-04-05</div>
+</div>
+
+<div class="sprint-banner">
+  <span class="sprint-badge sprint-this">This Sprint: M1 + M2 + M3</span>
+  <span class="sprint-badge sprint-next">Next Sprint: M4 ROI + M5 AI Design</span>
+</div>
+
+<!-- ── Milestone Pipeline ──────────────────────── -->
+<div class="pipeline">
+  <div class="milestone active">
+    <div class="tag">M1 — This Sprint</div>
+    <h3>Diary &rarr; Bed Bridge</h3>
+    <p>Planting/harvesting diary entries auto-update bed crop dates. Gantt chart works immediately.</p>
+    <div class="issue">#273 &bull; Size S</div>
+  </div>
+  <div class="arrow">&rarr;</div>
+  <div class="milestone planned">
+    <div class="tag">M2 — This Sprint</div>
+    <h3>Crop Library</h3>
+    <p>Public crop data (OpenFarm/USDA): days to harvest, yield, season, companions.</p>
+    <div class="issue">#274 &bull; Size L</div>
+  </div>
+  <div class="arrow">&rarr;</div>
+  <div class="milestone planned">
+    <div class="tag">M3 — This Sprint</div>
+    <h3>Smart Defaults</h3>
+    <p>Auto-suggest harvest date from crop library when planting is logged.</p>
+    <div class="issue">#275 &bull; Size M</div>
+  </div>
+  <div class="arrow">&rarr;</div>
+  <div class="milestone deferred">
+    <div class="tag">M4 — Next Sprint</div>
+    <h3>ROI Analysis</h3>
+    <p>Cost tracking + harvest yield = revenue per bed/crop/season.</p>
+    <div class="issue">#248 &bull; Deferred</div>
+  </div>
+  <div class="arrow">&rarr;</div>
+  <div class="milestone deferred">
+    <div class="tag">M5 — Next Sprint</div>
+    <h3>AI Assist</h3>
+    <p>Context pipeline design + recommendations. Needs dedicated design phase.</p>
+    <div class="issue">#278 &bull; Deferred</div>
+  </div>
+</div>
+
+<!-- ── Reserved vs Actual UX ──────────────────── -->
+<div class="section-title">Reserved vs Actual — Split-Pane Concept (#276)</div>
+
+<div class="ux-diagram">
+  <div class="ux-card reserved">
+    <h4>Reserved / Budget (Left Pane)</h4>
+    <div class="source">Source: Crops Page &rarr; Bed record + Crop Library</div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Planned planting date</strong> — set on bed via Crops page</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Expected harvest</strong> — auto-calculated from crop library (M3) or manual</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Expected yield</strong> — from crop library species data</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Milestone cards</strong> — visual plan summary per bed</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Gantt bar</strong> — dashed/amber line showing planned window</div></div>
+  </div>
+  <div class="ux-card actual">
+    <h4>Actual / Logged (Right Pane)</h4>
+    <div class="source">Source: Diary entries with bed_id</div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Actual planting date</strong> — diary entry with category "planting"</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Actual harvest date</strong> — diary entry with category "harvesting"</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Real costs</strong> — CostItem[] from diary entries</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Activity cards</strong> — work log entries per bed</div></div>
+    <div class="ux-item"><div class="dot"></div><div><strong>Gantt bar</strong> — solid/green line showing what actually happened</div></div>
+  </div>
+</div>
+
+<!-- ── Gantt Chart Preview ─────────────────────── -->
+<div class="gantt-preview">
+  <h4>Gantt Chart — Reserved + Actual Overlay (Calendar View)</h4>
+  <div class="gantt-row">
+    <div class="gantt-label">Bed A</div>
+    <div class="gantt-track">
+      <div class="gantt-bar reserved-bar" style="left: 5%; width: 70%;">plan</div>
+      <div class="gantt-bar actual-bar" style="left: 10%; width: 25%;">actual</div>
+      <div class="gantt-today"></div>
+    </div>
+  </div>
+  <div class="gantt-row">
+    <div class="gantt-label">Bed B</div>
+    <div class="gantt-track">
+      <div class="gantt-bar reserved-bar" style="left: 15%; width: 55%;">plan</div>
+      <div class="gantt-bar actual-bar" style="left: 18%; width: 17%;">actual</div>
+      <div class="gantt-today"></div>
+    </div>
+  </div>
+  <div class="gantt-row">
+    <div class="gantt-label">Bed C</div>
+    <div class="gantt-track">
+      <div class="gantt-bar reserved-bar" style="left: 25%; width: 60%;">plan</div>
+      <div class="gantt-today"></div>
+    </div>
+  </div>
+  <div class="gantt-legend">
+    <span><span class="swatch" style="background: repeating-linear-gradient(90deg, rgba(245,158,11,0.4) 0px, rgba(245,158,11,0.4) 4px, transparent 4px, transparent 7px); border: 1px dashed var(--amber);"></span> Reserved (planned)</span>
+    <span><span class="swatch" style="background: rgba(34,197,94,0.5); border: 1px solid var(--green);"></span> Actual (logged)</span>
+    <span><span class="swatch" style="background: var(--red); width: 2px;"></span> Today</span>
+  </div>
+</div>
+
+<!-- ── Data Flow ───────────────────────────────── -->
+<div class="section-title">Data Flow Architecture</div>
+<div class="flow">
+  <div style="font-size: 0.7rem; color: var(--text3); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Reserved Path</div>
+  <div class="flow-row">
+    <span class="flow-box page">Crops Page</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box api">PATCH /beds/:id</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box data">bed.planted_at + expected_harvest</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box component">CropTimeline (dashed)</span>
+  </div>
+  <div style="font-size: 0.7rem; color: var(--text3); margin: 12px 0; text-transform: uppercase; letter-spacing: 0.05em;">Actual Path (M1 Bridge)</div>
+  <div class="flow-row">
+    <span class="flow-box page">Diary Page</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box api">POST /diary</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box data">DiaryEntry (planting/harvesting)</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box component">CropTimeline (solid)</span>
+  </div>
+  <div style="font-size: 0.7rem; color: var(--text3); margin: 12px 0; text-transform: uppercase; letter-spacing: 0.05em;">Smart Defaults Path (M3)</div>
+  <div class="flow-row">
+    <span class="flow-box page">Crops or Diary</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box data">crop_type selected</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box api">GET /crop-library</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-box component">Auto-fill harvest date</span>
+  </div>
+</div>
+
+<!-- ── Issues Table ────────────────────────────── -->
+<div class="section-title">Issues Created</div>
+<div class="issues">
+  <table>
+    <tr><th>#</th><th>Title</th><th>Size</th><th>Sprint</th><th>Deps</th></tr>
+    <tr>
+      <td>#273</td><td>Diary &rarr; Bed Bridge (M1)</td>
+      <td><span class="size size-s">S</span></td>
+      <td><span class="sprint-label this">This</span></td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>#274</td><td>Crop Library integration (M2)</td>
+      <td><span class="size size-l">L</span></td>
+      <td><span class="sprint-label this">This</span></td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>#275</td><td>Smart Defaults — auto harvest date (M3)</td>
+      <td><span class="size size-m">M</span></td>
+      <td><span class="sprint-label this">This</span></td>
+      <td>#273, #274</td>
+    </tr>
+    <tr>
+      <td>#276</td><td>Reserved vs Actual split-pane UX</td>
+      <td><span class="size size-l">L</span></td>
+      <td><span class="sprint-label this">This</span></td>
+      <td>#273, #274, #275</td>
+    </tr>
+    <tr>
+      <td>#277</td><td>Geo location optional (privacy)</td>
+      <td><span class="size size-s">S</span></td>
+      <td><span class="sprint-label this">This</span></td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <td>#278</td><td>AI context pipeline design</td>
+      <td><span class="size size-l">L</span></td>
+      <td><span class="sprint-label next">Next</span></td>
+      <td>#274, #248</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ── Notes ───────────────────────────────────── -->
+<div class="section-title">Design Notes</div>
+
+<div class="note-card">
+  <span class="tag-label">Privacy</span>
+  <h4>Geo Location — Optional for Farm Creation (#277)</h4>
+  <p>Current: latitude/longitude are mandatory. Change: city/region is the minimum requirement. Map picker remains but is skippable. Coordinates opt-in for elevation data and future AI weather context. Existing farms with coordinates are unaffected.</p>
+</div>
+
+<div class="note-card" style="border-left-color: var(--purple);">
+  <span class="tag-label" style="background: rgba(168,85,247,0.15); color: var(--purple);">AI Strategy</span>
+  <h4>AI Context Pipeline — Dedicated Design Phase (#278)</h4>
+  <p>Deferred to next sprint. Before any AI implementation: define what platform data becomes context (crop library, diary history, weather, ROI), how it's structured for the LLM, privacy boundaries (geo opt-in), and cost implications within the $1.18/mo budget. Deliverable: ADR documenting the full context pipeline design.</p>
+</div>
+
+<div class="footer">
+  LitCrop Crop Intelligence Roadmap &bull; Generated 2026-04-05 &bull; Issues #273–#278
+</div>
+
+</body>
+</html>
