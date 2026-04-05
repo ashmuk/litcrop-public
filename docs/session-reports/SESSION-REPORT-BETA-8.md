@@ -2,16 +2,17 @@
 
 **Sprint:** Beta-8 — Crop Intelligence M1-M3 + UX
 **Date:** 2026-04-05 → 2026-04-06
-**Branch:** develop (15 commits, 79136a4 → e5dd4c3)
-**Stats:** 64 files changed, +6,270 / -336 lines
+**Branch:** develop (19 commits, 79136a4 → a69f6e3)
+**Tag:** v0.41
+**Stats:** 68 files changed, +6,577 / -343 lines
 
 ---
 
 ## Executive Summary
 
-Beta-8 delivered a complete **crop intelligence platform** — from data foundation to planning UX — in a single session. The sprint started with 605 tests and 0 crop metadata; it ended with 677 tests, a 100-crop shared library with growing data, automated harvest date calculation, dual-bar Gantt visualization, and a diary-based crop planning workflow.
+Beta-8 delivered a complete **crop intelligence platform** — from data foundation to planning UX — in a single session. The sprint started with 605 tests and 0 crop metadata; it ended with 688 tests, a 100-crop shared library with growing data, automated harvest date calculation, dual-bar Gantt visualization, and a diary-based crop planning workflow.
 
-The `/cc-define → /cc-design → /cc-implement → /simplify → /cc-test → /cc-review → /cc-remediate` pipeline was applied to every issue, catching **20+ bugs** before they could reach production — including data corruption paths, timezone errors, accessibility violations, and silent error masking.
+The `/cc-define → /cc-design → /cc-implement → /simplify → /cc-test → /cc-review → /cc-remediate` pipeline was applied to every issue, catching **25 bugs** before they could reach production — including data corruption paths, timezone errors, accessibility violations, and silent error masking.
 
 ---
 
@@ -40,7 +41,7 @@ The `/cc-define → /cc-design → /cc-implement → /simplify → /cc-test → 
 
 ---
 
-## Commits (15)
+## Commits (19)
 
 ```
 b219c1a  feat(farm): make geo location optional with city dropdown (#277)
@@ -58,6 +59,10 @@ e49f1e0  feat(admin): user management controls — delete users (#282)
 bcbf328  refactor(admin): simplify requireAdmin return + consolidate imports
 8de50fc  fix(wizard): add guidance text for geo location benefits
 e5dd4c3  chore: sync TASKS.md — close Beta-8 issues, update sprint board
+939bcc9  docs: add Beta-8 session report
+6d30e1c  fix(admin): typecheck errors — fixture types + AccountDeletedPayload
+d46f739  fix+test: buildActualDatesMap reserved filter + coverage gaps (#276, #287)
+a69f6e3  docs: update README + ARCHITECTURE for Beta-8
 ```
 
 ---
@@ -67,7 +72,7 @@ e5dd4c3  chore: sync TASKS.md — close Beta-8 issues, update sprint board
 | Metric | Before | After | Delta |
 |--------|--------|-------|-------|
 | Test files | 32 | 35 | +3 |
-| Tests | 605 | 677 | +72 |
+| Tests | 605 | 688 | +83 |
 | Pass rate | 100% | 100% | — |
 
 ### New test files
@@ -83,7 +88,10 @@ e5dd4c3  chore: sync TASKS.md — close Beta-8 issues, update sprint board
 - Admin delete: happy path, 403, 400 self-delete, 401 unauth, 404 not found
 - Crop library: 100 entries validation, metadata ranges, companion refs, API 200/404
 - Cities: bilingual search, region matching, normalization, coverage verification
-- Diary utils: buildActualDatesMap extraction, deduplication, same-day bar rendering
+- Diary utils: buildActualDatesMap extraction, deduplication, same-day bar rendering, reserved filter
+- estimateHarvestDate: known crop, unknown crop, no metadata, month/year boundary
+- Admin delete: deleteAccount failure → 503
+- PATCH entry_type actual→reserved: bed bridge suppression verified
 
 ---
 
@@ -167,6 +175,9 @@ The `/simplify → /cc-review → /cc-remediate` pipeline caught these bugs befo
 | 20 | #282 | `getUserProfile().catch(() => null)` masks DynamoDB failures as 404 | High |
 | 21 | #282 | Delete button race condition — concurrent deletes possible | Medium |
 | 22 | #275 | 3x duplicated harvest date calculation (extracted to shared) | Quality |
+| 23 | #276/#287 | `buildActualDatesMap` includes reserved entries as actual Gantt bars | High |
+| 24 | #282 | Admin test fixture types wrong (`number` vs `string[]` for DeleteAccountSummary) | Medium |
+| 25 | #282 | `admin_initiated` not in `AccountDeletedPayload` type | Medium |
 
 ---
 
@@ -187,7 +198,7 @@ The `/simplify → /cc-review → /cc-remediate` pipeline caught these bugs befo
 
 1. **The M1-M2-M3 chain clicks together seamlessly.** A single planting diary entry now: sets `planted_at` (M1), looks up crop metadata (M2), auto-calculates `expected_harvest` (M3), and renders a complete Gantt bar — zero manual date entry required.
 
-2. **The pipeline discipline paid for itself.** 22 bugs caught across 9 issues, including 5 critical data corruption/crash paths. The cost of running `/simplify` + `/cc-review` on every issue (~2 min each) is negligible compared to debugging these in production.
+2. **The pipeline discipline paid for itself.** 25 bugs caught across 9 issues, including 5 critical data corruption/crash paths. The cost of running `/simplify` + `/cc-review` on every issue (~2 min each) is negligible compared to debugging these in production.
 
 3. **User feedback drove the best UX decisions.** The city dropdown with map sync (#277), the reserved/actual radio toggle with smart date detection (#287), and the month-aligned split-pane view — all originated from conversation with the user during design reviews.
 
