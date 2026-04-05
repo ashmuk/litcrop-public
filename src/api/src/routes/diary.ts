@@ -216,11 +216,12 @@ diaryRouter.get('/:farmId/diary', async (c) => {
 
   const { category, limit, cursor } = parsedQuery.data;
 
-  // Default date range: current calendar month
+  // Default date range: last 30 days (so recent cross-month entries always appear)
   const now = new Date();
-  const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const defaultFrom = thirtyDaysAgo.toISOString().slice(0, 10);
+  const defaultTo = now.toISOString().slice(0, 10);
 
   const from = parsedQuery.data.from ?? defaultFrom;
   const to = parsedQuery.data.to ?? defaultTo;
