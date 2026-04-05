@@ -22,7 +22,7 @@ import { showToast } from './Toast';
 import DiaryEntryForm from './DiaryEntryForm';
 import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
-import { CATEGORY_META, getLocale } from '../lib/diary';
+import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib/diary';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 import { getCurrentUser } from '../lib/auth';
 import { getLocalFarmRole, getCachedIsAdmin } from '../lib/hooks';
@@ -31,6 +31,8 @@ import { getLocalFarmRole, getCachedIsAdmin } from '../lib/hooks';
 
 const LS_VIEW_KEY = 'litcrop-diary-view';
 const LS_FARM_ID = 'litcrop-farmId';
+const LS_FILTER_BED = 'litcrop-diary-filter-bed';
+const LS_FILTER_CAT = 'litcrop-diary-filter-cat';
 
 
 function formatDateLabel(date: string): string {
@@ -208,6 +210,12 @@ export default function DiaryPage() {
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [beds, setBeds] = useState<FarmBedItem[]>([]);
+  const [filterBed, setFilterBed] = useState<string>(() => {
+    try { return localStorage.getItem(LS_FILTER_BED) ?? ''; } catch { return ''; }
+  });
+  const [filterCategory, setFilterCategory] = useState<string>(() => {
+    try { return localStorage.getItem(LS_FILTER_CAT) ?? ''; } catch { return ''; }
+  });
 
   // Initialise farmId and view from localStorage (synchronous-first)
   useEffect(() => {
@@ -261,14 +269,13 @@ export default function DiaryPage() {
     }
   }, [farmId, view]);
 
-  // Fetch beds when calendar view is active
+  // Fetch beds for filter bar and calendar CropTimeline
   useEffect(() => {
-    if (view === 'calendar' && farmId && beds.length === 0) {
-      getBeds(farmId)
-        .then(setBeds)
-        .catch(() => setBeds([]));
-    }
-  }, [view, farmId]);
+    if (!farmId) return;
+    getBeds(farmId)
+      .then(setBeds)
+      .catch(() => setBeds([]));
+  }, [farmId]);
 
   // Fetch the displayed month's entries when in calendar view
   useEffect(() => {
@@ -327,9 +334,24 @@ export default function DiaryPage() {
     setExpandedId(null);
   }
 
+  // ── Filter helpers ──────────────────────────────────────────────
+
+  function updateFilter(setter: (v: string) => void, key: string, value: string) {
+    setter(value);
+    try { localStorage.setItem(key, value); } catch {}
+  }
+
   // ── Render states ───────────────────────────────────────────────
 
-  const grouped = useMemo(() => [...groupByDate(entries).entries()], [entries]);
+  const filteredEntries = useMemo(() => {
+    return entries.filter((e) => {
+      if (filterBed && (filterBed === BED_FILTER_NONE ? e.bed_id : e.bed_id !== filterBed)) return false;
+      if (filterCategory && e.category !== filterCategory) return false;
+      return true;
+    });
+  }, [entries, filterBed, filterCategory]);
+
+  const grouped = useMemo(() => [...groupByDate(filteredEntries).entries()], [filteredEntries]);
   const selectedEntries = useMemo(
     () => (selectedDate ? entries.filter((e) => e.date === selectedDate) : []),
     [entries, selectedDate],
@@ -374,6 +396,33 @@ export default function DiaryPage() {
         </div>
       </div>
 
+      {/* Filter bar — list view only */}
+      {view === 'list' && !loading && !error && entries.length > 0 && (
+        <div class="diary-filter-bar">
+          <select
+            class="form-select diary-filter-bar__select"
+            value={filterBed}
+            onChange={(e) => updateFilter(setFilterBed, LS_FILTER_BED, (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">🌿 {t('diary.all_beds')}</option>
+            <option value={BED_FILTER_NONE}>{t('diary.no_bed')}</option>
+            {beds.map((bed) => (
+              <option key={bed.id} value={bed.id}>{bed.name ?? bed.id}</option>
+            ))}
+          </select>
+          <select
+            class="form-select diary-filter-bar__select"
+            value={filterCategory}
+            onChange={(e) => updateFilter(setFilterCategory, LS_FILTER_CAT, (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">{t('diary.all_categories')}</option>
+            {CATEGORY_KEYS.map((key) => (
+              <option key={key} value={key}>{CATEGORY_META[key].icon} {t(`diary.categories.${key}`)}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Content area */}
       {loading && (
         <div class="diary-list">
@@ -413,7 +462,13 @@ export default function DiaryPage() {
         </div>
       )}
 
-      {!loading && !error && entries.length > 0 && view === 'list' && (
+      {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length === 0 && (
+        <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
+          <p class="empty-state__title">{t('diary.no_matches')}</p>
+        </div>
+      )}
+
+      {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length > 0 && (
         <div class="diary-list">
           {grouped.map(([date, dayEntries]) => (
             <div key={date} class="diary-group">

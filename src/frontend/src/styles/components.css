@@ -1514,6 +1514,21 @@
   padding: 0;
 }
 
+/* Diary filter bar */
+.diary-filter-bar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-default);
+}
+
+.diary-filter-bar__select {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-2);
+  min-width: 0; /* allow shrinking on narrow screens */
+}
+
 /* Diary list container */
 .diary-list {
   flex: 1;
