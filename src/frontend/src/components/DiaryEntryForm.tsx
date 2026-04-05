@@ -235,7 +235,6 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 class="form-input"
                 value={date}
                 onInput={(e) => setDate((e.target as HTMLInputElement).value)}
-                max={todayIso()}
                 required
               />
             </div>

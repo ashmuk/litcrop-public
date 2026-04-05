@@ -138,14 +138,28 @@ describe('POST /api/v1/farms/:farmId/diary', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects future date → 400', async () => {
+  it('accepts future date for crop planning → 201', async () => {
     const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         date: '2099-01-01',
         category: 'planting',
-        description: 'Future entry',
+        description: 'Future planting plan',
+      }),
+    });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('rejects date with year out of range (9999) → 400', async () => {
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '9999-01-01',
+        category: 'planting',
+        description: 'Unreasonable year',
       }),
     });
 

@@ -9,8 +9,6 @@
  * Admin tab shown only when litcrop-isAdmin cache is 'true'.
  */
 
-declare const __APP_VERSION__: string;
-
 import { useState, useEffect } from 'preact/hooks';
 import { getCurrentUser, signOut } from '../lib/auth';
 import { getCachedIsAdmin } from '../lib/hooks';

@@ -488,9 +488,9 @@ export const CreateDiaryEntrySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
     .refine(s => !isNaN(Date.parse(s)), { message: 'Invalid calendar date' })
     .refine(s => {
-      const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-      return s <= tomorrow;
-    }, { message: 'Date cannot be more than 1 day in the future' }),
+      const y = parseInt(s.slice(0, 4), 10);
+      return y >= 2020 && y <= 2100;
+    }, { message: 'Date year must be between 2020 and 2100' }),
   category: DiaryCategorySchema,
   description: z.string().min(1).max(1000).trim(),
   time_spent_minutes: z.number().int().min(1).max(1440).nullable().optional(),
