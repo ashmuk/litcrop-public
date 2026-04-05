@@ -9,6 +9,8 @@
  * Admin tab shown only when litcrop-isAdmin cache is 'true'.
  */
 
+declare const __APP_VERSION__: string;
+
 import { useState, useEffect } from 'preact/hooks';
 import { getCurrentUser, signOut } from '../lib/auth';
 import { getCachedIsAdmin } from '../lib/hooks';
@@ -71,6 +73,7 @@ export default function DesktopNav({ activeTab = 'farm' }: Props) {
       <a href="/" class="desktop-nav__brand" aria-label="LitCrop home">
         <span class="desktop-nav__brand-icon" aria-hidden="true">🌾</span>
         LitCrop
+        <span class="desktop-nav__version">{__APP_VERSION__}</span>
       </a>
 
       {/* Navigation links */}
