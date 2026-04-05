@@ -442,20 +442,33 @@ export default function ProfilePage() {
     // Load user email from already-resolved currentUser
     if (currentUser) setUserEmail(currentUser.email);
 
-    // Load profile (non-blocking) + sync pending role from registration
+    // Load profile (non-blocking) + sync pending role + name from registration
     const pendingRole = localStorage.getItem('litcrop-pendingRole');
+    const pendingName = localStorage.getItem('litcrop-pendingName');
     getMyProfile().then(p => {
       if (p.display_name) setDisplayName(p.display_name);
       if (p.profile_picture_thumb_url) setProfilePictureUrl(p.profile_picture_thumb_url);
       if (p.is_admin) setIsSystemAdmin(true);
       setCachedIsAdmin(p.is_admin === true);
-      // Sync pending role from registration (no auth token was available post-confirm)
-      if (pendingRole && (pendingRole === 'owner' || pendingRole === 'staff') && !p.created_at) {
-        // Pending role takes precedence over API fallback ('staff')
-        setPreferredRole(pendingRole);
-        updateMyProfile({ preferred_role: pendingRole })
-          .then(() => { localStorage.removeItem('litcrop-pendingRole'); })
-          .catch(() => {});
+      // Sync pending role + name from registration (#285)
+      if (pendingRole || pendingName) {
+        const updates: Record<string, string> = {};
+        if (pendingRole && (pendingRole === 'owner' || pendingRole === 'staff')) {
+          setPreferredRole(pendingRole);
+          updates['preferred_role'] = pendingRole;
+        }
+        if (pendingName) {
+          setDisplayName(pendingName);
+          updates['display_name'] = pendingName;
+        }
+        if (Object.keys(updates).length > 0) {
+          updateMyProfile(updates)
+            .then(() => {
+              localStorage.removeItem('litcrop-pendingRole');
+              localStorage.removeItem('litcrop-pendingName');
+            })
+            .catch(() => {});
+        }
       } else if (p.preferred_role) {
         setPreferredRole(p.preferred_role);
       }

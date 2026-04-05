@@ -40,8 +40,10 @@ export default function FarmLocationMap({ latitude, longitude, elevation, farmNa
         zoom: 14,
         zoomControl: true,
         attributionControl: true,
-        dragging: true,
-        scrollWheelZoom: false,
+        dragging: false,
+        scrollWheelZoom: 'center',
+        doubleClickZoom: false,
+        touchZoom: 'center',
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

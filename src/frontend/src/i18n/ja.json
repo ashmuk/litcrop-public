@@ -459,6 +459,10 @@
       "resend": "コードを再送信",
       "resend_in": "{s}秒後に再送信"
     },
+    "name": {
+      "label": "表示名",
+      "placeholder": "お名前"
+    },
     "email": {
       "label": "メールアドレス",
       "placeholder": "you@example.com"
@@ -504,6 +508,8 @@
       "network": "サーバーに接続できませんでした。接続を確認して再試行してください。",
       "generic": "エラーが発生しました。再試行してください。",
       "passwords_mismatch": "パスワードが一致しません。",
+      "name_required": "表示名を入力してください。",
+      "name_too_long": "表示名は100文字以内で入力してください。",
       "email_required": "メールアドレスを入力してください。",
       "email_invalid": "有効なメールアドレスを入力してください。",
       "password_required": "パスワードを入力してください。",

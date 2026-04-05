@@ -66,6 +66,8 @@ export default function RegisterForm() {
   const [step, setStep] = useState<Step>(1);
 
   // Step 1 state
+  const [displayName, setDisplayName] = useState('');
+  const [nameError, setNameError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -157,6 +159,16 @@ export default function RegisterForm() {
     setStep1ServerError('');
 
     let valid = true;
+    if (!displayName.trim()) {
+      setNameError(t('auth.errors.name_required'));
+      valid = false;
+    } else if (displayName.trim().length > 100) {
+      setNameError(t('auth.errors.name_too_long'));
+      valid = false;
+    } else {
+      setNameError('');
+    }
+
     if (!email.trim()) {
       setEmailError(t('auth.errors.email_required'));
       valid = false;
@@ -220,6 +232,7 @@ export default function RegisterForm() {
       // Store role for sync on first authenticated login (no auth token available post-confirm)
       try {
         localStorage.setItem('litcrop-pendingRole', role);
+        localStorage.setItem('litcrop-pendingName', displayName.trim());
         localStorage.setItem('litcrop-locale', regLocale);
         localStorage.setItem('litcrop-temp-unit', regTempUnit);
       } catch {}
@@ -355,6 +368,33 @@ export default function RegisterForm() {
           <span>{step1ServerError}</span>
         </div>
       )}
+
+      <div class="form-group">
+        <label class="form-label" for="reg-name">
+          {t('auth.name.label')} *
+        </label>
+        <input
+          id="reg-name"
+          type="text"
+          class={`form-input${nameError ? ' form-input--error' : ''}`}
+          value={displayName}
+          onInput={(e) => {
+            setDisplayName((e.target as HTMLInputElement).value);
+            setNameError('');
+          }}
+          placeholder={t('auth.name.placeholder')}
+          autocomplete="name"
+          maxLength={100}
+          aria-describedby={nameError ? 'reg-name-error' : undefined}
+          aria-invalid={nameError ? 'true' : undefined}
+          required
+        />
+        {nameError && (
+          <span id="reg-name-error" class="form-error">
+            <span aria-hidden="true">⚠</span> {nameError}
+          </span>
+        )}
+      </div>
 
       <div class="form-group">
         <label class="form-label" for="reg-email">

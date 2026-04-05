@@ -459,6 +459,10 @@
       "resend": "Resend code",
       "resend_in": "Resend in {s}s"
     },
+    "name": {
+      "label": "Display Name",
+      "placeholder": "Your name"
+    },
     "email": {
       "label": "Email",
       "placeholder": "you@example.com"
@@ -504,6 +508,8 @@
       "network": "Could not connect to server. Check your connection and try again.",
       "generic": "Something went wrong. Please try again.",
       "passwords_mismatch": "Passwords do not match.",
+      "name_required": "Display name is required.",
+      "name_too_long": "Display name must be 100 characters or fewer.",
       "email_required": "Email is required.",
       "email_invalid": "Please enter a valid email address.",
       "password_required": "Password is required.",
