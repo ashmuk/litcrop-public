@@ -14,6 +14,7 @@
 - [#276](https://github.com/ashmuk/litcrop/issues/276) **feat(diary): reserved vs actual split-pane UX for crop milestones** `area:frontend` `type:feature` `size:L` — depends #273, #274, #275
 - [#285](https://github.com/ashmuk/litcrop/issues/285) **fix(auth): enforce display name during account registration** `area:api` `area:frontend` `type:fix` `size:S` `priority:high`
 - [#286](https://github.com/ashmuk/litcrop/issues/286) **fix(frontend): disable drag on read-only maps — allow zoom only, center on pin** `area:frontend` `type:fix` `size:S` `priority:high`
+- [#287](https://github.com/ashmuk/litcrop/issues/287) **feat(diary): reserved/actual radio toggle with smart date defaults** `area:api` `area:frontend` `type:feature` `size:L`
 - [#282](https://github.com/ashmuk/litcrop/issues/282) **feat(admin): user management controls — delete users and admin actions** `area:api` `area:frontend` `type:feature` `size:M`
 
 ---
