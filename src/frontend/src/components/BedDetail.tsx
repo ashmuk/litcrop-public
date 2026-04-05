@@ -88,6 +88,12 @@ export default function BedDetail() {
 
   const isReadOnly = getLocalFarmRole() === 'staff';
 
+  // Set i18n title immediately on mount (before API returns)
+  useEffect(() => {
+    const titleEl = document.getElementById('bed-title');
+    if (titleEl) titleEl.textContent = t('screens.plot_detail');
+  }, []);
+
   useEffect(() => {
     if (!bedId) return;
     let cancelled = false;
@@ -102,6 +108,9 @@ export default function BedDetail() {
         setBed(bedData);
         setImages(imagesData.data);
         setNextCursor(imagesData.meta.next_cursor);
+        // Update nav header title with bed name and i18n screen label
+        const titleEl = document.getElementById('bed-title');
+        if (titleEl) titleEl.textContent = bedData.name ?? t('screens.plot_detail');
         // Reflect most recent tag as active
         if (bedData.latest_image?.tags?.length) {
           const lastTag = bedData.latest_image.tags[bedData.latest_image.tags.length - 1];

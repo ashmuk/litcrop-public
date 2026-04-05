@@ -668,7 +668,7 @@ export async function deleteDiaryEntry(farmId: string, entryId: string): Promise
     "diary": "日誌"
   },
   "diary": {
-    "title": "農場日誌",
+    "title": "農園日誌",
     "empty": "まだ記録がありません",
     "empty_cta": "最初の作業を記録しましょう",
     "add": "新しい記録",
