@@ -12,7 +12,7 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 
 ## Project Status
 
-**Current Stage**: Beta-4 complete — v0.32 (439 tests, 15 pages). Beta-5 design complete, implementation next.
+**Current Stage**: Beta-8 complete — v0.40+ (688 tests, 17 pages).
 
 **Scope Level**: ~~PoC~~ → ~~MVP~~ → ~~MVP+~~ → **Beta** → Production ([PLANS.md](PLANS.md))
 
@@ -26,15 +26,18 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 | Beta-2 | v0.28 | Settings sync, admin dashboard, observer onboarding, security |
 | Beta-3 | v0.30 | Multi-farm membership, join requests, leave farm, farm discovery |
 | Beta-4 | v0.32 | Change password, delete account, SES notifications, activity log |
-| Beta-5 | *next* | Device configuration UI + API (#210), profile picture (#160) |
+| Beta-5 | v0.34 | Device configuration UI, profile picture (#210, #160) |
+| Beta-6 | v0.36 | Bed grid emoji icons, crop library search, role redesign |
+| Beta-7 | v0.38 | Farm Diary (work log, calendar, Gantt chart, cost tracking) |
+| Beta-8 | v0.40 | Crop Intelligence (M1–M3), reserved/actual toggle, geo optional, admin delete |
 
 ### Design Artifacts
 - Requirements: 87+ functional, 38+ non-functional ([REQUIREMENTS.md](REQUIREMENTS.md))
-- Architecture: System design with 15 ADRs ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
-- UX/UI: 15+ screens ([docs/UX-DESIGNS.md](docs/UX-DESIGNS.md))
+- Architecture: System design with 16+ ADRs ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
+- UX/UI: 14+ mockup screens ([docs/UX-DESIGNS.md](docs/UX-DESIGNS.md))
 - API: 30+ endpoints with full request/response schemas ([docs/API-CONTRACTS.md](docs/API-CONTRACTS.md))
 - System design: Sequence diagrams, component interfaces ([docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md))
-- Mock-ups: 13 interactive HTML/CSS screens ([docs/mockups/](docs/mockups/))
+- Mock-ups: 14 interactive HTML/CSS screens ([docs/mockups/](docs/mockups/))
 - Execution plans: [docs/planning/](docs/planning/)
 
 ## Tech Stack
@@ -57,6 +60,17 @@ LitCrop builds a digital twin of a small farm, enabling remote visibility into f
 - **Weather**: [Open-Meteo API](https://open-meteo.com/) (free, no API key)
 - **AI Chatbot**: [Anthropic Claude](https://www.anthropic.com/) (Haiku 4.5 via `@anthropic-ai/sdk`, multi-turn + tool use)
 - **Email**: AWS SES (admin notifications for account/farm events)
+
+#### Public Data Sources
+
+| Source | Usage | Fetch Mode | License / Cost |
+|--------|-------|------------|----------------|
+| [OpenStreetMap tiles](https://www.openstreetmap.org/) | Map display via Leaflet | Dynamic / runtime | ODbL, free |
+| [Open-Meteo Weather API](https://open-meteo.com/) | Weather forecasts | Dynamic / runtime | Free, no API key |
+| [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api) | Auto-elevation on location set | Dynamic / runtime | Free, no API key |
+| [USDA Plants Database](https://plants.usda.gov/) + [OpenFarm](https://openfarm.cc/) | Crop growing metadata → `crop-library.json` | Static / build-time | CC0 / public domain |
+| [SimpleMaps World Cities DB](https://simplemaps.com/data/world-cities) | City search → `cities.json` | Static / build-time | CC0 |
+| [Nominatim / OpenStreetMap](https://nominatim.org/) | Reverse geocoding in WeatherView | Dynamic / runtime | Free, ODbL |
 
 ### Development
 - **Package Manager**: npm
@@ -145,8 +159,8 @@ litcrop/
 ├── .github/                    # GitHub Actions workflows and templates
 ├── .githooks/                  # Git hooks (branch protection, pre-commit)
 ├── docs/
-│   ├── decisions/              # Architecture Decision Records (15 ADRs)
-│   ├── mockups/                # Interactive HTML/CSS mock-ups (13 screens)
+│   ├── decisions/              # Architecture Decision Records (16+ ADRs)
+│   ├── mockups/                # Interactive HTML/CSS mock-ups (14 screens)
 │   ├── gantt/                  # Execution timeline visualization
 │   ├── ARCHITECTURE.md         # System architecture
 │   ├── API-CONTRACTS.md        # API request/response schemas
@@ -185,6 +199,7 @@ litcrop/
 | [Bed-grid](docs/decisions/ADR-20260322-phase-d-bed-grid-data-model.md) | Farm→Bed grid data model | 2026-03-22 |
 | [Settings](docs/decisions/ADR-20260325-settings-sync.md) | Settings sync pattern | 2026-03-25 |
 | [Notifications](docs/decisions/ADR-20260401-notification-architecture.md) | SES notification architecture | 2026-04-01 |
+| [Crop Library](docs/decisions/ADR-20260405-static-first-crop-library.md) | Static-first crop library | 2026-04-05 |
 
 ## Deployment
 

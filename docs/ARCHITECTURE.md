@@ -296,6 +296,12 @@ Standard HTTP status codes: 401 (unauthorized — API Gateway), 400 (validation)
 
 > **Data model evolution**: Phase D (v0.13) flattened Field→Bed→Plot (4 levels) to Farm→Bed (2 levels) per ADR-20260322. Phase B (v0.11) added multi-farm membership with roles. The `FARM_MEMBER` entity is stored as a dual record (user→farm and farm→user) for efficient bidirectional queries.
 
+> **Beta-8 additions (v0.40)**: Several entities gained new attributes during the Crop Intelligence sprint:
+> - **Farm**: Added `location_text: string` (required city/region). `latitude`/`longitude` now optional — coordinates enable weather and elevation but are not required for farm creation.
+> - **DiaryEntry**: Added `entry_type: 'reserved' | 'actual'` (default `'actual'`). Reserved entries represent planned milestones; actual entries represent logged work. The diary→bed bridge (`syncBedDatesFromDiary`) only fires for actual entries.
+> - **CropEntry** (shared, static): `packages/shared/src/data/crop-library.json` — 100 crops with `days_to_harvest_min/max`, `season[]`, `companions[]`. Exposed via `GET /api/v1/crop-library`. See [ADR-20260405](decisions/ADR-20260405-static-first-crop-library.md).
+> - **Cities** (frontend, static): `src/frontend/src/data/cities.json` — 142 cities (114 JP + 28 world) with lat/lng for `LocationAutocomplete` city→map sync.
+
 > **Multi-farm with plan limits**: Users may own up to `FREE_PLAN_MAX_OWNED_FARMS` farms and join up to `FREE_PLAN_MAX_MEMBERSHIPS` farms. `POST /api/v1/farms` enforces ownership limits. System admins (`ADMIN_EMAILS`) can read all farms without membership (v0.22).
 
 **Global Secondary Indexes**:
