@@ -22,12 +22,12 @@ const router = new Hono();
  * Extracts auth context and verifies admin access via isAdmin (ADMIN_EMAILS).
  * Returns { userId } on success, or a 403 Response if not authorized.
  */
-function requireAdmin(c: Context): { userId: string } | Response {
-  const { userId, isAdmin } = getAuthContext(c);
+function requireAdmin(c: Context): { userId: string; userEmail: string } | Response {
+  const { userId, userEmail, isAdmin } = getAuthContext(c);
   if (!isAdmin) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Not authorized' } }, 403);
   }
-  return { userId };
+  return { userId, userEmail };
 }
 
 // ── GET /api/v1/admin/stats ───────────────────────────────────────
@@ -150,8 +150,7 @@ router.get('/activity', async (c) => {
 router.delete('/users/:userId', async (c) => {
   const result = requireAdmin(c);
   if (result instanceof Response) return result;
-  const { userId: adminId } = result;
-  const { userEmail } = getAuthContext(c);
+  const { userId: adminId, userEmail } = result;
 
   const targetUserId = c.req.param('userId');
 
@@ -160,14 +159,12 @@ router.delete('/users/:userId', async (c) => {
     throw new ValidationError('Cannot delete your own account via admin endpoint. Use DELETE /me instead.');
   }
 
-  // Verify target user exists (let DynamoDB errors propagate as 503)
+  // Verify target user exists (NotFoundError propagates naturally; other errors → 503)
   let profile;
   try {
     profile = await dynamoRepo.getUserProfile(targetUserId);
   } catch (err) {
-    if (err instanceof NotFoundError) {
-      throw new NotFoundError(`User not found: ${targetUserId}`);
-    }
+    if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
   if (!profile) {

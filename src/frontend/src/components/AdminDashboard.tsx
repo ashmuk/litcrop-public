@@ -7,9 +7,8 @@
 
 import type { JSX } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { getAdminStats, getAdminUsers, getAdminFarms, getNotificationPrefs, updateNotificationPrefs, getAdminActivities, ApiError } from '../lib/api';
+import { getAdminStats, getAdminUsers, getAdminFarms, getNotificationPrefs, updateNotificationPrefs, getAdminActivities, adminDeleteUser, ApiError } from '../lib/api';
 import type { AdminStatsResponse, AdminUserItem, AdminFarmItem, NotificationPrefsResponse, ActivityItem, ActivityResponse } from '../lib/api';
-import { adminDeleteUser } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 
