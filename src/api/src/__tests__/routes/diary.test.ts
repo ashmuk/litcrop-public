@@ -21,6 +21,7 @@ vi.mock('../../services/dynamodb', () => ({
     getDiaryEntryById: vi.fn(),
     updateDiaryEntry: vi.fn(),
     deleteDiaryEntry: vi.fn(),
+    getUserProfile: vi.fn(),
   },
 }));
 
@@ -95,6 +96,7 @@ beforeEach(() => {
   mockRepo.getDiaryEntryById.mockResolvedValue(entryFixture);
   mockRepo.updateDiaryEntry.mockResolvedValue(entryFixture);
   mockRepo.deleteDiaryEntry.mockResolvedValue(undefined);
+  mockRepo.getUserProfile.mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Test Farmer', preferred_role: 'staff', created_at: '2026-04-01T00:00:00Z' });
 });
 
 // ── POST /api/v1/farms/:farmId/diary ─────────────────────────────
@@ -120,6 +122,7 @@ describe('POST /api/v1/farms/:farmId/diary', () => {
     expect(body['bed_name']).toBe('A1');
     expect(body['cost_total']).toBe(500);
     expect(body['category']).toBe('planting');
+    expect(body['created_by_name']).toBe('Test Farmer');
   });
 
   it('validates required fields — omitting category → 400', async () => {
@@ -315,6 +318,19 @@ describe('GET /api/v1/farms/:farmId/diary/:entryId', () => {
     expect(body['id']).toBe(ENTRY_ID);
     expect(body['bed_name']).toBe('A1');
     expect(body['cost_total']).toBe(500);
+    expect(body['created_by_name']).toBe('Test Farmer');
+  });
+
+  it('returns created_by_name as null when user has no profile', async () => {
+    mockRepo.getUserProfile.mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['created_by_name']).toBeNull();
   });
 
   it('IDOR guard: rejects entry from different farm → 404', async () => {
@@ -422,12 +438,11 @@ describe('PATCH /api/v1/farms/:farmId/diary/:entryId', () => {
     expect(res.status).toBe(404);
   });
 
-  it('platform admin cannot update another user entry (synthetic membership blocked)', async () => {
+  it('platform admin can update another user entry (governance access)', async () => {
     const adminSub = 'admin-sub';
     const adminEmail = 'admin@litcrop.test';
-    // Platform admin bypasses membership — assertFarmAccess returns synthetic admin membership
-    // But !isAdmin guard prevents synthetic membership from granting write access
     mockRepo.getDiaryEntryById.mockResolvedValue({ ...entryFixture, created_by: 'other-user' });
+    mockRepo.updateDiaryEntry.mockResolvedValue({ ...entryFixture, created_by: 'other-user', description: 'Admin update' });
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
       method: 'PATCH',
@@ -435,7 +450,7 @@ describe('PATCH /api/v1/farms/:farmId/diary/:entryId', () => {
       body: JSON.stringify({ description: 'Admin update' }),
     });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
   });
 
   it('IDOR guard on PATCH: entry.farm_id !== farmId → 404', async () => {
@@ -533,20 +548,15 @@ describe('DELETE /api/v1/farms/:farmId/diary/:entryId', () => {
     expect(res.status).toBe(204);
   });
 
-  // SG-1: platform admin DELETE behavior
-  // The DELETE handler uses isPrivileged = membership.role === 'admin' || membership.role === 'owner'
-  // without the !isAdmin guard present in PATCH. assertFarmAccess returns a synthetic membership
-  // with role 'admin' for platform admins, so isPrivileged evaluates to true → 204 (admin can delete).
-  it('platform admin cannot delete another user entry (synthetic membership blocked)', async () => {
-    // Entry created by a different user — admin is not the creator
+  it('platform admin can delete another user entry (governance access)', async () => {
     mockRepo.getDiaryEntryById.mockResolvedValue({ ...entryFixture, created_by: 'other-user' });
+    mockRepo.deleteDiaryEntry.mockResolvedValue(undefined);
 
     const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
       method: 'DELETE',
       headers: makeAuthHeaders('admin-sub', 'admin@litcrop.test'),
     });
 
-    // !isAdmin guard prevents synthetic admin membership from granting write access
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(204);
   });
 });

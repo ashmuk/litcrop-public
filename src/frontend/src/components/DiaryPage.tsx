@@ -22,13 +22,17 @@ import { showToast } from './Toast';
 import DiaryEntryForm from './DiaryEntryForm';
 import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
-import { CATEGORY_META, getLocale } from '../lib/diary';
-import { formatCurrency, groupByDate } from '../lib/diary-utils';
+import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib/diary';
+import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
+import { getCurrentUser } from '../lib/auth';
+import { getLocalFarmRole, getCachedIsAdmin } from '../lib/hooks';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
 const LS_VIEW_KEY = 'litcrop-diary-view';
 const LS_FARM_ID = 'litcrop-farmId';
+const LS_FILTER_BED = 'litcrop-diary-filter-bed';
+const LS_FILTER_CAT = 'litcrop-diary-filter-cat';
 
 
 function formatDateLabel(date: string): string {
@@ -57,13 +61,14 @@ type ViewMode = 'list' | 'calendar';
 interface CardProps {
   entry: DiaryEntryResponse;
   expanded: boolean;
+  canEdit: boolean;
   onExpand: () => void;
   onCollapse: () => void;
   onEdit: () => void;
   onDeleted: () => void;
 }
 
-function DiaryEntryCard({ entry, expanded, onExpand, onCollapse, onEdit, onDeleted }: CardProps) {
+function DiaryEntryCard({ entry, expanded, canEdit, onExpand, onCollapse, onEdit, onDeleted }: CardProps) {
   const [deleting, setDeleting] = useState(false);
   const meta = CATEGORY_META[entry.category] ?? CATEGORY_META.other;
   const categoryLabel = t(`diary.categories.${entry.category}`);
@@ -128,8 +133,11 @@ function DiaryEntryCard({ entry, expanded, onExpand, onCollapse, onEdit, onDelet
             : entry.description}
       </p>
 
-      {/* Meta: time + photo count */}
+      {/* Meta: author + time + photo count */}
       <div class="diary-entry__meta">
+        {entry.created_by_name && (
+          <span>{entry.created_by_name}</span>
+        )}
         {entry.time_spent_minutes != null && (
           <span>⏱ {entry.time_spent_minutes}{t('diary.time_minutes').replace('{{count}}', '').trim() === 'min' ? ' min' : '分'}</span>
         )}
@@ -155,23 +163,25 @@ function DiaryEntryCard({ entry, expanded, onExpand, onCollapse, onEdit, onDelet
               ))}
             </div>
           )}
-          <div class="diary-entry__actions">
-            <button
-              type="button"
-              class="btn btn--secondary btn--sm"
-              onClick={handleEdit}
-            >
-              {t('diary.edit')}
-            </button>
-            <button
-              type="button"
-              class="btn btn--danger btn--sm"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? '…' : t('diary.delete')}
-            </button>
-          </div>
+          {canEdit && (
+            <div class="diary-entry__actions">
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                onClick={handleEdit}
+              >
+                {t('diary.edit')}
+              </button>
+              <button
+                type="button"
+                class="btn btn--danger btn--sm"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? '…' : t('diary.delete')}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -186,6 +196,13 @@ export default function DiaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('list');
+
+  // Auth context for ownership-based access control
+  const currentUser = getCurrentUser();
+  const farmRole = getLocalFarmRole();
+  const isAdmin = getCachedIsAdmin();
+  // Admin/owner can edit all entries; staff can only edit own
+  const canWrite = isAdmin || farmRole === 'admin' || farmRole === 'owner';
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntryResponse | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -193,8 +210,14 @@ export default function DiaryPage() {
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [beds, setBeds] = useState<FarmBedItem[]>([]);
+  const [filterBed, setFilterBed] = useState<string>(() => {
+    try { return localStorage.getItem(LS_FILTER_BED) ?? ''; } catch { return ''; }
+  });
+  const [filterCategory, setFilterCategory] = useState<string>(() => {
+    try { return localStorage.getItem(LS_FILTER_CAT) ?? ''; } catch { return ''; }
+  });
 
-  // Initialise farmId and view from localStorage
+  // Initialise farmId and view from localStorage (synchronous-first)
   useEffect(() => {
     const storedFarmId = localStorage.getItem(LS_FARM_ID);
     setFarmId(storedFarmId);
@@ -203,9 +226,12 @@ export default function DiaryPage() {
     if (storedView === 'list' || storedView === 'calendar') {
       setView(storedView);
     }
+
+    // If no farmId stored, stop loading — show empty state
+    if (!storedFarmId) setLoading(false);
   }, []);
 
-  // Fetch entries when farmId is known
+  // Fetch entries for list view
   async function loadEntries() {
     if (!farmId) return;
     setLoading(true);
@@ -220,26 +246,41 @@ export default function DiaryPage() {
     }
   }
 
+  // Fetch entries for calendar view (bounded to displayed month)
+  async function loadCalendarEntries(showLoader = false) {
+    if (!farmId) return;
+    if (showLoader) setLoading(true);
+    setError(null);
+    const from = toDateString(new Date(calYear, calMonth, 1));
+    const to = toDateString(new Date(calYear, calMonth + 1, 0));
+    try {
+      const res = await getDiaryEntries(farmId, { from, to });
+      setEntries(res.data);
+    } catch {
+      setError(t('diary.error_loading'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (farmId && view === 'list') {
       loadEntries();
     }
   }, [farmId, view]);
 
-  // Fetch beds when calendar view is active (guard: skip if already loaded)
+  // Fetch beds for filter bar and calendar CropTimeline
   useEffect(() => {
-    if (view === 'calendar' && farmId && beds.length === 0) {
-      getBeds(farmId).then(setBeds).catch(() => {});
-    }
-  }, [view, farmId]);
+    if (!farmId) return;
+    getBeds(farmId)
+      .then(setBeds)
+      .catch(() => setBeds([]));
+  }, [farmId]);
 
   // Fetch the displayed month's entries when in calendar view
   useEffect(() => {
     if (view === 'calendar' && farmId) {
-      const from = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
-      const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
-      const to = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      getDiaryEntries(farmId, { from, to }).then((res) => setEntries(res.data)).catch(() => {});
+      loadCalendarEntries();
     }
   }, [view, farmId, calYear, calMonth]);
 
@@ -260,6 +301,8 @@ export default function DiaryPage() {
   }
 
   function switchView(next: ViewMode) {
+    setEntries([]);
+    setLoading(true);
     setView(next);
     try { localStorage.setItem(LS_VIEW_KEY, next); } catch {}
   }
@@ -277,7 +320,8 @@ export default function DiaryPage() {
   function handleFormSave() {
     setShowForm(false);
     setEditingEntry(null);
-    loadEntries();
+    if (view === 'calendar') loadCalendarEntries();
+    else loadEntries();
   }
 
   function handleFormCancel() {
@@ -290,9 +334,24 @@ export default function DiaryPage() {
     setExpandedId(null);
   }
 
+  // ── Filter helpers ──────────────────────────────────────────────
+
+  function updateFilter(setter: (v: string) => void, key: string, value: string) {
+    setter(value);
+    try { localStorage.setItem(key, value); } catch {}
+  }
+
   // ── Render states ───────────────────────────────────────────────
 
-  const grouped = useMemo(() => [...groupByDate(entries).entries()], [entries]);
+  const filteredEntries = useMemo(() => {
+    return entries.filter((e) => {
+      if (filterBed && (filterBed === BED_FILTER_NONE ? e.bed_id : e.bed_id !== filterBed)) return false;
+      if (filterCategory && e.category !== filterCategory) return false;
+      return true;
+    });
+  }, [entries, filterBed, filterCategory]);
+
+  const grouped = useMemo(() => [...groupByDate(filteredEntries).entries()], [filteredEntries]);
   const selectedEntries = useMemo(
     () => (selectedDate ? entries.filter((e) => e.date === selectedDate) : []),
     [entries, selectedDate],
@@ -337,6 +396,33 @@ export default function DiaryPage() {
         </div>
       </div>
 
+      {/* Filter bar — list view only */}
+      {view === 'list' && !loading && !error && entries.length > 0 && (
+        <div class="diary-filter-bar">
+          <select
+            class="form-select diary-filter-bar__select"
+            value={filterBed}
+            onChange={(e) => updateFilter(setFilterBed, LS_FILTER_BED, (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">🌿 {t('diary.all_beds')}</option>
+            <option value={BED_FILTER_NONE}>{t('diary.no_bed')}</option>
+            {beds.map((bed) => (
+              <option key={bed.id} value={bed.id}>{bed.name ?? bed.id}</option>
+            ))}
+          </select>
+          <select
+            class="form-select diary-filter-bar__select"
+            value={filterCategory}
+            onChange={(e) => updateFilter(setFilterCategory, LS_FILTER_CAT, (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">{t('diary.all_categories')}</option>
+            {CATEGORY_KEYS.map((key) => (
+              <option key={key} value={key}>{CATEGORY_META[key].icon} {t(`diary.categories.${key}`)}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Content area */}
       {loading && (
         <div class="diary-list">
@@ -354,7 +440,7 @@ export default function DiaryPage() {
             type="button"
             class="btn btn--primary"
             style={{ marginTop: 'var(--space-4)' }}
-            onClick={loadEntries}
+            onClick={() => view === 'calendar' ? loadCalendarEntries() : loadEntries()}
           >
             {t('buttons.retry')}
           </button>
@@ -376,7 +462,13 @@ export default function DiaryPage() {
         </div>
       )}
 
-      {!loading && !error && entries.length > 0 && view === 'list' && (
+      {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length === 0 && (
+        <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
+          <p class="empty-state__title">{t('diary.no_matches')}</p>
+        </div>
+      )}
+
+      {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length > 0 && (
         <div class="diary-list">
           {grouped.map(([date, dayEntries]) => (
             <div key={date} class="diary-group">
@@ -386,6 +478,7 @@ export default function DiaryPage() {
                   key={entry.id}
                   entry={entry}
                   expanded={expandedId === entry.id}
+                  canEdit={canWrite || entry.created_by === currentUser?.sub}
                   onExpand={() => setExpandedId(entry.id)}
                   onCollapse={() => setExpandedId(null)}
                   onEdit={() => handleEdit(entry)}
@@ -424,6 +517,7 @@ export default function DiaryPage() {
                   key={entry.id}
                   entry={entry}
                   expanded={expandedId === entry.id}
+                  canEdit={canWrite || entry.created_by === currentUser?.sub}
                   onExpand={() => setExpandedId(entry.id)}
                   onCollapse={() => setExpandedId(null)}
                   onEdit={() => handleEdit(entry)}

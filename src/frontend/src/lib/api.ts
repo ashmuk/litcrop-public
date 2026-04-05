@@ -571,6 +571,7 @@ export interface DiaryEntryResponse {
   costs: { item: string; amount: number; currency: 'JPY' | 'USD' }[];
   cost_total: number;
   created_by: string;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
 }

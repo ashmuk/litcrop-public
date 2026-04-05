@@ -1514,6 +1514,21 @@
   padding: 0;
 }
 
+/* Diary filter bar */
+.diary-filter-bar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-default);
+}
+
+.diary-filter-bar__select {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-2);
+  min-width: 0; /* allow shrinking on narrow screens */
+}
+
 /* Diary list container */
 .diary-list {
   flex: 1;
@@ -1654,13 +1669,14 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Sit above the 64px tab bar + safe-area inset */
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   z-index: 250;
   background-color: var(--color-surface);
   border-top-left-radius: var(--radius-xl, 16px);
   border-top-right-radius: var(--radius-xl, 16px);
   box-shadow: var(--shadow-lg);
-  max-height: 90vh;
+  max-height: calc(90vh - 64px);
   display: flex;
   flex-direction: column;
   animation: sheet-slide-up var(--transition-fast) ease;

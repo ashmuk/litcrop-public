@@ -17,3 +17,6 @@ export const CATEGORY_META: Record<string, { icon: string; color: string; key: s
 };
 
 export const CATEGORY_KEYS = Object.keys(CATEGORY_META);
+
+/** Sentinel values for bed filter/selection (safe — bed IDs are UUIDs) */
+export const BED_FILTER_NONE = '__none__';
