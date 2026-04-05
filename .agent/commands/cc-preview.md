@@ -13,6 +13,25 @@ Generate a visual project dashboard for the user's review. This command should b
 4. **Memory**: Read MEMORY.md index for project status, backlog overrides, and restart points
 5. **Uncommitted work**: `git status --short` and `git log origin/$(git branch --show-current)..HEAD --oneline`
 6. **PROJECT.yaml**: Read current stage and project character
+7. **Issue sync**: If `gh auth status` succeeds, run `gh issue list --state open --json number,title,labels` and `gh issue list --state closed --limit 10 --json number,title,closedAt` to cross-check against TASKS.md
+
+## Issue Sync Check (before rendering dashboard)
+
+Compare GitHub issue state against TASKS.md:
+- Issues listed as open in TASKS.md but closed on GitHub → flag as stale
+- Issues closed on GitHub but missing from TASKS.md "Recently Closed" → flag as missing
+- Issues with memory overrides (PENDING, BACKLOG) → ensure TASKS.md reflects the override
+
+If **any stale or missing issues are found**:
+1. Show a sync summary before the dashboard:
+   ```
+   ⚠ TASKS.md is stale (last synced: <date>)
+    Newly closed: #NNN, #NNN
+    Missing from closed: #NNN
+    Status overrides: #NNN → BACKLOG
+   ```
+2. Auto-update TASKS.md to reflect current GitHub state
+3. Note the sync in the dashboard footer
 
 ## Dashboard Sections
 
@@ -67,4 +86,6 @@ Questions that need the user's input before proceeding.
 - Respect memory overrides (e.g., backlog items marked PENDING or BACKLOG)
 - Include the user's feedback items if any are pending from the current session
 - Keep the dashboard concise but comprehensive
+- Always sync issues before rendering — never show a dashboard with known stale data
+- If TASKS.md was updated during sync, mention it in the dashboard footer
 - End with: "What would you like to tackle?" to prompt next action
