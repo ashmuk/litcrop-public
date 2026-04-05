@@ -12,8 +12,9 @@ import { Hono } from 'hono';
 import { getAuthContext } from '../middleware/auth';
 import { dynamoRepo } from '../services/dynamodb';
 import { getUsage } from '../services/budget';
-import { ServiceUnavailableError, ValidationError } from '../errors';
+import { ServiceUnavailableError, ValidationError, NotFoundError } from '../errors';
 import { queryActivities } from '../services/activity';
+import { appEvents } from '../services/events';
 
 const router = new Hono();
 
@@ -140,6 +141,59 @@ router.get('/activity', async (c) => {
   } catch (err) {
     console.error('[admin] failed to fetch activity log', err);
     throw new ServiceUnavailableError('Unable to retrieve activity log');
+  }
+});
+
+// ── DELETE /api/v1/admin/users/:userId ────────────────────────────
+// Admin-initiated account deletion (#282). Reuses deleteAccount() cascade.
+
+router.delete('/users/:userId', async (c) => {
+  const result = requireAdmin(c);
+  if (result instanceof Response) return result;
+  const { userId: adminId } = result;
+  const { userEmail } = getAuthContext(c);
+
+  const targetUserId = c.req.param('userId');
+
+  // Cannot delete self via admin endpoint — use DELETE /me instead
+  if (targetUserId === adminId) {
+    throw new ValidationError('Cannot delete your own account via admin endpoint. Use DELETE /me instead.');
+  }
+
+  // Verify target user exists (let DynamoDB errors propagate as 503)
+  let profile;
+  try {
+    profile = await dynamoRepo.getUserProfile(targetUserId);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`User not found: ${targetUserId}`);
+    }
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  if (!profile) {
+    throw new NotFoundError(`User not found: ${targetUserId}`);
+  }
+
+  try {
+    const summary = await dynamoRepo.deleteAccount(targetUserId);
+
+    appEvents.emit('account.deleted', {
+      type: 'account.deleted',
+      timestamp: new Date().toISOString(),
+      actor_id: adminId,
+      actor_email: userEmail,
+      payload: {
+        user_id: targetUserId,
+        display_name: profile.display_name ?? '',
+        email: '',
+        admin_initiated: true,
+      },
+    });
+
+    return c.json({ deleted: true, summary });
+  } catch (err) {
+    console.error('[admin] deleteAccount failed', err);
+    throw new ServiceUnavailableError('Account deletion failed');
   }
 });
 

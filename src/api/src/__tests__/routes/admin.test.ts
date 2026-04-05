@@ -30,6 +30,9 @@ vi.mock('../../services/dynamodb', () => ({
     getFarmMembers: vi.fn(),
     getUserSettings: vi.fn(),
     upsertUserSettings: vi.fn(),
+    getUserProfile: vi.fn(),
+    deleteAccount: vi.fn(),
+    getFarmMembership: vi.fn(),
   },
 }));
 
@@ -276,5 +279,68 @@ describe('GET /api/v1/admin/activity', () => {
 
     const res = await app.request('/api/v1/admin/activity', { headers: adminHeaders() });
     expect(res.status).toBe(503);
+  });
+});
+
+// ── DELETE /api/v1/admin/users/:userId (#282) ──────────────────────
+
+describe('DELETE /api/v1/admin/users/:userId', () => {
+  const TARGET_USER_ID = 'target-user-uuid';
+
+  it('admin can delete a user → 200 with summary', async () => {
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({
+      user_id: TARGET_USER_ID,
+      display_name: 'Target User',
+      preferred_role: 'staff',
+      created_at: '2026-01-01T00:00:00Z',
+    });
+    vi.mocked(dynamoRepo.deleteAccount).mockResolvedValue({
+      farms_deleted: 0,
+      farms_left: 1,
+      farms_transferred: 0,
+      join_requests_deleted: 0,
+      profile_deleted: true,
+      settings_deleted: true,
+    });
+
+    const res = await app.request(`/api/v1/admin/users/${TARGET_USER_ID}`, {
+      method: 'DELETE',
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['deleted']).toBe(true);
+    expect(body['summary']).toBeDefined();
+  });
+
+  it('non-admin gets 403', async () => {
+    const res = await app.request(`/api/v1/admin/users/${TARGET_USER_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('admin cannot delete self → 400', async () => {
+    const res = await app.request(`/api/v1/admin/users/${ADMIN_USER_ID}`, {
+      method: 'DELETE',
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('unauthenticated request → 401', async () => {
+    const res = await app.request('/api/v1/admin/users/some-id', { method: 'DELETE' });
+    expect(res.status).toBe(401);
+  });
+
+  it('delete non-existent user → 404', async () => {
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue(null);
+
+    const res = await app.request('/api/v1/admin/users/nonexistent-id', {
+      method: 'DELETE',
+      headers: adminHeaders(),
+    });
+    expect(res.status).toBe(404);
   });
 });

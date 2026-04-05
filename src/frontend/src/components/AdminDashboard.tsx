@@ -9,7 +9,9 @@ import type { JSX } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { getAdminStats, getAdminUsers, getAdminFarms, getNotificationPrefs, updateNotificationPrefs, getAdminActivities, ApiError } from '../lib/api';
 import type { AdminStatsResponse, AdminUserItem, AdminFarmItem, NotificationPrefsResponse, ActivityItem, ActivityResponse } from '../lib/api';
+import { adminDeleteUser } from '../lib/api';
 import { t } from '../i18n/i18n';
+import { showToast } from './Toast';
 
 type AdminTab = 'system' | 'users' | 'farms' | 'activity' | 'notifications';
 
@@ -257,7 +259,7 @@ export default function AdminDashboard() {
       {/* Tab panels */}
       <div role="tabpanel" id={`panel-${activeTab}`} aria-live="polite" style="padding:var(--space-4)">
         {activeTab === 'system' && stats && <SystemPanel stats={stats} />}
-        {activeTab === 'users' && renderDataPanel(usersLoading, usersError, users, (u) => <UsersPanel users={u} />)}
+        {activeTab === 'users' && renderDataPanel(usersLoading, usersError, users, (u) => <UsersPanel users={u} onReload={fetchUsers} />)}
         {activeTab === 'farms' && renderDataPanel(farmsLoading, farmsError, farms, (f) => <FarmsPanel farms={f} />)}
         {activeTab === 'activity' && (
           <ActivityPanel
@@ -345,7 +347,24 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function UsersPanel({ users }: { users: AdminUserItem[] }) {
+function UsersPanel({ users, onReload }: { users: AdminUserItem[]; onReload: () => void }) {
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(userId: string) {
+    setDeleting(true);
+    try {
+      await adminDeleteUser(userId);
+      showToast(t('admin.user_deleted'), 'success');
+      setConfirmingId(null);
+      onReload();
+    } catch {
+      showToast(t('admin.delete_failed'), 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (users.length === 0) {
     return <div style="color:var(--color-gray-500);text-align:center;padding:var(--space-6)">{t('admin.no_users')}</div>;
   }
@@ -357,8 +376,40 @@ function UsersPanel({ users }: { users: AdminUserItem[] }) {
             <div style="font-weight:var(--font-weight-semibold)">{user.display_name || user.user_id.slice(0, 8) + '...'}</div>
             <div style="font-size:var(--font-size-xs);color:var(--color-gray-400);font-family:monospace">{user.user_id.slice(0, 8)}</div>
           </div>
-          <div style="font-size:var(--font-size-xs);color:var(--color-gray-400)">
-            {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <div style="font-size:var(--font-size-xs);color:var(--color-gray-400)">
+              {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
+            </div>
+            {confirmingId === user.user_id ? (
+              <div style="display:flex;gap:var(--space-1)">
+                <button
+                  class="btn btn--danger btn--sm"
+                  onClick={() => handleDelete(user.user_id)}
+                  disabled={deleting}
+                  style="font-size:var(--font-size-xs)"
+                >
+                  {deleting ? '…' : t('admin.confirm_delete')}
+                </button>
+                <button
+                  class="btn btn--secondary btn--sm"
+                  onClick={() => setConfirmingId(null)}
+                  disabled={deleting}
+                  style="font-size:var(--font-size-xs)"
+                >
+                  {t('buttons.cancel')}
+                </button>
+              </div>
+            ) : (
+              <button
+                class="btn btn--secondary btn--sm"
+                onClick={() => setConfirmingId(user.user_id)}
+                disabled={deleting}
+                style="font-size:var(--font-size-xs);color:var(--color-error)"
+                title={t('admin.delete_user')}
+              >
+                {t('admin.delete_user')}
+              </button>
+            )}
           </div>
         </div>
       ))}

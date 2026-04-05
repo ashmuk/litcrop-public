@@ -424,6 +424,11 @@ export async function getAdminUsers(): Promise<{ users: AdminUserItem[]; total: 
   return request<{ users: AdminUserItem[]; total: number }>('GET', '/admin/users');
 }
 
+/** DELETE /api/v1/admin/users/:userId — admin only (#282) */
+export async function adminDeleteUser(userId: string): Promise<{ deleted: boolean; summary: Record<string, unknown> }> {
+  return request<{ deleted: boolean; summary: Record<string, unknown> }>('DELETE', `/admin/users/${userId}`);
+}
+
 /** GET /api/v1/admin/farms — admin only */
 export async function getAdminFarms(): Promise<{ farms: AdminFarmItem[]; total: number }> {
   return request<{ farms: AdminFarmItem[]; total: number }>('GET', '/admin/farms');
