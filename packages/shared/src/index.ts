@@ -157,6 +157,10 @@ export {
   DiaryListResponseSchema,
 } from './schemas/index';
 
+// Crop library — shared types and data (#274)
+export type { CropEntry } from './crop-library';
+export { CROPS as CROP_LIBRARY, CROP_MAP as CROP_LIBRARY_MAP, getCropMeta } from './crop-library';
+
 // Timezone utilities
 export { getTimezoneOffsetFromCoords } from './timezone';
 

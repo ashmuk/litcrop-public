@@ -1,29 +1,24 @@
 /**
- * Crop library — lookup helpers, search, and emoji display.
- * Data is bundled from crops.json at build time (zero runtime fetch).
+ * Crop library — locale-aware display helpers for the frontend.
+ * Data sourced from @litcrop/shared (static bundle).
  */
 
-import cropsData from '../data/crops.json';
+import { CROP_LIBRARY, CROP_LIBRARY_MAP } from '@litcrop/shared';
+import type { CropEntry } from '@litcrop/shared';
 import { getLocale } from '../i18n/i18n';
 
-export interface CropEntry {
-  id: string;
-  emoji: string;
-  category: string;
-  en: string;
-  ja: string;
-}
+export type { CropEntry };
 
-/** Full crop list, imported once at bundle time. */
-export const CROPS: CropEntry[] = cropsData;
+/** Full crop list, re-exported from shared. */
+export const CROPS: CropEntry[] = CROP_LIBRARY;
 
 /** O(1) lookup by crop id. */
-export const CROP_MAP: Map<string, CropEntry> = new Map(cropsData.map((c) => [c.id, c]));
+export const CROP_MAP: Map<string, CropEntry> = CROP_LIBRARY_MAP;
 
 /** Quick-select chip crops (top 7, excluding "other"). */
 export const QUICK_SELECT_CROPS = ['rice', 'tomato', 'cucumber', 'eggplant', 'lettuce', 'daikon', 'cabbage'] as const;
 
-/** Get emoji for a crop_type string. Returns '🌱' for unknown/free-text crops. */
+/** Get emoji for a crop_type string. Returns seedling for unknown/free-text crops. */
 export function getCropEmoji(cropType: string | undefined | null): string {
   if (!cropType) return '';
   return CROP_MAP.get(cropType)?.emoji ?? '🌱';
@@ -36,7 +31,7 @@ export function getCropName(cropType: string | undefined | null): string {
   return CROP_MAP.get(cropType)?.[locale] ?? cropType;
 }
 
-/** Combined display string: "🍅 Tomato". Returns '' if no crop. */
+/** Combined display string: "emoji Name". Returns '' if no crop. */
 export function getCropDisplay(cropType: string | undefined | null): string {
   if (!cropType) return '';
   const entry = CROP_MAP.get(cropType);
@@ -48,7 +43,6 @@ export function getCropDisplay(cropType: string | undefined | null): string {
 /**
  * Search crops by substring match on EN or JA name.
  * Empty query returns the first `limit` crops.
- * Romaji-to-kana transliteration is out of scope for v1.
  */
 export function searchCrops(query: string, limit = 10): CropEntry[] {
   if (!query) return CROPS.slice(0, limit);
@@ -60,7 +54,7 @@ export function searchCrops(query: string, limit = 10): CropEntry[] {
 export function normalizeCropType(input: string): string {
   if (!input) return '';
   const lower = input.toLowerCase();
-  if (CROP_MAP.has(lower)) return lower; // O(1) fast path for known ids
+  if (CROP_MAP.has(lower)) return lower;
   const match = CROPS.find(
     (c) => c.en.toLowerCase() === lower || c.ja === input,
   );

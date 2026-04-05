@@ -14,6 +14,7 @@ import adminRouter from './routes/admin';
 import meRouter from './routes/me';
 import { farmDevicesRouter, deviceRouter } from './routes/devices';
 import diaryRouter from './routes/diary';
+import cropLibraryRouter from './routes/crop-library';
 
 // ── Notification subscriptions (must import to initialize) ──────
 // This side-effect import registers all event subscribers at module load time.
@@ -187,5 +188,10 @@ app.route('/api/v1/devices', deviceRouter);
 // POST|GET /api/v1/farms/:farmId/diary
 // GET|PATCH|DELETE /api/v1/farms/:farmId/diary/:entryId
 app.route('/api/v1/farms', diaryRouter);
+
+// Crop library (public reference data, no auth required, Beta-8 #274)
+// GET /api/v1/crop-library
+// GET /api/v1/crop-library/:cropId
+app.route('/api/v1/crop-library', cropLibraryRouter);
 
 export default app;
