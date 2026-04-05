@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitCrop — Diary: Reserved vs Actual (#287)</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ── Page Layout ───────────────────────────────────────── */
+  body { background: var(--color-background); margin: 0; padding: 0; }
+  .phone-frame {
+    max-width: 420px; margin: 24px auto; background: var(--color-surface);
+    border-radius: 24px; border: 2px solid var(--color-gray-300);
+    overflow: hidden; min-height: 800px; position: relative;
+  }
+  .desktop-frame {
+    max-width: 960px; margin: 24px auto; background: var(--color-surface);
+    border-radius: 12px; border: 1px solid var(--color-gray-300);
+    overflow: hidden; min-height: 700px;
+  }
+
+  /* ── Section Labels ────────────────────────────────────── */
+  .mockup-section {
+    background: var(--color-gray-900); color: #fff; padding: 12px 24px;
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+    letter-spacing: 0.05em; text-transform: uppercase; text-align: center;
+    margin-bottom: 24px;
+  }
+  .mockup-note {
+    background: #fffbe6; border-left: 4px solid #f59e0b; padding: 12px 16px;
+    font-size: var(--font-size-sm); color: var(--color-gray-700);
+    margin: 16px 24px; border-radius: 4px; line-height: 1.5;
+  }
+
+  /* ── Diary Header ──────────────────────────────────────── */
+  .diary-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-gray-100);
+    position: sticky; top: 0; background: var(--color-surface); z-index: 10;
+  }
+  .diary-header__title { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); }
+  .diary-header__actions { display: flex; gap: var(--space-2); align-items: center; }
+  .toggle-group { display: flex; border: 1px solid var(--color-gray-300); border-radius: var(--radius-md); overflow: hidden; }
+  .toggle-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--color-surface); border: none; cursor: pointer; font-size: 18px; }
+  .toggle-btn--active { background: var(--color-primary-light); color: var(--color-primary); }
+  .add-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); color: #fff; border: none; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* ── View Toggle: Reserved / Actual Tabs ────────────────── */
+  .pane-tabs {
+    display: flex; border-bottom: 2px solid var(--color-gray-100);
+    padding: 0 var(--space-4);
+  }
+  .pane-tab {
+    flex: 1; padding: var(--space-3) var(--space-2); text-align: center;
+    font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-500); cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.15s ease;
+  }
+  .pane-tab--reserved.active { color: #d97706; border-bottom-color: #f59e0b; }
+  .pane-tab--actual.active { color: #16a34a; border-bottom-color: #22c55e; }
+  .pane-tab--all.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+  .pane-tab__count {
+    display: inline-block; background: var(--color-gray-100); border-radius: 10px;
+    padding: 1px 7px; font-size: var(--font-size-xs); margin-left: 4px;
+    font-weight: var(--font-weight-medium);
+  }
+  .pane-tab--reserved.active .pane-tab__count { background: rgba(245,158,11,0.15); color: #d97706; }
+  .pane-tab--actual.active .pane-tab__count { background: rgba(34,197,94,0.15); color: #16a34a; }
+
+  /* ── Filter Bar ────────────────────────────────────────── */
+  .filter-bar {
+    display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-gray-100);
+  }
+  .filter-select {
+    flex: 1; padding: var(--space-1) var(--space-2); border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md); font-size: var(--font-size-xs); background: var(--color-surface);
+    color: var(--color-gray-700);
+  }
+
+  /* ── Entry Card ────────────────────────────────────────── */
+  .entry-card {
+    margin: var(--space-2) var(--space-4); padding: var(--space-3);
+    border: 1px solid var(--color-gray-100); border-radius: var(--radius-lg);
+    background: var(--color-surface); cursor: pointer;
+  }
+  .entry-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .entry-card__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1); }
+  .entry-card__category { display: flex; align-items: center; gap: var(--space-1); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+  .entry-card__badge {
+    font-size: 10px; padding: 1px 6px; border-radius: 8px;
+    font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .entry-card__badge--reserved { background: rgba(245,158,11,0.12); color: #d97706; }
+  .entry-card__badge--actual { background: rgba(34,197,94,0.12); color: #16a34a; }
+  .entry-card__desc { font-size: var(--font-size-sm); color: var(--color-gray-700); margin-bottom: var(--space-1); line-height: 1.4; }
+  .entry-card__meta { font-size: var(--font-size-xs); color: var(--color-gray-500); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .entry-card__cost { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-gray-700); }
+  .date-label {
+    padding: var(--space-1) var(--space-4); font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold); color: var(--color-gray-500);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  /* ── Entry Card: Reserved styling ──────────────────────── */
+  .entry-card--reserved { border-left: 3px solid #f59e0b; }
+  .entry-card--actual { border-left: 3px solid #22c55e; }
+
+  /* ── Bottom Sheet (Form) ───────────────────────────────── */
+  .sheet-backdrop {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.4); z-index: 20;
+  }
+  .bottom-sheet {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 30;
+    background: var(--color-surface); border-radius: 16px 16px 0 0;
+    max-height: 85%; overflow-y: auto; padding-bottom: 80px;
+  }
+  .sheet-handle { width: 36px; height: 4px; background: var(--color-gray-300); border-radius: 2px; margin: 8px auto; }
+  .sheet-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-gray-100);
+  }
+  .sheet-header__title { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); }
+  .sheet-header__close { color: var(--color-gray-500); background: none; border: none; font-size: var(--font-size-sm); cursor: pointer; }
+  .sheet-form { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+
+  .form-group { display: flex; flex-direction: column; gap: var(--space-1); }
+  .form-label { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-gray-700); }
+  .form-input, .form-select {
+    width: 100%; padding: 10px var(--space-3); border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md); font-size: var(--font-size-base); background: var(--color-surface);
+    box-sizing: border-box;
+  }
+
+  /* ── Radio Toggle (Reserved / Actual) ──────────────────── */
+  .radio-toggle {
+    display: flex; gap: var(--space-2); padding: var(--space-1) 0;
+  }
+  .radio-toggle__option {
+    flex: 1; display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-2) var(--space-3); border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s;
+    background: var(--color-surface);
+  }
+  .radio-toggle__option:hover { border-color: var(--color-gray-300); }
+  .radio-toggle__option--reserved.checked {
+    border-color: #f59e0b; background: rgba(245,158,11,0.06);
+  }
+  .radio-toggle__option--actual.checked {
+    border-color: #22c55e; background: rgba(34,197,94,0.06);
+  }
+  .radio-dot {
+    width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--color-gray-300);
+    position: relative; flex-shrink: 0;
+  }
+  .radio-toggle__option.checked .radio-dot { border-color: currentColor; }
+  .radio-toggle__option.checked .radio-dot::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 8px; height: 8px;
+    border-radius: 50%; background: currentColor;
+  }
+  .radio-toggle__option--reserved.checked .radio-dot { color: #f59e0b; }
+  .radio-toggle__option--actual.checked .radio-dot { color: #22c55e; }
+  .radio-toggle__label { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); }
+  .radio-toggle__hint { font-size: var(--font-size-xs); color: var(--color-gray-500); }
+
+  .sheet-footer {
+    position: absolute; bottom: 0; left: 0; right: 0; padding: var(--space-3) var(--space-4);
+    background: var(--color-surface); border-top: 1px solid var(--color-gray-100);
+  }
+  .btn-save {
+    width: 100%; padding: var(--space-3); background: var(--color-primary); color: #fff;
+    border: none; border-radius: var(--radius-md); font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold); cursor: pointer; height: 48px;
+  }
+
+  /* ── Gantt Chart ───────────────────────────────────────── */
+  .gantt { padding: var(--space-3) var(--space-4); }
+  .gantt__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-2); }
+  .gantt__row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 4px; height: 24px; }
+  .gantt__label { font-size: var(--font-size-xs); width: 70px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-gray-700); }
+  .gantt__track { flex: 1; height: 14px; background: var(--color-gray-100); border-radius: 7px; position: relative; overflow: hidden; }
+  .gantt__bar { position: absolute; height: 100%; border-radius: 7px; }
+  .gantt__bar--reserved {
+    background: repeating-linear-gradient(90deg, rgba(245,158,11,0.3) 0px, rgba(245,158,11,0.3) 5px, transparent 5px, transparent 9px);
+    border: 1px dashed #f59e0b;
+  }
+  .gantt__bar--actual { background: rgba(34,197,94,0.5); border: 1px solid #22c55e; height: 70%; top: 15%; }
+  .gantt__today { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; z-index: 1; }
+  .gantt__legend { display: flex; gap: var(--space-3); margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--color-gray-500); }
+  .gantt__legend-item { display: flex; align-items: center; gap: 4px; }
+  .gantt__swatch { display: inline-block; width: 16px; height: 8px; border-radius: 3px; }
+  .gantt__swatch--reserved { background: repeating-linear-gradient(90deg, rgba(245,158,11,0.4) 0 3px, transparent 3px 5px); border: 1px dashed #f59e0b; }
+  .gantt__swatch--actual { background: rgba(34,197,94,0.5); border: 1px solid #22c55e; }
+  .gantt__swatch--today { background: #ef4444; width: 2px; }
+
+  /* Month markers on Gantt track */
+  .gantt__months {
+    display: flex; align-items: flex-end; margin-bottom: 2px;
+    padding-left: 78px; /* align with track (label width 70px + gap 8px) */
+  }
+  .gantt__month-label {
+    font-size: 9px; font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-500); text-transform: uppercase; letter-spacing: 0.04em;
+    text-align: left; box-sizing: border-box; padding-left: 2px;
+    border-left: 1px solid var(--color-gray-300);
+  }
+  .gantt__month-ticks {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--color-gray-200); z-index: 0;
+  }
+
+  /* ── Smart Default Hint ────────────────────────────────── */
+  .smart-hint {
+    background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);
+    border-radius: var(--radius-md); padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-xs); color: #16a34a; display: flex; align-items: center; gap: var(--space-2);
+  }
+  .smart-hint__icon { font-size: 16px; }
+
+  /* ── Desktop Split Pane ────────────────────────────────── */
+  .split-pane { display: flex; gap: 0; min-height: 500px; }
+  .split-pane__left, .split-pane__right { flex: 1; overflow-y: auto; }
+  .split-pane__left { border-right: 1px solid var(--color-gray-100); }
+  .split-pane__header {
+    padding: var(--space-2) var(--space-3); font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold); text-transform: uppercase;
+    letter-spacing: 0.05em; border-bottom: 1px solid var(--color-gray-100);
+  }
+  .split-pane__header--reserved { color: #d97706; background: rgba(245,158,11,0.06); }
+  .split-pane__header--actual { color: #16a34a; background: rgba(34,197,94,0.06); }
+
+  /* ── Dark Mode ─────────────────────────────────────────── */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-surface: #1e1e1e; --color-background: #121212;
+      --color-gray-100: #2a2a2a; --color-gray-300: #444; --color-gray-500: #888;
+      --color-gray-700: #ccc; --color-gray-900: #f0f0f0;
+      --color-primary-light: rgba(27,107,58,0.2);
+    }
+    .phone-frame, .desktop-frame { border-color: #333; background: #1e1e1e; }
+    .entry-card { background: #252525; border-color: #333; }
+    .entry-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+    .bottom-sheet { background: #252525; }
+    .form-input, .form-select { background: #1e1e1e; border-color: #444; color: #ddd; }
+    .radio-toggle__option { border-color: #444; background: #1e1e1e; }
+    .gantt__track { background: #2a2a2a; }
+    .filter-select { background: #1e1e1e; border-color: #444; color: #ccc; }
+    .pane-tab { color: #888; }
+    .smart-hint { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOCKUP 1: Mobile — Entry Form with Radio Toggle
+     ════════════════════════════════════════════════════════════ -->
+
+<div class="mockup-section">Mockup 1: Mobile — Entry Form with Reserved/Actual Toggle</div>
+
+<div class="mockup-note">
+  <strong>Key UX:</strong> The radio toggle auto-selects based on date.
+  Future date → "Reserved (plan)" is pre-selected.
+  Today/past → "Actual (logged)" is pre-selected.
+  User can override either way.
+</div>
+
+<div class="phone-frame">
+  <!-- Header -->
+  <div class="diary-header">
+    <div class="diary-header__title">Diary</div>
+    <div class="diary-header__actions">
+      <div class="toggle-group">
+        <button class="toggle-btn toggle-btn--active">📋</button>
+        <button class="toggle-btn">📅</button>
+      </div>
+      <button class="add-btn">+</button>
+    </div>
+  </div>
+
+  <!-- Backdrop -->
+  <div class="sheet-backdrop"></div>
+
+  <!-- Bottom Sheet: Entry Form -->
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-header__title">New Entry</div>
+      <button class="sheet-header__close">Cancel</button>
+    </div>
+    <div class="sheet-form">
+
+      <!-- Date -->
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" value="2026-05-15" style="color: var(--color-gray-700)">
+      </div>
+
+      <!-- ★ RADIO TOGGLE: Reserved / Actual -->
+      <div class="form-group">
+        <label class="form-label">Entry Type</label>
+        <div class="radio-toggle">
+          <div class="radio-toggle__option radio-toggle__option--reserved checked">
+            <div class="radio-dot"></div>
+            <div>
+              <div class="radio-toggle__label">Reserved (plan)</div>
+              <div class="radio-toggle__hint">Set milestone dates</div>
+            </div>
+          </div>
+          <div class="radio-toggle__option radio-toggle__option--actual">
+            <div class="radio-dot"></div>
+            <div>
+              <div class="radio-toggle__label">Actual (logged)</div>
+              <div class="radio-toggle__hint">Record activity</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-select">
+          <option selected>🌱 Planting</option>
+          <option>🌾 Harvesting</option>
+          <option>💧 Watering</option>
+          <option>🧪 Fertilizing</option>
+        </select>
+      </div>
+
+      <!-- Bed -->
+      <div class="form-group">
+        <label class="form-label">Bed</label>
+        <select class="form-select">
+          <option selected>A1 — Tomato</option>
+          <option>A2 — Cucumber</option>
+          <option>B1 — Lettuce</option>
+        </select>
+      </div>
+
+      <!-- Smart Default Hint -->
+      <div class="smart-hint">
+        <span class="smart-hint__icon">💡</span>
+        <span>Tomato: harvest estimated <strong>Aug 8</strong> (85 days from planting)</span>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" style="min-height:60px;resize:vertical" placeholder="Planning to plant tomato seedlings in bed A1"></textarea>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="sheet-footer">
+      <button class="btn-save">Save Reserved Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOCKUP 2: Mobile — Entry Form (Actual / Past Date)
+     ════════════════════════════════════════════════════════════ -->
+
+<div class="mockup-section">Mockup 2: Mobile — Entry Form (Actual Mode — Past Date)</div>
+
+<div class="mockup-note">
+  When the user selects today or a past date, the radio auto-switches to "Actual (logged)".
+  The save button text also changes accordingly.
+</div>
+
+<div class="phone-frame">
+  <div class="diary-header">
+    <div class="diary-header__title">Diary</div>
+    <div class="diary-header__actions">
+      <div class="toggle-group">
+        <button class="toggle-btn toggle-btn--active">📋</button>
+        <button class="toggle-btn">📅</button>
+      </div>
+      <button class="add-btn">+</button>
+    </div>
+  </div>
+  <div class="sheet-backdrop"></div>
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-header__title">New Entry</div>
+      <button class="sheet-header__close">Cancel</button>
+    </div>
+    <div class="sheet-form">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" value="2026-04-05" style="color: var(--color-gray-700)">
+      </div>
+
+      <!-- Radio: Actual selected (past date) -->
+      <div class="form-group">
+        <label class="form-label">Entry Type</label>
+        <div class="radio-toggle">
+          <div class="radio-toggle__option radio-toggle__option--reserved">
+            <div class="radio-dot"></div>
+            <div>
+              <div class="radio-toggle__label">Reserved (plan)</div>
+              <div class="radio-toggle__hint">Set milestone dates</div>
+            </div>
+          </div>
+          <div class="radio-toggle__option radio-toggle__option--actual checked">
+            <div class="radio-dot"></div>
+            <div>
+              <div class="radio-toggle__label">Actual (logged)</div>
+              <div class="radio-toggle__hint">Record activity</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-select">
+          <option selected>🌱 Planting</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Bed</label>
+        <select class="form-select"><option selected>A1 — Tomato</option></select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" style="min-height:60px;resize:vertical">Planted tomato seedlings in bed A1. Soil temp 18°C.</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Time Spent (minutes)</label>
+        <input type="number" class="form-input" value="45" style="width:120px">
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-save" style="background:#16a34a">Save Activity Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOCKUP 3: Mobile — List View with Reserved/Actual Tabs
+     ════════════════════════════════════════════════════════════ -->
+
+<div class="mockup-section">Mockup 3: Mobile — List View with Entry Type Tabs</div>
+
+<div class="mockup-note">
+  Tabs filter between All / Reserved / Actual entries.
+  Each entry card has a colored left border + badge indicating its type.
+  Bed and category filters still work alongside the tab filter.
+</div>
+
+<div class="phone-frame">
+  <div class="diary-header">
+    <div class="diary-header__title">Diary</div>
+    <div class="diary-header__actions">
+      <div class="toggle-group">
+        <button class="toggle-btn toggle-btn--active">📋</button>
+        <button class="toggle-btn">📅</button>
+      </div>
+      <button class="add-btn">+</button>
+    </div>
+  </div>
+
+  <!-- Entry Type Tabs -->
+  <div class="pane-tabs">
+    <div class="pane-tab pane-tab--all active">All <span class="pane-tab__count">7</span></div>
+    <div class="pane-tab pane-tab--reserved">Reserved <span class="pane-tab__count">3</span></div>
+    <div class="pane-tab pane-tab--actual">Actual <span class="pane-tab__count">4</span></div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <select class="filter-select"><option>All Beds</option></select>
+    <select class="filter-select"><option>All Categories</option></select>
+  </div>
+
+  <!-- Entry List -->
+  <div class="date-label" style="margin-top:var(--space-2)">May 15, 2026 (Thu)</div>
+
+  <div class="entry-card entry-card--reserved">
+    <div class="entry-card__header">
+      <div class="entry-card__category" style="color:#d97706">🌱 Planting</div>
+      <span class="entry-card__badge entry-card__badge--reserved">Reserved</span>
+    </div>
+    <div class="entry-card__desc">Plan: plant tomato seedlings in bed A1</div>
+    <div class="entry-card__meta">
+      <span>📍 A1</span>
+      <span>📅 Harvest est. Aug 8</span>
+    </div>
+  </div>
+
+  <div class="entry-card entry-card--reserved">
+    <div class="entry-card__header">
+      <div class="entry-card__category" style="color:#d97706">🌱 Planting</div>
+      <span class="entry-card__badge entry-card__badge--reserved">Reserved</span>
+    </div>
+    <div class="entry-card__desc">Plan: plant cucumber in bed A2</div>
+    <div class="entry-card__meta"><span>📍 A2</span><span>📅 Harvest est. Jul 24</span></div>
+  </div>
+
+  <div class="date-label">April 5, 2026 (Sun) — Today</div>
+
+  <div class="entry-card entry-card--actual">
+    <div class="entry-card__header">
+      <div class="entry-card__category" style="color:#16a34a">🌱 Planting</div>
+      <span class="entry-card__badge entry-card__badge--actual">Actual</span>
+    </div>
+    <div class="entry-card__desc">Planted tomato seedlings in bed A1. Soil temp 18°C.</div>
+    <div class="entry-card__meta"><span>📍 A1</span><span>⏱ 45 min</span><span>👤 Ash</span></div>
+  </div>
+
+  <div class="entry-card entry-card--actual">
+    <div class="entry-card__header">
+      <div class="entry-card__category" style="color:#3b82f6">💧 Watering</div>
+      <span class="entry-card__badge entry-card__badge--actual">Actual</span>
+    </div>
+    <div class="entry-card__desc">Watered all beds after planting</div>
+    <div class="entry-card__meta"><span>⏱ 20 min</span><span>👤 Ash</span></div>
+  </div>
+
+  <div class="date-label">April 3, 2026 (Fri)</div>
+
+  <div class="entry-card entry-card--actual">
+    <div class="entry-card__header">
+      <div class="entry-card__category" style="color:#a855f7">🧪 Fertilizing</div>
+      <span class="entry-card__badge entry-card__badge--actual">Actual</span>
+    </div>
+    <div class="entry-card__desc">Applied compost to beds A1 and A2</div>
+    <div class="entry-card__meta">
+      <span>📍 A1, A2</span>
+      <span class="entry-card__cost">¥1,200</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOCKUP 4: Mobile — Calendar View with Gantt
+     ════════════════════════════════════════════════════════════ -->
+
+<div class="mockup-section">Mockup 4: Mobile — Calendar View + Dual-Bar Gantt</div>
+
+<div class="mockup-note">
+  Calendar view shows category dots. Below it, the Gantt chart shows
+  reserved (amber dashed) and actual (green solid) bars per bed.
+  This is the existing #276 Gantt with data now fed by both reserved and actual diary entries.
+</div>
+
+<div class="phone-frame">
+  <div class="diary-header">
+    <div class="diary-header__title">Diary</div>
+    <div class="diary-header__actions">
+      <div class="toggle-group">
+        <button class="toggle-btn">📋</button>
+        <button class="toggle-btn toggle-btn--active">📅</button>
+      </div>
+      <button class="add-btn">+</button>
+    </div>
+  </div>
+
+  <!-- Calendar (simplified) -->
+  <div style="padding:var(--space-3) var(--space-4)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3)">
+      <button style="background:none;border:1px solid var(--color-gray-300);border-radius:var(--radius-md);padding:4px 10px;cursor:pointer">◀</button>
+      <span style="font-weight:var(--font-weight-semibold)">April 2026</span>
+      <button style="background:none;border:1px solid var(--color-gray-300);border-radius:var(--radius-md);padding:4px 10px;cursor:pointer">▶</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:var(--font-size-xs)">
+      <div style="color:var(--color-gray-500);padding:4px">Sun</div>
+      <div style="color:var(--color-gray-500);padding:4px">Mon</div>
+      <div style="color:var(--color-gray-500);padding:4px">Tue</div>
+      <div style="color:var(--color-gray-500);padding:4px">Wed</div>
+      <div style="color:var(--color-gray-500);padding:4px">Thu</div>
+      <div style="color:var(--color-gray-500);padding:4px">Fri</div>
+      <div style="color:var(--color-gray-500);padding:4px">Sat</div>
+      <!-- Week 1 -->
+      <div style="opacity:0.3;padding:6px">29</div>
+      <div style="opacity:0.3;padding:6px">30</div>
+      <div style="opacity:0.3;padding:6px">31</div>
+      <div style="padding:6px">1</div>
+      <div style="padding:6px">2</div>
+      <div style="padding:6px">3<div style="display:flex;gap:2px;justify-content:center;margin-top:2px"><span style="width:5px;height:5px;border-radius:50%;background:#a855f7;display:inline-block"></span></div></div>
+      <div style="padding:6px">4</div>
+      <!-- Week 2 -->
+      <div style="padding:6px;border:2px solid var(--color-primary);border-radius:var(--radius-sm)">5<div style="display:flex;gap:2px;justify-content:center;margin-top:2px"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;display:inline-block"></span><span style="width:5px;height:5px;border-radius:50%;background:#3b82f6;display:inline-block"></span></div></div>
+      <div style="padding:6px">6</div><div style="padding:6px">7</div><div style="padding:6px">8</div><div style="padding:6px">9</div><div style="padding:6px">10</div><div style="padding:6px">11</div>
+      <!-- Week 3 -->
+      <div style="padding:6px">12</div><div style="padding:6px">13</div><div style="padding:6px">14</div><div style="padding:6px">15</div><div style="padding:6px">16</div><div style="padding:6px">17</div><div style="padding:6px">18</div>
+    </div>
+  </div>
+
+  <!-- Gantt Chart -->
+  <div class="gantt">
+    <div class="gantt__title">Crop Timeline — Apr–Aug 2026</div>
+    <!-- Month markers -->
+    <div class="gantt__months">
+      <div class="gantt__month-label" style="width:20%">Apr</div>
+      <div class="gantt__month-label" style="width:20%">May</div>
+      <div class="gantt__month-label" style="width:20%">Jun</div>
+      <div class="gantt__month-label" style="width:20%">Jul</div>
+      <div class="gantt__month-label" style="width:20%">Aug</div>
+    </div>
+    <div class="gantt__row">
+      <div class="gantt__label">A1 tomato</div>
+      <div class="gantt__track">
+        <div class="gantt__month-ticks" style="left:20%"></div>
+        <div class="gantt__month-ticks" style="left:40%"></div>
+        <div class="gantt__month-ticks" style="left:60%"></div>
+        <div class="gantt__month-ticks" style="left:80%"></div>
+        <div class="gantt__bar gantt__bar--reserved" style="left:3%;width:87%"></div>
+        <div class="gantt__bar gantt__bar--actual" style="left:3%;width:4%"></div>
+        <div class="gantt__today" style="left:3%"></div>
+      </div>
+    </div>
+    <div class="gantt__row">
+      <div class="gantt__label">A2 cucumber</div>
+      <div class="gantt__track">
+        <div class="gantt__month-ticks" style="left:20%"></div>
+        <div class="gantt__month-ticks" style="left:40%"></div>
+        <div class="gantt__month-ticks" style="left:60%"></div>
+        <div class="gantt__month-ticks" style="left:80%"></div>
+        <div class="gantt__bar gantt__bar--reserved" style="left:30%;width:46%"></div>
+        <div class="gantt__today" style="left:3%"></div>
+      </div>
+    </div>
+    <div class="gantt__row">
+      <div class="gantt__label">B1 lettuce</div>
+      <div class="gantt__track">
+        <div class="gantt__month-ticks" style="left:20%"></div>
+        <div class="gantt__month-ticks" style="left:40%"></div>
+        <div class="gantt__month-ticks" style="left:60%"></div>
+        <div class="gantt__month-ticks" style="left:80%"></div>
+        <div class="gantt__bar gantt__bar--actual" style="left:0%;width:3%"></div>
+        <div class="gantt__bar gantt__bar--reserved" style="left:0%;width:16%"></div>
+        <div class="gantt__today" style="left:3%"></div>
+      </div>
+    </div>
+    <div class="gantt__legend">
+      <span class="gantt__legend-item"><span class="gantt__swatch gantt__swatch--reserved"></span> Reserved (planned)</span>
+      <span class="gantt__legend-item"><span class="gantt__swatch gantt__swatch--actual"></span> Actual (logged)</span>
+      <span class="gantt__legend-item"><span class="gantt__swatch gantt__swatch--today"></span> Today</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOCKUP 5: Desktop — Split-Pane View
+     ════════════════════════════════════════════════════════════ -->
+
+<div class="mockup-section">Mockup 5: Desktop — Month-Aligned Split View (Reserved | Actual)</div>
+
+<div class="mockup-note">
+  <strong>Month-synchronized layout:</strong> Entries are grouped by month vertically,
+  so the user can see what was planned (left) vs what actually happened (right) for the same period.
+  Empty cells show a subtle "No entries" placeholder, keeping alignment consistent.
+  Gantt chart spans the full width below with month markers.
+</div>
+
+<div class="desktop-frame">
+  <div class="diary-header">
+    <div class="diary-header__title">Diary</div>
+    <div class="diary-header__actions">
+      <div class="toggle-group">
+        <button class="toggle-btn toggle-btn--active">📋</button>
+        <button class="toggle-btn">📅</button>
+      </div>
+      <button class="add-btn">+</button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <select class="filter-select"><option>All Beds</option></select>
+    <select class="filter-select"><option>All Categories</option></select>
+  </div>
+
+  <!-- Column headers -->
+  <div style="display:grid;grid-template-columns:80px 1fr 1fr;border-bottom:2px solid var(--color-gray-100)">
+    <div style="padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);color:var(--color-gray-500);text-transform:uppercase">Month</div>
+    <div class="split-pane__header split-pane__header--reserved" style="border-bottom:none">Reserved (Planned)</div>
+    <div class="split-pane__header split-pane__header--actual" style="border-bottom:none;border-left:1px solid var(--color-gray-100)">Actual (Logged)</div>
+  </div>
+
+  <!-- ── April 2026 Row ──────────────────────── -->
+  <div style="display:grid;grid-template-columns:80px 1fr 1fr;border-bottom:1px solid var(--color-gray-100);min-height:100px">
+    <!-- Month label -->
+    <div style="padding:var(--space-3) var(--space-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--color-gray-700);border-right:1px solid var(--color-gray-100);background:var(--color-gray-100)">
+      <div>Apr</div>
+      <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-regular);color:var(--color-gray-500)">2026</div>
+    </div>
+    <!-- Reserved: April -->
+    <div style="padding:var(--space-2)">
+      <div style="color:var(--color-gray-300);font-size:var(--font-size-xs);padding:var(--space-3);text-align:center;font-style:italic">No reserved entries</div>
+    </div>
+    <!-- Actual: April -->
+    <div style="padding:var(--space-2);border-left:1px solid var(--color-gray-100)">
+      <div class="entry-card entry-card--actual" style="margin:0 0 var(--space-2)">
+        <div class="entry-card__header">
+          <div class="entry-card__category" style="color:#16a34a">🌱 Planting</div>
+          <div class="entry-card__cost">¥500</div>
+        </div>
+        <div class="entry-card__desc">Planted tomato seedlings in A1. Soil temp 18°C.</div>
+        <div class="entry-card__meta"><span>Apr 5</span><span>📍 A1</span><span>⏱ 45 min</span></div>
+      </div>
+      <div class="entry-card entry-card--actual" style="margin:0 0 var(--space-2)">
+        <div class="entry-card__header">
+          <div class="entry-card__category" style="color:#3b82f6">💧 Watering</div>
+        </div>
+        <div class="entry-card__desc">Watered all beds after planting</div>
+        <div class="entry-card__meta"><span>Apr 5</span><span>⏱ 20 min</span></div>
+      </div>
+      <div class="entry-card entry-card--actual" style="margin:0">
+        <div class="entry-card__header">
+          <div class="entry-card__category" style="color:#a855f7">🧪 Fertilizing</div>
+          <div class="entry-card__cost">¥1,200</div>
+        </div>
+        <div class="entry-card__desc">Applied compost to A1 and A2</div>
+        <div class="entry-card__meta"><span>Apr 3</span><span>📍 A1, A2</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── May 2026 Row ────────────────────────── -->
+  <div style="display:grid;grid-template-columns:80px 1fr 1fr;border-bottom:1px solid var(--color-gray-100);min-height:100px">
+    <div style="padding:var(--space-3) var(--space-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--color-gray-700);border-right:1px solid var(--color-gray-100);background:var(--color-gray-100)">
+      <div>May</div>
+      <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-regular);color:var(--color-gray-500)">2026</div>
+    </div>
+    <!-- Reserved: May -->
+    <div style="padding:var(--space-2)">
+      <div class="entry-card entry-card--reserved" style="margin:0 0 var(--space-2)">
+        <div class="entry-card__header">
+          <div class="entry-card__category" style="color:#d97706">🌱 Planting</div>
+        </div>
+        <div class="entry-card__desc">Plan: plant tomato in A1</div>
+        <div class="entry-card__meta"><span>May 15</span><span>📍 A1</span><span>📅 Harvest: Aug 8</span></div>
+      </div>
+      <div class="entry-card entry-card--reserved" style="margin:0">
+        <div class="entry-card__header">
+          <div class="entry-card__category" style="color:#d97706">🌱 Planting</div>
+        </div>
+        <div class="entry-card__desc">Plan: plant cucumber in A2</div>
+        <div class="entry-card__meta"><span>May 15</span><span>📍 A2</span><span>📅 Harvest: Jul 24</span></div>
+      </div>
+    </div>
+    <!-- Actual: May -->
+    <div style="padding:var(--space-2);border-left:1px solid var(--color-gray-100)">
+      <div style="color:var(--color-gray-300);font-size:var(--font-size-xs);padding:var(--space-3);text-align:center;font-style:italic">No activity yet</div>
+    </div>
+  </div>
+
+  <!-- ── June 2026 Row ───────────────────────── -->
+  <div style="display:grid;grid-template-columns:80px 1fr 1fr;border-bottom:1px solid var(--color-gray-100);min-height:80px">
+    <div style="padding:var(--space-3) var(--space-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--color-gray-700);border-right:1px solid var(--color-gray-100);background:var(--color-gray-100)">
+      <div>Jun</div>
+      <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-regular);color:var(--color-gray-500)">2026</div>
+    </div>
+    <!-- Reserved: June -->
+    <div style="padding:var(--space-2)">
+      <div class="entry-card entry-card--reserved" style="margin:0">
+        <div class="entry-card__header">
+          <div class="entry-card__category" style="color:#d97706">🌾 Harvesting</div>
+        </div>
+        <div class="entry-card__desc">Plan: first lettuce harvest from B1</div>
+        <div class="entry-card__meta"><span>Jun 1</span><span>📍 B1</span></div>
+      </div>
+    </div>
+    <!-- Actual: June -->
+    <div style="padding:var(--space-2);border-left:1px solid var(--color-gray-100)">
+      <div style="color:var(--color-gray-300);font-size:var(--font-size-xs);padding:var(--space-3);text-align:center;font-style:italic">No activity yet</div>
+    </div>
+  </div>
+
+  <!-- Full-width Gantt below split pane -->
+  <div class="gantt" style="border-top:1px solid var(--color-gray-100)">
+    <div class="gantt__title">Crop Timeline — Apr–Aug 2026</div>
+    <div class="gantt__months">
+      <div class="gantt__month-label" style="width:20%">Apr</div>
+      <div class="gantt__month-label" style="width:20%">May</div>
+      <div class="gantt__month-label" style="width:20%">Jun</div>
+      <div class="gantt__month-label" style="width:20%">Jul</div>
+      <div class="gantt__month-label" style="width:20%">Aug</div>
+    </div>
+    <div class="gantt__row">
+      <div class="gantt__label">A1 tomato</div>
+      <div class="gantt__track">
+        <div class="gantt__month-ticks" style="left:20%"></div>
+        <div class="gantt__month-ticks" style="left:40%"></div>
+        <div class="gantt__month-ticks" style="left:60%"></div>
+        <div class="gantt__month-ticks" style="left:80%"></div>
+        <div class="gantt__bar gantt__bar--reserved" style="left:3%;width:87%"></div>
+        <div class="gantt__bar gantt__bar--actual" style="left:3%;width:4%"></div>
+        <div class="gantt__today" style="left:3%"></div>
+      </div>
+    </div>
+    <div class="gantt__row">
+      <div class="gantt__label">A2 cucumber</div>
+      <div class="gantt__track">
+        <div class="gantt__month-ticks" style="left:20%"></div>
+        <div class="gantt__month-ticks" style="left:40%"></div>
+        <div class="gantt__month-ticks" style="left:60%"></div>
+        <div class="gantt__month-ticks" style="left:80%"></div>
+        <div class="gantt__bar gantt__bar--reserved" style="left:30%;width:46%"></div>
+        <div class="gantt__today" style="left:3%"></div>
+      </div>
+    </div>
+    <div class="gantt__row">
+      <div class="gantt__label">B1 lettuce</div>
+      <div class="gantt__track">
+        <div class="gantt__month-ticks" style="left:20%"></div>
+        <div class="gantt__month-ticks" style="left:40%"></div>
+        <div class="gantt__month-ticks" style="left:60%"></div>
+        <div class="gantt__month-ticks" style="left:80%"></div>
+        <div class="gantt__bar gantt__bar--actual" style="left:0%;width:3%"></div>
+        <div class="gantt__bar gantt__bar--reserved" style="left:0%;width:16%"></div>
+        <div class="gantt__today" style="left:3%"></div>
+      </div>
+    </div>
+    <div class="gantt__legend">
+      <span class="gantt__legend-item"><span class="gantt__swatch gantt__swatch--reserved"></span> Reserved (planned)</span>
+      <span class="gantt__legend-item"><span class="gantt__swatch gantt__swatch--actual"></span> Actual (logged)</span>
+      <span class="gantt__legend-item"><span class="gantt__swatch gantt__swatch--today"></span> Today</span>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;padding:24px;color:var(--color-gray-500);font-size:var(--font-size-xs)">
+  LitCrop — Diary Reserved/Actual Mockups (#287) — Generated 2026-04-05
+</div>
+
+</body>
+</html>

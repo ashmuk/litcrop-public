@@ -640,6 +640,7 @@ describe('Diary contracts (Beta-7)', () => {
       farm_id: 'farm-uuid',
       date: '2026-04-03',
       category: 'planting',
+      entry_type: 'actual',
       description: 'Planted tomatoes',
       time_spent_minutes: 45,
       bed_id: 'bed-uuid',
@@ -648,6 +649,7 @@ describe('Diary contracts (Beta-7)', () => {
       costs: [{ item: 'Seeds', amount: 500, currency: 'JPY' }],
       cost_total: 500,
       created_by: 'user-uuid',
+      created_by_name: 'Ash',
       created_at: '2026-04-03T09:00:00Z',
       updated_at: '2026-04-03T09:00:00Z',
     };

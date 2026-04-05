@@ -477,6 +477,8 @@ export const DiaryCategorySchema = z.enum([
   'weeding', 'pest_control', 'maintenance', 'purchase', 'other',
 ]);
 
+export const DiaryEntryTypeSchema = z.enum(['reserved', 'actual']);
+
 export const CostItemSchema = z.object({
   item: z.string().min(1).max(100).trim(),
   amount: z.number().min(0).max(99_999_999),
@@ -493,6 +495,7 @@ export const CreateDiaryEntrySchema = z.object({
       return y >= 2020 && y <= 2100;
     }, { message: 'Date year must be between 2020 and 2100' }),
   category: DiaryCategorySchema,
+  entry_type: DiaryEntryTypeSchema.optional().default('actual'),
   description: z.string().min(1).max(1000).trim(),
   time_spent_minutes: z.number().int().min(1).max(1440).nullable().optional(),
   bed_id: z.string().uuid().nullable().optional(),
@@ -526,6 +529,7 @@ export const DiaryEntryResponseSchema = z.object({
   farm_id: z.string(),
   date: z.string(),
   category: DiaryCategorySchema,
+  entry_type: DiaryEntryTypeSchema,
   description: z.string(),
   time_spent_minutes: z.number().nullable(),
   bed_id: z.string().nullable(),
@@ -534,6 +538,7 @@ export const DiaryEntryResponseSchema = z.object({
   costs: z.array(CostItemSchema),
   cost_total: z.number(),
   created_by: z.string(),
+  created_by_name: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });

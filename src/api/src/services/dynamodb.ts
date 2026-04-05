@@ -11,7 +11,7 @@ import {
   DeleteCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit, Device, DeviceStatus, StorageStatus, DeviceCapabilities, DiaryEntry, DiaryCategory, CostItem } from '@litcrop/shared';
+import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, Theme, TempUnit, Device, DeviceStatus, StorageStatus, DeviceCapabilities, DiaryEntry, DiaryEntryType, DiaryCategory, CostItem } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES, DEMO_FARM_ID } from '@litcrop/shared';
 import { NotFoundError } from '../errors';
 
@@ -1657,6 +1657,7 @@ export class DynamoRepository {
       farm_id: item['farm_id'] as string,
       date: item['date'] as string,
       category: item['category'] as DiaryCategory,
+      entry_type: (item['entry_type'] as DiaryEntryType) ?? 'actual',
       description: item['description'] as string,
       time_spent_minutes: (item['time_spent_minutes'] as number) ?? null,
       bed_id: (item['bed_id'] as string) ?? null,
@@ -1674,6 +1675,7 @@ export class DynamoRepository {
     data: {
       date: string;
       category: DiaryCategory;
+      entry_type: DiaryEntryType;
       description: string;
       time_spent_minutes: number | null;
       bed_id: string | null;
@@ -1692,6 +1694,7 @@ export class DynamoRepository {
       farm_id: farmId,
       date: data.date,
       category: data.category,
+      entry_type: data.entry_type,
       description: data.description,
       time_spent_minutes: data.time_spent_minutes,
       bed_id: data.bed_id,
@@ -1783,6 +1786,7 @@ export class DynamoRepository {
     date: string,
     updates: Partial<{
       category: DiaryCategory;
+      entry_type: DiaryEntryType;
       description: string;
       time_spent_minutes: number | null;
       bed_id: string | null;

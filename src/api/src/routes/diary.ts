@@ -89,6 +89,7 @@ async function buildEntryResponse(
     farm_id: entry.farm_id,
     date: entry.date,
     category: entry.category,
+    entry_type: entry.entry_type,
     description: entry.description,
     time_spent_minutes: entry.time_spent_minutes,
     bed_id: entry.bed_id,
@@ -145,8 +146,10 @@ async function syncBedDatesFromDiary(
   category: string,
   bedId: string | null,
   date: string | null,
+  entryType: string,
 ): Promise<void> {
   if (!bedId) return;
+  if (entryType === 'reserved') return; // reserved entries don't set bed dates (#287)
   if (category !== 'planting' && category !== 'harvesting') return;
 
   try {
@@ -251,7 +254,7 @@ diaryRouter.post('/:farmId/diary', async (c) => {
   });
 
   // Bridge: sync bed planted_at / expected_harvest from diary (#273)
-  await syncBedDatesFromDiary(entry.category, entry.bed_id, entry.date);
+  await syncBedDatesFromDiary(entry.category, entry.bed_id, entry.date, entry.entry_type);
 
   const response = await buildEntryResponse(entry);
   return c.json(response, 201);
@@ -387,7 +390,7 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
   });
 
   // Bridge: sync bed dates from updated entry (#273)
-  await syncBedDatesFromDiary(updated.category, updated.bed_id, updated.date);
+  await syncBedDatesFromDiary(updated.category, updated.bed_id, updated.date, updated.entry_type);
 
   const response = await buildEntryResponse(updated);
   return c.json(response);
@@ -423,7 +426,7 @@ diaryRouter.delete('/:farmId/diary/:entryId', async (c) => {
   });
 
   // Bridge: clear bed date when bridged diary entry is deleted (#273)
-  await syncBedDatesFromDiary(entry.category, entry.bed_id, null);
+  await syncBedDatesFromDiary(entry.category, entry.bed_id, null, entry.entry_type);
 
   return new Response(null, { status: 204 });
 });

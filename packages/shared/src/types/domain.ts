@@ -199,6 +199,9 @@ export type DiaryCategory =
   | 'planting' | 'watering' | 'fertilizing' | 'harvesting'
   | 'weeding' | 'pest_control' | 'maintenance' | 'purchase' | 'other';
 
+/** Diary entry type — reserved (planned) or actual (logged) */
+export type DiaryEntryType = 'reserved' | 'actual';
+
 /** Cost item embedded in a diary entry */
 export interface CostItem {
   item: string;
@@ -212,6 +215,7 @@ export interface DiaryEntry {
   farm_id: string;
   date: string;           // YYYY-MM-DD (farm local date)
   category: DiaryCategory;
+  entry_type: DiaryEntryType; // reserved (plan) or actual (log) — default 'actual'
   description: string;
   time_spent_minutes: number | null;
   bed_id: string | null;

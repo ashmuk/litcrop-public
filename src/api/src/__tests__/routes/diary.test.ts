@@ -76,6 +76,7 @@ const entryFixture = {
   farm_id: FARM_ID,
   date: '2026-04-03',
   category: 'planting' as const,
+  entry_type: 'actual' as const,
   description: 'Planted tomato seedlings',
   time_spent_minutes: 45,
   bed_id: BED_ID,
@@ -779,5 +780,84 @@ describe('M3 smart defaults (#275)', () => {
     const updateArg = mockRepo.updateBed.mock.calls[0][4] as Record<string, unknown>;
     expect(updateArg['planted_at']).toBe('2026-04-01');
     expect(updateArg['expected_harvest']).toBeUndefined();
+  });
+});
+
+// ── #287 Reserved/Actual Entry Type Tests ───────────────────────────
+
+describe('entry_type reserved/actual (#287)', () => {
+  beforeEach(() => {
+    mockRepo.updateBed.mockResolvedValue(undefined);
+    mockRepo.getUserProfile.mockResolvedValue(null);
+  });
+
+  it('POST with entry_type=reserved returns reserved in response', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, entry_type: 'reserved' as const });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-05-15',
+        category: 'planting',
+        entry_type: 'reserved',
+        description: 'Plan: plant tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['entry_type']).toBe('reserved');
+  });
+
+  it('POST without entry_type defaults to actual', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue(entryFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-05',
+        category: 'planting',
+        description: 'Planted tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['entry_type']).toBe('actual');
+  });
+
+  it('reserved planting entry does NOT trigger bed date sync', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, entry_type: 'reserved' as const });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-05-15',
+        category: 'planting',
+        entry_type: 'reserved',
+        description: 'Plan: plant tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(mockRepo.updateBed).not.toHaveBeenCalled();
+  });
+
+  it('actual planting entry DOES trigger bed date sync', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue(entryFixture);
+
+    await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-05',
+        category: 'planting',
+        description: 'Planted tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(mockRepo.updateBed).toHaveBeenCalled();
   });
 });
