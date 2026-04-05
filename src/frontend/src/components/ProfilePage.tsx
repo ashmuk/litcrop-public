@@ -1072,6 +1072,11 @@ export default function ProfilePage() {
         </div>
 
         <DeleteAccountSection farms={farms} />
+
+        {/* Version footer */}
+        <p style={{ textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 'var(--font-size-xs)', padding: 'var(--space-6) 0 var(--space-4)' }}>
+          LitCrop {__APP_VERSION__}
+        </p>
       </section>
     </div>
   );
