@@ -49,6 +49,7 @@ export interface AccountDeletedPayload {
   user_id: string;
   display_name: string;
   email: string;
+  admin_initiated?: boolean;
 }
 
 // ── Wave 3 payload types (activity logging only) ────────────────

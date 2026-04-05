@@ -295,9 +295,9 @@ describe('DELETE /api/v1/admin/users/:userId', () => {
       created_at: '2026-01-01T00:00:00Z',
     });
     vi.mocked(dynamoRepo.deleteAccount).mockResolvedValue({
-      farms_deleted: 0,
-      farms_left: 1,
-      farms_transferred: 0,
+      farms_deleted: [],
+      farms_left: ['farm-1'],
+      farms_transferred: [],
       join_requests_deleted: 0,
       profile_deleted: true,
       settings_deleted: true,
