@@ -95,7 +95,7 @@ export function computeBarPosition(
   const barStart = planted < monthStart ? monthStart : planted;
   const barEnd = harvest > monthEnd ? monthEnd : harvest;
 
-  if (barStart >= barEnd) return null;
+  if (barStart > barEnd) return null;
 
   const totalMs = monthEnd.getTime() - monthStart.getTime();
   if (totalMs <= 0) return null;
@@ -104,6 +104,40 @@ export function computeBarPosition(
   const width = ((barEnd.getTime() - barStart.getTime()) / totalMs) * 100;
 
   return { left: Math.max(0, left), width: Math.max(0.5, width) };
+}
+
+// ── Actual dates map (#276) ────────────────────────────────────────
+
+/**
+ * Extract actual planting/harvesting dates from diary entries, grouped by bed_id.
+ * For each bed, returns the latest planting and latest harvesting diary entry dates.
+ * Used by CropTimeline to render "actual" bars alongside "reserved" bars.
+ */
+export function buildActualDatesMap(
+  entries: DiaryEntryResponse[],
+): Map<string, { planted?: string; harvested?: string }> {
+  const map = new Map<string, { planted?: string; harvested?: string }>();
+
+  for (const entry of entries) {
+    if (!entry.bed_id) continue;
+    if (entry.category !== 'planting' && entry.category !== 'harvesting') continue;
+
+    const existing = map.get(entry.bed_id) ?? {};
+
+    if (entry.category === 'planting') {
+      if (!existing.planted || entry.date > existing.planted) {
+        existing.planted = entry.date;
+      }
+    } else {
+      if (!existing.harvested || entry.date > existing.harvested) {
+        existing.harvested = entry.date;
+      }
+    }
+
+    map.set(entry.bed_id, existing);
+  }
+
+  return map;
 }
 
 // ── Formatting helpers ─────────────────────────────────────────────

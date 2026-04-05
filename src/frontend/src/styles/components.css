@@ -1951,6 +1951,7 @@
 
 .crop-timeline {
   margin-top: var(--space-4);
+  padding: 0 var(--space-4);
 }
 
 .crop-timeline__title {
@@ -1984,6 +1985,11 @@
   color: var(--color-text);
 }
 
+.crop-timeline__label-crop {
+  color: var(--color-text-secondary, #6b7280);
+  margin-left: 2px;
+}
+
 .crop-timeline__track {
   flex: 1;
   height: 12px;
@@ -2008,11 +2014,80 @@
   opacity: 0.8;
 }
 
+.crop-timeline__bar--reserved {
+  --_amber: 245, 158, 11;
+  background: repeating-linear-gradient(90deg, rgba(var(--_amber), 0.35) 0px, rgba(var(--_amber), 0.35) 5px, transparent 5px, transparent 9px);
+  border: 1px dashed rgb(var(--_amber));
+  cursor: default;
+  z-index: 0;
+}
+
+.crop-timeline__bar--actual {
+  --_green: 34, 197, 94;
+  background: rgba(var(--_green), 0.6);
+  border: 1px solid rgb(var(--_green));
+  z-index: 1;
+  height: 80%;
+  top: 10%;
+}
+
+.crop-timeline__bar--actual:hover {
+  background: rgba(var(--_green), 0.8);
+}
+
+.crop-timeline__bar--overlay {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  z-index: 3;
+  background: transparent;
+}
+
 .crop-timeline__today {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 2px;
   background: var(--color-danger, #ef4444);
-  z-index: 1;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.crop-timeline__legend {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.crop-timeline__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.crop-timeline__swatch {
+  display: inline-block;
+  width: 16px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.crop-timeline__swatch--reserved {
+  --_amber: 245, 158, 11;
+  background: repeating-linear-gradient(90deg, rgba(var(--_amber), 0.4) 0px, rgba(var(--_amber), 0.4) 3px, transparent 3px, transparent 5px);
+  border: 1px dashed rgb(var(--_amber));
+}
+
+.crop-timeline__swatch--actual {
+  --_green: 34, 197, 94;
+  background: rgba(var(--_green), 0.6);
+  border: 1px solid rgb(var(--_green));
+}
+
+.crop-timeline__swatch--today {
+  background: var(--color-danger, #ef4444);
+  width: 2px;
+  height: 8px;
 }

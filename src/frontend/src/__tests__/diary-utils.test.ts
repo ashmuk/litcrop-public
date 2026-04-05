@@ -10,6 +10,7 @@ import {
   computeBarPosition,
   formatCurrency,
   groupByDate,
+  buildActualDatesMap,
 } from '../lib/diary-utils';
 import type { DiaryEntryResponse } from '../lib/api';
 
@@ -195,9 +196,11 @@ describe('computeBarPosition', () => {
     expect(pos!.width).toBeCloseTo(100, 0);
   });
 
-  it('planted === harvest — returns null (zero-width rejected)', () => {
+  it('planted === harvest (same day) — returns min-width bar', () => {
     const d = new Date(2026, 3, 15);
-    expect(computeBarPosition(d, d, monthStart, monthEnd)).toBeNull();
+    const pos = computeBarPosition(d, d, monthStart, monthEnd);
+    expect(pos).not.toBeNull();
+    expect(pos!.width).toBe(0.5); // minimum width floor
   });
 
   it('bar partially overlaps (starts before month, ends during month) — left = 0, width > 0', () => {
@@ -255,5 +258,86 @@ describe('groupByDate', () => {
   it('empty array — empty map', () => {
     const map = groupByDate([]);
     expect(map.size).toBe(0);
+  });
+});
+
+// ── buildActualDatesMap (#276) ────────────────────────────────────
+
+describe('buildActualDatesMap', () => {
+  const makeEntry = (overrides: Partial<DiaryEntryResponse>): DiaryEntryResponse => ({
+    id: 'e1',
+    farm_id: 'f1',
+    date: '2026-04-10',
+    category: 'planting',
+    description: 'test',
+    time_spent_minutes: null,
+    bed_id: 'bed-1',
+    bed_name: 'A1',
+    photo_ids: [],
+    costs: [],
+    cost_total: 0,
+    created_by: 'u1',
+    created_by_name: null,
+    created_at: '2026-04-10T00:00:00Z',
+    updated_at: '2026-04-10T00:00:00Z',
+    ...overrides,
+  });
+
+  it('extracts planting date for bed', () => {
+    const map = buildActualDatesMap([makeEntry({ bed_id: 'bed-1', category: 'planting', date: '2026-04-10' })]);
+    expect(map.get('bed-1')).toEqual({ planted: '2026-04-10' });
+  });
+
+  it('extracts harvesting date for bed', () => {
+    const map = buildActualDatesMap([makeEntry({ bed_id: 'bed-1', category: 'harvesting', date: '2026-07-15' })]);
+    expect(map.get('bed-1')).toEqual({ harvested: '2026-07-15' });
+  });
+
+  it('extracts both planting and harvesting for same bed', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', category: 'planting', date: '2026-04-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'harvesting', date: '2026-07-01' }),
+    ]);
+    expect(map.get('bed-1')).toEqual({ planted: '2026-04-01', harvested: '2026-07-01' });
+  });
+
+  it('uses latest date when multiple planting entries exist', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', category: 'planting', date: '2026-03-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'planting', date: '2026-04-15' }),
+    ]);
+    expect(map.get('bed-1')?.planted).toBe('2026-04-15');
+  });
+
+  it('uses latest date when multiple harvesting entries exist', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', category: 'harvesting', date: '2026-06-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'harvesting', date: '2026-07-20' }),
+    ]);
+    expect(map.get('bed-1')?.harvested).toBe('2026-07-20');
+  });
+
+  it('ignores entries without bed_id', () => {
+    const map = buildActualDatesMap([makeEntry({ bed_id: null })]);
+    expect(map.size).toBe(0);
+  });
+
+  it('ignores non-planting/harvesting categories', () => {
+    const map = buildActualDatesMap([makeEntry({ category: 'watering' })]);
+    expect(map.size).toBe(0);
+  });
+
+  it('handles multiple beds independently', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', category: 'planting', date: '2026-04-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-2', category: 'planting', date: '2026-04-05' }),
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get('bed-1')?.planted).toBe('2026-04-01');
+    expect(map.get('bed-2')?.planted).toBe('2026-04-05');
+  });
+
+  it('returns empty map for empty entries', () => {
+    expect(buildActualDatesMap([]).size).toBe(0);
   });
 });

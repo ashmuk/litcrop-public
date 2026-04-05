@@ -96,7 +96,13 @@
     "no_crop_impact": "天候による作物への影響は想定されていません。",
     "farm_location": "農園の位置",
     "needs_coordinates": "天気予報には座標が必要です",
-    "add_coordinates_hint": "プロフィールページで農園の正確な位置を追加��る���、天気データが表示されます。"
+    "add_coordinates_hint": "プロフィールページで農園の正確な位置を追加すると、天気データが表示されます。"
+  },
+  "timeline": {
+    "reserved": "予定",
+    "actual": "実績",
+    "in_progress": "進行中",
+    "today": "今日"
   },
   "settings": {
     "theme": "テーマ",

@@ -506,7 +506,7 @@ export default function DiaryPage() {
             onPrevMonth={handlePrevMonth}
             onNextMonth={handleNextMonth}
           />
-          <CropTimeline beds={beds} year={calYear} month={calMonth} />
+          <CropTimeline beds={beds} entries={entries} year={calYear} month={calMonth} />
           {selectedDate && (
             <div class="diary-list">
               <h3 class="diary-date-group__header" style={{ padding: '0 var(--space-4) var(--space-2)', fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-500)' }}>

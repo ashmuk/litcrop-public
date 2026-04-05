@@ -98,6 +98,12 @@
     "needs_coordinates": "Weather needs coordinates",
     "add_coordinates_hint": "Add your farm's precise location on the Profile page to see weather data."
   },
+  "timeline": {
+    "reserved": "Reserved (planned)",
+    "actual": "Actual",
+    "in_progress": "in progress",
+    "today": "Today"
+  },
   "settings": {
     "theme": "Theme",
     "locale": "Language",

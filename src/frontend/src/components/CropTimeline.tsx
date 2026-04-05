@@ -1,14 +1,14 @@
 /**
- * CropTimeline — Beta-7: Farm Diary (T3.3)
+ * CropTimeline — Dual-bar Gantt chart (#276)
  *
- * Horizontal bars showing planted_at → expected_harvest per bed,
- * positioned relative to the visible month.
+ * Shows reserved (planned) and actual (diary-logged) bars per bed.
+ * Reserved = amber dashed (from bed.planted_at / expected_harvest)
+ * Actual   = green solid (from planting/harvesting diary entries)
  */
 
 import { t } from '../i18n/i18n';
-import { computeBarPosition } from '../lib/diary-utils';
-
-// ── Types ─────────────────────────────────────────────────────────
+import { computeBarPosition, buildActualDatesMap, toDateString } from '../lib/diary-utils';
+import type { DiaryEntryResponse } from '../lib/api';
 
 interface BedTimelineItem {
   id: string;
@@ -20,61 +20,75 @@ interface BedTimelineItem {
 
 interface Props {
   beds: BedTimelineItem[];
+  entries?: DiaryEntryResponse[];
   year: number;
   month: number; // 0-based
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
-
-/** Parse a YYYY-MM-DD string into a Date (local midnight). */
 function parseDate(s: string): Date {
   return new Date(s + 'T00:00:00');
 }
 
-// ── Component ─────────────────────────────────────────────────────
+export default function CropTimeline({ beds, entries = [], year, month }: Props) {
+  const actualMap = buildActualDatesMap(entries);
 
-export default function CropTimeline({ beds, year, month }: Props) {
-  // Only beds with both planted_at and expected_harvest
-  const eligible = beds.filter((b) => b.planted_at && b.expected_harvest);
+  // Show beds that have reserved dates OR actual dates
+  const eligible = beds.filter((b) => {
+    const hasReserved = b.planted_at && b.expected_harvest;
+    const hasActual = actualMap.has(b.id);
+    return hasReserved || hasActual;
+  });
+
   if (eligible.length === 0) {
-    if (beds.length === 0) return null; // no beds at all — nothing to show
+    if (beds.length === 0) return null;
     return (
-      <div class="crop-timeline" style={{ padding: '0 var(--space-4)' }}>
+      <div class="crop-timeline">
         <div class="crop-timeline__title">{t('diary.crop_timeline')}</div>
-        <p class="crop-timeline__empty">
-          {t('diary.crop_timeline_empty')}
-        </p>
+        <p class="crop-timeline__empty">{t('diary.crop_timeline_empty')}</p>
       </div>
     );
   }
 
-  // Month boundaries
   const monthStart = new Date(year, month, 1, 0, 0, 0);
-  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59); // last day of month
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
 
-  // Today marker position within the month
   const now = new Date();
   const todayPct =
     now >= monthStart && now <= monthEnd
       ? ((now.getTime() - monthStart.getTime()) / (monthEnd.getTime() - monthStart.getTime())) * 100
       : null;
 
-  // Rows with bar positions
   const rows = eligible
     .map((bed) => {
-      const planted = parseDate(bed.planted_at!);
-      const harvest = parseDate(bed.expected_harvest!);
-      const pos = computeBarPosition(planted, harvest, monthStart, monthEnd);
-      return { bed, pos };
+      // Reserved bar position
+      let reservedPos: { left: number; width: number } | null = null;
+      if (bed.planted_at && bed.expected_harvest) {
+        reservedPos = computeBarPosition(
+          parseDate(bed.planted_at), parseDate(bed.expected_harvest), monthStart, monthEnd,
+        );
+      }
+
+      // Actual bar position
+      let actualPos: { left: number; width: number } | null = null;
+      const actual = actualMap.get(bed.id);
+      if (actual?.planted) {
+        const actualEnd = actual.harvested ?? toDateString(new Date());
+        actualPos = computeBarPosition(
+          parseDate(actual.planted), parseDate(actualEnd), monthStart, monthEnd,
+        );
+      }
+
+      if (!reservedPos && !actualPos) return null;
+      return { bed, reservedPos, actualPos, actual };
     })
-    .filter((r) => r.pos !== null);
+    .filter((r): r is NonNullable<typeof r> => r !== null);
 
   if (rows.length === 0) return null;
 
   return (
-    <div class="crop-timeline" style={{ padding: '0 var(--space-4)' }}>
+    <div class="crop-timeline">
       <div class="crop-timeline__title">{t('diary.crop_timeline')}</div>
-      {rows.map(({ bed, pos }) => (
+      {rows.map(({ bed, reservedPos, actualPos, actual }) => (
         <div key={bed.id} class="crop-timeline__row">
           <div
             class="crop-timeline__label"
@@ -82,31 +96,58 @@ export default function CropTimeline({ beds, year, month }: Props) {
           >
             {bed.name}
             {bed.crop_type && (
-              <span style={{ color: 'var(--color-text-secondary, #6b7280)', marginLeft: '2px' }}>
-                {` ${bed.crop_type}`}
-              </span>
+              <span class="crop-timeline__label-crop">{` ${bed.crop_type}`}</span>
             )}
           </div>
           <div class="crop-timeline__track">
-            {/* Today marker */}
             {todayPct !== null && (
+              <div class="crop-timeline__today" style={{ left: `${todayPct}%` }} aria-hidden="true" />
+            )}
+            {/* Reserved bar (amber dashed, background layer) */}
+            {reservedPos && (
               <div
-                class="crop-timeline__today"
-                style={{ left: `${todayPct}%` }}
-                aria-hidden="true"
+                class="crop-timeline__bar crop-timeline__bar--reserved"
+                style={{ left: `${reservedPos.left}%`, width: `${reservedPos.width}%` }}
+                title={`${t('timeline.reserved')}: ${bed.planted_at} → ${bed.expected_harvest}`}
               />
             )}
-            {/* Bed bar */}
-            <a
-              href={`/beds/view?id=${bed.id}`}
-              class="crop-timeline__bar"
-              style={{ left: `${pos!.left}%`, width: `${pos!.width}%` }}
-              aria-label={`${bed.name} timeline`}
-              title={`${bed.planted_at} → ${bed.expected_harvest}`}
-            />
+            {/* Actual bar (green solid, foreground layer) */}
+            {actualPos && (
+              <a
+                href={`/beds/view?id=${bed.id}`}
+                class="crop-timeline__bar crop-timeline__bar--actual"
+                style={{ left: `${actualPos.left}%`, width: `${actualPos.width}%` }}
+                title={`${t('timeline.actual')}: ${actual?.planted} → ${actual?.harvested ?? t('timeline.in_progress')}`}
+                aria-label={`${bed.name} timeline`}
+              />
+            )}
+            {/* Fallback: if only reserved bar, still make it clickable */}
+            {reservedPos && !actualPos && (
+              <a
+                href={`/beds/view?id=${bed.id}`}
+                class="crop-timeline__bar--overlay"
+                style={{ left: `${reservedPos.left}%`, width: `${reservedPos.width}%` }}
+                aria-label={`${bed.name} timeline`}
+              />
+            )}
           </div>
         </div>
       ))}
+      {/* Legend */}
+      <div class="crop-timeline__legend">
+        <span class="crop-timeline__legend-item">
+          <span class="crop-timeline__swatch crop-timeline__swatch--reserved" />
+          {t('timeline.reserved')}
+        </span>
+        <span class="crop-timeline__legend-item">
+          <span class="crop-timeline__swatch crop-timeline__swatch--actual" />
+          {t('timeline.actual')}
+        </span>
+        <span class="crop-timeline__legend-item">
+          <span class="crop-timeline__swatch crop-timeline__swatch--today" />
+          {t('timeline.today')}
+        </span>
+      </div>
     </div>
   );
 }
