@@ -96,7 +96,7 @@ beforeEach(() => {
   mockRepo.getDiaryEntryById.mockResolvedValue(entryFixture);
   mockRepo.updateDiaryEntry.mockResolvedValue(entryFixture);
   mockRepo.deleteDiaryEntry.mockResolvedValue(undefined);
-  mockRepo.getUserProfile.mockResolvedValue({ display_name: 'Test Farmer', preferred_role: 'staff', created_at: '2026-04-01T00:00:00Z' });
+  mockRepo.getUserProfile.mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Test Farmer', preferred_role: 'staff', created_at: '2026-04-01T00:00:00Z' });
 });
 
 // ── POST /api/v1/farms/:farmId/diary ─────────────────────────────
