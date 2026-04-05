@@ -677,7 +677,7 @@ describe('diary→bed bridge (#273)', () => {
     );
   });
 
-  it('DELETE planting entry with bed_id → clears bed planted_at', async () => {
+  it('DELETE planting entry with bed_id → clears both planted_at and expected_harvest', async () => {
     mockRepo.getDiaryEntryById.mockResolvedValue(entryFixture);
     mockRepo.deleteDiaryEntry.mockResolvedValue(undefined);
 
@@ -688,7 +688,7 @@ describe('diary→bed bridge (#273)', () => {
     expect(res.status).toBe(204);
     expect(mockRepo.updateBed).toHaveBeenCalledWith(
       FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
-      { planted_at: null },
+      { planted_at: null, expected_harvest: null },
     );
   });
 

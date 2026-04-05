@@ -20,7 +20,7 @@ import {
   CreateDiaryEntrySchema,
   UpdateDiaryEntrySchema,
   DiaryListQuerySchema,
-  getCropMeta,
+  estimateHarvestDate,
 } from '@litcrop/shared';
 import type { DiaryEntry } from '@litcrop/shared';
 
@@ -153,15 +153,13 @@ async function syncBedDatesFromDiary(
     const bed = await dynamoRepo.getBedById(bedId);
 
     if (category === 'planting') {
-      // Set planted_at, and auto-suggest expected_harvest from crop library (#275 M3)
       const updates: Record<string, unknown> = { planted_at: date };
       if (date && bed.crop_type) {
-        const meta = getCropMeta(bed.crop_type);
-        if (meta?.days_to_harvest_max) {
-          const planted = new Date(date);
-          planted.setDate(planted.getDate() + meta.days_to_harvest_max);
-          updates['expected_harvest'] = planted.toISOString().split('T')[0];
-        }
+        const harvest = estimateHarvestDate(date, bed.crop_type);
+        if (harvest) updates['expected_harvest'] = harvest;
+      } else if (date === null) {
+        // Clearing planted_at also clears auto-calculated expected_harvest
+        updates['expected_harvest'] = null;
       }
       await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, updates);
     } else {

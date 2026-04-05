@@ -28,3 +28,16 @@ export const CROP_MAP: Map<string, CropEntry> = new Map(CROPS.map((c) => [c.id, 
 export function getCropMeta(cropId: string): CropEntry | undefined {
   return CROP_MAP.get(cropId);
 }
+
+/**
+ * Estimate harvest date from a planting date and crop type.
+ * Uses days_to_harvest_max from the crop library.
+ * Returns null if the crop is unknown or has no harvest data.
+ */
+export function estimateHarvestDate(plantedDate: string, cropId: string): string | null {
+  const meta = getCropMeta(cropId);
+  if (!meta?.days_to_harvest_max) return null;
+  const d = new Date(plantedDate);
+  d.setDate(d.getDate() + meta.days_to_harvest_max);
+  return d.toISOString().split('T')[0];
+}
