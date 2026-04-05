@@ -12,6 +12,7 @@ import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
 import { getCropDisplay, getCropName } from '../lib/crops';
 import { useLocalFarmId, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { translateCondition, conditionToEmoji, formatRelativeTime } from '../lib/format';
+import { displaySrc, hasImageSrc } from '../lib/image';
 
 // Most critical first
 const STATUS_SEVERITY: Record<BedStatus, number> = {
@@ -184,8 +185,8 @@ export default function FarmOverview({ farmId }: Props) {
                 aria-label={`${bed.name}${bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}, ${t(`status.${bed.latest_status}`)}`}
               >
                 <div class="plot-tile__thumb">
-                  {bed.latest_image?.thumbnail_url ? (
-                    <img src={bed.latest_image.thumbnail_url} alt="" loading="lazy" />
+                  {hasImageSrc(bed.latest_image) ? (
+                    <img src={displaySrc(bed.latest_image)} alt="" loading="lazy" />
                   ) : (
                     <span aria-hidden="true">📷</span>
                   )}

@@ -72,6 +72,7 @@ export interface FarmBedItem extends FarmBed {
     id: string;
     captured_at: string;
     trigger: TriggerType;
+    url: string;
     thumbnail_url: string | null;
   } | null;
 }
@@ -94,6 +95,7 @@ export interface ImageListItem {
   captured_at: string;
   trigger: TriggerType;
   node_id: string;
+  url: string;
   thumbnail_url: string | null;
   size_bytes: number;
   latest_tag: TagValue | null;

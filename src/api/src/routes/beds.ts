@@ -207,13 +207,15 @@ router.get('/:bedId/images', async (c) => {
 
   const data = await Promise.all(
     result.items.map(async (image) => {
-      const [thumbnail_url, latestTag] = await Promise.all([
+      const [thumbnail_url, url, latestTag] = await Promise.all([
         image.thumbnail_key ? getSignedThumbnailUrl(image.thumbnail_key) : Promise.resolve(null),
+        getSignedImageUrl(image.storage_key),
         dynamoRepo.getLatestTagForImage(image.id),
       ]);
       return {
         id: image.id,
         thumbnail_url,
+        url,
         captured_at: image.captured_at,
         trigger: image.trigger,
         node_id: image.node_id,
