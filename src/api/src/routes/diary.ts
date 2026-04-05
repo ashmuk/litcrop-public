@@ -20,6 +20,7 @@ import {
   CreateDiaryEntrySchema,
   UpdateDiaryEntrySchema,
   DiaryListQuerySchema,
+  getCropMeta,
 } from '@litcrop/shared';
 import type { DiaryEntry } from '@litcrop/shared';
 
@@ -150,10 +151,25 @@ async function syncBedDatesFromDiary(
 
   try {
     const bed = await dynamoRepo.getBedById(bedId);
-    const field = category === 'planting' ? 'planted_at' : 'expected_harvest';
-    await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, {
-      [field]: date,
-    });
+
+    if (category === 'planting') {
+      // Set planted_at, and auto-suggest expected_harvest from crop library (#275 M3)
+      const updates: Record<string, unknown> = { planted_at: date };
+      if (date && bed.crop_type) {
+        const meta = getCropMeta(bed.crop_type);
+        if (meta?.days_to_harvest_max) {
+          const planted = new Date(date);
+          planted.setDate(planted.getDate() + meta.days_to_harvest_max);
+          updates['expected_harvest'] = planted.toISOString().split('T')[0];
+        }
+      }
+      await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, updates);
+    } else {
+      // category === 'harvesting' — set expected_harvest directly
+      await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, {
+        expected_harvest: date,
+      });
+    }
   } catch (err) {
     console.warn(`[diary→bed bridge] Failed to sync ${category} date for bed ${bedId}:`, err);
   }

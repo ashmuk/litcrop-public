@@ -9,6 +9,7 @@ import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared
 import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
 import { getCropDisplay } from '../lib/crops';
+import { getCropMeta } from '@litcrop/shared';
 import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '../lib/api';
 import { getLocalFarmRole } from '../lib/hooks';
 import { showToast } from './Toast';
@@ -316,7 +317,19 @@ export default function BedDetail() {
             <label class="form-label">{t('plot.crop_type')}</label>
             <CropAutocomplete
               value={cropForm.crop_type}
-              onChange={(v) => setCropForm({ ...cropForm, crop_type: v })}
+              onChange={(v) => {
+                const next = { ...cropForm, crop_type: v };
+                // M3 smart default: auto-suggest harvest date (#275)
+                if (next.planted_at && !next.expected_harvest) {
+                  const meta = getCropMeta(v);
+                  if (meta?.days_to_harvest_max) {
+                    const d = new Date(next.planted_at);
+                    d.setDate(d.getDate() + meta.days_to_harvest_max);
+                    next.expected_harvest = d.toISOString().split('T')[0];
+                  }
+                }
+                setCropForm(next);
+              }}
             />
           </div>
           <div class="form-group">
@@ -325,7 +338,20 @@ export default function BedDetail() {
           </div>
           <div class="form-group">
             <label class="form-label" for="planted-at">{t('plot.planted')}</label>
-            <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => setCropForm({ ...cropForm, planted_at: (e.target as HTMLInputElement).value })} />
+            <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => {
+              const planted = (e.target as HTMLInputElement).value;
+              const next = { ...cropForm, planted_at: planted };
+              // M3 smart default: auto-suggest harvest when planted_at set (#275)
+              if (planted && next.crop_type && !next.expected_harvest) {
+                const meta = getCropMeta(next.crop_type);
+                if (meta?.days_to_harvest_max) {
+                  const d = new Date(planted);
+                  d.setDate(d.getDate() + meta.days_to_harvest_max);
+                  next.expected_harvest = d.toISOString().split('T')[0];
+                }
+              }
+              setCropForm(next);
+            }} />
           </div>
           <div class="form-group">
             <label class="form-label" for="expected-harvest">{t('plot.harvest')}</label>

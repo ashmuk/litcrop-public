@@ -601,8 +601,11 @@ describe('diary→bed bridge (#273)', () => {
     expect(res.status).toBe(201);
     expect(mockRepo.updateBed).toHaveBeenCalledWith(
       FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
-      { planted_at: '2026-04-10' },
+      expect.objectContaining({ planted_at: '2026-04-10' }),
     );
+    // M3 smart default: also sets expected_harvest from crop library
+    const updateArg = mockRepo.updateBed.mock.calls[0][4] as Record<string, unknown>;
+    expect(updateArg['expected_harvest']).toBeTruthy();
   });
 
   it('POST harvesting entry with bed_id → sets bed expected_harvest', async () => {
@@ -670,7 +673,7 @@ describe('diary→bed bridge (#273)', () => {
     expect(res.status).toBe(200);
     expect(mockRepo.updateBed).toHaveBeenCalledWith(
       FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
-      { planted_at: '2026-04-12' },
+      expect.objectContaining({ planted_at: '2026-04-12' }),
     );
   });
 
@@ -705,5 +708,76 @@ describe('diary→bed bridge (#273)', () => {
     });
     // Diary entry still created successfully despite bed update failure
     expect(res.status).toBe(201);
+  });
+});
+
+// ── #275 Smart Defaults Tests ──────────────────────────────────────
+
+describe('M3 smart defaults (#275)', () => {
+  beforeEach(() => {
+    mockRepo.updateBed.mockResolvedValue(undefined);
+    mockRepo.getUserProfile.mockResolvedValue(null);
+  });
+
+  it('planting entry auto-calculates expected_harvest from crop library', async () => {
+    // bedFixture has crop_type: 'tomato' (days_to_harvest_max: 85)
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, date: '2026-04-01' });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-01',
+        category: 'planting',
+        description: 'Planted tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+
+    const updateArg = mockRepo.updateBed.mock.calls[0][4] as Record<string, unknown>;
+    expect(updateArg['planted_at']).toBe('2026-04-01');
+    // 2026-04-01 + 85 days = 2026-06-25
+    expect(updateArg['expected_harvest']).toBe('2026-06-25');
+  });
+
+  it('does not set expected_harvest when crop_type has no library metadata', async () => {
+    // Bed with unknown crop type
+    mockRepo.getBedById.mockResolvedValue({ ...bedFixture, crop_type: 'rare_herb' });
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, date: '2026-04-01' });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-01',
+        category: 'planting',
+        description: 'Planted rare herb',
+        bed_id: BED_ID,
+      }),
+    });
+
+    const updateArg = mockRepo.updateBed.mock.calls[0][4] as Record<string, unknown>;
+    expect(updateArg['planted_at']).toBe('2026-04-01');
+    expect(updateArg['expected_harvest']).toBeUndefined();
+  });
+
+  it('does not set expected_harvest when bed has no crop_type', async () => {
+    mockRepo.getBedById.mockResolvedValue({ ...bedFixture, crop_type: undefined });
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, date: '2026-04-01' });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-01',
+        category: 'planting',
+        description: 'Planted something',
+        bed_id: BED_ID,
+      }),
+    });
+
+    const updateArg = mockRepo.updateBed.mock.calls[0][4] as Record<string, unknown>;
+    expect(updateArg['planted_at']).toBe('2026-04-01');
+    expect(updateArg['expected_harvest']).toBeUndefined();
   });
 });
