@@ -12,6 +12,8 @@
 - [#274](https://github.com/ashmuk/litcrop/issues/274) **feat(crops): integrate public crop library for species metadata (M2)** `area:api` `area:shared` `type:feature` `size:L`
 - [#275](https://github.com/ashmuk/litcrop/issues/275) **feat(crops): smart defaults — auto-suggest harvest date from crop library (M3)** `area:frontend` `area:api` `type:feature` `size:M` — depends #273, #274
 - [#276](https://github.com/ashmuk/litcrop/issues/276) **feat(diary): reserved vs actual split-pane UX for crop milestones** `area:frontend` `type:feature` `size:L` — depends #273, #274, #275
+- [#285](https://github.com/ashmuk/litcrop/issues/285) **fix(auth): enforce display name during account registration** `area:api` `area:frontend` `type:fix` `size:S` `priority:high`
+- [#286](https://github.com/ashmuk/litcrop/issues/286) **fix(frontend): disable drag on read-only maps — allow zoom only, center on pin** `area:frontend` `type:fix` `size:S` `priority:high`
 - [#282](https://github.com/ashmuk/litcrop/issues/282) **feat(admin): user management controls — delete users and admin actions** `area:api` `area:frontend` `type:feature` `size:M`
 
 ---
