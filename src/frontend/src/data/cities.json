@@ -1,0 +1,198 @@
+[
+  {"id":"jp-sapporo","en":"Sapporo","ja":"札幌市","region":"Hokkaido","country":"JP","lat":43.06,"lng":141.35},
+  {"id":"jp-asahikawa","en":"Asahikawa","ja":"旭川市","region":"Hokkaido","country":"JP","lat":43.77,"lng":142.37},
+  {"id":"jp-hakodate","en":"Hakodate","ja":"函館市","region":"Hokkaido","country":"JP","lat":41.77,"lng":140.73},
+  {"id":"jp-obihiro","en":"Obihiro","ja":"帯広市","region":"Hokkaido","country":"JP","lat":42.92,"lng":143.20},
+  {"id":"jp-kushiro","en":"Kushiro","ja":"釧路市","region":"Hokkaido","country":"JP","lat":42.98,"lng":144.38},
+  {"id":"jp-kitami","en":"Kitami","ja":"北見市","region":"Hokkaido","country":"JP","lat":43.80,"lng":143.90},
+  {"id":"jp-tomakomai","en":"Tomakomai","ja":"苫小牧市","region":"Hokkaido","country":"JP","lat":42.63,"lng":141.60},
+
+  {"id":"jp-aomori","en":"Aomori","ja":"青森市","region":"Aomori","country":"JP","lat":40.82,"lng":140.74},
+  {"id":"jp-hirosaki","en":"Hirosaki","ja":"弘前市","region":"Aomori","country":"JP","lat":40.60,"lng":140.47},
+  {"id":"jp-hachinohe","en":"Hachinohe","ja":"八戸市","region":"Aomori","country":"JP","lat":40.51,"lng":141.49},
+
+  {"id":"jp-morioka","en":"Morioka","ja":"盛岡市","region":"Iwate","country":"JP","lat":39.70,"lng":141.15},
+  {"id":"jp-ichinoseki","en":"Ichinoseki","ja":"一関市","region":"Iwate","country":"JP","lat":38.93,"lng":141.13},
+
+  {"id":"jp-sendai","en":"Sendai","ja":"仙台市","region":"Miyagi","country":"JP","lat":38.27,"lng":140.87},
+  {"id":"jp-ishinomaki","en":"Ishinomaki","ja":"石巻市","region":"Miyagi","country":"JP","lat":38.43,"lng":141.30},
+
+  {"id":"jp-akita","en":"Akita","ja":"秋田市","region":"Akita","country":"JP","lat":39.72,"lng":140.10},
+  {"id":"jp-yokote","en":"Yokote","ja":"横手市","region":"Akita","country":"JP","lat":39.31,"lng":140.55},
+
+  {"id":"jp-yamagata","en":"Yamagata","ja":"山形市","region":"Yamagata","country":"JP","lat":38.25,"lng":140.33},
+  {"id":"jp-tsuruoka","en":"Tsuruoka","ja":"鶴岡市","region":"Yamagata","country":"JP","lat":38.73,"lng":139.83},
+
+  {"id":"jp-fukushima","en":"Fukushima","ja":"福島市","region":"Fukushima","country":"JP","lat":37.75,"lng":140.47},
+  {"id":"jp-koriyama","en":"Koriyama","ja":"郡山市","region":"Fukushima","country":"JP","lat":37.40,"lng":140.36},
+  {"id":"jp-iwaki","en":"Iwaki","ja":"いわき市","region":"Fukushima","country":"JP","lat":37.05,"lng":140.89},
+
+  {"id":"jp-mito","en":"Mito","ja":"水戸市","region":"Ibaraki","country":"JP","lat":36.34,"lng":140.45},
+  {"id":"jp-tsukuba","en":"Tsukuba","ja":"つくば市","region":"Ibaraki","country":"JP","lat":36.08,"lng":140.08},
+
+  {"id":"jp-utsunomiya","en":"Utsunomiya","ja":"宇都宮市","region":"Tochigi","country":"JP","lat":36.57,"lng":139.88},
+  {"id":"jp-oyama","en":"Oyama","ja":"小山市","region":"Tochigi","country":"JP","lat":36.31,"lng":139.80},
+
+  {"id":"jp-maebashi","en":"Maebashi","ja":"前橋市","region":"Gunma","country":"JP","lat":36.39,"lng":139.06},
+  {"id":"jp-takasaki","en":"Takasaki","ja":"高崎市","region":"Gunma","country":"JP","lat":36.32,"lng":139.00},
+
+  {"id":"jp-saitama","en":"Saitama","ja":"さいたま市","region":"Saitama","country":"JP","lat":35.86,"lng":139.65},
+  {"id":"jp-kawagoe","en":"Kawagoe","ja":"川越市","region":"Saitama","country":"JP","lat":35.93,"lng":139.49},
+  {"id":"jp-kawaguchi","en":"Kawaguchi","ja":"川口市","region":"Saitama","country":"JP","lat":35.81,"lng":139.72},
+  {"id":"jp-kumagaya","en":"Kumagaya","ja":"熊谷市","region":"Saitama","country":"JP","lat":36.15,"lng":139.39},
+  {"id":"jp-chichibu","en":"Chichibu","ja":"秩父市","region":"Saitama","country":"JP","lat":35.99,"lng":139.09},
+  {"id":"jp-tokorozawa","en":"Tokorozawa","ja":"所沢市","region":"Saitama","country":"JP","lat":35.80,"lng":139.47},
+  {"id":"jp-kasukabe","en":"Kasukabe","ja":"春日部市","region":"Saitama","country":"JP","lat":35.98,"lng":139.75},
+
+  {"id":"jp-chiba","en":"Chiba","ja":"千葉市","region":"Chiba","country":"JP","lat":35.61,"lng":140.12},
+  {"id":"jp-funabashi","en":"Funabashi","ja":"船橋市","region":"Chiba","country":"JP","lat":35.70,"lng":139.98},
+  {"id":"jp-kashiwa","en":"Kashiwa","ja":"柏市","region":"Chiba","country":"JP","lat":35.87,"lng":139.97},
+
+  {"id":"jp-tokyo","en":"Tokyo","ja":"東京","region":"Tokyo","country":"JP","lat":35.68,"lng":139.69},
+  {"id":"jp-hachioji","en":"Hachioji","ja":"八王子市","region":"Tokyo","country":"JP","lat":35.66,"lng":139.32},
+  {"id":"jp-machida","en":"Machida","ja":"町田市","region":"Tokyo","country":"JP","lat":35.55,"lng":139.45},
+
+  {"id":"jp-yokohama","en":"Yokohama","ja":"横浜市","region":"Kanagawa","country":"JP","lat":35.44,"lng":139.64},
+  {"id":"jp-kawasaki","en":"Kawasaki","ja":"川崎市","region":"Kanagawa","country":"JP","lat":35.53,"lng":139.70},
+  {"id":"jp-sagamihara","en":"Sagamihara","ja":"相模原市","region":"Kanagawa","country":"JP","lat":35.57,"lng":139.37},
+  {"id":"jp-fujisawa","en":"Fujisawa","ja":"藤沢市","region":"Kanagawa","country":"JP","lat":35.34,"lng":139.49},
+  {"id":"jp-odawara","en":"Odawara","ja":"小田原市","region":"Kanagawa","country":"JP","lat":35.26,"lng":139.16},
+
+  {"id":"jp-niigata","en":"Niigata","ja":"新潟市","region":"Niigata","country":"JP","lat":37.90,"lng":139.02},
+  {"id":"jp-nagaoka","en":"Nagaoka","ja":"長岡市","region":"Niigata","country":"JP","lat":37.45,"lng":138.85},
+  {"id":"jp-joetsu","en":"Joetsu","ja":"上越市","region":"Niigata","country":"JP","lat":37.15,"lng":138.24},
+
+  {"id":"jp-toyama","en":"Toyama","ja":"富山市","region":"Toyama","country":"JP","lat":36.70,"lng":137.21},
+  {"id":"jp-takaoka","en":"Takaoka","ja":"高岡市","region":"Toyama","country":"JP","lat":36.75,"lng":137.03},
+
+  {"id":"jp-kanazawa","en":"Kanazawa","ja":"金沢市","region":"Ishikawa","country":"JP","lat":36.56,"lng":136.65},
+
+  {"id":"jp-fukui","en":"Fukui","ja":"福井市","region":"Fukui","country":"JP","lat":36.06,"lng":136.22},
+
+  {"id":"jp-kofu","en":"Kofu","ja":"甲府市","region":"Yamanashi","country":"JP","lat":35.66,"lng":138.57},
+
+  {"id":"jp-nagano","en":"Nagano","ja":"長野市","region":"Nagano","country":"JP","lat":36.65,"lng":138.18},
+  {"id":"jp-matsumoto","en":"Matsumoto","ja":"松本市","region":"Nagano","country":"JP","lat":36.24,"lng":137.97},
+  {"id":"jp-ueda","en":"Ueda","ja":"上田市","region":"Nagano","country":"JP","lat":36.40,"lng":138.25},
+  {"id":"jp-iida","en":"Iida","ja":"飯田市","region":"Nagano","country":"JP","lat":35.51,"lng":136.95},
+
+  {"id":"jp-gifu","en":"Gifu","ja":"岐阜市","region":"Gifu","country":"JP","lat":35.42,"lng":136.76},
+  {"id":"jp-takayama","en":"Takayama","ja":"高山市","region":"Gifu","country":"JP","lat":36.14,"lng":137.25},
+
+  {"id":"jp-shizuoka","en":"Shizuoka","ja":"静岡市","region":"Shizuoka","country":"JP","lat":34.98,"lng":138.38},
+  {"id":"jp-hamamatsu","en":"Hamamatsu","ja":"浜松市","region":"Shizuoka","country":"JP","lat":34.71,"lng":137.73},
+  {"id":"jp-numazu","en":"Numazu","ja":"沼津市","region":"Shizuoka","country":"JP","lat":35.10,"lng":138.86},
+  {"id":"jp-fuji","en":"Fuji","ja":"富士市","region":"Shizuoka","country":"JP","lat":35.16,"lng":138.68},
+
+  {"id":"jp-nagoya","en":"Nagoya","ja":"名古屋市","region":"Aichi","country":"JP","lat":35.18,"lng":136.91},
+  {"id":"jp-toyohashi","en":"Toyohashi","ja":"豊橋市","region":"Aichi","country":"JP","lat":34.77,"lng":137.39},
+  {"id":"jp-okazaki","en":"Okazaki","ja":"岡崎市","region":"Aichi","country":"JP","lat":34.95,"lng":137.17},
+  {"id":"jp-toyota","en":"Toyota","ja":"豊田市","region":"Aichi","country":"JP","lat":35.08,"lng":137.16},
+  {"id":"jp-ichinomiya","en":"Ichinomiya","ja":"一宮市","region":"Aichi","country":"JP","lat":35.30,"lng":136.80},
+
+  {"id":"jp-tsu","en":"Tsu","ja":"津市","region":"Mie","country":"JP","lat":34.73,"lng":136.51},
+  {"id":"jp-yokkaichi","en":"Yokkaichi","ja":"四日市市","region":"Mie","country":"JP","lat":34.97,"lng":136.62},
+
+  {"id":"jp-otsu","en":"Otsu","ja":"大津市","region":"Shiga","country":"JP","lat":35.00,"lng":135.87},
+
+  {"id":"jp-kyoto","en":"Kyoto","ja":"京都市","region":"Kyoto","country":"JP","lat":35.01,"lng":135.77},
+  {"id":"jp-uji","en":"Uji","ja":"宇治市","region":"Kyoto","country":"JP","lat":34.88,"lng":135.80},
+
+  {"id":"jp-osaka","en":"Osaka","ja":"大阪市","region":"Osaka","country":"JP","lat":34.69,"lng":135.50},
+  {"id":"jp-sakai","en":"Sakai","ja":"堺市","region":"Osaka","country":"JP","lat":34.57,"lng":135.48},
+  {"id":"jp-higashiosaka","en":"Higashiosaka","ja":"東大阪市","region":"Osaka","country":"JP","lat":34.68,"lng":135.60},
+
+  {"id":"jp-kobe","en":"Kobe","ja":"神戸市","region":"Hyogo","country":"JP","lat":34.69,"lng":135.20},
+  {"id":"jp-himeji","en":"Himeji","ja":"姫路市","region":"Hyogo","country":"JP","lat":34.82,"lng":134.69},
+  {"id":"jp-nishinomiya","en":"Nishinomiya","ja":"西宮市","region":"Hyogo","country":"JP","lat":34.74,"lng":135.34},
+  {"id":"jp-amagasaki","en":"Amagasaki","ja":"尼崎市","region":"Hyogo","country":"JP","lat":34.73,"lng":135.41},
+
+  {"id":"jp-nara","en":"Nara","ja":"奈良市","region":"Nara","country":"JP","lat":34.69,"lng":135.80},
+
+  {"id":"jp-wakayama","en":"Wakayama","ja":"和歌山市","region":"Wakayama","country":"JP","lat":34.23,"lng":135.17},
+
+  {"id":"jp-tottori","en":"Tottori","ja":"鳥取市","region":"Tottori","country":"JP","lat":35.50,"lng":134.24},
+  {"id":"jp-yonago","en":"Yonago","ja":"米子市","region":"Tottori","country":"JP","lat":35.43,"lng":133.33},
+
+  {"id":"jp-matsue","en":"Matsue","ja":"松江市","region":"Shimane","country":"JP","lat":35.47,"lng":133.05},
+  {"id":"jp-izumo","en":"Izumo","ja":"出雲市","region":"Shimane","country":"JP","lat":35.37,"lng":132.75},
+
+  {"id":"jp-okayama","en":"Okayama","ja":"岡山市","region":"Okayama","country":"JP","lat":34.66,"lng":133.93},
+  {"id":"jp-kurashiki","en":"Kurashiki","ja":"倉敷市","region":"Okayama","country":"JP","lat":34.59,"lng":133.77},
+
+  {"id":"jp-hiroshima","en":"Hiroshima","ja":"広島市","region":"Hiroshima","country":"JP","lat":34.40,"lng":132.46},
+  {"id":"jp-fukuyama","en":"Fukuyama","ja":"福山市","region":"Hiroshima","country":"JP","lat":34.49,"lng":133.36},
+  {"id":"jp-kure","en":"Kure","ja":"呉市","region":"Hiroshima","country":"JP","lat":34.25,"lng":132.57},
+
+  {"id":"jp-shimonoseki","en":"Shimonoseki","ja":"下関市","region":"Yamaguchi","country":"JP","lat":33.96,"lng":130.95},
+  {"id":"jp-yamaguchi","en":"Yamaguchi","ja":"山口市","region":"Yamaguchi","country":"JP","lat":34.19,"lng":131.47},
+
+  {"id":"jp-tokushima","en":"Tokushima","ja":"徳島市","region":"Tokushima","country":"JP","lat":34.07,"lng":134.56},
+
+  {"id":"jp-takamatsu","en":"Takamatsu","ja":"高松市","region":"Kagawa","country":"JP","lat":34.34,"lng":134.05},
+
+  {"id":"jp-matsuyama","en":"Matsuyama","ja":"松山市","region":"Ehime","country":"JP","lat":33.84,"lng":132.77},
+  {"id":"jp-imabari","en":"Imabari","ja":"今治市","region":"Ehime","country":"JP","lat":34.07,"lng":133.00},
+
+  {"id":"jp-kochi","en":"Kochi","ja":"高知市","region":"Kochi","country":"JP","lat":33.56,"lng":133.53},
+
+  {"id":"jp-fukuoka","en":"Fukuoka","ja":"福岡市","region":"Fukuoka","country":"JP","lat":33.59,"lng":130.40},
+  {"id":"jp-kitakyushu","en":"Kitakyushu","ja":"北九州市","region":"Fukuoka","country":"JP","lat":33.88,"lng":130.88},
+  {"id":"jp-kurume","en":"Kurume","ja":"久留米市","region":"Fukuoka","country":"JP","lat":33.32,"lng":130.51},
+
+  {"id":"jp-saga","en":"Saga","ja":"佐賀市","region":"Saga","country":"JP","lat":33.25,"lng":130.30},
+
+  {"id":"jp-nagasaki","en":"Nagasaki","ja":"長崎市","region":"Nagasaki","country":"JP","lat":32.75,"lng":129.88},
+  {"id":"jp-sasebo","en":"Sasebo","ja":"佐世保市","region":"Nagasaki","country":"JP","lat":33.18,"lng":129.72},
+
+  {"id":"jp-kumamoto","en":"Kumamoto","ja":"熊本市","region":"Kumamoto","country":"JP","lat":32.79,"lng":130.74},
+  {"id":"jp-yatsushiro","en":"Yatsushiro","ja":"八代市","region":"Kumamoto","country":"JP","lat":32.51,"lng":130.60},
+
+  {"id":"jp-oita","en":"Oita","ja":"大分市","region":"Oita","country":"JP","lat":33.24,"lng":131.61},
+  {"id":"jp-beppu","en":"Beppu","ja":"別府市","region":"Oita","country":"JP","lat":33.28,"lng":131.50},
+
+  {"id":"jp-miyazaki","en":"Miyazaki","ja":"宮崎市","region":"Miyazaki","country":"JP","lat":31.91,"lng":131.42},
+  {"id":"jp-miyakonojo","en":"Miyakonojo","ja":"都城市","region":"Miyazaki","country":"JP","lat":31.73,"lng":131.07},
+
+  {"id":"jp-kagoshima","en":"Kagoshima","ja":"鹿児島市","region":"Kagoshima","country":"JP","lat":31.60,"lng":130.56},
+  {"id":"jp-kirishima","en":"Kirishima","ja":"霧島市","region":"Kagoshima","country":"JP","lat":31.74,"lng":130.76},
+
+  {"id":"jp-naha","en":"Naha","ja":"那覇市","region":"Okinawa","country":"JP","lat":26.33,"lng":127.68},
+  {"id":"jp-okinawa","en":"Okinawa City","ja":"沖縄市","region":"Okinawa","country":"JP","lat":26.33,"lng":127.80},
+
+  {"id":"us-sacramento","en":"Sacramento","ja":"サクラメント","region":"California","country":"US","lat":38.58,"lng":-121.49},
+  {"id":"us-fresno","en":"Fresno","ja":"フレズノ","region":"California","country":"US","lat":36.74,"lng":-119.77},
+  {"id":"us-des-moines","en":"Des Moines","ja":"デモイン","region":"Iowa","country":"US","lat":41.59,"lng":-93.62},
+  {"id":"us-raleigh","en":"Raleigh","ja":"ローリー","region":"North Carolina","country":"US","lat":35.78,"lng":-78.64},
+
+  {"id":"ca-saskatoon","en":"Saskatoon","ja":"サスカトゥーン","region":"Saskatchewan","country":"CA","lat":52.13,"lng":-106.67},
+  {"id":"ca-guelph","en":"Guelph","ja":"ゲルフ","region":"Ontario","country":"CA","lat":43.55,"lng":-80.25},
+
+  {"id":"au-toowoomba","en":"Toowoomba","ja":"トゥーウンバ","region":"Queensland","country":"AU","lat":-27.56,"lng":151.95},
+  {"id":"au-wagga-wagga","en":"Wagga Wagga","ja":"ワガワガ","region":"New South Wales","country":"AU","lat":-35.12,"lng":147.37},
+
+  {"id":"nz-christchurch","en":"Christchurch","ja":"クライストチャーチ","region":"Canterbury","country":"NZ","lat":-43.53,"lng":172.64},
+
+  {"id":"gb-norwich","en":"Norwich","ja":"ノリッジ","region":"Norfolk","country":"GB","lat":52.63,"lng":1.30},
+  {"id":"nl-wageningen","en":"Wageningen","ja":"ワーヘニンゲン","region":"Gelderland","country":"NL","lat":51.97,"lng":5.67},
+  {"id":"fr-toulouse","en":"Toulouse","ja":"トゥールーズ","region":"Occitanie","country":"FR","lat":43.60,"lng":1.44},
+  {"id":"de-freiburg","en":"Freiburg","ja":"フライブルク","region":"Baden-Württemberg","country":"DE","lat":47.99,"lng":7.85},
+  {"id":"it-bologna","en":"Bologna","ja":"ボローニャ","region":"Emilia-Romagna","country":"IT","lat":44.49,"lng":11.34},
+  {"id":"es-valencia","en":"Valencia","ja":"バレンシア","region":"Valencia","country":"ES","lat":39.47,"lng":-0.38},
+
+  {"id":"th-chiang-mai","en":"Chiang Mai","ja":"チェンマイ","region":"Chiang Mai","country":"TH","lat":18.79,"lng":98.98},
+  {"id":"vn-da-lat","en":"Da Lat","ja":"ダラット","region":"Lam Dong","country":"VN","lat":11.94,"lng":108.44},
+  {"id":"ph-los-banos","en":"Los Baños","ja":"ロスバニョス","region":"Laguna","country":"PH","lat":14.17,"lng":121.24},
+  {"id":"in-pune","en":"Pune","ja":"プネー","region":"Maharashtra","country":"IN","lat":18.52,"lng":73.86},
+  {"id":"lk-kandy","en":"Kandy","ja":"キャンディ","region":"Central","country":"LK","lat":7.29,"lng":80.63},
+
+  {"id":"ke-nairobi","en":"Nairobi","ja":"ナイロビ","region":"Nairobi","country":"KE","lat":-1.29,"lng":36.82},
+  {"id":"gh-kumasi","en":"Kumasi","ja":"クマシ","region":"Ashanti","country":"GH","lat":6.69,"lng":-1.62},
+  {"id":"tz-arusha","en":"Arusha","ja":"アルーシャ","region":"Arusha","country":"TZ","lat":-3.37,"lng":36.68},
+  {"id":"et-addis-ababa","en":"Addis Ababa","ja":"アディスアベバ","region":"Addis Ababa","country":"ET","lat":9.02,"lng":38.75},
+
+  {"id":"br-campinas","en":"Campinas","ja":"カンピーナス","region":"São Paulo","country":"BR","lat":-22.91,"lng":-47.06},
+  {"id":"ar-mendoza","en":"Mendoza","ja":"メンドーサ","region":"Mendoza","country":"AR","lat":-32.89,"lng":-68.83},
+  {"id":"co-medellin","en":"Medellín","ja":"メデジン","region":"Antioquia","country":"CO","lat":6.25,"lng":-75.56},
+  {"id":"cr-san-jose","en":"San José","ja":"サンホセ","region":"San José","country":"CR","lat":9.93,"lng":-84.08}
+]

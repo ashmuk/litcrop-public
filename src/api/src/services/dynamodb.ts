@@ -89,8 +89,9 @@ function itemToFarm(item: Record<string, unknown>, farmId: string): Farm {
     user_id: (item['user_id'] as string) ?? '',
     name: item['name'] as string,
     description: item['description'] as string | undefined,
-    latitude: item['latitude'] as number,
-    longitude: item['longitude'] as number,
+    location_text: (item['location_text'] as string) ?? '',
+    latitude: item['latitude'] as number | undefined,
+    longitude: item['longitude'] as number | undefined,
     elevation_m: item['elevation_m'] as number | undefined,
     climate_zone: item['climate_zone'] as string | undefined,
     locale: (item['locale'] as Farm['locale']) ?? 'en',
@@ -750,7 +751,7 @@ export class DynamoRepository {
 
   async updateFarm(
     farmId: string,
-    updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>>,
+    updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>>,
   ): Promise<void> {
     const expressions: string[] = [];
     const values: Record<string, unknown> = {};

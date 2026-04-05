@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { WeatherResponse, CropImpactCard } from '@litcrop/shared';
-import { getWeather } from '../lib/api';
+import { getWeather, ApiError } from '../lib/api';
 import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
@@ -79,11 +79,21 @@ export default function WeatherView({ farmId }: Props) {
   const effectiveFarmId = useLocalFarmId(farmId);
   const tl = createTranslator(locale);
 
+  const [needsCoordinates, setNeedsCoordinates] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     getWeather(effectiveFarmId)
       .then((data) => { if (!cancelled) setWeather(data); })
-      .catch(() => { if (!cancelled) setError(tl('farm.error_loading')); })
+      .catch((err) => {
+        if (!cancelled) {
+          if (err instanceof ApiError && err.statusCode === 400) {
+            setNeedsCoordinates(true);
+          } else {
+            setError(tl('farm.error_loading'));
+          }
+        }
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [effectiveFarmId]);
@@ -136,6 +146,16 @@ export default function WeatherView({ farmId }: Props) {
         <div class="skeleton" style="height:160px;border-radius:var(--radius-lg)" />
         <div class="skeleton" style="height:120px;border-radius:var(--radius-lg)" />
         <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)" />
+      </div>
+    );
+  }
+
+  if (needsCoordinates) {
+    return (
+      <div class="empty-state">
+        <span class="empty-state__icon">⛅</span>
+        <p class="empty-state__heading">{tl('weather.needs_coordinates')}</p>
+        <p class="empty-state__body">{tl('weather.add_coordinates_hint')}</p>
       </div>
     );
   }

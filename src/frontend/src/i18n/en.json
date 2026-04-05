@@ -94,7 +94,9 @@
     "impact_heat_desc": "High temperatures may stress crops. Ensure adequate watering.",
     "impact_rain_desc": "Heavy rain expected. Check drainage and cover sensitive crops.",
     "no_crop_impact": "No weather impact expected on your crops.",
-    "farm_location": "Farm Location"
+    "farm_location": "Farm Location",
+    "needs_coordinates": "Weather needs coordinates",
+    "add_coordinates_hint": "Add your farm's precise location on the Profile page to see weather data."
   },
   "settings": {
     "theme": "Theme",
@@ -129,7 +131,10 @@
     "gps_failed": "Could not detect location",
     "gps_unsupported": "Geolocation not supported",
     "name_required": "Farm name is required",
-    "location_required": "Latitude and longitude are required",
+    "location_text": "City / Region",
+    "location_text_hint": "e.g., Chichibu, Saitama",
+    "coordinates_optional": "Coordinates (optional — for weather)",
+    "location_required": "Location is required",
     "climate_tropical": "Tropical",
     "climate_subtropical": "Subtropical",
     "climate_temperate": "Temperate",
@@ -243,7 +248,8 @@
   "wizard": {
     "new_farm": "New Farm",
     "step_name": "Name your farm",
-    "step_location": "Set location",
+    "step_location": "Set precise location (optional)",
+    "skip_map": "Skip — add coordinates later",
     "step_review": "Review & create",
     "next": "Next",
     "create": "Create Farm",

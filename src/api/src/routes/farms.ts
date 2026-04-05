@@ -50,6 +50,15 @@ function validateFarmFields(body: Record<string, unknown>, required?: string[]) 
     }
   }
 
+  const location_text = body['location_text'];
+  if (required?.includes('location_text') && (location_text === undefined || location_text === null)) {
+    errors.push('Missing required field: location_text');
+  } else if (location_text !== undefined && location_text !== null) {
+    if (typeof location_text !== 'string' || location_text.trim().length === 0 || location_text.trim().length > 200) {
+      errors.push("Invalid value for 'location_text': must be 1-200 characters");
+    }
+  }
+
   const latitude = body['latitude'];
   if (required?.includes('latitude') && (latitude === undefined || latitude === null)) {
     errors.push('Missing required field: latitude');
@@ -121,8 +130,9 @@ function farmToResponse(farm: Farm) {
     user_id: farm.user_id,
     name: farm.name,
     description: farm.description ?? null,
-    latitude: farm.latitude,
-    longitude: farm.longitude,
+    location_text: farm.location_text,
+    latitude: farm.latitude ?? null,
+    longitude: farm.longitude ?? null,
     elevation_m: farm.elevation_m ?? null,
     climate_zone: farm.climate_zone ?? null,
     locale: farm.locale,
@@ -213,8 +223,9 @@ router.get('/discoverable', async (c) => {
             id: farm.id,
             name: farm.name,
             description: farm.description ?? null,
-            latitude: farm.latitude,
-            longitude: farm.longitude,
+            location_text: farm.location_text,
+            latitude: farm.latitude ?? null,
+            longitude: farm.longitude ?? null,
             member_count: members.length,
             has_pending_request: pendingRequest?.status === 'pending',
           };
@@ -468,7 +479,7 @@ router.post('/', async (c) => {
 
   const body = await c.req.json<Record<string, unknown>>();
 
-  validateFarmFields(body, ['name', 'latitude', 'longitude']);
+  validateFarmFields(body, ['name', 'location_text']);
 
   const farmId = crypto.randomUUID();
   const gridRows = typeof body['grid_rows'] === 'number' ? body['grid_rows'] : 1;
@@ -478,9 +489,10 @@ router.post('/', async (c) => {
   try {
     farm = await dynamoRepo.createFarm(farmId, userId, {
       name: (body['name'] as string).trim(),
+      location_text: (body['location_text'] as string).trim(),
       description: body['description'] as string | undefined,
-      latitude: body['latitude'] as number,
-      longitude: body['longitude'] as number,
+      latitude: body['latitude'] as number | undefined,
+      longitude: body['longitude'] as number | undefined,
       elevation_m: body['elevation_m'] as number | undefined,
       climate_zone: undefined,
       locale: (body['locale'] as Farm['locale']) ?? DEFAULT_LOCALE,
@@ -518,9 +530,13 @@ router.patch('/:farmId', async (c) => {
 
   validateFarmFields(body);
 
-  const updates: Partial<Pick<Farm, 'name' | 'description' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>> = {};
+  const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>> = {};
   if (body['name'] !== undefined) updates['name'] = (body['name'] as string).trim();
   if (body['description'] !== undefined) updates['description'] = body['description'] as string | undefined;
+  if (body['location_text'] !== undefined) updates['location_text'] = (body['location_text'] as string).trim();
+  if (body['latitude'] !== undefined) updates['latitude'] = body['latitude'] as number;
+  if (body['longitude'] !== undefined) updates['longitude'] = body['longitude'] as number;
+  if (body['elevation_m'] !== undefined) updates['elevation_m'] = body['elevation_m'] as number;
   if (body['locale'] !== undefined) updates['locale'] = body['locale'] as Farm['locale'];
   if (body['theme'] !== undefined) updates['theme'] = body['theme'] as Farm['theme'];
   if (body['grid_rows'] !== undefined) updates['grid_rows'] = body['grid_rows'] as number;

@@ -840,6 +840,7 @@ export default function ProfilePage() {
                       <div class="skeleton" style="height:60px;border-radius:var(--radius-sm)" />
                     ) : (
                       <>
+                        {farm.latitude != null && farm.longitude != null && (
                         <div style="margin-bottom:var(--space-3)">
                           <FarmLocationMap
                             latitude={farm.latitude}
@@ -848,10 +849,11 @@ export default function ProfilePage() {
                             farmName={farm.name}
                           />
                         </div>
+                        )}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
                           <div>
                             <div style="color:var(--color-gray-500);font-size:var(--font-size-xs)">{t('profile.location')}</div>
-                            <div>{farm.latitude.toFixed(4)}, {farm.longitude.toFixed(4)}</div>
+                            <div>{farm.location_text || (farm.latitude != null && farm.longitude != null ? `${farm.latitude.toFixed(4)}, ${farm.longitude.toFixed(4)}` : '—')}</div>
                           </div>
                           {farm.elevation_m !== undefined && farm.elevation_m !== null && (
                             <div>

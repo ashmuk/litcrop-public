@@ -33,6 +33,7 @@ const farmItem = {
   SK: '#META',
   id: FARM_ID,
   name: 'Test Farm',
+  location_text: 'Test Location',
   latitude: 36.0,
   longitude: 138.3,
   locale: 'en',
@@ -277,6 +278,7 @@ describe('createFarm', () => {
     ddbMock.on(BatchWriteCommand).resolves({});
     const farm = await repo.createFarm(FARM_ID, USER_ID, {
       name: 'Test Farm',
+      location_text: 'Test Location',
       latitude: 36.03,
       longitude: 138.26,
       locale: 'en',
@@ -297,6 +299,7 @@ describe('createFarm', () => {
     ddbMock.on(BatchWriteCommand).resolves({});
     await repo.createFarm(FARM_ID, USER_ID, {
       name: 'Farm',
+      location_text: 'Test Location',
       latitude: 0,
       longitude: 0,
       locale: 'en',
@@ -332,6 +335,7 @@ describe('createFarm', () => {
     ddbMock.on(BatchWriteCommand).resolves({});
     await repo.createFarm(FARM_ID, USER_ID, {
       name: 'Farm',
+      location_text: 'Test Location',
       latitude: 0,
       longitude: 0,
       locale: 'en',

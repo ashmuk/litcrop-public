@@ -94,10 +94,14 @@ SUGGESTIONS: ["What soil pH do tomatoes need?", "When to harvest cucumbers?"]`;
     .map((b) => `- ${b.name}: ${b.crop_type} (${b.crop_variety ?? 'unknown'}), planted ${b.planted_at ?? 'unknown'}`)
     .join('\n');
 
+  const locationStr = (farm.latitude != null && farm.longitude != null)
+    ? `${farm.latitude}°N, ${farm.longitude}°E`
+    : `${farm.location_text || 'unknown'} (coordinates not set)`;
+
   return `${base}
 
 ## Farm Context
-- Location: ${farm.latitude}°N, ${farm.longitude}°E
+- Location: ${locationStr}
 - Elevation: ${farm.elevation_m ?? 'unknown'}m
 - Climate zone: ${farm.climate_zone ?? 'unknown'}
 - Locale: ${farm.locale}
@@ -243,6 +247,9 @@ async function executeTool(
       ({ farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin));
     } catch {
       return 'Error: Farm not found';
+    }
+    if (farm.latitude == null || farm.longitude == null) {
+      return 'Weather unavailable — farm coordinates not set. Ask the user to add coordinates on the Profile page.';
     }
     try {
       const params = new URLSearchParams({

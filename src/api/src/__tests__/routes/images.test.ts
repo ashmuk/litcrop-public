@@ -44,6 +44,7 @@ const farmForOwnership = {
   id: FARM_ID,
   user_id: TEST_USER_ID,
   name: 'Test Farm',
+  location_text: 'Test Location',
   latitude: 36.0,
   longitude: 138.0,
   locale: 'en' as const,

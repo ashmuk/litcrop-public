@@ -308,6 +308,7 @@ describe('POST /api/v1/chat tool use', () => {
     id: FARM_ID,
     user_id: TEST_USER_ID,
     name: 'Test Farm',
+    location_text: 'Nagano, Japan',
     latitude: 36.65,
     longitude: 138.18,
     elevation_m: 450,
@@ -473,5 +474,56 @@ describe('POST /api/v1/chat SDK error handling', () => {
     expect(res.status).toBe(502);
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('UPSTREAM_ERROR');
+  });
+});
+
+// ── #277 Chat with no coordinates ──────────────────────────────────
+
+describe('POST /api/v1/chat — no coordinates (#277)', () => {
+  const FARM_ID = 'cf000000-0000-0000-0000-000000000001';
+
+  beforeEach(() => { process.env['LLM_API_KEY'] = 'test-key'; });
+  afterEach(() => { delete process.env['LLM_API_KEY']; });
+
+  it('returns 200 with generic advice when farm has no coordinates', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({
+      id: FARM_ID,
+      user_id: TEST_USER_ID,
+      name: 'No-Geo Farm',
+      location_text: 'Chichibu, Saitama',
+      latitude: undefined,
+      longitude: undefined,
+      locale: 'en',
+      theme: 'system',
+      grid_rows: 1,
+      grid_cols: 1,
+      created_at: '2026-01-01T00:00:00.000Z',
+    });
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'owner',
+      joined_at: '2026-01-01T00:00:00.000Z',
+    });
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
+
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: 'General advice here.\nSUGGESTIONS: ["What crops grow well?"]' }],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const res = await app.request('/api/v1/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ message: 'What should I plant?', farm_id: FARM_ID }),
+    });
+    expect(res.status).toBe(200);
+
+    // Verify the SDK was called (system prompt contains location fallback)
+    expect(mockCreate).toHaveBeenCalledOnce();
+    const callArgs = mockCreate.mock.calls[0][0] as Record<string, unknown>;
+    const system = String(callArgs['system'] ?? '');
+    expect(system).toContain('Chichibu, Saitama');
+    expect(system).toContain('coordinates not set');
   });
 });

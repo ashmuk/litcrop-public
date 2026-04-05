@@ -306,6 +306,14 @@ router.get('/:farmId/weather', async (c) => {
   // Verify farm exists and caller is a member
   const { farm } = await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
+  // Guard: coordinates required for weather (must run before cache check — #277)
+  if (farm.latitude == null || farm.longitude == null) {
+    return c.json({
+      error: 'coordinates_required',
+      message: 'Weather requires farm coordinates. Update your farm location to enable weather.',
+    }, 400);
+  }
+
   // Check cache
   const now = Date.now();
   const cached = weatherCache.get(farmId);

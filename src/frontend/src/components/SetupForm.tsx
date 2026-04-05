@@ -1,6 +1,6 @@
 /**
  * Farm Setup Form Island — T-FE-11 (setup form section)
- * Reads/writes farm name and coordinates from/to localStorage.
+ * Reads/writes farm name, location, and optional coordinates.
  * Optionally calls createFarm/updateFarm API.
  */
 
@@ -9,9 +9,11 @@ import { showToast } from './Toast';
 import { createFarm, updateFarm, ApiError } from '../lib/api';
 import { LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { t } from '../i18n/i18n';
+import LocationAutocomplete from './LocationAutocomplete';
 
 interface FarmConfig {
   name: string;
+  location_text: string;
   latitude: string;
   longitude: string;
   elevation: string;
@@ -20,6 +22,7 @@ interface FarmConfig {
 
 const EMPTY: FarmConfig = {
   name: '',
+  location_text: '',
   latitude: '',
   longitude: '',
   elevation: '',
@@ -33,7 +36,7 @@ export default function SetupForm() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('litcrop-setup');
-      if (saved) setForm(JSON.parse(saved) as FarmConfig);
+      if (saved) setForm({ ...EMPTY, ...JSON.parse(saved) as Partial<FarmConfig> });
     } catch {}
   }, []);
 
@@ -65,39 +68,35 @@ export default function SetupForm() {
       showToast(t('setup.name_required'), 'error');
       return;
     }
-    const lat = parseFloat(form.latitude);
-    const lng = parseFloat(form.longitude);
-    if (isNaN(lat) || isNaN(lng)) {
+    if (!form.location_text.trim()) {
       showToast(t('setup.location_required'), 'error');
       return;
     }
     setSaving(true);
     try {
       const existingFarmId = localStorage.getItem(LS_FARM_ID);
+      const lat = parseFloat(form.latitude);
+      const lng = parseFloat(form.longitude);
       const payload = {
         name: form.name.trim(),
-        latitude: lat,
-        longitude: lng,
-        ...(form.elevation && { elevation_m: parseFloat(form.elevation) }),
+        location_text: form.location_text.trim(),
+        ...(!isNaN(lat) && !isNaN(lng) && { latitude: lat, longitude: lng }),
+        ...(form.elevation && !isNaN(parseFloat(form.elevation)) && { elevation_m: parseFloat(form.elevation) }),
         ...(form.description.trim() && { description: form.description.trim() }),
       };
 
       if (existingFarmId) {
-        // Update existing farm
         await updateFarm(existingFarmId, payload);
       } else {
-        // Create new farm
         const farm = await createFarm(payload);
         localStorage.setItem(LS_FARM_ID, farm.id);
         localStorage.setItem(LS_FARM_NAME, farm.name);
       }
       localStorage.setItem('litcrop-setup', JSON.stringify(form));
       showToast(t('setup.save_success'), 'success');
-      // Redirect to dashboard after short delay so user sees the toast
       setTimeout(() => { window.location.replace('/'); }, 800);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 409) {
-        // User already has a farm — redirect to dashboard
         showToast(t('setup.save_success'), 'success');
         setTimeout(() => { window.location.replace('/'); }, 800);
         return;
@@ -148,7 +147,21 @@ export default function SetupForm() {
       </div>
 
       <div class="form-group">
-        <label class="form-label">{t('setup.location')}</label>
+        <label class="form-label">{t('setup.location_text')}</label>
+        <LocationAutocomplete
+          value={form.location_text}
+          onChange={(text, lat, lng) => {
+            setForm((prev) => ({
+              ...prev,
+              location_text: text,
+              ...(lat != null && lng != null ? { latitude: lat.toFixed(6), longitude: lng.toFixed(6) } : {}),
+            }));
+          }}
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{t('setup.coordinates_optional')}</label>
         <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-2)">
           <input
             type="number"
@@ -179,7 +192,7 @@ export default function SetupForm() {
           onClick={handleGPS}
           style="font-size:var(--font-size-sm)"
         >
-          📍 Use GPS
+          Use GPS
         </button>
       </div>
 

@@ -1,17 +1,10 @@
-/**
- * FarmWizard — Phase D
- * 3-step wizard for creating a new farm:
- *   Step 1: Name + Description
- *   Step 2: MapPicker (location)
- *   Step 3: Grid size (rows x cols) + Review + Submit
- */
-
 import { useState } from 'preact/hooks';
 import { createFarm, ApiError } from '../lib/api';
 import { setLocalFarmId, LS_FARM_NAME } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import MapPicker from './MapPicker';
+import LocationAutocomplete from './LocationAutocomplete';
 import type { LatLng } from './MapPicker';
 
 export interface FarmWizardProps {
@@ -22,11 +15,14 @@ export interface FarmWizardProps {
 export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
   const [step, setStep] = useState(1);
 
-  // Step 1: Name + Description
+  // Step 1: Name + Description + Location text
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [locationText, setLocationText] = useState('');
+  const [cityLat, setCityLat] = useState<number | null>(null);
+  const [cityLng, setCityLng] = useState<number | null>(null);
 
-  // Step 2: Location
+  // Step 2: Precise coordinates (optional)
   const [location, setLocation] = useState<LatLng | null>(null);
   const [elevation, setElevation] = useState<number | null>(null);
 
@@ -39,14 +35,14 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
   const [submitError, setSubmitError] = useState('');
 
   async function handleCreate() {
-    if (!location) return;
+    if (!locationText.trim()) return;
     setSubmitError('');
     setSubmitting(true);
     try {
       const farm = await createFarm({
         name: name.trim(),
-        latitude: location.lat,
-        longitude: location.lng,
+        location_text: locationText.trim(),
+        ...(location && { latitude: location.lat, longitude: location.lng }),
         ...(description.trim() && { description: description.trim() }),
         ...(elevation !== null && { elevation_m: elevation }),
         grid_rows: gridRows,
@@ -68,26 +64,26 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
     }
   }
 
-  // Step dots indicator
+  function stepDotStyle(s: number): string {
+    const base = 'width:10px;height:10px;border-radius:50%;box-sizing:border-box;';
+    if (s === step) return base + 'background:var(--color-primary)';
+    if (s < step) return base + 'background:var(--color-primary-light);border:2px solid var(--color-primary)';
+    return base + 'background:transparent;border:2px solid var(--color-gray-400)';
+  }
+
   const stepDots = (
     <div style="display:flex;gap:var(--space-2);justify-content:center;margin-bottom:var(--space-4)">
       {[1, 2, 3].map((s) => (
         <div
           key={s}
-          style={`width:10px;height:10px;border-radius:50%;box-sizing:border-box;${
-            s === step
-              ? 'background:var(--color-primary)'
-              : s < step
-                ? 'background:var(--color-primary-light);border:2px solid var(--color-primary)'
-                : 'background:transparent;border:2px solid var(--color-gray-400)'
-          }`}
+          style={stepDotStyle(s)}
           aria-label={`Step ${s} of 3${s === step ? ' (current)' : ''}`}
         />
       ))}
     </div>
   );
 
-  // Step 1: Name + Description
+  // Step 1: Name + Description + Location
   if (step === 1) {
     return (
       <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)">
@@ -121,6 +117,21 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
           />
         </div>
 
+        <div class="form-group">
+          <label class="form-label">{t('setup.location_text')}</label>
+          <LocationAutocomplete
+            value={locationText}
+            onChange={(text, lat, lng) => {
+              setLocationText(text);
+              setCityLat(lat);
+              setCityLng(lng);
+              if (lat != null && lng != null) {
+                setLocation({ lat, lng });
+              }
+            }}
+          />
+        </div>
+
         <div style="display:flex;gap:var(--space-3)">
           {onCancel && (
             <button class="btn-secondary" style="flex:1" onClick={onCancel}>
@@ -130,7 +141,7 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
           <button
             class="btn-primary"
             style="flex:2"
-            disabled={!name.trim()}
+            disabled={!name.trim() || !locationText.trim()}
             onClick={() => setStep(2)}
           >
             {t('wizard.next')} →
@@ -140,7 +151,7 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
     );
   }
 
-  // Step 2: Location (MapPicker)
+  // Step 2: Location (MapPicker — optional)
   if (step === 2) {
     return (
       <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)">
@@ -150,8 +161,8 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
         </div>
 
         <MapPicker
-          initialLat={location?.lat}
-          initialLng={location?.lng}
+          initialLat={location?.lat ?? cityLat ?? undefined}
+          initialLng={location?.lng ?? cityLng ?? undefined}
           onLocationChange={setLocation}
           onElevationChange={setElevation}
         />
@@ -163,12 +174,18 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
           <button
             class="btn-primary"
             style="flex:2"
-            disabled={!location}
             onClick={() => setStep(3)}
           >
             {t('wizard.next')} →
           </button>
         </div>
+        <button
+          type="button"
+          style="background:none;border:none;color:var(--color-gray-500);font-size:var(--font-size-sm);cursor:pointer;text-align:center;padding:0"
+          onClick={() => { setLocation(null); setElevation(null); setStep(3); }}
+        >
+          {t('wizard.skip_map')} →
+        </button>
       </div>
     );
   }
@@ -244,10 +261,16 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
         )}
         <div>
           <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('setup.location')}</div>
-          <div style="font-weight:var(--font-weight-semibold)">
-            {location ? `${location.lat}, ${location.lng}` : '—'}
-          </div>
+          <div style="font-weight:var(--font-weight-semibold)">{locationText}</div>
         </div>
+        {location && (
+          <div>
+            <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('setup.coordinates_optional')}</div>
+            <div style="font-weight:var(--font-weight-semibold)">
+              {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+            </div>
+          </div>
+        )}
         {elevation !== null && (
           <div>
             <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('setup.elevation')}</div>
@@ -279,7 +302,7 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
           class="btn-primary"
           style="flex:2"
           onClick={handleCreate}
-          disabled={submitting || !location}
+          disabled={submitting || !locationText.trim()}
           aria-busy={submitting}
         >
           {submitting ? '...' : t('wizard.create')}

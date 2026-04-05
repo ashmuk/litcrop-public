@@ -111,7 +111,7 @@ describe('error handler', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string; message: string } };
@@ -135,7 +135,7 @@ describe('error handler', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'Farm', latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(503); // service unavailable (from try/catch in route)
   });

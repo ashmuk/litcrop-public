@@ -93,6 +93,7 @@ const farmSeed = {
   user_id: TEST_USER_ID,
   name: 'Contract Test Farm',
   description: 'A test farm',
+  location_text: 'Tokyo, Japan',
   latitude: 35.6762,
   longitude: 139.6503,
   elevation_m: 40,
@@ -425,7 +426,7 @@ describe('zod contract: POST /api/v1/farms', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'New Farm', latitude: 35.68, longitude: 139.69 }),
+      body: JSON.stringify({ name: 'New Farm', location_text: 'Tokyo, Japan', latitude: 35.68, longitude: 139.69 }),
     });
     expect(res.status).toBe(201);
     const body = await res.json();

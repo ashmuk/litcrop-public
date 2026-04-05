@@ -51,8 +51,9 @@ export interface Farm {
   user_id: string; // Cognito sub — owner of this farm
   name: string;
   description?: string;
-  latitude: number;
-  longitude: number;
+  location_text: string;
+  latitude?: number;
+  longitude?: number;
   elevation_m?: number;
   climate_zone?: string;
   locale: Locale;
@@ -231,8 +232,9 @@ export interface DiscoverableFarm {
   id: string;
   name: string;
   description: string | null;
-  latitude: number;
-  longitude: number;
+  location_text: string;
+  latitude?: number;
+  longitude?: number;
   member_count: number;
   has_pending_request: boolean;
 }

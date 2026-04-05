@@ -51,6 +51,7 @@ const farmFixture: Farm = {
   id: FARM_ID,
   user_id: OWNER_USER_ID,
   name: 'Owner Farm',
+  location_text: 'Test Location',
   latitude: 36.0,
   longitude: 138.0,
   locale: 'en',
@@ -187,7 +188,7 @@ describe('Missing auth returns 401', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Farm', latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(401);
   });
@@ -254,7 +255,7 @@ describe('POST /api/v1/farms — user already has farm', () => {
         Authorization: authHeader(OWNER_USER_ID),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name: 'Second Farm', latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'Second Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(409);
     const body = await res.json() as { error: { code: string } };

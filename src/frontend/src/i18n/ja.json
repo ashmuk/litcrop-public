@@ -94,7 +94,9 @@
     "impact_heat_desc": "高温による作物へのストレスが予想されます。十分な水やりをしてください。",
     "impact_rain_desc": "大雨の予報です。排水を確認し、繊細な作物を保護してください。",
     "no_crop_impact": "天候による作物への影響は想定されていません。",
-    "farm_location": "農園の位置"
+    "farm_location": "農園の位置",
+    "needs_coordinates": "天気予報には座標が必要です",
+    "add_coordinates_hint": "プロフィールページで農園の正確な位置を追加��る���、天気データが表示されます。"
   },
   "settings": {
     "theme": "テーマ",
@@ -129,7 +131,10 @@
     "gps_failed": "位置情報を取得できませんでした",
     "gps_unsupported": "位置情報に対応していません",
     "name_required": "農園名を入力してください",
-    "location_required": "緯度と経度を入力してください",
+    "location_text": "市区町村",
+    "location_text_hint": "例: 秩父市, 埼玉",
+    "coordinates_optional": "座標（任意 — 天気予報用）",
+    "location_required": "場所を入力してください",
     "climate_tropical": "熱帯",
     "climate_subtropical": "亜熱帯",
     "climate_temperate": "温帯",
@@ -243,7 +248,8 @@
   "wizard": {
     "new_farm": "新しい農園",
     "step_name": "農園に名前を付ける",
-    "step_location": "位置を設定",
+    "step_location": "正確な位置を設定（任意）",
+    "skip_map": "スキップ — 後で座標を追加",
     "step_review": "確認して作成",
     "next": "次へ",
     "create": "農園を作成",

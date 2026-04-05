@@ -365,8 +365,9 @@ export interface AdminUserItem {
 export interface AdminFarmItem {
   id: string;
   name: string;
-  latitude: number;
-  longitude: number;
+  location_text: string;
+  latitude: number | null;
+  longitude: number | null;
   grid_rows: number;
   grid_cols: number;
   member_count: number;
@@ -379,8 +380,9 @@ export interface DiscoverableFarmItem {
   id: string;
   name: string;
   description: string | null;
-  latitude: number;
-  longitude: number;
+  location_text: string;
+  latitude: number | null;
+  longitude: number | null;
   member_count: number;
   has_pending_request: boolean;
 }

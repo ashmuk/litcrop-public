@@ -9,8 +9,9 @@ import type { Locale, Theme, TagValue, TempUnit } from './domain';
 /** POST /api/v1/farms — Create Farm */
 export interface CreateFarmRequest {
   name: string;
-  latitude: number;
-  longitude: number;
+  location_text: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
   elevation_m?: number;
   locale?: Locale;
@@ -23,6 +24,7 @@ export interface CreateFarmRequest {
 export interface UpdateFarmRequest {
   name?: string;
   description?: string;
+  location_text?: string;
   latitude?: number;
   longitude?: number;
   elevation_m?: number;

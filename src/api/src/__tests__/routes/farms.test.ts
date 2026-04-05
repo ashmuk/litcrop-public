@@ -54,6 +54,7 @@ const farmFixture = {
   user_id: TEST_USER_ID,
   name: 'Test Farm',
   description: undefined,
+  location_text: 'Test Location',
   latitude: 36.0,
   longitude: 138.3,
   locale: 'en' as const,
@@ -187,7 +188,7 @@ describe('POST /api/v1/farms', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'New Farm', latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'New Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(201);
     const body = await res.json() as { name: string };
@@ -198,7 +199,7 @@ describe('POST /api/v1/farms', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };
@@ -209,7 +210,7 @@ describe('POST /api/v1/farms', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'Farm', latitude: 95, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'Farm', location_text: 'Test Location', latitude: 95, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
   });
@@ -218,7 +219,7 @@ describe('POST /api/v1/farms', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'Farm', latitude: 36.0, longitude: 200 }),
+      body: JSON.stringify({ name: 'Farm', location_text: 'Test Location', latitude: 36.0, longitude: 200 }),
     });
     expect(res.status).toBe(400);
   });
@@ -232,7 +233,7 @@ describe('POST /api/v1/farms', () => {
     const res = await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'Third Farm', latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'Third Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { error: { code: string } };
@@ -830,7 +831,7 @@ describe('farm.created event emission', () => {
     await app.request('/api/v1/farms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ name: 'Test Farm', latitude: 36.0, longitude: 138.0 }),
+      body: JSON.stringify({ name: 'Test Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
 
     await new Promise((r) => setTimeout(r, 20));
@@ -950,5 +951,101 @@ describe('join_request events emission', () => {
     expect(event.payload.target_user_id).toBe(targetUserId);
 
     appEvents.off('join_request.rejected', listener);
+  });
+});
+
+// ── #277 Optional Geo Location Tests ─────────────────────────────
+
+describe('POST /api/v1/farms — optional geo (#277)', () => {
+  it('creates farm without coordinates (location_text only)', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.createFarm).mockResolvedValue({
+      ...farmFixture,
+      name: 'No-Geo Farm',
+      location_text: 'Chichibu, Saitama',
+      latitude: undefined,
+      longitude: undefined,
+    });
+    vi.mocked(dynamoRepo.getBedsForFarm).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'No-Geo Farm', location_text: 'Chichibu, Saitama' }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['name']).toBe('No-Geo Farm');
+    expect(body['location_text']).toBe('Chichibu, Saitama');
+    expect(body['latitude']).toBeNull();
+    expect(body['longitude']).toBeNull();
+  });
+
+  it('returns 400 when location_text is missing', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'Farm', latitude: 36.0, longitude: 138.0 }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when location_text is empty string', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'Farm', location_text: '  ' }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('PATCH /api/v1/farms/:farmId — add coordinates (#277)', () => {
+  it('allows updating latitude and longitude', async () => {
+    vi.mocked(dynamoRepo.updateFarm).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({
+      ...farmFixture,
+      latitude: 35.99,
+      longitude: 139.09,
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ latitude: 35.99, longitude: 139.09 }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['latitude']).toBe(35.99);
+  });
+
+  it('returns 400 when location_text is whitespace-only', async () => {
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ location_text: '   ' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('allows updating location_text', async () => {
+    vi.mocked(dynamoRepo.updateFarm).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({
+      ...farmFixture,
+      location_text: 'Kawagoe, Saitama',
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ location_text: 'Kawagoe, Saitama' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['location_text']).toBe('Kawagoe, Saitama');
   });
 });

@@ -23,6 +23,7 @@ const farmFixture = {
   id: FARM_ID,
   user_id: TEST_USER_ID,
   name: 'Test Farm',
+  location_text: 'Test Location',
   latitude: 36.0,
   longitude: 138.3,
   locale: 'en' as const,
@@ -286,5 +287,27 @@ describe('error handling', () => {
 
     const res = await app.request(`/api/v1/farms/${farmId9}/weather`, { headers: authHeaders() });
     expect(res.status).toBe(502);
+  });
+
+  it('returns 400 when farm has no coordinates (#277)', async () => {
+    const noGeoFarmId = 'f0000000-0000-0000-0000-000000000099';
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({
+      ...farmFixture,
+      id: noGeoFarmId,
+      latitude: undefined,
+      longitude: undefined,
+      location_text: 'Chichibu, Saitama',
+    });
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: noGeoFarmId,
+      role: 'owner',
+      joined_at: '2026-01-01T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/farms/${noGeoFarmId}/weather`, { headers: authHeaders() });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toBe('coordinates_required');
   });
 });

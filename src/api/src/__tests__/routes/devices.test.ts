@@ -51,6 +51,7 @@ const farmFixture = {
   id: FARM_ID,
   user_id: TEST_USER_ID,
   name: 'Test Farm',
+  location_text: 'Test Location',
   latitude: 36.03,
   longitude: 138.26,
   locale: 'en' as const,

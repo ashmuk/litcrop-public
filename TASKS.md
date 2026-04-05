@@ -7,8 +7,6 @@
 
 ## Beta-8: Crop Intelligence M1–M3 + UX (current sprint)
 
-- [#267](https://github.com/ashmuk/litcrop/issues/267) **fix(diary): save button invisible on non-dark themes — missing btn--primary CSS** `area:frontend` `type:bug` `priority:high` — fixed locally, unpushed
-- [#268](https://github.com/ashmuk/litcrop/issues/268) **fix(diary): calendar view blank on mobile — silent fetch failures and loading state** `area:frontend` `type:bug` `priority:high` — fixed locally, unpushed
 - [#277](https://github.com/ashmuk/litcrop/issues/277) **fix(farm): make geo location optional in farm creation for privacy** `area:api` `area:frontend` `type:fix` `size:S` `priority:high`
 - [#273](https://github.com/ashmuk/litcrop/issues/273) **feat(diary): bridge diary planting/harvesting entries to bed crop dates (M1)** `area:api` `area:frontend` `type:feature` `size:S`
 - [#274](https://github.com/ashmuk/litcrop/issues/274) **feat(crops): integrate public crop library for species metadata (M2)** `area:api` `area:shared` `type:feature` `size:L`
@@ -52,6 +50,7 @@
 - [#239](https://github.com/ashmuk/litcrop/issues/239) **feat(infra): create production-labeled AWS resources (replace mvp naming)** `area:infra` `type:infra` `priority:high`
 - [#280](https://github.com/ashmuk/litcrop/issues/280) **feat(frontend): release notes, what's new, disclaimer, and report bug pages** `area:frontend` `type:feature` `size:M`
 - [#281](https://github.com/ashmuk/litcrop/issues/281) **design(platform): free vs paid tier concept — monetization strategy** `type:feature` `step:design` `size:M` `status:deferred` — design only, no implementation
+- [#284](https://github.com/ashmuk/litcrop/issues/284) **feat(crops): dynamic crop API integration — OpenFarm/USDA runtime fallback** `area:api` `type:feature` `size:L` `status:deferred` — extends static library from #274
 
 ---
 
@@ -63,6 +62,8 @@
 
 ## Recently Closed
 
+- [#268](https://github.com/ashmuk/litcrop/issues/268) ~~**fix(diary): calendar view blank on mobile — silent fetch failures and loading state**~~ `closed 2026-04-05` — fixed in 8467088
+- [#267](https://github.com/ashmuk/litcrop/issues/267) ~~**fix(diary): save button invisible on non-dark themes — missing btn--primary CSS**~~ `closed 2026-04-05`
 - [#270](https://github.com/ashmuk/litcrop/issues/270) ~~**fix(diary): hide edit/delete buttons for entries staff user doesn't own**~~ `closed`
 - [#269](https://github.com/ashmuk/litcrop/issues/269) ~~**feat(diary): "All beds" option and list view filters (bed + category)**~~ `closed`
 - [#258](https://github.com/ashmuk/litcrop/issues/258) ~~**bug: beds with photos still show fallback — thumbnail_key missing**~~ `closed`

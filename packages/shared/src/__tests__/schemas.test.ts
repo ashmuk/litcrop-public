@@ -36,6 +36,7 @@ const validFarmBase = {
   user_id: 'user-1',
   name: 'Nagano Farm',
   description: null,
+  location_text: 'Nagano, Japan',
   latitude: 36.65,
   longitude: 138.18,
   elevation_m: null,
