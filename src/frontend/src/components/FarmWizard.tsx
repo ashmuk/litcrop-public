@@ -160,6 +160,10 @@ export default function FarmWizard({ onComplete, onCancel }: FarmWizardProps) {
           {t('wizard.step_location')} (2/3)
         </div>
 
+        <div style="background:var(--color-primary-light);border-radius:var(--radius-md);padding:var(--space-3);font-size:var(--font-size-xs);color:var(--color-gray-700);line-height:1.5">
+          {t('wizard.geo_benefit')}
+        </div>
+
         <MapPicker
           initialLat={location?.lat ?? cityLat ?? undefined}
           initialLng={location?.lng ?? cityLng ?? undefined}

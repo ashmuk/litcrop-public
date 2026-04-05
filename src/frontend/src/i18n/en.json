@@ -256,6 +256,7 @@
     "step_name": "Name your farm",
     "step_location": "Set precise location (optional)",
     "skip_map": "Skip — add coordinates later",
+    "geo_benefit": "Although optional, adding a precise location enables elevation data, weather forecasts, and richer context for the future AI assistant.",
     "step_review": "Review & create",
     "next": "Next",
     "create": "Create Farm",
