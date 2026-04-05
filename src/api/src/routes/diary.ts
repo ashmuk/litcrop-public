@@ -47,10 +47,31 @@ async function resolveBedName(bedId: string | null): Promise<string | null> {
   }
 }
 
+/**
+ * Resolve a created_by user ID to a display name.
+ * Returns the user's display_name, or null if no profile or no display name is set.
+ */
+async function resolveCreatorName(userId: string, nameCache?: Map<string, string | null>): Promise<string | null> {
+  if (nameCache?.has(userId)) return nameCache.get(userId) ?? null;
+  try {
+    const profile = await dynamoRepo.getUserProfile(userId);
+    const name = profile?.display_name || null;
+    nameCache?.set(userId, name);
+    return name;
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      nameCache?.set(userId, null);
+      return null;
+    }
+    throw err;
+  }
+}
+
 /** Build the full diary entry response shape */
 async function buildEntryResponse(
   entry: DiaryEntry,
   bedNameCache?: Map<string, string | null>,
+  creatorNameCache?: Map<string, string | null>,
 ) {
   let bed_name: string | null = null;
   if (entry.bed_id) {
@@ -61,6 +82,7 @@ async function buildEntryResponse(
       bedNameCache?.set(entry.bed_id, bed_name);
     }
   }
+  const created_by_name = await resolveCreatorName(entry.created_by, creatorNameCache);
   return {
     id: entry.id,
     farm_id: entry.farm_id,
@@ -74,6 +96,7 @@ async function buildEntryResponse(
     costs: entry.costs,
     cost_total: calcCostTotal(entry),
     created_by: entry.created_by,
+    created_by_name,
     created_at: entry.created_at,
     updated_at: entry.updated_at,
   };
@@ -104,7 +127,7 @@ async function loadAndAuthorizeEntry(
 
   if (requireWrite) {
     const isCreator = entry.created_by === userId;
-    const isPrivileged = !isAdmin && (membership.role === 'admin' || membership.role === 'owner');
+    const isPrivileged = isAdmin || membership.role === 'admin' || membership.role === 'owner';
     if (!isCreator && !isPrivileged) {
       throw new NotFoundError('Diary entry not found');
     }
@@ -239,11 +262,12 @@ diaryRouter.get('/:farmId/diary', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  // Deduplicate bed lookups across entries sharing the same bed_id
+  // Deduplicate lookups across entries sharing the same bed_id or created_by
   const bedNameCache = new Map<string, string | null>();
+  const creatorNameCache = new Map<string, string | null>();
   const entries = [];
   for (const entry of result.items) {
-    entries.push(await buildEntryResponse(entry, bedNameCache));
+    entries.push(await buildEntryResponse(entry, bedNameCache, creatorNameCache));
   }
 
   const filtered = category ? entries.filter(e => e.category === category) : entries;

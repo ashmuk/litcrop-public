@@ -24,6 +24,8 @@ import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
 import { CATEGORY_META, getLocale } from '../lib/diary';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
+import { getCurrentUser } from '../lib/auth';
+import { getLocalFarmRole, getCachedIsAdmin } from '../lib/hooks';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -57,13 +59,14 @@ type ViewMode = 'list' | 'calendar';
 interface CardProps {
   entry: DiaryEntryResponse;
   expanded: boolean;
+  canEdit: boolean;
   onExpand: () => void;
   onCollapse: () => void;
   onEdit: () => void;
   onDeleted: () => void;
 }
 
-function DiaryEntryCard({ entry, expanded, onExpand, onCollapse, onEdit, onDeleted }: CardProps) {
+function DiaryEntryCard({ entry, expanded, canEdit, onExpand, onCollapse, onEdit, onDeleted }: CardProps) {
   const [deleting, setDeleting] = useState(false);
   const meta = CATEGORY_META[entry.category] ?? CATEGORY_META.other;
   const categoryLabel = t(`diary.categories.${entry.category}`);
@@ -128,8 +131,11 @@ function DiaryEntryCard({ entry, expanded, onExpand, onCollapse, onEdit, onDelet
             : entry.description}
       </p>
 
-      {/* Meta: time + photo count */}
+      {/* Meta: author + time + photo count */}
       <div class="diary-entry__meta">
+        {entry.created_by_name && (
+          <span>{entry.created_by_name}</span>
+        )}
         {entry.time_spent_minutes != null && (
           <span>⏱ {entry.time_spent_minutes}{t('diary.time_minutes').replace('{{count}}', '').trim() === 'min' ? ' min' : '分'}</span>
         )}
@@ -155,23 +161,25 @@ function DiaryEntryCard({ entry, expanded, onExpand, onCollapse, onEdit, onDelet
               ))}
             </div>
           )}
-          <div class="diary-entry__actions">
-            <button
-              type="button"
-              class="btn btn--secondary btn--sm"
-              onClick={handleEdit}
-            >
-              {t('diary.edit')}
-            </button>
-            <button
-              type="button"
-              class="btn btn--danger btn--sm"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? '…' : t('diary.delete')}
-            </button>
-          </div>
+          {canEdit && (
+            <div class="diary-entry__actions">
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                onClick={handleEdit}
+              >
+                {t('diary.edit')}
+              </button>
+              <button
+                type="button"
+                class="btn btn--danger btn--sm"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? '…' : t('diary.delete')}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -186,6 +194,13 @@ export default function DiaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('list');
+
+  // Auth context for ownership-based access control
+  const currentUser = getCurrentUser();
+  const farmRole = getLocalFarmRole();
+  const isAdmin = getCachedIsAdmin();
+  // Admin/owner can edit all entries; staff can only edit own
+  const canWrite = isAdmin || farmRole === 'admin' || farmRole === 'owner';
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntryResponse | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -408,6 +423,7 @@ export default function DiaryPage() {
                   key={entry.id}
                   entry={entry}
                   expanded={expandedId === entry.id}
+                  canEdit={canWrite || entry.created_by === currentUser?.sub}
                   onExpand={() => setExpandedId(entry.id)}
                   onCollapse={() => setExpandedId(null)}
                   onEdit={() => handleEdit(entry)}
@@ -446,6 +462,7 @@ export default function DiaryPage() {
                   key={entry.id}
                   entry={entry}
                   expanded={expandedId === entry.id}
+                  canEdit={canWrite || entry.created_by === currentUser?.sub}
                   onExpand={() => setExpandedId(entry.id)}
                   onCollapse={() => setExpandedId(null)}
                   onEdit={() => handleEdit(entry)}
