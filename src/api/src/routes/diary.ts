@@ -136,6 +136,29 @@ async function loadAndAuthorizeEntry(
   return entry;
 }
 
+/**
+ * Bridge diary planting/harvesting entries to bed crop dates (#273 M1).
+ * Non-blocking: bed update failure is logged but does not fail the diary operation.
+ */
+async function syncBedDatesFromDiary(
+  category: string,
+  bedId: string | null,
+  date: string | null,
+): Promise<void> {
+  if (!bedId) return;
+  if (category !== 'planting' && category !== 'harvesting') return;
+
+  try {
+    const bed = await dynamoRepo.getBedById(bedId);
+    const field = category === 'planting' ? 'planted_at' : 'expected_harvest';
+    await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, {
+      [field]: date,
+    });
+  } catch (err) {
+    console.warn(`[diary→bed bridge] Failed to sync ${category} date for bed ${bedId}:`, err);
+  }
+}
+
 // ── POST /:farmId/diary — Create entry ───────────────────────────
 
 diaryRouter.post('/:farmId/diary', async (c) => {
@@ -212,6 +235,9 @@ diaryRouter.post('/:farmId/diary', async (c) => {
       date: entry.date,
     },
   });
+
+  // Bridge: sync bed planted_at / expected_harvest from diary (#273)
+  await syncBedDatesFromDiary(entry.category, entry.bed_id, entry.date);
 
   const response = await buildEntryResponse(entry);
   return c.json(response, 201);
@@ -346,6 +372,9 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
     },
   });
 
+  // Bridge: sync bed dates from updated entry (#273)
+  await syncBedDatesFromDiary(updated.category, updated.bed_id, updated.date);
+
   const response = await buildEntryResponse(updated);
   return c.json(response);
 });
@@ -378,6 +407,9 @@ diaryRouter.delete('/:farmId/diary/:entryId', async (c) => {
       date: entry.date,
     },
   });
+
+  // Bridge: clear bed date when bridged diary entry is deleted (#273)
+  await syncBedDatesFromDiary(entry.category, entry.bed_id, null);
 
   return new Response(null, { status: 204 });
 });

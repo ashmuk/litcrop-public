@@ -21,6 +21,7 @@ vi.mock('../../services/dynamodb', () => ({
     getDiaryEntryById: vi.fn(),
     updateDiaryEntry: vi.fn(),
     deleteDiaryEntry: vi.fn(),
+    updateBed: vi.fn(),
     getUserProfile: vi.fn(),
   },
 }));
@@ -573,5 +574,136 @@ describe('DELETE /api/v1/farms/:farmId/diary/:entryId', () => {
     });
 
     expect(res.status).toBe(204);
+  });
+});
+
+// ── #273 Diary → Bed Bridge Tests ──────────────────────────────────
+
+describe('diary→bed bridge (#273)', () => {
+  beforeEach(() => {
+    mockRepo.updateBed.mockResolvedValue(undefined);
+    mockRepo.getUserProfile.mockResolvedValue(null);
+  });
+
+  it('POST planting entry with bed_id → sets bed planted_at', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, category: 'planting', date: '2026-04-10' });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-10',
+        category: 'planting',
+        description: 'Planted tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(res.status).toBe(201);
+    expect(mockRepo.updateBed).toHaveBeenCalledWith(
+      FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
+      { planted_at: '2026-04-10' },
+    );
+  });
+
+  it('POST harvesting entry with bed_id → sets bed expected_harvest', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, category: 'harvesting', date: '2026-07-15' });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-07-15',
+        category: 'harvesting',
+        description: 'First harvest',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(res.status).toBe(201);
+    expect(mockRepo.updateBed).toHaveBeenCalledWith(
+      FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
+      { expected_harvest: '2026-07-15' },
+    );
+  });
+
+  it('POST watering entry with bed_id → no bed update', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, category: 'watering' });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-05',
+        category: 'watering',
+        description: 'Watered beds',
+        bed_id: BED_ID,
+      }),
+    });
+    expect(res.status).toBe(201);
+    expect(mockRepo.updateBed).not.toHaveBeenCalled();
+  });
+
+  it('POST planting entry without bed_id → no bed update', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue({ ...entryFixture, bed_id: null });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-05',
+        category: 'planting',
+        description: 'General planting note',
+      }),
+    });
+    expect(res.status).toBe(201);
+    expect(mockRepo.updateBed).not.toHaveBeenCalled();
+  });
+
+  it('PATCH planting entry date → syncs bed planted_at', async () => {
+    mockRepo.getDiaryEntryById.mockResolvedValue(entryFixture);
+    mockRepo.updateDiaryEntry.mockResolvedValue({ ...entryFixture, date: '2026-04-12' });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ date: '2026-04-12' }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockRepo.updateBed).toHaveBeenCalledWith(
+      FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
+      { planted_at: '2026-04-12' },
+    );
+  });
+
+  it('DELETE planting entry with bed_id → clears bed planted_at', async () => {
+    mockRepo.getDiaryEntryById.mockResolvedValue(entryFixture);
+    mockRepo.deleteDiaryEntry.mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(204);
+    expect(mockRepo.updateBed).toHaveBeenCalledWith(
+      FARM_ID, BED_ID, bedFixture.row, bedFixture.col,
+      { planted_at: null },
+    );
+  });
+
+  it('bed update failure does not fail diary creation (non-blocking)', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue(entryFixture);
+    mockRepo.updateBed.mockRejectedValue(new Error('DynamoDB timeout'));
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        date: '2026-04-10',
+        category: 'planting',
+        description: 'Planted tomatoes',
+        bed_id: BED_ID,
+      }),
+    });
+    // Diary entry still created successfully despite bed update failure
+    expect(res.status).toBe(201);
   });
 });
