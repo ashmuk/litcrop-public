@@ -23,7 +23,7 @@ import DiaryEntryForm from './DiaryEntryForm';
 import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
 import { CATEGORY_META, getLocale } from '../lib/diary';
-import { formatCurrency, groupByDate } from '../lib/diary-utils';
+import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -194,7 +194,7 @@ export default function DiaryPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [beds, setBeds] = useState<FarmBedItem[]>([]);
 
-  // Initialise farmId and view from localStorage
+  // Initialise farmId and view from localStorage (synchronous-first)
   useEffect(() => {
     const storedFarmId = localStorage.getItem(LS_FARM_ID);
     setFarmId(storedFarmId);
@@ -203,9 +203,12 @@ export default function DiaryPage() {
     if (storedView === 'list' || storedView === 'calendar') {
       setView(storedView);
     }
+
+    // If no farmId stored, stop loading — show empty state
+    if (!storedFarmId) setLoading(false);
   }, []);
 
-  // Fetch entries when farmId is known
+  // Fetch entries for list view
   async function loadEntries() {
     if (!farmId) return;
     setLoading(true);
@@ -220,26 +223,42 @@ export default function DiaryPage() {
     }
   }
 
+  // Fetch entries for calendar view (bounded to displayed month)
+  async function loadCalendarEntries(showLoader = false) {
+    if (!farmId) return;
+    if (showLoader) setLoading(true);
+    setError(null);
+    const from = toDateString(new Date(calYear, calMonth, 1));
+    const to = toDateString(new Date(calYear, calMonth + 1, 0));
+    try {
+      const res = await getDiaryEntries(farmId, { from, to });
+      setEntries(res.data);
+    } catch {
+      setError(t('diary.error_loading'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (farmId && view === 'list') {
       loadEntries();
     }
   }, [farmId, view]);
 
-  // Fetch beds when calendar view is active (guard: skip if already loaded)
+  // Fetch beds when calendar view is active
   useEffect(() => {
     if (view === 'calendar' && farmId && beds.length === 0) {
-      getBeds(farmId).then(setBeds).catch(() => {});
+      getBeds(farmId)
+        .then(setBeds)
+        .catch(() => setBeds([]));
     }
   }, [view, farmId]);
 
   // Fetch the displayed month's entries when in calendar view
   useEffect(() => {
     if (view === 'calendar' && farmId) {
-      const from = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
-      const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
-      const to = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      getDiaryEntries(farmId, { from, to }).then((res) => setEntries(res.data)).catch(() => {});
+      loadCalendarEntries();
     }
   }, [view, farmId, calYear, calMonth]);
 
@@ -260,6 +279,8 @@ export default function DiaryPage() {
   }
 
   function switchView(next: ViewMode) {
+    setEntries([]);
+    setLoading(true);
     setView(next);
     try { localStorage.setItem(LS_VIEW_KEY, next); } catch {}
   }
@@ -277,7 +298,8 @@ export default function DiaryPage() {
   function handleFormSave() {
     setShowForm(false);
     setEditingEntry(null);
-    loadEntries();
+    if (view === 'calendar') loadCalendarEntries();
+    else loadEntries();
   }
 
   function handleFormCancel() {
@@ -354,7 +376,7 @@ export default function DiaryPage() {
             type="button"
             class="btn btn--primary"
             style={{ marginTop: 'var(--space-4)' }}
-            onClick={loadEntries}
+            onClick={() => view === 'calendar' ? loadCalendarEntries() : loadEntries()}
           >
             {t('buttons.retry')}
           </button>

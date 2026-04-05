@@ -1654,13 +1654,14 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Sit above the 64px tab bar + safe-area inset */
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   z-index: 250;
   background-color: var(--color-surface);
   border-top-left-radius: var(--radius-xl, 16px);
   border-top-right-radius: var(--radius-xl, 16px);
   box-shadow: var(--shadow-lg);
-  max-height: 90vh;
+  max-height: calc(90vh - 64px);
   display: flex;
   flex-direction: column;
   animation: sheet-slide-up var(--transition-fast) ease;

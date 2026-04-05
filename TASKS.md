@@ -7,7 +7,6 @@
 
 ## Beta-7 Post: Remaining
 
-- [#247](https://github.com/ashmuk/litcrop/issues/247) **feat(diary): farm calendar with crop timeline and Gantt chart** `area:frontend` `type:feature` — Gantt chart portion pending
 - [#242](https://github.com/ashmuk/litcrop/issues/242) **feat: animated HTML/CSS diagram showing device-to-cloud capture flow** `area:frontend` `type:feature` `status:deferred`
 
 ---
@@ -51,4 +50,5 @@
 - [#223](https://github.com/ashmuk/litcrop/issues/223) ~~**fix: profile picture upload sends wrong FormData field name**~~ `closed`
 - [#216](https://github.com/ashmuk/litcrop/issues/216) ~~**feat: expand crop type selection with searchable crop library**~~ `closed`
 - [#210](https://github.com/ashmuk/litcrop/issues/210) ~~**feat(device): device configuration UI and API for camera node management**~~ `closed`
+- [#207](https://github.com/ashmuk/litcrop/issues/207) ~~**feat(admin): activity log monitor with filtering on Admin dashboard**~~ `closed`
 - [#160](https://github.com/ashmuk/litcrop/issues/160) ~~**F-18: Profile picture support**~~ `closed`
