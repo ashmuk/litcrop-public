@@ -156,6 +156,9 @@ export default function RoiByBedTable({ data, currency }: Props) {
               <th
                 aria-sort={ariaSort('bed_name')}
                 onClick={() => handleSort('bed_name')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('bed_name'); } }}
+                role="button"
+                tabIndex={0}
                 class="roi-bed-table__sortable"
               >
                 {t('roi.bed_column')}
@@ -163,6 +166,9 @@ export default function RoiByBedTable({ data, currency }: Props) {
               <th
                 aria-sort={ariaSort('total_cost')}
                 onClick={() => handleSort('total_cost')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('total_cost'); } }}
+                role="button"
+                tabIndex={0}
                 class="roi-bed-table__sortable roi-bed-table__num"
               >
                 {t('roi.costs_column')}
@@ -170,6 +176,9 @@ export default function RoiByBedTable({ data, currency }: Props) {
               <th
                 aria-sort={ariaSort('total_revenue')}
                 onClick={() => handleSort('total_revenue')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('total_revenue'); } }}
+                role="button"
+                tabIndex={0}
                 class="roi-bed-table__sortable roi-bed-table__num"
               >
                 {t('roi.revenue_column')}
@@ -177,6 +186,9 @@ export default function RoiByBedTable({ data, currency }: Props) {
               <th
                 aria-sort={ariaSort('roi_percent')}
                 onClick={() => handleSort('roi_percent')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('roi_percent'); } }}
+                role="button"
+                tabIndex={0}
                 class="roi-bed-table__sortable roi-bed-table__num"
               >
                 {t('roi.roi_column')}
@@ -184,6 +196,9 @@ export default function RoiByBedTable({ data, currency }: Props) {
               <th
                 aria-sort={ariaSort('entry_count')}
                 onClick={() => handleSort('entry_count')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('entry_count'); } }}
+                role="button"
+                tabIndex={0}
                 class="roi-bed-table__sortable roi-bed-table__num"
               >
                 {t('roi.entries_column')}

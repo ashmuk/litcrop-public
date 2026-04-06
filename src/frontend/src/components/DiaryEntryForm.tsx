@@ -201,10 +201,15 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
       photo_ids: entry?.photo_ids ?? [],
       costs: parsedCosts,
       // Harvest fields (Beta-10)
-      harvest_amount: category === 'harvesting' && harvestAmount ? parseFloat(harvestAmount) : null,
+      // Treat NaN as null — don't send invalid numeric values to the API.
+      harvest_amount: category === 'harvesting' && harvestAmount
+        ? (isNaN(parseFloat(harvestAmount)) ? null : parseFloat(harvestAmount))
+        : null,
       harvest_unit: category === 'harvesting' && harvestUnit ? harvestUnit.trim() : null,
-      revenue: category === 'harvesting' && revenue ? parseFloat(revenue) : null,
-      revenue_currency: category === 'harvesting' && revenue ? revenueCurrency : null,
+      revenue: category === 'harvesting' && revenue
+        ? (isNaN(parseFloat(revenue)) ? null : parseFloat(revenue))
+        : null,
+      revenue_currency: category === 'harvesting' && revenue && !isNaN(parseFloat(revenue)) ? revenueCurrency : null,
     };
 
     setSubmitting(true);

@@ -2738,8 +2738,32 @@
   --color-roi-negative: #C62828;
   --color-roi-negative-bg: #FFEBEE;
   --color-roi-neutral: #6b7280;
+  --color-roi-neutral-bg: rgba(107, 114, 128, 0.1);
   --color-roi-cost: #ef4444;
   --color-roi-revenue: #22c55e;
+  --color-roi-warning-text: #92400e;
+}
+
+[data-theme="dark"] {
+  --color-roi-positive: #4ade80;
+  --color-roi-positive-bg: rgba(74, 222, 128, 0.15);
+  --color-roi-negative: #f87171;
+  --color-roi-negative-bg: rgba(248, 113, 113, 0.15);
+  --color-roi-neutral: #9ca3af;
+  --color-roi-neutral-bg: rgba(156, 163, 175, 0.1);
+  --color-roi-cost: #f87171;
+  --color-roi-revenue: #4ade80;
+  --color-roi-warning-text: #fcd34d;
+}
+
+[data-theme="earthy"] {
+  --color-roi-positive: #2d6a4f;
+  --color-roi-positive-bg: #d8f3dc;
+  --color-roi-negative: #9b2226;
+  --color-roi-negative-bg: #ffe0db;
+  --color-roi-cost: #ae2012;
+  --color-roi-revenue: #40916c;
+  --color-roi-warning-text: #78350f;
 }
 
 /* Container */
@@ -2847,7 +2871,7 @@
 .roi-excluded-notice {
   --_amber: 245, 158, 11;
   font-size: var(--font-size-xs);
-  color: #92400e;
+  color: var(--color-roi-warning-text);
   text-align: center;
   margin-bottom: var(--space-3);
   padding: var(--space-2) var(--space-3);

@@ -28,7 +28,11 @@ export const diaryRouter = new Hono();
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-/** Calculate total cost for a diary entry */
+/**
+ * Sum of all costs[].amount regardless of currency.
+ * NOTE: This field mixes currencies — use for single-entry display only.
+ * For currency-aware aggregation (ROI dashboard), use roi-utils.sumCostsByCurrency().
+ */
 function calcCostTotal(entry: DiaryEntry): number {
   return entry.costs.reduce((sum, c) => sum + c.amount, 0);
 }

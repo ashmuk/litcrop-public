@@ -179,6 +179,9 @@ export function computeRoiByBed(
     });
   }
 
+  // Default sort: highest cost first
+  results.sort((a, b) => b.total_cost - a.total_cost);
+
   return results;
 }
 

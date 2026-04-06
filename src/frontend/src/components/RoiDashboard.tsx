@@ -194,6 +194,8 @@ export default function RoiDashboard({ farmId, beds }: Props) {
             <div class="roi-excluded-notice" role="status">
               {t('roi.currency_excluded')
                 .replace('{{count}}', String(summary.excluded_entry_count))
+                // NOTE: Assumes exactly 2 currencies (JPY, USD). If a third currency is added,
+                // this should list all non-default currencies found in excluded entries.
                 .replace('{{currency}}', farmCurrency === 'JPY' ? 'USD' : 'JPY')}
             </div>
           )}

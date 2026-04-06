@@ -58,7 +58,7 @@ function makeBed(overrides: Partial<FarmBedItem> & { id: string; name: string })
     col: 0,
     crop_type: null,
     crop_variety: null,
-    latest_status: 'empty',
+    latest_status: 'no_data',
     latest_image: null,
     ...overrides,
   };
