@@ -25,6 +25,7 @@ import CropTimeline from './CropTimeline';
 import GanttChart from './GanttChart';
 import RoiDashboard from './RoiDashboard';
 import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib/diary';
+import { getCropName } from '../lib/crops';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 import { getCurrentUser } from '../lib/auth';
 import { getLocalFarmRole, getCachedIsAdmin } from '../lib/hooks';
@@ -553,7 +554,7 @@ export default function DiaryPage() {
             <option value="">🌿 {t('diary.all_beds')}</option>
             <option value={BED_FILTER_NONE}>{t('diary.no_bed')}</option>
             {beds.map((bed) => (
-              <option key={bed.id} value={bed.id}>{bed.name ?? bed.id}</option>
+              <option key={bed.id} value={bed.id}>{bed.name ?? bed.id}{bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}</option>
             ))}
           </select>
           <select
