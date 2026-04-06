@@ -300,3 +300,79 @@ Deliverable: docs/feedback/PRE-PROD-AUDIT.md → Go/No-Go recommendation
 | #240 | Install.sh URL finalization |
 
 Plus: fix any MUST-FIX findings from pre-production audit (#256)
+
+---
+
+## Beta-10: ROI Dashboard (#248, #245)
+
+### Goal
+
+Add financial analytics to the Farm Diary so farmers can track harvest volumes,
+record revenue, and answer "Is this bed/crop profitable?" — with zero new AWS
+services and $0.00 monthly cost increase.
+
+### Scope Level: MVP
+
+### Deliverables
+
+1. **Harvest fields on DiaryEntry** — four nullable fields (`harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency`) added to `DiaryEntry`, populated only when `category === 'harvesting'`
+2. **Farm default currency** — `default_currency: 'JPY' | 'USD'` field on `Farm` entity; configurable in farm settings; defaults to `'JPY'` for existing farms
+3. **roi-utils.ts** — pure client-side aggregation module: `computeRoi`, `computeRoiByBed`, `computeCostByCategory`, `computeMonthlyTrend`
+4. **ROI tab in Diary page** — 4th tab (`💰`) alongside list | calendar | gantt; persisted to localStorage
+5. **RoiDashboard** — container component with auto-paginated fetch for full calendar year, year navigation, and memoized aggregation
+6. **ROI sub-components** — `RoiSummaryCards` (4 metric cards), `CostByCategoryChart` (horizontal bars, pure CSS), `MonthlyTrendChart` (stacked bars, pure CSS), `RoiByBedTable` (sortable; mobile card layout)
+7. **Harvest fields in DiaryEntryForm** — conditional section revealed when `category === 'harvesting'`, with CSS `max-height` transition
+8. **i18n** — all new keys in `en.json` and `ja.json` (`roi.*`, `diary.harvest_*`, `setup.default_currency*`)
+9. **Tests** — unit tests for roi-utils (~27 cases), contract test updates, API integration tests; no regressions against 713 baseline
+
+### Exit Criteria
+
+- [ ] Farmer can log a harvesting diary entry with amount, unit, and revenue from the existing diary form
+- [ ] Harvest fields are hidden (not in payload) when category is not `harvesting`
+- [ ] ROI tab is visible in the diary page tab bar and persists view selection to localStorage
+- [ ] Opening ROI tab fetches all diary entries for the current calendar year (auto-pagination)
+- [ ] Summary cards display Total Cost, Revenue, ROI %, and Harvest Count with correct values
+- [ ] Cost by Category chart renders horizontal bars sorted by cost descending
+- [ ] Monthly Trend chart renders 12 months with stacked cost/revenue bars
+- [ ] ROI by Bed table is sortable by all 5 columns; mobile shows card layout
+- [ ] Currency mismatch warning appears when entries exist in non-default currency
+- [ ] Farm default currency is configurable on the farm settings page and saved via PATCH
+- [ ] Old diary entries (pre-Beta-10) read back with `null` harvest fields — no migration needed
+- [ ] `npm run test` passes across all packages with >= 713 + new Beta-10 tests
+- [ ] `npm run build` succeeds with no TypeScript errors
+- [ ] Monthly AWS cost delta is $0.00
+
+### Implementation Batches
+
+| Batch | Tasks | Estimated Effort | Key Dependencies |
+|-------|-------|-----------------|-----------------|
+| **1: Shared types + schemas** | 1.1 domain types, 1.2 Zod schemas, 1.3 contract tests | ~2 hours | None |
+| **2: API layer** | 2.1 DynamoDB, 2.2 diary route, 2.3 farms route, 2.4 integration tests | ~3 hours | Batch 1 |
+| **3: Frontend data layer** | 3.1 roi-utils.ts, 3.2 unit tests, 3.3 api.ts types | ~3 hours | Task 1.1 only (can overlap Batch 2) |
+| **4: Frontend UI** | 4.1 DiaryEntryForm, 4.2 DiaryPage, 4.3 RoiDashboard, 4.4 sub-components, 4.5 i18n, 4.6 CSS | ~5 hours | Batch 3 |
+| **5: Polish + E2E** | 5.1 states, 5.2 interactions, 5.3 currency setting, 5.4 E2E gate | ~3 hours | Batch 4 |
+| **Total** | **20 tasks** | **~16 hours** | |
+
+Full task details and dependency DAGs: `docs/TASK-BREAKDOWN.md` (Beta-10 section).
+
+### Iteration Log
+
+#### Iteration 1 — 2026-04-06
+
+- **Trigger**: Fresh design pipeline (`/cc-design` Steps 2–7)
+- **Entry point**: Step 2 (Architecture delta — ARCHITECTURE.md Section 15)
+- **What changed**:
+  - ARCHITECTURE.md §15: Problem statement, data model extension (Option A — inline fields), client-side aggregation rationale, currency handling, API design (no new endpoints), frontend architecture, data flow, scope progression, cost impact ($0.00), risks
+  - UX-DESIGNS.md §16: Design tokens (ROI color palette, dark/earthy overrides), tab bar addition, RoiDashboard layout (mobile + desktop wireframes), RoiSummaryCards spec, CostByCategoryChart spec, MonthlyTrendChart spec (incl. accessible hidden table), RoiByBedTable spec (desktop table + mobile card list), DiaryEntryForm harvest fields section, Farm currency setting, loading/empty/partial states, interaction specs (year nav, sort, currency warning), WCAG 2.1 AA checklist, i18n keys (en + ja), component state matrix, responsive layout summary, BEM class naming convention
+  - SYSTEM-DESIGN.md §12 (formerly standalone DESIGNS.md, merged): Full implementation guide — type changes, schema changes (incl. `UpdateDiaryEntrySchema` innerType approach), API layer changes, DynamoDB layer changes, roi-utils complete implementation, component integration, sequence diagrams (3), i18n keys, test strategy (unit + contract + integration + E2E), file manifest, implementation order
+  - PREREQUISITES.md §8: Beta-10 checklist, open questions (all resolved), infrastructure notes, file manifest
+  - decisions/ADR-20260406-roi-dashboard.md: Decision record for Option A (inline fields)
+  - docs/TASK-BREAKDOWN.md: 20 tasks across 5 batches with dependency DAGs (Beta-10 section)
+  - PLANS.md: Beta-10 section added (this entry)
+- **What preserved**: All prior diary system (Gantt, calendar, work log), no breaking changes to existing API or DynamoDB entities, all 713 existing tests unaffected
+- **Key design decisions**:
+  - Option A (inline fields): four nullable fields on `DiaryEntry` — simplest data model change, no new DDB entity, no new GSI, no migration
+  - Client-side aggregation: full-year fetch (~400KB max) is fast enough; no new Lambda endpoint needed
+  - Single-currency aggregation: filter `costs[]` by `farm.default_currency` directly rather than using mixed-currency `cost_total`
+  - Pure CSS charts: horizontal bars + stacked bars using CSS Grid/flexbox percentage widths — consistent with existing Gantt bars, zero bundle size increase
+  - Calendar year (Jan–Dec) as the date range unit — maps to agricultural seasons, Jan–Mar is quiet period

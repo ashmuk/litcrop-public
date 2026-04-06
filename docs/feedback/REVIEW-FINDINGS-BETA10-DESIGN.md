@@ -100,3 +100,119 @@ All 3 MUST-FIX and 4 SHOULD-FIX items have been addressed:
 - #7: Harvest i18n keys moved under `diary.harvest_*` namespace (UX-DESIGNS.md)
 
 5 SUGGESTION items remain as-is (mock-up minor pixel differences — non-blocking).
+
+---
+
+## Review 2: Steps 5-7 (System Design, Task Breakdown, Planning)
+
+> Reviewed: 2026-04-06
+> Reviewer: my-reviewer
+> Scope: SYSTEM-DESIGN.md section 12, TASK-BREAKDOWN.md Beta-10 section, PLANS.md Beta-10 section
+> Artifacts: docs/SYSTEM-DESIGN.md (lines 3652-5063), docs/TASK-BREAKDOWN.md (lines 1551-2073), PLANS.md (lines 306-378)
+
+### Summary
+
+The merge of the former DESIGNS.md content into SYSTEM-DESIGN.md section 12 is well-executed. Section numbering is correct (12.1 through 12.10 with appropriate subsections), the currency filtering warning is present, and cross-file consistency is strong. The 20 tasks across 5 batches in TASK-BREAKDOWN.md are well-structured with correct dependencies and reasonable sizes. Three dangling references to the deleted `docs/DESIGNS.md` remain in TASK-BREAKDOWN.md, plus one in PLANS.md iteration log. One minor structural mismatch exists between SYSTEM-DESIGN.md 12.10 Batch 5 items and the actual TASK-BREAKDOWN.md Batch 5 tasks. The file manifest in 12.9 is missing a few files that tasks reference (CSS, FarmSetupPage, test files).
+
+### Findings
+
+| # | Severity | Area | Finding | Recommendation |
+|---|----------|------|---------|----------------|
+| 1 | **MUST-FIX** | TASK-BREAKDOWN.md:1554 | Dangling reference: "Based on: DESIGNS.md Section 10" -- `docs/DESIGNS.md` has been deleted and its content merged into SYSTEM-DESIGN.md section 12. | Change to "Based on: SYSTEM-DESIGN.md Section 12, ARCHITECTURE.md Section 15, UX-DESIGNS.md Section 16". |
+| 2 | **MUST-FIX** | TASK-BREAKDOWN.md:1937 | Dangling reference: "when all E2E scenarios from DESIGNS.md Section 8.4 pass" -- file no longer exists. | Change to "when all E2E scenarios from SYSTEM-DESIGN.md Section 12.8.4 pass". |
+| 3 | **MUST-FIX** | TASK-BREAKDOWN.md:1995 | Dangling reference: "All 7 E2E scenarios from DESIGNS.md Section 8.4 manually verified" -- file no longer exists. | Change to "All 7 E2E scenarios from SYSTEM-DESIGN.md Section 12.8.4 manually verified". |
+| 4 | **SHOULD-FIX** | PLANS.md:367 | Iteration log references "DESIGNS.md §1-10" in the "What changed" list. While iteration logs are historical, the file no longer exists and this could confuse anyone reading the log. | Append "(now merged into SYSTEM-DESIGN.md §12)" after the reference to clarify the content's current location. |
+| 5 | **SHOULD-FIX** | SYSTEM-DESIGN.md:5039-5043 vs TASK-BREAKDOWN.md:1934-2017 | Batch 5 item mapping mismatch: SYSTEM-DESIGN.md 12.10 lists items 17-20 as (17) loading/empty/error states, (18) year nav + sort, (19) currency mismatch warning, (20) E2E scenarios. But TASK-BREAKDOWN.md maps these as Task 5.1 (states + currency warning folded in), Task 5.2 (year nav + sort), Task 5.3 (farm currency setting -- not in 12.10), Task 5.4 (E2E gate). The total is still 20 tasks but item 19 (currency mismatch) was absorbed into 5.1, and 5.3 (farm currency setting) appeared as a new task not mentioned in 12.10. | Update SYSTEM-DESIGN.md 12.10 Batch 5 to match the actual task breakdown: 17=loading/empty/error/currency-warning states, 18=year nav + sort, 19=farm default currency setting, 20=E2E validation gate. |
+| 6 | **SHOULD-FIX** | SYSTEM-DESIGN.md:4980-5008 (§12.9) | File manifest "Files to Create" and "Files to Modify" is incomplete relative to the tasks. Missing: (a) CSS files for Task 4.6, (b) `src/frontend/src/components/FarmSetupPage.tsx` for Task 5.3, (c) API integration test files (`src/api/src/__tests__/diary.test.ts`, `src/api/src/__tests__/farms.test.ts`) for Task 2.4, (d) contract test files for Task 1.3. The manifest notes "extend existing test files" for some but CSS and FarmSetupPage are not mentioned at all. | Add missing files to the manifest. For test files, add them to "Files to Modify" with a note. For CSS, add either a specific file or a note about global CSS token file + component CSS. For FarmSetupPage, add it to "Files to Modify". |
+| 7 | **SUGGESTION** | TASK-BREAKDOWN.md:1889 | References "UX-DESIGNS.md Section 16.14" for i18n key count (28 keys). This should be verified during implementation as the actual key count in SYSTEM-DESIGN.md 12.7 appears to be: 23 `roi.*` keys + 5 `diary.harvest_*` keys + 3 `setup.*` keys = 31 total keys, not 28. | Recount and align the stated key count with the actual keys specified in SYSTEM-DESIGN.md 12.7. |
+| 8 | **SUGGESTION** | .agent/skills/cc-design.md, .agent/skills/cc-implement.md, .agent/README.md | Multiple references to `docs/DESIGNS.md` exist in agent skill files (cc-design.md:135,141,198,237; cc-implement.md:169; README.md:275). These are out of scope for this commit but should be updated in a follow-up to reflect that system design content now lives in `docs/SYSTEM-DESIGN.md`. | Create a follow-up task to update `.agent/` skill files to reference `docs/SYSTEM-DESIGN.md` instead of `docs/DESIGNS.md`, then run `make sync`. |
+| 9 | **SUGGESTION** | SYSTEM-DESIGN.md:4444-4463 (§12.4.6) | `computeMonthlyTrend` infers the year from `entries[0].date` when entries exist. If entries span multiple years (edge case: entries from Dec of prior year due to timezone), the year inference could be wrong. The function always returns 12 months for a single year, but the caller passes entries filtered to `from=YYYY-01-01&to=YYYY-12-31`, so this is safe in practice. However, a comment documenting the assumption would help. | Add a comment in the function spec noting the assumption that all entries belong to the same calendar year (guaranteed by the caller's date range filter). |
+
+### Cross-File Consistency Verification
+
+#### File Manifest (SYSTEM-DESIGN.md 12.9) vs TASK-BREAKDOWN.md Files
+
+| Manifest Entry | Task(s) | Match |
+|---------------|---------|-------|
+| `roi-utils.ts` (create) | 3.1 | Yes |
+| `roi-utils.test.ts` (create) | 3.2 | Yes |
+| `RoiDashboard.tsx` (create) | 4.3 | Yes |
+| `roi/RoiSummaryCards.tsx` (create) | 4.4 | Yes |
+| `roi/RoiByBedTable.tsx` (create) | 4.4 | Yes |
+| `roi/CostByCategoryChart.tsx` (create) | 4.4 | Yes |
+| `roi/MonthlyTrendChart.tsx` (create) | 4.4 | Yes |
+| `domain.ts` (modify) | 1.1 | Yes |
+| `schemas/index.ts` (modify) | 1.2 | Yes |
+| `dynamodb.ts` (modify) | 2.1 | Yes |
+| `diary.ts` (modify) | 2.2 | Yes |
+| `farms.ts` (modify) | 2.3 | Yes |
+| `api.ts` (modify) | 3.3 | Yes |
+| `DiaryPage.tsx` (modify) | 4.2 | Yes |
+| `DiaryEntryForm.tsx` (modify) | 4.1 | Yes |
+| `en.json` (modify) | 4.5 | Yes |
+| `ja.json` (modify) | 4.5 | Yes |
+| CSS files (not listed) | 4.6 | **Missing from manifest** |
+| `FarmSetupPage.tsx` (not listed) | 5.3 | **Missing from manifest** |
+| Contract test files (not listed) | 1.3 | **Missing from manifest** |
+| API integration test files (not listed) | 2.4 | **Missing from manifest** |
+
+#### Implementation Order (SYSTEM-DESIGN.md 12.10) vs TASK-BREAKDOWN.md Batches
+
+| SYSTEM-DESIGN.md 12.10 | TASK-BREAKDOWN.md | Match |
+|------------------------|-------------------|-------|
+| Batch 1: items 1-3 | Tasks 1.1-1.3 | Yes |
+| Batch 2: items 4-7 | Tasks 2.1-2.4 | Yes |
+| Batch 3: items 8-10 | Tasks 3.1-3.3 | Yes |
+| Batch 4: items 11-16 | Tasks 4.1-4.6 | Yes |
+| Batch 5: items 17-20 | Tasks 5.1-5.4 | **Partial mismatch** (see finding #5) |
+
+#### PLANS.md Deliverables vs TASK-BREAKDOWN.md
+
+| PLANS.md Deliverable | Covered By Tasks | Match |
+|---------------------|-----------------|-------|
+| 1. Harvest fields on DiaryEntry | 1.1, 1.2, 2.1, 2.2 | Yes |
+| 2. Farm default currency | 1.1, 1.2, 2.1, 2.3, 5.3 | Yes |
+| 3. roi-utils.ts | 3.1 | Yes |
+| 4. ROI tab in Diary page | 4.2 | Yes |
+| 5. RoiDashboard | 4.3 | Yes |
+| 6. ROI sub-components | 4.4 | Yes |
+| 7. Harvest fields in DiaryEntryForm | 4.1 | Yes |
+| 8. i18n | 4.5 | Yes |
+| 9. Tests | 1.3, 2.4, 3.2, 5.4 | Yes |
+
+All 9 PLANS.md deliverables map to tasks. Implementation batch table in PLANS.md matches TASK-BREAKDOWN.md.
+
+#### Section Numbering Check (SYSTEM-DESIGN.md section 12)
+
+- 12.1 Type & Schema Changes (12.1.1-12.1.4): Correct
+- 12.2 API Layer Changes (12.2.1-12.2.5): Correct
+- 12.3 DynamoDB Layer Changes (12.3.1-12.3.4): Correct
+- 12.4 Frontend: roi-utils.ts (12.4.1-12.4.7): Correct
+- 12.5 Frontend: Component Integration (12.5.1-12.5.7): Correct
+- 12.6 Sequence Diagrams (12.6.1-12.6.3): Correct
+- 12.7 i18n Keys (12.7.1-12.7.3): Correct
+- 12.8 Test Strategy (12.8.1-12.8.4): Correct
+- 12.9 File Manifest: Correct (no subsection numbering issues)
+- 12.10 Implementation Order: Correct
+
+No numbering gaps or duplicates.
+
+#### Currency Filtering Warning
+
+Present at SYSTEM-DESIGN.md line 4237: "IMPORTANT: This sums raw costs[] items, NOT the pre-computed cost_total, because cost_total mixes currencies (see ARCHITECTURE.md 15.3)." -- Confirmed present and correctly placed.
+
+#### Deleted File Check
+
+`docs/DESIGNS.md` confirmed deleted (does not exist on disk). Dangling references found in 3 locations within TASK-BREAKDOWN.md (findings #1-#3) and 1 in PLANS.md (finding #4).
+
+### Verdict
+
+**ACCEPTED** (all findings remediated 2026-04-06)
+
+All 3 MUST-FIX and 3 SHOULD-FIX items addressed:
+- #1-#3: Dangling `DESIGNS.md` references in TASK-BREAKDOWN.md → updated to `SYSTEM-DESIGN.md Section 12`
+- #4: PLANS.md iteration log reference → clarified as "(now merged into SYSTEM-DESIGN.md §12)"
+- #5: Batch 5 items in §12.10 → realigned with TASK-BREAKDOWN.md tasks
+- #6: File manifest §12.9 → added FarmSetupPage, CSS, and test files
+
+3 SUGGESTION items remain as-is (i18n key count recount, .agent/ skill file updates, computeMonthlyTrend comment — non-blocking).

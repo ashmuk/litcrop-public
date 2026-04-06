@@ -3649,6 +3649,1406 @@ export const ProfilePictureResponseSchema = z.object({
 
 ---
 
+## 12. Beta-10: ROI Dashboard — System Design (#248, #245)
+
+> Added 2026-04-06 — system design for #248 (ROI dashboard) and #245 (diary ROI portion).
+> Architecture: ARCHITECTURE.md §15. UX: UX-DESIGNS.md §16.
+> ADR: decisions/ADR-20260406-roi-dashboard.md
+
+### 12.1 Type & Schema Changes
+
+#### 12.1.1 DiaryEntry — domain.ts
+
+Add four nullable harvest/revenue fields to the `DiaryEntry` interface.
+
+```typescript
+// packages/shared/src/types/domain.ts — DiaryEntry interface
+
+/** Diary entry — daily farm work log */
+export interface DiaryEntry {
+  id: string;
+  farm_id: string;
+  date: string;           // YYYY-MM-DD (farm local date)
+  category: DiaryCategory;
+  entry_type: DiaryEntryType; // reserved (plan) or actual (log) — default 'actual'
+  description: string;
+  time_spent_minutes: number | null;
+  bed_id: string | null;
+  photo_ids: string[];
+  costs: CostItem[];
+  created_by: string;
+  created_at: string;     // ISO 8601
+  updated_at: string;     // ISO 8601
+  // -- Beta-10: Harvest & revenue fields --
+  harvest_amount: number | null;           // quantity harvested (e.g. 5.2)
+  harvest_unit: string | null;             // unit label (e.g. 'kg', 'bunch')
+  revenue: number | null;                  // sale value of harvest (e.g. 15000)
+  revenue_currency: 'JPY' | 'USD' | null;  // currency of revenue
+}
+```
+
+#### 12.1.2 DiaryEntryResponse — domain.ts
+
+Fix the missing `created_by_name` field and add harvest/revenue passthrough fields.
+
+```typescript
+// packages/shared/src/types/domain.ts — DiaryEntryResponse interface
+
+/** Diary entry response — includes resolved bed_name, cost_total, and creator name */
+export interface DiaryEntryResponse extends DiaryEntry {
+  bed_name: string | null;
+  cost_total: number;
+  created_by_name: string | null;  // FIX: was missing from type, already in Zod schema + route
+}
+```
+
+The four harvest/revenue fields are inherited from `DiaryEntry` via `extends`, so no
+additional declaration is needed on `DiaryEntryResponse`.
+
+#### 12.1.3 Farm — domain.ts
+
+Add `default_currency` to the `Farm` interface.
+
+```typescript
+// packages/shared/src/types/domain.ts — Farm interface
+
+export interface Farm {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  location_text: string;
+  latitude?: number;
+  longitude?: number;
+  elevation_m?: number;
+  climate_zone?: string;
+  locale: Locale;
+  theme: Theme;
+  grid_rows: number;
+  grid_cols: number;
+  created_at: string;
+  // -- Beta-10 --
+  default_currency: 'JPY' | 'USD';  // default 'JPY' for existing farms
+}
+```
+
+#### 12.1.4 Zod Schema Changes — schemas/index.ts
+
+#### CreateDiaryEntrySchema
+
+Add harvest/revenue fields with a `.refine()` guard.
+
+```typescript
+// packages/shared/src/schemas/index.ts — CreateDiaryEntrySchema
+
+export const CreateDiaryEntrySchema = z.object({
+  date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+    .refine(s => !isNaN(Date.parse(s)), { message: 'Invalid calendar date' })
+    .refine(s => {
+      const y = parseInt(s.slice(0, 4), 10);
+      return y >= 2020 && y <= 2100;
+    }, { message: 'Date year must be between 2020 and 2100' }),
+  category: DiaryCategorySchema,
+  entry_type: DiaryEntryTypeSchema.optional().default('actual'),
+  description: z.string().min(1).max(1000).trim(),
+  time_spent_minutes: z.number().int().min(1).max(1440).nullable().optional(),
+  bed_id: z.string().uuid().nullable().optional(),
+  photo_ids: z.array(z.string().uuid()).max(5).default([]),
+  costs: z.array(CostItemSchema).max(10).default([]),
+  // -- Beta-10: Harvest & revenue fields --
+  harvest_amount: z.number().min(0).max(999_999).nullable().optional(),
+  harvest_unit: z.string().min(1).max(20).trim().nullable().optional(),
+  revenue: z.number().min(0).max(99_999_999).nullable().optional(),
+  revenue_currency: z.enum(['JPY', 'USD']).nullable().optional(),
+}).refine(data => {
+  // Harvest/revenue fields must be null/undefined when category is not 'harvesting'
+  if (data.category !== 'harvesting') {
+    const hasHarvestFields =
+      (data.harvest_amount != null) ||
+      (data.harvest_unit != null) ||
+      (data.revenue != null) ||
+      (data.revenue_currency != null);
+    return !hasHarvestFields;
+  }
+  return true;
+}, {
+  message: 'Harvest and revenue fields are only allowed when category is harvesting',
+  path: ['category'],
+});
+```
+
+#### UpdateDiaryEntrySchema
+
+Derived from `CreateDiaryEntrySchema`, inherits the new fields automatically.
+The `.refine()` validation must also be applied after `.partial()`.
+
+```typescript
+// packages/shared/src/schemas/index.ts — UpdateDiaryEntrySchema
+
+export const UpdateDiaryEntrySchema = CreateDiaryEntrySchema
+  .innerType()             // unwrap the .refine() to get the base object
+  .omit({ date: true })
+  .partial()
+  .refine(data => {
+    // If category is being changed to non-harvesting, harvest fields must not be set
+    // If category is not provided, skip this check (existing value used)
+    if (data.category && data.category !== 'harvesting') {
+      const hasHarvestFields =
+        (data.harvest_amount != null) ||
+        (data.harvest_unit != null) ||
+        (data.revenue != null) ||
+        (data.revenue_currency != null);
+      return !hasHarvestFields;
+    }
+    return true;
+  }, {
+    message: 'Harvest and revenue fields are only allowed when category is harvesting',
+    path: ['category'],
+  });
+```
+
+**Implementation note**: The existing `UpdateDiaryEntrySchema` uses
+`CreateDiaryEntrySchema.omit({ date: true }).partial()`. Since `CreateDiaryEntrySchema`
+now has a `.refine()`, we need `.innerType()` to access the base `z.object()` before
+applying `.omit().partial()`, then re-apply the refine. If `.innerType()` is not
+available in the project's Zod version, use a shared base object extracted from the
+create schema.
+
+**Alternative approach** (if `.innerType()` is unavailable):
+
+```typescript
+// Extract base fields into a shared object
+const DiaryEntryFieldsSchema = z.object({
+  date: z.string().regex(/* ... */),
+  category: DiaryCategorySchema,
+  // ... all fields including harvest ...
+});
+
+const harvestRefine = /* shared refine function */;
+
+export const CreateDiaryEntrySchema = DiaryEntryFieldsSchema.refine(harvestRefine);
+export const UpdateDiaryEntrySchema = DiaryEntryFieldsSchema
+  .omit({ date: true })
+  .partial()
+  .refine(harvestRefine);
+```
+
+#### DiaryEntryResponseSchema
+
+Add the four harvest/revenue fields.
+
+```typescript
+// packages/shared/src/schemas/index.ts — DiaryEntryResponseSchema
+
+export const DiaryEntryResponseSchema = z.object({
+  id: z.string(),
+  farm_id: z.string(),
+  date: z.string(),
+  category: DiaryCategorySchema,
+  entry_type: DiaryEntryTypeSchema,
+  description: z.string(),
+  time_spent_minutes: z.number().nullable(),
+  bed_id: z.string().nullable(),
+  bed_name: z.string().nullable(),
+  photo_ids: z.array(z.string()),
+  costs: z.array(CostItemSchema),
+  cost_total: z.number(),
+  created_by: z.string(),
+  created_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  // -- Beta-10: Harvest & revenue fields --
+  harvest_amount: z.number().nullable(),
+  harvest_unit: z.string().nullable(),
+  revenue: z.number().nullable(),
+  revenue_currency: z.enum(['JPY', 'USD']).nullable(),
+});
+```
+
+#### FarmBaseSchema
+
+Add `default_currency`.
+
+```typescript
+// packages/shared/src/schemas/index.ts — FarmBaseSchema
+
+export const FarmBaseSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  location_text: z.string(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  elevation_m: z.number().nullable(),
+  climate_zone: z.string().nullable(),
+  locale: LocaleSchema,
+  theme: ThemeSchema,
+  grid_rows: z.number().int().min(1).max(5),
+  grid_cols: z.number().int().min(1).max(5),
+  created_at: z.string(),
+  // -- Beta-10 --
+  default_currency: z.enum(['JPY', 'USD']).default('JPY'),
+});
+```
+
+---
+
+### 12.2 API Layer Changes
+
+#### 12.2.1 buildEntryResponse() — diary.ts
+
+Extend the response object to include the four harvest/revenue fields.
+
+```typescript
+// src/api/src/routes/diary.ts — buildEntryResponse()
+
+async function buildEntryResponse(
+  entry: DiaryEntry,
+  bedNameCache?: Map<string, string | null>,
+  creatorNameCache?: Map<string, string | null>,
+) {
+  let bed_name: string | null = null;
+  if (entry.bed_id) {
+    if (bedNameCache?.has(entry.bed_id)) {
+      bed_name = bedNameCache.get(entry.bed_id) ?? null;
+    } else {
+      bed_name = await resolveBedName(entry.bed_id);
+      bedNameCache?.set(entry.bed_id, bed_name);
+    }
+  }
+  const created_by_name = await resolveCreatorName(entry.created_by, creatorNameCache);
+  return {
+    id: entry.id,
+    farm_id: entry.farm_id,
+    date: entry.date,
+    category: entry.category,
+    entry_type: entry.entry_type,
+    description: entry.description,
+    time_spent_minutes: entry.time_spent_minutes,
+    bed_id: entry.bed_id,
+    bed_name,
+    photo_ids: entry.photo_ids,
+    costs: entry.costs,
+    cost_total: calcCostTotal(entry),
+    created_by: entry.created_by,
+    created_by_name,
+    created_at: entry.created_at,
+    updated_at: entry.updated_at,
+    // -- Beta-10: passthrough harvest/revenue fields --
+    harvest_amount: entry.harvest_amount,
+    harvest_unit: entry.harvest_unit,
+    revenue: entry.revenue,
+    revenue_currency: entry.revenue_currency,
+  };
+}
+```
+
+#### 12.2.2 createDiaryEntry handler — diary.ts
+
+The `parsed.data` already includes the new fields after Zod parse. The spread
+`...parsed.data` in the handler already passes them through to the DynamoDB layer.
+Verify that the spread includes the four new fields:
+
+```typescript
+// src/api/src/routes/diary.ts — POST handler (line ~233)
+// No code change needed — the existing spread pattern handles it:
+
+entry = await dynamoRepo.createDiaryEntry(farmId, entryId, {
+  ...parsed.data,
+  bed_id: parsed.data.bed_id ?? null,
+  time_spent_minutes: parsed.data.time_spent_minutes ?? null,
+  created_by: userId,
+  // harvest_amount, harvest_unit, revenue, revenue_currency
+  // are included via ...parsed.data spread
+});
+```
+
+**However**, the DynamoDB `createDiaryEntry` method's `data` parameter type must be
+extended (see Section 3).
+
+#### 12.2.3 updateDiaryEntry handler — diary.ts
+
+Same pattern — `parsed.data` flows through. The DynamoDB `updateDiaryEntry` method's
+`updates` type must be extended (see Section 3).
+
+#### 12.2.4 Farm update route — farms.ts
+
+Add `default_currency` to the PATCH handler's field extraction.
+
+```typescript
+// src/api/src/routes/farms.ts — PATCH handler (line ~534)
+
+const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' |
+  'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' |
+  'grid_rows' | 'grid_cols' | 'default_currency'>> = {};
+
+// ... existing field extractions ...
+
+if (body['default_currency'] !== undefined) {
+  const dc = body['default_currency'];
+  if (dc !== 'JPY' && dc !== 'USD') {
+    throw new ValidationError("Invalid value for 'default_currency': must be 'JPY' or 'USD'");
+  }
+  updates['default_currency'] = dc;
+}
+```
+
+#### 12.2.5 farmToResponse() — farms.ts
+
+Add `default_currency` to the response builder.
+
+```typescript
+// src/api/src/routes/farms.ts — farmToResponse()
+
+function farmToResponse(farm: Farm) {
+  return {
+    id: farm.id,
+    user_id: farm.user_id,
+    name: farm.name,
+    description: farm.description ?? null,
+    location_text: farm.location_text,
+    latitude: farm.latitude ?? null,
+    longitude: farm.longitude ?? null,
+    elevation_m: farm.elevation_m ?? null,
+    climate_zone: farm.climate_zone ?? null,
+    locale: farm.locale,
+    theme: farm.theme,
+    grid_rows: farm.grid_rows,
+    grid_cols: farm.grid_cols,
+    created_at: farm.created_at,
+    // -- Beta-10 --
+    default_currency: farm.default_currency ?? 'JPY',
+  };
+}
+```
+
+---
+
+### 12.3 DynamoDB Layer Changes
+
+#### 12.3.1 itemToDiaryEntry() — dynamodb.ts
+
+Add the four harvest/revenue fields with null defaults for backward compatibility.
+
+```typescript
+// src/api/src/services/dynamodb.ts — itemToDiaryEntry()
+
+private itemToDiaryEntry(item: Record<string, unknown>, entryId: string): DiaryEntry {
+  return {
+    id: (item['id'] as string) ?? entryId,
+    farm_id: item['farm_id'] as string,
+    date: item['date'] as string,
+    category: item['category'] as DiaryCategory,
+    entry_type: (item['entry_type'] as DiaryEntryType) ?? 'actual',
+    description: item['description'] as string,
+    time_spent_minutes: (item['time_spent_minutes'] as number) ?? null,
+    bed_id: (item['bed_id'] as string) ?? null,
+    photo_ids: (item['photo_ids'] as string[]) ?? [],
+    costs: (item['costs'] as CostItem[]) ?? [],
+    created_by: item['created_by'] as string,
+    created_at: item['created_at'] as string,
+    updated_at: item['updated_at'] as string,
+    // -- Beta-10: harvest/revenue (null-safe for old items) --
+    harvest_amount: (item['harvest_amount'] as number) ?? null,
+    harvest_unit: (item['harvest_unit'] as string) ?? null,
+    revenue: (item['revenue'] as number) ?? null,
+    revenue_currency: (item['revenue_currency'] as 'JPY' | 'USD') ?? null,
+  };
+}
+```
+
+#### 12.3.2 createDiaryEntry() — dynamodb.ts
+
+Extend the `data` parameter type and include new fields in the PutCommand item.
+
+```typescript
+// src/api/src/services/dynamodb.ts — createDiaryEntry()
+
+async createDiaryEntry(
+  farmId: string,
+  entryId: string,
+  data: {
+    date: string;
+    category: DiaryCategory;
+    entry_type: DiaryEntryType;
+    description: string;
+    time_spent_minutes: number | null;
+    bed_id: string | null;
+    photo_ids: string[];
+    costs: CostItem[];
+    created_by: string;
+    // -- Beta-10 --
+    harvest_amount?: number | null;
+    harvest_unit?: string | null;
+    revenue?: number | null;
+    revenue_currency?: 'JPY' | 'USD' | null;
+  },
+): Promise<DiaryEntry> {
+  const now = new Date().toISOString();
+  const item: Record<string, unknown> = {
+    PK: pk.farm(farmId),
+    SK: sk.diary(data.date, entryId),
+    GSI1PK: `${DDB_KEY_PREFIXES.DIARY}${entryId}`,
+    GSI1SK: DDB_KEY_PREFIXES.META,
+    id: entryId,
+    farm_id: farmId,
+    date: data.date,
+    category: data.category,
+    entry_type: data.entry_type,
+    description: data.description,
+    time_spent_minutes: data.time_spent_minutes,
+    bed_id: data.bed_id,
+    photo_ids: data.photo_ids,
+    costs: data.costs,
+    created_by: data.created_by,
+    created_at: now,
+    updated_at: now,
+  };
+
+  // Only write harvest/revenue attributes if they have values (avoids empty attrs in DDB)
+  if (data.harvest_amount != null) item['harvest_amount'] = data.harvest_amount;
+  if (data.harvest_unit != null) item['harvest_unit'] = data.harvest_unit;
+  if (data.revenue != null) item['revenue'] = data.revenue;
+  if (data.revenue_currency != null) item['revenue_currency'] = data.revenue_currency;
+
+  await ddb.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: item,
+    ConditionExpression: 'attribute_not_exists(SK)',
+  }));
+
+  return {
+    id: entryId,
+    farm_id: farmId,
+    ...data,
+    harvest_amount: data.harvest_amount ?? null,
+    harvest_unit: data.harvest_unit ?? null,
+    revenue: data.revenue ?? null,
+    revenue_currency: data.revenue_currency ?? null,
+    created_at: now,
+    updated_at: now,
+  };
+}
+```
+
+#### 12.3.3 updateDiaryEntry() — dynamodb.ts
+
+Extend the `updates` partial type to include the harvest/revenue fields.
+
+```typescript
+// src/api/src/services/dynamodb.ts — updateDiaryEntry()
+
+async updateDiaryEntry(
+  farmId: string,
+  entryId: string,
+  date: string,
+  updates: Partial<{
+    category: DiaryCategory;
+    entry_type: DiaryEntryType;
+    description: string;
+    time_spent_minutes: number | null;
+    bed_id: string | null;
+    photo_ids: string[];
+    costs: CostItem[];
+    // -- Beta-10 --
+    harvest_amount: number | null;
+    harvest_unit: string | null;
+    revenue: number | null;
+    revenue_currency: 'JPY' | 'USD' | null;
+  }>,
+): Promise<DiaryEntry> {
+  // ... existing SET/REMOVE logic handles null → REMOVE, value → SET ...
+  // No changes needed to the update expression builder — it already iterates
+  // Object.entries(updates) and handles null vs. value correctly.
+}
+```
+
+The existing update logic already handles `null` values via the REMOVE expression
+and non-null values via SET. The four new fields are processed identically to
+`time_spent_minutes` and `bed_id`.
+
+#### 12.3.4 Farm entity — default_currency
+
+The existing `itemToFarm()` method (or equivalent) must default `default_currency`
+to `'JPY'` for existing farms that lack the attribute.
+
+```typescript
+// In itemToFarm() or equivalent:
+default_currency: (item['default_currency'] as 'JPY' | 'USD') ?? 'JPY',
+```
+
+The `updateFarm()` method already uses a generic SET/REMOVE pattern and will handle
+the new `default_currency` field without modification.
+
+---
+
+### 12.4 Frontend: roi-utils.ts
+
+Complete specification of the pure computation module.
+
+File: `src/frontend/src/lib/roi-utils.ts`
+
+#### 12.4.1 Interfaces
+
+```typescript
+import type { DiaryEntryResponse } from './api';
+import type { FarmBedItem } from '@litcrop/shared';
+
+export interface RoiSummary {
+  total_cost: number;
+  total_revenue: number;
+  roi_percent: number | null;  // null when total_cost === 0
+  entry_count: number;
+  harvest_count: number;
+  excluded_entry_count: number;  // entries in non-default currency
+}
+
+export interface BedRoiSummary extends RoiSummary {
+  bed_id: string;
+  bed_name: string;
+  crop_type: string | null;
+  crop_emoji: string | null;
+}
+
+export interface CategoryCostSummary {
+  category: string;
+  total: number;
+  count: number;
+}
+
+export interface MonthlyTrend {
+  month: string;  // YYYY-MM
+  cost: number;
+  revenue: number;
+}
+```
+
+#### 12.4.2 Currency Filtering Helper
+
+```typescript
+/**
+ * Sum costs from a single diary entry, filtered to the target currency.
+ * Returns 0 if no cost items match the currency.
+ *
+ * IMPORTANT: This sums raw costs[] items, NOT the pre-computed cost_total,
+ * because cost_total mixes currencies (see ARCHITECTURE.md 15.3).
+ */
+function sumCostsByCurrency(
+  entry: DiaryEntryResponse,
+  currency: 'JPY' | 'USD',
+): number {
+  return entry.costs
+    .filter(c => c.currency === currency)
+    .reduce((sum, c) => sum + c.amount, 0);
+}
+
+/**
+ * Get revenue for an entry if it matches the target currency.
+ * Returns 0 if revenue_currency does not match or revenue is null.
+ */
+function getRevenueByCurrency(
+  entry: DiaryEntryResponse,
+  currency: 'JPY' | 'USD',
+): number {
+  if (entry.revenue == null) return 0;
+  if (entry.revenue_currency !== currency) return 0;
+  return entry.revenue;
+}
+
+/**
+ * Check if an entry has any financial data in a non-target currency.
+ * Used to count excluded entries for the UI warning.
+ */
+function hasOtherCurrencyData(
+  entry: DiaryEntryResponse,
+  currency: 'JPY' | 'USD',
+): boolean {
+  const hasOtherCosts = entry.costs.some(c => c.currency !== currency && c.amount > 0);
+  const hasOtherRevenue = entry.revenue != null &&
+    entry.revenue > 0 &&
+    entry.revenue_currency !== currency;
+  return hasOtherCosts || hasOtherRevenue;
+}
+```
+
+#### 12.4.3 computeRoi()
+
+```typescript
+/**
+ * Compute farm-wide ROI summary for a set of diary entries.
+ *
+ * @param entries - Diary entries (already filtered to date range)
+ * @param currency - Farm default currency for aggregation
+ * @returns RoiSummary with totals filtered to the specified currency
+ *
+ * Edge cases:
+ *   - Zero entries: all zeros, roi_percent = null
+ *   - Zero costs, positive revenue: roi_percent = null (display "No costs")
+ *   - Zero costs, zero revenue: roi_percent = null
+ *   - Positive costs, zero revenue: roi_percent = -100
+ *   - Mixed currencies: only target currency counted; excluded_entry_count > 0
+ */
+export function computeRoi(
+  entries: DiaryEntryResponse[],
+  currency: 'JPY' | 'USD',
+): RoiSummary {
+  let total_cost = 0;
+  let total_revenue = 0;
+  let harvest_count = 0;
+  let excluded_entry_count = 0;
+
+  for (const entry of entries) {
+    total_cost += sumCostsByCurrency(entry, currency);
+    total_revenue += getRevenueByCurrency(entry, currency);
+
+    if (entry.category === 'harvesting') {
+      harvest_count++;
+    }
+
+    if (hasOtherCurrencyData(entry, currency)) {
+      excluded_entry_count++;
+    }
+  }
+
+  let roi_percent: number | null = null;
+  if (total_cost > 0) {
+    roi_percent = Math.round(((total_revenue - total_cost) / total_cost) * 100);
+  }
+  // When total_cost === 0, roi_percent stays null regardless of revenue
+
+  return {
+    total_cost,
+    total_revenue,
+    roi_percent,
+    entry_count: entries.length,
+    harvest_count,
+    excluded_entry_count,
+  };
+}
+```
+
+#### 12.4.4 computeRoiByBed()
+
+```typescript
+/**
+ * Compute per-bed ROI breakdown.
+ *
+ * @param entries - All diary entries for the date range
+ * @param beds - Farm bed list (for names and crop types)
+ * @param currency - Farm default currency
+ * @returns Array of BedRoiSummary, one per bed that has entries.
+ *          Beds with zero entries are excluded.
+ *
+ * Entries with bed_id === null are grouped into a virtual "(no bed)" row.
+ */
+export function computeRoiByBed(
+  entries: DiaryEntryResponse[],
+  beds: FarmBedItem[],
+  currency: 'JPY' | 'USD',
+): BedRoiSummary[] {
+  const bedMap = new Map(beds.map(b => [b.id, b]));
+
+  // Group entries by bed_id (null → '__none__')
+  const groups = new Map<string, DiaryEntryResponse[]>();
+  for (const entry of entries) {
+    const key = entry.bed_id ?? '__none__';
+    const group = groups.get(key);
+    if (group) {
+      group.push(entry);
+    } else {
+      groups.set(key, [entry]);
+    }
+  }
+
+  const results: BedRoiSummary[] = [];
+
+  for (const [bedId, bedEntries] of groups) {
+    const roi = computeRoi(bedEntries, currency);
+    const bed = bedId !== '__none__' ? bedMap.get(bedId) : null;
+
+    results.push({
+      ...roi,
+      bed_id: bedId,
+      bed_name: bed?.name ?? (bedId === '__none__' ? '(no bed)' : '(deleted bed)'),
+      crop_type: bed?.crop_type ?? null,
+      crop_emoji: null,  // resolved by UI using getCropName()
+    });
+  }
+
+  // Default sort: ROI descending (null ROI at the end)
+  results.sort((a, b) => {
+    if (a.roi_percent == null && b.roi_percent == null) return 0;
+    if (a.roi_percent == null) return 1;
+    if (b.roi_percent == null) return -1;
+    return b.roi_percent - a.roi_percent;
+  });
+
+  return results;
+}
+```
+
+#### 12.4.5 computeCostByCategory()
+
+```typescript
+/**
+ * Compute cost totals grouped by diary category.
+ *
+ * @param entries - All diary entries for the date range
+ * @param currency - Farm default currency
+ * @returns Array of CategoryCostSummary sorted by total descending.
+ *          Categories with zero cost are excluded.
+ */
+export function computeCostByCategory(
+  entries: DiaryEntryResponse[],
+  currency: 'JPY' | 'USD',
+): CategoryCostSummary[] {
+  const categoryMap = new Map<string, { total: number; count: number }>();
+
+  for (const entry of entries) {
+    const cost = sumCostsByCurrency(entry, currency);
+    if (cost === 0) continue;
+
+    const existing = categoryMap.get(entry.category);
+    if (existing) {
+      existing.total += cost;
+      existing.count++;
+    } else {
+      categoryMap.set(entry.category, { total: cost, count: 1 });
+    }
+  }
+
+  return Array.from(categoryMap.entries())
+    .map(([category, data]) => ({ category, ...data }))
+    .sort((a, b) => b.total - a.total);
+}
+```
+
+#### 12.4.6 computeMonthlyTrend()
+
+```typescript
+/**
+ * Compute monthly cost and revenue totals for a calendar year.
+ *
+ * @param entries - All diary entries for the date range
+ * @param currency - Farm default currency
+ * @returns Array of 12 MonthlyTrend objects (Jan-Dec), always 12 items.
+ *          Months with no data have cost: 0, revenue: 0.
+ */
+export function computeMonthlyTrend(
+  entries: DiaryEntryResponse[],
+  currency: 'JPY' | 'USD',
+): MonthlyTrend[] {
+  // Pre-fill all 12 months
+  const year = entries.length > 0
+    ? parseInt(entries[0].date.slice(0, 4), 10)
+    : new Date().getFullYear();
+
+  const months: MonthlyTrend[] = Array.from({ length: 12 }, (_, i) => ({
+    month: `${year}-${String(i + 1).padStart(2, '0')}`,
+    cost: 0,
+    revenue: 0,
+  }));
+
+  for (const entry of entries) {
+    const monthIdx = parseInt(entry.date.slice(5, 7), 10) - 1;
+    if (monthIdx < 0 || monthIdx > 11) continue;
+
+    months[monthIdx].cost += sumCostsByCurrency(entry, currency);
+    months[monthIdx].revenue += getRevenueByCurrency(entry, currency);
+  }
+
+  return months;
+}
+```
+
+#### 12.4.7 Edge Case Summary
+
+| Scenario | total_cost | total_revenue | roi_percent | Display |
+|----------|-----------|---------------|-------------|---------|
+| No entries | 0 | 0 | null | "--" |
+| Costs only | >0 | 0 | -100 | "-100%" (red) |
+| Revenue only, no costs | 0 | >0 | null | "No costs" (neutral) |
+| Positive ROI | >0 | >costs | positive | "+N%" (green) |
+| Negative ROI | >0 | <costs | negative | "-N%" (red) |
+| Mixed currencies | varies | varies | calculated on default currency only | Footnote warning |
+
+---
+
+### 12.5 Frontend: Component Integration
+
+#### 12.5.1 DiaryPage.tsx — ViewMode Extension
+
+```typescript
+// src/frontend/src/components/DiaryPage.tsx
+
+type ViewMode = 'list' | 'calendar' | 'gantt' | 'roi';  // add 'roi'
+```
+
+Update the `useEffect` that reads `LS_VIEW_KEY`:
+
+```typescript
+const storedView = localStorage.getItem(LS_VIEW_KEY);
+if (storedView === 'list' || storedView === 'calendar' ||
+    storedView === 'gantt' || storedView === 'roi') {
+  setView(storedView);
+}
+```
+
+#### 12.5.2 ROI Tab Button
+
+Add a 4th toggle button to the existing tab bar in DiaryPage's JSX:
+
+```tsx
+<button
+  class={`diary-header__toggle-btn${view === 'roi' ? ' active' : ''}`}
+  aria-pressed={view === 'roi'}
+  aria-label={t('roi.title')}
+  onClick={() => { setView('roi'); localStorage.setItem(LS_VIEW_KEY, 'roi'); }}
+>
+  💰
+</button>
+```
+
+#### 12.5.3 RoiDashboard Connection
+
+When `view === 'roi'`, render `<RoiDashboard>` instead of list/calendar/gantt.
+The ROI dashboard manages its own data fetching independently from the list view,
+because it needs a different date range (full calendar year) and auto-pagination.
+
+```tsx
+// In DiaryPage render:
+{view === 'roi' && farmId && (
+  <RoiDashboard farmId={farmId} beds={beds} />
+)}
+```
+
+Props for `RoiDashboard`:
+
+```typescript
+interface RoiDashboardProps {
+  farmId: string;
+  beds: FarmBedItem[];
+}
+```
+
+#### 12.5.4 RoiDashboard Internal State
+
+```typescript
+// src/frontend/src/components/RoiDashboard.tsx
+
+export default function RoiDashboard({ farmId, beds }: RoiDashboardProps) {
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [entries, setEntries] = useState<DiaryEntryResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [defaultCurrency, setDefaultCurrency] = useState<'JPY' | 'USD'>('JPY');
+
+  // Fetch farm to get default_currency
+  useEffect(() => {
+    getFarm(farmId).then(farm => {
+      setDefaultCurrency(farm.default_currency ?? 'JPY');
+    });
+  }, [farmId]);
+
+  // Fetch ALL entries for the selected year (auto-paginate)
+  useEffect(() => {
+    loadAllEntries();
+  }, [farmId, year]);
+
+  async function loadAllEntries() {
+    setLoading(true);
+    setError(null);
+    const from = `${year}-01-01`;
+    const to = `${year}-12-31`;
+    const allEntries: DiaryEntryResponse[] = [];
+    let cursor: string | undefined;
+
+    try {
+      do {
+        const res = await getDiaryEntries(farmId, { from, to, limit: 100, cursor });
+        allEntries.push(...res.data);
+        cursor = res.meta.next_cursor ?? undefined;
+      } while (cursor);
+
+      setEntries(allEntries);
+    } catch {
+      setError(t('diary.error_loading'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Compute aggregates (memoized on entries + currency)
+  const roi = useMemo(() => computeRoi(entries, defaultCurrency), [entries, defaultCurrency]);
+  const roiByBed = useMemo(() => computeRoiByBed(entries, beds, defaultCurrency), [entries, beds, defaultCurrency]);
+  const costByCategory = useMemo(() => computeCostByCategory(entries, defaultCurrency), [entries, defaultCurrency]);
+  const monthlyTrend = useMemo(() => computeMonthlyTrend(entries, defaultCurrency), [entries, defaultCurrency]);
+
+  // ... render year selector, summary cards, charts, table ...
+}
+```
+
+#### 12.5.5 Auto-Pagination Strategy
+
+The `loadAllEntries()` function above implements sequential pagination:
+
+1. First request: `GET /farms/:farmId/diary?from=YYYY-01-01&to=YYYY-12-31&limit=100`
+2. If `meta.next_cursor` exists, repeat with `&cursor=<value>`
+3. Accumulate all entries into `allEntries` array
+4. Set state once after all pages fetched
+
+**Performance**: For a typical farm with 500-2000 entries/year:
+- At 100 entries/page: 5-20 sequential API calls
+- Each call is ~100-200ms (Lambda cold start is amortized after first)
+- Total: 0.5-4 seconds. Acceptable for a dashboard that loads once.
+
+**Loading UX**: Show skeleton loading state during fetch. The year selector
+is interactive immediately (cancels in-flight fetches via AbortController).
+
+#### 12.5.6 Harvest Fields in DiaryEntryForm
+
+When `category === 'harvesting'`, reveal the harvest section below the description
+field. The section animates in using CSS `max-height` transition.
+
+```typescript
+// src/frontend/src/components/DiaryEntryForm.tsx — additional state
+
+const [harvestAmount, setHarvestAmount] = useState<string>(
+  entry?.harvest_amount != null ? String(entry.harvest_amount) : '',
+);
+const [harvestUnit, setHarvestUnit] = useState(entry?.harvest_unit ?? '');
+const [revenueAmount, setRevenueAmount] = useState<string>(
+  entry?.revenue != null ? String(entry.revenue) : '',
+);
+const [revenueCurrency, setRevenueCurrency] = useState<'JPY' | 'USD'>(
+  entry?.revenue_currency ?? 'JPY',  // TODO: default to farm's default_currency
+);
+
+const showHarvestFields = category === 'harvesting';
+```
+
+On submit, include the harvest fields in the API payload:
+
+```typescript
+// In the submit handler:
+const payload: Record<string, unknown> = {
+  date,
+  category,
+  entry_type: entryType,
+  description,
+  time_spent_minutes: timeSpent ? parseInt(timeSpent, 10) : null,
+  bed_id: selectedBed || null,
+  photo_ids: selectedPhotos,
+  costs: costRows.filter(r => r.item && r.amount).map(r => ({
+    item: r.item,
+    amount: parseFloat(r.amount),
+    currency: r.currency,
+  })),
+};
+
+// Add harvest fields only when category is 'harvesting'
+if (category === 'harvesting') {
+  payload.harvest_amount = harvestAmount ? parseFloat(harvestAmount) : null;
+  payload.harvest_unit = harvestUnit || null;
+  payload.revenue = revenueAmount ? parseFloat(revenueAmount) : null;
+  payload.revenue_currency = revenueAmount ? revenueCurrency : null;
+} else {
+  // Explicitly null-out when switching away from harvesting
+  payload.harvest_amount = null;
+  payload.harvest_unit = null;
+  payload.revenue = null;
+  payload.revenue_currency = null;
+}
+```
+
+When category changes away from `harvesting`, clear the harvest state:
+
+```typescript
+// In category onChange handler:
+function handleCategoryChange(newCategory: string) {
+  setCategory(newCategory);
+  if (newCategory !== 'harvesting') {
+    setHarvestAmount('');
+    setHarvestUnit('');
+    setRevenueAmount('');
+    // Don't clear revenueCurrency — it retains the farm default
+  }
+}
+```
+
+#### 12.5.7 DiaryEntryResponse — Frontend Type
+
+```typescript
+// src/frontend/src/lib/api.ts — DiaryEntryResponse interface
+
+export interface DiaryEntryResponse {
+  id: string;
+  farm_id: string;
+  date: string;
+  category: string;
+  entry_type: 'reserved' | 'actual';
+  description: string;
+  time_spent_minutes: number | null;
+  bed_id: string | null;
+  bed_name: string | null;
+  photo_ids: string[];
+  costs: { item: string; amount: number; currency: 'JPY' | 'USD' }[];
+  cost_total: number;
+  created_by: string;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+  // -- Beta-10 --
+  harvest_amount: number | null;
+  harvest_unit: string | null;
+  revenue: number | null;
+  revenue_currency: 'JPY' | 'USD' | null;
+}
+```
+
+---
+
+### 12.6 Sequence Diagrams
+
+#### 12.6.1 User Opens ROI Tab
+
+```
+User          DiaryPage        RoiDashboard      API            roi-utils
+ |                |                 |              |                |
+ |--tap ROI tab-->|                 |              |                |
+ |                |--setView('roi') |              |                |
+ |                |--render-------->|              |                |
+ |                |                 |--GET farm--->|                |
+ |                |                 |<-farm(currency)              |
+ |                |                 |              |                |
+ |                |                 |--GET diary-->|                |
+ |                |                 |  from=Jan-01 |                |
+ |                |                 |  to=Dec-31   |                |
+ |                |                 |  limit=100   |                |
+ |                |                 |<-page 1------|                |
+ |                |                 |              |                |
+ |                |                 |[next_cursor?]|                |
+ |                |                 |--GET diary-->|                |
+ |                |                 |  cursor=...  |                |
+ |                |                 |<-page 2------|                |
+ |                |                 |              |                |
+ |                |                 |[no more pages]               |
+ |                |                 |              |                |
+ |                |                 |--computeRoi------------>|    |
+ |                |                 |--computeRoiByBed------->|    |
+ |                |                 |--computeCostByCategory->|    |
+ |                |                 |--computeMonthlyTrend--->|    |
+ |                |                 |<-aggregated results-----|    |
+ |                |                 |              |                |
+ |                |<--render cards--|              |                |
+ |                |  + charts      |              |                |
+ |                |  + table       |              |                |
+ |<--visible------|                 |              |                |
+```
+
+#### 12.6.2 User Creates Harvesting Entry with Revenue
+
+```
+User          DiaryEntryForm   API           DynamoDB
+ |                |              |              |
+ |--select cat--->|              |              |
+ |  'harvesting'  |              |              |
+ |                |--reveal----->|              |
+ |                |  harvest     |              |
+ |                |  fields      |              |
+ |                |              |              |
+ |--fill form---->|              |              |
+ |  amount: 5.2   |              |              |
+ |  unit: kg      |              |              |
+ |  revenue: 15000|              |              |
+ |  currency: JPY |              |              |
+ |                |              |              |
+ |--tap save----->|              |              |
+ |                |--POST diary->|              |
+ |                |  {           |              |
+ |                |    category: 'harvesting',  |
+ |                |    harvest_amount: 5.2,     |
+ |                |    harvest_unit: 'kg',      |
+ |                |    revenue: 15000,          |
+ |                |    revenue_currency: 'JPY', |
+ |                |    ...                      |
+ |                |  }           |              |
+ |                |              |--PutItem---->|
+ |                |              |  DIARY#date  |
+ |                |              |  4 new attrs |
+ |                |              |<-ok----------|
+ |                |              |              |
+ |                |              |--buildEntry->|
+ |                |              |  Response    |
+ |                |<-201 entry---|              |
+ |                |              |              |
+ |--close form--->|              |              |
+ |--refresh list->|              |              |
+```
+
+#### 12.6.3 User Changes Year in ROI Dashboard
+
+```
+User          RoiDashboard      API            roi-utils
+ |                |              |                |
+ |--tap '<' ------>|              |                |
+ |  (prev year)   |              |                |
+ |                |--setYear(-1) |                |
+ |                |--show skel.  |                |
+ |                |              |                |
+ |                |--abort prev  |                |
+ |                |  fetch       |                |
+ |                |              |                |
+ |                |--GET diary-->|                |
+ |                |  from=       |                |
+ |                |  (year-1)-01-01               |
+ |                |  to=         |                |
+ |                |  (year-1)-12-31               |
+ |                |<-entries-----|                |
+ |                |              |                |
+ |                |--recompute------------>|      |
+ |                |<-new aggregates--------|      |
+ |                |              |                |
+ |--updated UI----|              |                |
+```
+
+---
+
+### 12.7 i18n Keys
+
+#### 12.7.1 New `roi.*` namespace (en.json)
+
+```json
+{
+  "roi": {
+    "title": "ROI",
+    "total_cost": "Total Cost",
+    "revenue": "Revenue",
+    "roi_percent": "ROI",
+    "harvest_count": "Harvests",
+    "cost_by_category": "Cost by Category",
+    "monthly_trend": "Monthly Trend",
+    "roi_by_bed": "ROI by Bed",
+    "no_data": "No data for {{year}}",
+    "no_data_hint": "Start logging diary entries to see your farm's ROI.",
+    "log_first": "Log First Entry",
+    "no_costs": "No costs",
+    "no_cost_entries": "No costs recorded for {{year}}",
+    "no_bed_data": "No bed data for {{year}}",
+    "excluded_warning": "{{count}} entries in {{currency}} excluded from totals",
+    "partial_hint": "Log harvest entries to track revenue and calculate ROI.",
+    "year_prev": "Previous year",
+    "year_next": "Next year",
+    "sort_bed": "Bed",
+    "sort_costs": "Costs",
+    "sort_revenue": "Revenue",
+    "sort_roi": "ROI",
+    "sort_entries": "#",
+    "total_row": "TOTAL",
+    "legend_cost": "Cost",
+    "legend_revenue": "Revenue"
+  }
+}
+```
+
+#### 12.7.2 New `diary.harvest_*` keys (en.json, under existing diary)
+
+```json
+{
+  "diary": {
+    "harvest_details": "Harvest Details",
+    "harvest_amount": "Harvest amount",
+    "harvest_unit": "Harvest unit",
+    "harvest_revenue": "Revenue",
+    "harvest_currency": "Revenue currency"
+  }
+}
+```
+
+#### 12.7.3 New `setup.default_currency*` keys (en.json, merge into existing setup)
+
+```json
+{
+  "setup": {
+    "default_currency": "Default Currency",
+    "currency_jpy": "JPY -- Japanese Yen",
+    "currency_usd": "USD -- US Dollar"
+  }
+}
+```
+
+---
+
+### 12.8 Test Strategy
+
+#### 12.8.1 Unit Tests — roi-utils.test.ts
+
+File: `src/frontend/src/lib/__tests__/roi-utils.test.ts`
+
+**Test suites and cases**:
+
+#### computeRoi()
+
+| Test case | Input | Expected |
+|-----------|-------|----------|
+| Empty entries | `[]` | `{ total_cost: 0, total_revenue: 0, roi_percent: null, entry_count: 0, harvest_count: 0 }` |
+| Costs only, JPY | 3 entries with JPY costs totaling 30000 | `{ total_cost: 30000, total_revenue: 0, roi_percent: -100 }` |
+| Revenue only, no costs | 1 harvesting entry with 15000 JPY revenue, no costs | `{ total_cost: 0, roi_percent: null }` |
+| Positive ROI | cost 10000, revenue 15000 | `{ roi_percent: 50 }` |
+| Negative ROI | cost 20000, revenue 10000 | `{ roi_percent: -50 }` |
+| Mixed currencies, JPY default | JPY costs + USD costs | Only JPY summed; `excluded_entry_count > 0` |
+| Zero harvest_amount | harvesting entry with `harvest_amount: 0` | `harvest_count: 1` (counts the entry) |
+| Multiple harvesting entries | 3 harvesting entries | `harvest_count: 3` |
+
+#### computeRoiByBed()
+
+| Test case | Input | Expected |
+|-----------|-------|----------|
+| Entries across 3 beds | bed A: 3 entries, bed B: 2 entries, bed C: 1 entry | 3 BedRoiSummary items |
+| Entries with null bed_id | 2 entries without bed | Grouped under `__none__` with name "(no bed)" |
+| Deleted bed | entry references a bed_id not in beds list | name = "(deleted bed)" |
+| Sort order | bed A: ROI 50%, bed B: ROI -10%, bed C: null | Order: A, B, C |
+| Empty entries | `[]` | `[]` |
+
+#### computeCostByCategory()
+
+| Test case | Input | Expected |
+|-----------|-------|----------|
+| Multiple categories | planting: 5000, watering: 3000, purchase: 2000 | Sorted desc: planting, watering, purchase |
+| Single category | All entries are "watering" | 1 item |
+| Zero cost entries | Entries with no cost items | `[]` (categories with zero cost excluded) |
+| Currency filtering | Mix JPY and USD costs | Only target currency summed |
+
+#### computeMonthlyTrend()
+
+| Test case | Input | Expected |
+|-----------|-------|----------|
+| Full year data | Entries in Jan, Mar, Jun, Dec | 12 MonthlyTrend items; non-zero for those 4 months |
+| Empty entries | `[]` | 12 items, all zeros |
+| Revenue in specific months | Harvesting in Aug with revenue | `months[7].revenue > 0` |
+| All entries in one month | 10 entries in March | `months[2]` has totals; others zero |
+
+#### Currency helper tests
+
+| Test case | Input | Expected |
+|-----------|-------|----------|
+| sumCostsByCurrency with matching | costs: [{JPY, 1000}, {JPY, 2000}], currency: JPY | 3000 |
+| sumCostsByCurrency with mismatch | costs: [{USD, 50}], currency: JPY | 0 |
+| sumCostsByCurrency with mixed | costs: [{JPY, 1000}, {USD, 50}], currency: JPY | 1000 |
+| getRevenueByCurrency match | revenue: 15000, currency: JPY, target: JPY | 15000 |
+| getRevenueByCurrency mismatch | revenue: 100, currency: USD, target: JPY | 0 |
+| getRevenueByCurrency null | revenue: null | 0 |
+
+#### 12.8.2 Contract Test Changes
+
+Update existing contract tests in `packages/shared/src/schemas/__tests__/` to verify:
+
+1. **DiaryEntryResponseSchema** accepts the four new nullable fields
+2. **DiaryEntryResponseSchema** rejects missing `harvest_amount` (schema requires it as nullable)
+3. **CreateDiaryEntrySchema** accepts harvest fields when category is 'harvesting'
+4. **CreateDiaryEntrySchema** rejects harvest fields when category is NOT 'harvesting'
+5. **FarmBaseSchema** accepts `default_currency: 'JPY' | 'USD'`
+6. **FarmBaseSchema** defaults `default_currency` to 'JPY' when absent
+
+#### 12.8.3 API Integration Test Changes
+
+Extend existing diary route tests:
+
+1. **POST diary with harvesting + revenue**: Verify response includes `harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency`
+2. **POST diary with non-harvesting + harvest fields**: Verify 422 validation error
+3. **PATCH diary adding harvest fields**: Verify fields are updated and returned
+4. **PATCH diary clearing harvest fields**: Send `harvest_amount: null`, verify REMOVE from DDB
+5. **GET diary list**: Verify old entries return `null` for harvest fields (backward compat)
+6. **PATCH farm with default_currency**: Verify field is saved and returned
+
+#### 12.8.4 E2E Scenarios
+
+| Scenario | Steps | Verification |
+|----------|-------|-------------|
+| Create harvesting entry | Select "Harvesting" category, fill harvest amount/unit/revenue, save | Entry appears in list with harvest data; card shows revenue |
+| ROI tab shows data | Create several entries across categories + 1 harvesting with revenue, open ROI tab | Summary cards show correct totals, category chart has bars, monthly chart renders |
+| Year navigation | Open ROI tab for current year, tap "<" to go to previous year | Dashboard shows "No data" or previous year's data |
+| Empty ROI state | Open ROI tab for a year with zero entries | Empty state illustration with "Log First Entry" CTA |
+| Currency mismatch | Set farm to JPY, create USD cost entry, open ROI tab | Warning "1 entry in USD excluded from totals" |
+| Bed table sort | Open ROI tab with multi-bed data, tap "Costs" column header | Table reorders by costs descending |
+| Farm currency setting | Go to Profile > Farm Settings, change Default Currency to USD, save | Farm settings saved; ROI dashboard uses USD for aggregation |
+
+---
+
+### 12.9 File Manifest
+
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/frontend/src/lib/roi-utils.ts` | Pure aggregation functions (Section 4) |
+| `src/frontend/src/lib/__tests__/roi-utils.test.ts` | Unit tests (Section 8.1) |
+| `src/frontend/src/components/RoiDashboard.tsx` | Container: fetch + compute + render |
+| `src/frontend/src/components/roi/RoiSummaryCards.tsx` | 4 metric cards |
+| `src/frontend/src/components/roi/RoiByBedTable.tsx` | Sortable per-bed table |
+| `src/frontend/src/components/roi/CostByCategoryChart.tsx` | Horizontal bar chart (CSS) |
+| `src/frontend/src/components/roi/MonthlyTrendChart.tsx` | Monthly stacked bar chart (CSS) |
+
+### Files to Modify
+
+| File | Change Summary |
+|------|---------------|
+| `packages/shared/src/types/domain.ts` | Add harvest/revenue fields to DiaryEntry; add created_by_name to DiaryEntryResponse; add default_currency to Farm |
+| `packages/shared/src/schemas/index.ts` | Extend CreateDiaryEntrySchema (+ refine), DiaryEntryResponseSchema, FarmBaseSchema |
+| `src/api/src/services/dynamodb.ts` | Extend itemToDiaryEntry, createDiaryEntry, updateDiaryEntry; default_currency on farm read |
+| `src/api/src/routes/diary.ts` | Extend buildEntryResponse with 4 new fields |
+| `src/api/src/routes/farms.ts` | Accept default_currency in PATCH; include in farmToResponse |
+| `src/frontend/src/lib/api.ts` | Add harvest/revenue fields to DiaryEntryResponse; add harvest params to createDiaryEntry/updateDiaryEntry |
+| `src/frontend/src/components/DiaryPage.tsx` | Add 'roi' to ViewMode; add ROI tab button; render RoiDashboard |
+| `src/frontend/src/components/DiaryEntryForm.tsx` | Conditional harvest fields section |
+| `src/frontend/src/i18n/en.json` | Add roi.*, diary.harvest_*, setup.default_currency keys |
+| `src/frontend/src/i18n/ja.json` | Japanese translations for new keys |
+| `src/frontend/src/components/FarmSetupPage.tsx` | Add default_currency select field |
+| `src/frontend/src/styles/global.css` *(or equivalent)* | Add ROI design tokens (--color-roi-*) and component CSS |
+| `src/api/src/__tests__/diary.test.ts` | Extend with harvest field CRUD tests |
+| `src/api/src/__tests__/farms.test.ts` | Extend with default_currency tests |
+| `packages/shared/src/__tests__/schemas.test.ts` | Extend contract tests for new schema shapes |
+
+---
+
+### 12.10 Implementation Order
+
+Recommended implementation sequence (each batch is independently testable):
+
+**Batch 1 — Shared types + schemas** (no runtime changes yet)
+1. `domain.ts` — DiaryEntry, DiaryEntryResponse, Farm type changes
+2. `schemas/index.ts` — Zod schema extensions + refine validation
+3. Contract tests for new schema shapes
+
+**Batch 2 — API layer** (backend accepts + returns new fields)
+4. `dynamodb.ts` — itemToDiaryEntry, createDiaryEntry, updateDiaryEntry
+5. `diary.ts` — buildEntryResponse extension
+6. `farms.ts` — default_currency in PATCH + farmToResponse
+7. API integration tests for harvest CRUD + farm currency
+
+**Batch 3 — Frontend data layer** (utilities, no UI yet)
+8. `roi-utils.ts` — all computation functions
+9. `roi-utils.test.ts` — unit tests
+10. `api.ts` — DiaryEntryResponse type update
+
+**Batch 4 — Frontend UI** (visible changes)
+11. `DiaryEntryForm.tsx` — harvest fields section
+12. `DiaryPage.tsx` — ROI tab button + ViewMode
+13. `RoiDashboard.tsx` — container component
+14. ROI sub-components (summary cards, charts, table)
+15. i18n keys (en + ja)
+16. CSS tokens and component styles
+
+**Batch 5 — Polish + E2E**
+17. Loading/empty/error states + currency mismatch warning
+18. Year navigation + sort interactions
+19. Farm default currency setting (FarmSetupPage)
+20. E2E validation gate
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Functional and non-functional requirements (expanded for MVP)
@@ -3664,3 +5064,4 @@ export const ProfilePictureResponseSchema = z.object({
 
 > Updated 2026-03-22 for Phase D: +bed-grid system design, +farm creation sequences, +crop assignment flows, +component interaction diagram.
 > Updated 2026-04-02 for Beta-5: +device management sequences, +profile picture upload, +component interfaces, +22-file change summary.
+> Updated 2026-04-06 for Beta-10: +ROI dashboard system design, +type/schema specs, +roi-utils, +component integration, +sequence diagrams, +test strategy.

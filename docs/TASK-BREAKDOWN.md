@@ -1545,4 +1545,530 @@ Batches 5 can run in parallel with Batch 3-4.
 | New files | 1 (GanttChart.tsx) |
 | Modified files | ~10 |
 | New tests | ~16 |
+
+---
+
+# Task Breakdown: Beta-10 ROI Dashboard (#248, #245)
+
+> Version: 1.0 | Created: 2026-04-06
+> Based on: SYSTEM-DESIGN.md Section 12, ARCHITECTURE.md Section 15, UX-DESIGNS.md Section 16
+> Issues: #248 (ROI Dashboard), #245 (Farm Diary parent)
+
+---
+
+## Overview
+
+20 tasks across 5 batches. Each batch is independently testable and does not
+require the next batch to be started. Within each batch, tasks listed as
+parallel can be implemented simultaneously.
+
+**Size guide**: XS < 15 min | S 15–30 min | M 30–60 min | L 1–2 hours
+
+---
+
+## Batch 1: Shared Types + Schemas
+
+No runtime changes. TypeScript and Zod only. Establishes the contract that all
+subsequent batches depend on. Batch is done when contract tests pass.
+
+---
+
+### Task 1.1: Domain type extensions
+
+- **Files**: `packages/shared/src/types/domain.ts`
+- **Depends on**: — (no prior tasks)
+- **Size**: S
+- **Test**: `npm run typecheck` passes in `packages/shared`
+- **Acceptance**:
+  - `DiaryEntry` gains four nullable fields: `harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency`
+  - `DiaryEntryResponse` gains explicit `created_by_name: string | null` (fixes existing type drift)
+  - `Farm` gains `default_currency: 'JPY' | 'USD'`
+  - No existing field removed or renamed
+
+---
+
+### Task 1.2: Zod schema extensions
+
+- **Files**: `packages/shared/src/schemas/index.ts`
+- **Depends on**: 1.1
+- **Size**: M
+- **Test**: `npm run test` in `packages/shared` — schema unit tests pass
+- **Acceptance**:
+  - `CreateDiaryEntrySchema` accepts the four harvest/revenue fields with `.refine()` guard: harvest fields must be null/undefined when `category !== 'harvesting'`
+  - `UpdateDiaryEntrySchema` uses `.innerType().omit().partial().refine()` pattern (or shared base object if `.innerType()` is unavailable in the installed Zod version); refine guard applies
+  - `DiaryEntryResponseSchema` includes all four new nullable fields and `created_by_name`
+  - `FarmBaseSchema` adds `default_currency` with `.default('JPY')`
+  - All previously passing schema tests still pass
+
+---
+
+### Task 1.3: Contract tests for new schema shapes
+
+- **Files**: `packages/shared/src/schemas/__tests__/` (extend existing test files)
+- **Depends on**: 1.2
+- **Size**: M
+- **Test**: `npm run test` in `packages/shared` — all contract tests pass
+- **Acceptance**:
+  - `DiaryEntryResponseSchema` accepts valid objects with null harvest fields
+  - `DiaryEntryResponseSchema` accepts valid objects with populated harvest fields
+  - `CreateDiaryEntrySchema` accepts harvest fields when `category === 'harvesting'`
+  - `CreateDiaryEntrySchema` rejects harvest fields when `category !== 'harvesting'` (returns ZodError)
+  - `FarmBaseSchema` accepts `default_currency: 'JPY'` and `default_currency: 'USD'`
+  - `FarmBaseSchema` defaults `default_currency` to `'JPY'` when field is absent
+
+---
+
+### Batch 1 Dependency Graph
+
+```
+1.1 domain types
+  └─> 1.2 Zod schemas
+        └─> 1.3 contract tests
+```
+
+All three tasks are sequential. Estimated batch effort: ~2 hours.
+
+---
+
+## Batch 2: API Layer
+
+Backend changes only. Frontend is unaware. Batch is done when all diary CRUD
+routes accept and return the new fields and all API integration tests pass.
+
+---
+
+### Task 2.1: DynamoDB layer — diary methods
+
+- **Files**: `src/api/src/services/dynamodb.ts`
+- **Depends on**: 1.1, 1.2 (types must exist before implementing)
+- **Size**: M
+- **Test**: `npm run test` in `src/api` — DynamoDB unit/integration tests pass
+- **Acceptance**:
+  - `itemToDiaryEntry()` reads `harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency` from DynamoDB item, defaulting each to `null` for backward compatibility with old items
+  - `createDiaryEntry()` data parameter type extended with four optional nullable fields; only writes attributes to DDB item when non-null (avoids empty attributes)
+  - `updateDiaryEntry()` updates partial type extended; existing SET/REMOVE expression logic handles null → REMOVE automatically
+  - `itemToFarm()` (or equivalent) defaults `default_currency` to `'JPY'` when attribute is absent
+
+---
+
+### Task 2.2: Diary route — buildEntryResponse extension
+
+- **Files**: `src/api/src/routes/diary.ts`
+- **Depends on**: 2.1
+- **Size**: S
+- **Test**: `curl` smoke test against local dev server; `POST /diary` with `category: 'harvesting'` returns `harvest_amount` in response
+- **Acceptance**:
+  - `buildEntryResponse()` includes `harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency` as passthrough fields from the `DiaryEntry` object
+  - `created_by_name` is already present in route logic — the type fix in Task 1.1 aligns the type to the existing implementation; verify no additional code change is required
+  - Existing diary list and GET single entry responses are unaffected for non-harvesting entries (all four fields return `null`)
+
+---
+
+### Task 2.3: Farms route — default_currency support
+
+- **Files**: `src/api/src/routes/farms.ts`
+- **Depends on**: 2.1
+- **Size**: S
+- **Test**: `PATCH /farms/:farmId` with `{ "default_currency": "USD" }` returns updated farm; `GET /farms/:farmId` returns `default_currency` field
+- **Acceptance**:
+  - PATCH handler's field extraction includes `default_currency`; validates that value is `'JPY' | 'USD'`, throws `ValidationError` for other values
+  - `farmToResponse()` includes `default_currency: farm.default_currency ?? 'JPY'`
+  - All existing farm endpoints that return a farm object now include `default_currency`
+
+---
+
+### Task 2.4: API integration tests — harvest CRUD + farm currency
+
+- **Files**: `src/api/src/__tests__/diary.test.ts` (or equivalent), `src/api/src/__tests__/farms.test.ts`
+- **Depends on**: 2.2, 2.3
+- **Size**: M
+- **Test**: `npm run test` in `src/api` — all tests pass
+- **Acceptance**:
+  - POST diary with `category: 'harvesting'` + all four harvest fields: response includes fields with correct values
+  - POST diary with `category: 'planting'` + harvest fields: returns 422 validation error
+  - PATCH diary entry adding harvest fields: response shows updated values
+  - PATCH diary entry with `harvest_amount: null`: field is removed from item (REMOVE expression fires)
+  - GET diary list: existing entries return `null` for all four harvest fields (backward compat)
+  - PATCH farm with `default_currency: 'USD'`: saves and returns updated currency
+  - PATCH farm with `default_currency: 'EUR'`: returns 422 validation error
+  - Existing test count does not decrease
+
+---
+
+### Batch 2 Dependency Graph
+
+```
+1.1, 1.2 (Batch 1 complete)
+  └─> 2.1 DynamoDB layer
+        ├─> 2.2 diary route  ─┐
+        └─> 2.3 farms route  ─┴─> 2.4 integration tests
+```
+
+Tasks 2.2 and 2.3 can run in parallel after 2.1. Estimated batch effort: ~3 hours.
+
+---
+
+## Batch 3: Frontend Data Layer
+
+No visible UI changes. Computation module and API client types only. Batch is
+done when all `roi-utils` unit tests pass and the frontend builds cleanly.
+
+Batch 3 can start immediately after Batch 1 (only needs domain types from 1.1),
+in parallel with Batch 2.
+
+---
+
+### Task 3.1: roi-utils.ts — pure computation module
+
+- **Files**: `src/frontend/src/lib/roi-utils.ts` (new file)
+- **Depends on**: 1.1
+- **Size**: L
+- **Test**: `npm run test` in `src/frontend` — `roi-utils.test.ts` all cases pass
+- **Acceptance**:
+  - Exports four functions: `computeRoi`, `computeRoiByBed`, `computeCostByCategory`, `computeMonthlyTrend`
+  - Exports four interfaces: `RoiSummary`, `BedRoiSummary`, `CategoryCostSummary`, `MonthlyTrend`
+  - Three internal currency helpers: `sumCostsByCurrency`, `getRevenueByCurrency`, `hasOtherCurrencyData`
+  - `computeRoi`: returns `roi_percent: null` when `total_cost === 0`; returns `-100` when cost > 0 and revenue = 0; currency-filters `costs[]` items directly rather than using `cost_total`
+  - `computeRoiByBed`: groups by `bed_id` (null → `'__none__'`); sorts by ROI descending, null ROI last; resolves bed names from beds list; unknown bed_id → `'(deleted bed)'`
+  - `computeCostByCategory`: excludes categories with zero cost; sorts by total descending
+  - `computeMonthlyTrend`: always returns 12 items (Jan–Dec); fills missing months with `cost: 0, revenue: 0`; infers year from first entry's date
+  - No side effects, no DOM dependencies — pure TypeScript functions
+
+---
+
+### Task 3.2: roi-utils unit tests
+
+- **Files**: `src/frontend/src/lib/__tests__/roi-utils.test.ts` (new file)
+- **Depends on**: 3.1
+- **Size**: L
+- **Test**: `npm run test` in `src/frontend` — all assertions pass
+- **Acceptance**:
+  - `computeRoi`: 8 test cases (empty, costs-only, revenue-only, positive ROI, negative ROI, mixed currencies, zero harvest_amount, multiple harvesting entries)
+  - `computeRoiByBed`: 5 test cases (multi-bed, null bed_id, deleted bed, sort order, empty entries)
+  - `computeCostByCategory`: 4 test cases (multi-category sorted, single category, zero cost excluded, currency filtering)
+  - `computeMonthlyTrend`: 4 test cases (full year, empty entries, revenue in specific months, all entries in one month)
+  - Currency helper: 6 test cases (`sumCostsByCurrency` match/mismatch/mixed; `getRevenueByCurrency` match/mismatch/null)
+  - All assertions use concrete expected values (no snapshot tests)
+
+---
+
+### Task 3.3: api.ts — DiaryEntryResponse type update
+
+- **Files**: `src/frontend/src/lib/api.ts`
+- **Depends on**: 1.1
+- **Size**: XS
+- **Test**: `npm run typecheck` in `src/frontend` passes; no existing call sites break
+- **Acceptance**:
+  - `DiaryEntryResponse` interface gains: `harvest_amount: number | null`, `harvest_unit: string | null`, `revenue: number | null`, `revenue_currency: 'JPY' | 'USD' | null`
+  - `createDiaryEntry` and `updateDiaryEntry` request payload types accept the four new optional fields
+  - `Farm` type (or equivalent in `api.ts`) gains `default_currency: 'JPY' | 'USD'`
+  - No existing call site breaks
+
+---
+
+### Batch 3 Dependency Graph
+
+```
+1.1 (Task 1.1 complete — can start before rest of Batch 1)
+  ├─> 3.1 roi-utils.ts
+  │     └─> 3.2 roi-utils tests
+  └─> 3.3 api.ts types
+```
+
+Tasks 3.1 and 3.3 are parallel. Estimated batch effort: ~3 hours.
+
+---
+
+## Batch 4: Frontend UI
+
+Visible changes. All new components and modifications to existing diary
+components. Batch is done when the ROI tab renders in the browser with real
+data and the harvest fields section appears conditionally in the diary form.
+
+---
+
+### Task 4.1: DiaryEntryForm — harvest fields section
+
+- **Files**: `src/frontend/src/components/DiaryEntryForm.tsx`
+- **Depends on**: 3.3
+- **Size**: M
+- **Test**: Manual: select "Harvesting" category — section reveals with transition; select any other category — section hides; submit harvesting entry — API payload includes harvest fields
+- **Acceptance**:
+  - Harvest section hidden (`max-height: 0; opacity: 0`) when `category !== 'harvesting'`
+  - Section reveals with CSS `max-height` + `opacity` transition when `category === 'harvesting'`; transition duration set to 0ms when `prefers-reduced-motion: reduce`
+  - Four fields: harvest amount (number, `inputmode="decimal"`), harvest unit (text + datalist with kg/g/bunch/piece/bag/box), revenue (number, `inputmode="numeric"` for JPY), revenue currency (select: JPY/USD)
+  - On submit when `category === 'harvesting'`: payload includes all four fields (null when fields empty)
+  - On submit when `category !== 'harvesting'`: payload explicitly sets all four fields to `null`
+  - Category change away from harvesting: amount, unit, and revenue fields cleared
+  - Editing existing harvesting entry: fields pre-populated from entry values
+  - Each field has `<label for="...">` association; section has `aria-live="polite"`
+  - i18n keys: `diary.harvest_section_label`, `diary.harvest_amount`, `diary.harvest_unit`, `diary.harvest_revenue`, `diary.harvest_revenue_currency`
+
+---
+
+### Task 4.2: DiaryPage — ROI tab integration
+
+- **Files**: `src/frontend/src/components/DiaryPage.tsx`
+- **Depends on**: 3.3, 4.3 (or import stub)
+- **Size**: S
+- **Test**: Manual: ROI tab button visible in diary header; clicking it switches view; localStorage persists `roi` value
+- **Acceptance**:
+  - `ViewMode` type extended: `'list' | 'calendar' | 'gantt' | 'roi'`
+  - `localStorage` read includes `'roi'` as a valid restored value
+  - Fourth tab button: emoji `💰`, class `diary-header__toggle-btn`, `aria-pressed` reflects active state, `aria-label={t('roi.title')}`
+  - When `view === 'roi'`: filter bar hidden; `<RoiDashboard farmId={farmId} beds={beds} />` rendered
+  - The `+` add entry button remains visible in ROI view
+
+---
+
+### Task 4.3: RoiDashboard — container component
+
+- **Files**: `src/frontend/src/components/RoiDashboard.tsx` (new file)
+- **Depends on**: 3.1, 3.3, 4.4 (or stubs for sub-components)
+- **Size**: L
+- **Test**: Manual: open ROI tab — skeleton → cards/charts; change year — new data loads with skeleton; API failure — error banner + retry
+- **Acceptance**:
+  - Props: `farmId: string`, `beds: FarmBedItem[]`
+  - State: `year` (default `new Date().getFullYear()`), `entries`, `loading`, `error`, `defaultCurrency`
+  - On mount: fetches `getFarm(farmId)` to get `default_currency`
+  - On `year` change: `loadAllEntries()` — do-while loop on `meta.next_cursor`, auto-paginates until no cursor; previous in-flight request aborted via `AbortController`
+  - `useMemo` for all four aggregates (dependencies: `entries`, `defaultCurrency`)
+  - Year selector: `< {year} >` row; prev/next buttons `48x48px` touch target; next disabled when `year >= currentYear`; `role="group"`, `aria-label`
+  - Currency mismatch warning: shown when `roi.excluded_entry_count > 0`; `role="status"`
+  - Delegates rendering of cards, charts, and table to sub-components from Task 4.4
+
+---
+
+### Task 4.4: ROI sub-components
+
+- **Files**:
+  - `src/frontend/src/components/roi/RoiSummaryCards.tsx` (new)
+  - `src/frontend/src/components/roi/RoiByBedTable.tsx` (new)
+  - `src/frontend/src/components/roi/CostByCategoryChart.tsx` (new)
+  - `src/frontend/src/components/roi/MonthlyTrendChart.tsx` (new)
+- **Depends on**: 3.1
+- **Size**: L
+- **Test**: Manual: each component renders correctly with sample props; empty state shows when data is empty
+- **Acceptance**:
+
+  **RoiSummaryCards** (props: `summary: RoiSummary`, `currency: 'JPY' | 'USD'`):
+  - 2x2 grid mobile, 4-across desktop; cards for Total Cost (`💸`), Revenue (`💰`), ROI % (`📊`), Harvest Count (`🌾`)
+  - Currency formatted via `Intl.NumberFormat` (JPY: no decimals; USD: 2 decimals)
+  - ROI: `null` → `--`; zero cost + revenue > 0 → "No costs"; positive → `+N%` green bg; negative → `-N%` red bg
+  - Each card: `role="group"`, `aria-label="{label}: {formatted_value}"`
+
+  **CostByCategoryChart** (props: `data: CategoryCostSummary[]`, `currency`, `year`):
+  - Horizontal bars sorted by total descending; `width: (total/maxTotal)*100%`, `min-width: 4px`
+  - Bar colors from `CATEGORY_META`; amount right-aligned
+  - Empty state: "No costs recorded for {year}"
+  - `role="list"`; rows `role="listitem"` with `aria-label` including percentage of total
+
+  **MonthlyTrendChart** (props: `data: MonthlyTrend[]`, `currency`, `currentMonth?`):
+  - CSS Grid 12 columns; cost segment (bottom) + revenue segment (above)
+  - Heights relative to max monthly total; current month outlined + bold label
+  - Y-axis: 3 ticks (0, mid, max); month abbreviations below
+  - Visual chart `aria-hidden="true"`; visually hidden `<table class="sr-only">` provides accessible data
+  - `overflow-x: auto` when viewport < 360px
+
+  **RoiByBedTable** (props: `data: BedRoiSummary[]`, `currency`, `year`):
+  - Desktop (>= 768px): `<table>` with `<thead>`, `<tbody>`, `<tfoot>`
+  - Mobile (< 768px): card list with `<select>` sort dropdown
+  - 3-state sort per column (desc → asc → default); `aria-sort` on `<th>`
+  - ROI cell color-coded; footer totals always visible
+  - Empty state: "No bed data for {year}"
+
+---
+
+### Task 4.5: i18n keys — en + ja
+
+- **Files**: `src/frontend/src/i18n/en.json`, `src/frontend/src/i18n/ja.json`
+- **Depends on**: — (fully parallel within Batch 4)
+- **Size**: S
+- **Test**: `npm run build` passes; no missing key warnings
+- **Acceptance**:
+  - New `roi` namespace: 28 keys in both files (matching UX-DESIGNS.md Section 16.14)
+  - New `diary.harvest_*` keys merged into existing `diary` object (12 keys: 6 labels + 6 unit suggestions)
+  - New `setup.default_currency`, `setup.currency_jpy`, `setup.currency_usd` merged into existing `setup` object
+  - Japanese translations provided for all new keys (no English fallbacks in ja.json)
+  - No existing keys modified or removed
+
+---
+
+### Task 4.6: CSS tokens and component styles
+
+- **Files**: Global CSS token file (`:root` token definitions); component CSS files for new ROI components and harvest fields
+- **Depends on**: 4.3, 4.4
+- **Size**: M
+- **Test**: `npm run build` passes; manual visual review at 375px and 1024px; dark and earthy themes applied correctly
+- **Acceptance**:
+  - 12 new CSS custom properties on `:root`: `--color-roi-positive`, `--color-roi-positive-bg`, `--color-roi-negative`, `--color-roi-negative-bg`, `--color-roi-neutral`, `--color-roi-neutral-bg`, `--color-roi-cost`, `--color-roi-cost-light`, `--color-roi-revenue`, `--color-roi-revenue-light`, `--color-chart-grid`, `--color-chart-grid-light`
+  - Dark theme overrides in `[data-theme="dark"]`; earthy theme overrides in `[data-theme="earthy"]`
+  - BEM class names follow conventions from UX-DESIGNS.md Section 16.17 (`.roi-dashboard__*`, `.roi-summary__*`, `.roi-category__*`, `.roi-trend__*`, `.roi-bed__*`, `.harvest-fields__*`)
+  - Summary cards: 2x2 mobile, 4-across desktop; `min-width: 140px`
+  - Category chart: bar `min-width: 4px`; `transition: width var(--transition-normal)`
+  - Monthly trend: `height: 200px` mobile, `280px` desktop; bar `width: clamp(16px, 80%, 40px)`
+  - Bed table: `< 768px` → card layout switch
+  - Harvest fields: `max-height: 0 → 400px` transition; `@media (prefers-reduced-motion: reduce)` sets duration to 0ms
+  - All interactive elements show `var(--focus-ring)` on focus
+
+---
+
+### Batch 4 Dependency Graph
+
+```
+3.1, 3.3 (Batch 3 complete)
+  ├─> 4.1 DiaryEntryForm harvest fields   (parallel)
+  ├─> 4.4 ROI sub-components              (parallel)
+  ├─> 4.5 i18n keys                       (parallel — no deps within Batch 4)
+  ├─> 4.3 RoiDashboard container          (after 4.4 stub or 4.4)
+  ├─> 4.2 DiaryPage ROI tab               (after 4.3 stub or 4.3)
+  └─> 4.6 CSS tokens + styles             (after 4.3 + 4.4)
+```
+
+Tasks 4.1, 4.4, 4.5 can start immediately (parallel). Task 4.3 needs 4.4 (can
+start with a stub). Task 4.2 needs 4.3. Task 4.6 closes the batch.
+Estimated batch effort: ~5 hours.
+
+---
+
+## Batch 5: Polish + E2E
+
+Refines behavior, adds final states, and validates end-to-end. Batch is done
+when all E2E scenarios from SYSTEM-DESIGN.md Section 12.8.4 pass and the total test
+count is >= 713 + new Beta-10 tests.
+
+---
+
+### Task 5.1: Loading, empty, and error states
+
+- **Files**: `src/frontend/src/components/RoiDashboard.tsx`, individual sub-components
+- **Depends on**: 4.3, 4.4, 4.6
+- **Size**: M
+- **Test**: Manual: throttle network → skeleton shows; new farm with no entries → empty state with CTA; simulated API failure → error banner + retry
+- **Acceptance**:
+  - Skeleton: 4 card skeletons (72px, 2x2 grid); 3–5 decreasing bar skeletons; one full-width chart block (200px); 3 row skeletons (48px); all use existing `skeleton-tile` CSS class with pulse animation
+  - Empty state (zero entries for year): `📊` icon at 48px, title (`no_data_title`), body (`no_data_body`), CTA button (`no_data_cta`) that opens `DiaryEntryForm`
+  - Error state: error message banner + retry button; clicking retry re-runs `loadAllEntries()`
+  - Partial data state (entries exist, no harvesting): all sections render; harvest hint banner below summary cards using info-color at 10% opacity
+  - Currency mismatch warning visible only when `excluded_entry_count > 0`; `role="status"` for auto-announcement
+
+---
+
+### Task 5.2: Year navigation and table sort interactions
+
+- **Files**: `src/frontend/src/components/RoiDashboard.tsx`, `src/frontend/src/components/roi/RoiByBedTable.tsx`
+- **Depends on**: 4.3, 4.4
+- **Size**: S
+- **Test**: Manual: tap `<` — year decrements, skeleton shows; tap `>` at current year — disabled; tap "Costs" column — reorders; tap again — reverses; tap third time — resets to default ROI sort
+- **Acceptance**:
+  - Prev year: decrements year, aborts previous `AbortController`, triggers `loadAllEntries()`
+  - Next year: disabled when `year >= currentYear` (`aria-disabled="true"`, opacity 0.4, click noop); enabled otherwise
+  - Year minimum floor: `currentYear - 10` (avoids expensive earliest-entry lookup)
+  - Table sort: 3-state cycle (desc → asc → default); `aria-sort` attribute updates each state; mobile sort dropdown stays in sync
+  - Sort is client-side — no API call triggered
+
+---
+
+### Task 5.3: Farm default currency setting in farm edit form
+
+- **Files**: `src/frontend/src/components/FarmSetupPage.tsx` (or equivalent farm edit component)
+- **Depends on**: 3.3, 4.5
+- **Size**: S
+- **Test**: Manual: open farm settings, change currency to USD, save — PATCH request includes `default_currency: 'USD'`; reload — setting persists; ROI dashboard aggregates in USD
+- **Acceptance**:
+  - Currency `<select>` added after the Location field in the farm edit form
+  - Options: `JPY -- Japanese Yen` and `USD -- US Dollar` (no flag emojis for cross-platform compatibility)
+  - Default value: farm's current `default_currency` from GET response
+  - On save: `default_currency` included in PATCH request body
+  - i18n keys: `setup.default_currency`, `setup.currency_jpy`, `setup.currency_usd`
+  - Uses existing `form-select` CSS class
+
+---
+
+### Task 5.4: E2E validation and final test gate
+
+- **Files**: Any remaining test gaps in `src/api/src/__tests__/` or `src/frontend/src/lib/__tests__/`
+- **Depends on**: 5.1, 5.2, 5.3
+- **Size**: M
+- **Test**: `npm run test` passes across all packages; `npm run build` succeeds; total test count >= 713 + new ROI tests
+- **Acceptance**:
+  - All 7 E2E scenarios from SYSTEM-DESIGN.md Section 12.8.4 manually verified:
+    1. Create harvesting entry with revenue — entry appears in list with harvest data
+    2. ROI tab shows data after creating entries with one harvesting + revenue entry
+    3. Year navigation — previous year shows correct data or "No data"
+    4. Empty ROI state — new farm shows empty illustration with "Log First Entry" CTA
+    5. Currency mismatch — farm set to JPY, USD cost entry triggers exclusion warning
+    6. Bed table sort — tap "Costs" column reorders correctly
+    7. Farm currency setting — change to USD in farm settings, ROI aggregates in USD
+  - `npm run build` succeeds with no TypeScript errors across all packages
+  - `npm run test` total count >= 713 (prior baseline) + new Beta-10 tests
+  - Zero regressions (no previously passing test now fails)
+
+---
+
+### Batch 5 Dependency Graph
+
+```
+4.x (Batch 4 complete)
+  ├─> 5.1 loading/empty/error states  (parallel)
+  ├─> 5.2 year nav + sort             (parallel)
+  ├─> 5.3 farm currency setting       (parallel)
+  └─> 5.4 E2E validation gate         (after 5.1 + 5.2 + 5.3)
+```
+
+Estimated batch effort: ~3 hours.
+
+---
+
+## Full Dependency Graph
+
+```
+Batch 1                Batch 2              Batch 3
+1.1 ─> 1.2 ─> 1.3     (after Batch 1)      (after 1.1 only)
+                        2.1                  3.1 ─> 3.2
+                        ├─> 2.2 ─┐           3.3
+                        └─> 2.3 ─┴─> 2.4
+
+Batch 4 (after Batch 3)
+  4.1 (parallel)
+  4.4 (parallel)
+  4.5 (parallel — no batch deps)
+  4.3 ─ (after 4.4)
+  4.2 ─ (after 4.3)
+  4.6 ─ (after 4.3 + 4.4)
+
+Batch 5 (after Batch 4)
+  5.1 (parallel)
+  5.2 (parallel)
+  5.3 (parallel)
+  5.4 ─ (after 5.1 + 5.2 + 5.3)
+```
+
+Batches 2 and 3 can run in parallel once Batch 1 is complete (Batch 3 only
+needs Task 1.1, so it can start even before Batch 1 is fully done).
+
+---
+
+## Summary Table
+
+| Batch | Tasks | Estimated Effort | Parallelism |
+|-------|-------|-----------------|-------------|
+| 1: Shared types + schemas | 1.1, 1.2, 1.3 | ~2 hours | Sequential |
+| 2: API layer | 2.1, 2.2, 2.3, 2.4 | ~3 hours | 2.2 + 2.3 parallel |
+| 3: Frontend data layer | 3.1, 3.2, 3.3 | ~3 hours | 3.1 + 3.3 parallel |
+| 4: Frontend UI | 4.1, 4.2, 4.3, 4.4, 4.5, 4.6 | ~5 hours | 4.1, 4.4, 4.5 parallel |
+| 5: Polish + E2E | 5.1, 5.2, 5.3, 5.4 | ~3 hours | 5.1–5.3 parallel |
+| **Total** | **20 tasks** | **~16 hours** | |
+
+---
+
+## Beta-10 Key Constraints
+
+- [CONFIRMED] No new AWS services, no new DynamoDB GSIs — all changes are attribute additions on existing entities
+- [CONFIRMED] No new npm dependencies — pure CSS charts, all computation in existing bundle
+- [CONFIRMED] AWS cost delta is $0.00/month
+- [CONFIRMED] Date range is calendar year (Jan–Dec), no fiscal year logic
+- [CONFIRMED] Client-side aggregation only — no new API endpoint
+- [CONFIRMED] Backward compatibility: old diary entries read back with null harvest fields (no migration)
+- [CONFIRMED] Must pass all existing 713 tests plus new ROI + harvest tests
 | AWS cost delta | $0.00 (no new resources) |
