@@ -15,13 +15,14 @@
  */
 
 import { useState, useEffect, useMemo } from 'preact/hooks';
-import { getDiaryEntries, getBeds, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
+import { getDiaryEntries, getBeds, updateBed, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
 import type { FarmBedItem } from '@litcrop/shared';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import DiaryEntryForm from './DiaryEntryForm';
 import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
+import GanttChart from './GanttChart';
 import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib/diary';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 import { getCurrentUser } from '../lib/auth';
@@ -54,7 +55,7 @@ function formatDateLabel(date: string): string {
 
 // ── Types ─────────────────────────────────────────────────────────
 
-type ViewMode = 'list' | 'calendar';
+type ViewMode = 'list' | 'calendar' | 'gantt';
 
 // ── DiaryEntryCard ────────────────────────────────────────────────
 
@@ -237,7 +238,7 @@ export default function DiaryPage() {
     setFarmId(storedFarmId);
 
     const storedView = localStorage.getItem(LS_VIEW_KEY);
-    if (storedView === 'list' || storedView === 'calendar') {
+    if (storedView === 'list' || storedView === 'calendar' || storedView === 'gantt') {
       setView(storedView);
     }
 
@@ -277,13 +278,32 @@ export default function DiaryPage() {
     }
   }
 
-  useEffect(() => {
-    if (farmId && view === 'list') {
-      loadEntries();
+  // Fetch entries for gantt view (wide date range: 3 months back → 9/3 months ahead)
+  async function loadGanttEntries() {
+    if (!farmId) return;
+    setLoading(true);
+    setError(null);
+    const now = new Date();
+    const from = toDateString(new Date(now.getFullYear(), now.getMonth() - 3, 1));
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const monthsAhead = isMobile ? 3 : 9;
+    const to = toDateString(new Date(now.getFullYear(), now.getMonth() + monthsAhead + 1, 0));
+    try {
+      const res = await getDiaryEntries(farmId, { from, to, limit: 100 });
+      setEntries(res.data);
+    } catch {
+      setError(t('diary.error_loading'));
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    if (farmId && view === 'list') loadEntries();
+    if (farmId && view === 'gantt') loadGanttEntries();
   }, [farmId, view]);
 
-  // Fetch beds for filter bar and calendar CropTimeline
+  // Fetch beds for filter bar, calendar CropTimeline, and gantt
   useEffect(() => {
     if (!farmId) return;
     getBeds(farmId)
@@ -342,12 +362,45 @@ export default function DiaryPage() {
     setShowForm(false);
     setEditingEntry(null);
     if (view === 'calendar') loadCalendarEntries();
+    else if (view === 'gantt') loadGanttEntries();
     else loadEntries();
+  }
+
+  // Mark done / undo handlers for Gantt (#297)
+  async function handleMarkDone(bedId: string) {
+    if (!confirm(t('gantt.mark_done') + '?')) return;
+    const today = toDateString(new Date());
+    try {
+      await updateBed(bedId, { completed_at: today });
+      setBeds((prev) => prev.map((b) => b.id === bedId ? { ...b, completed_at: today } : b));
+      showToast(t('gantt.mark_done'), 'success');
+    } catch {
+      showToast(t('diary.error_loading'), 'error');
+    }
+  }
+
+  async function handleUndoDone(bedId: string) {
+    try {
+      await updateBed(bedId, { completed_at: null });
+      setBeds((prev) => prev.map((b) => b.id === bedId ? { ...b, completed_at: undefined } : b));
+      showToast(t('gantt.undo_done'), 'success');
+    } catch {
+      showToast(t('diary.error_loading'), 'error');
+    }
   }
 
   function handleFormCancel() {
     setShowForm(false);
     setEditingEntry(null);
+  }
+
+  // Cross-reference: Gantt dot → Calendar view (#297)
+  function handleGanttDotClick(date: string, _entryId: string) {
+    const d = new Date(date + 'T00:00:00');
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    setSelectedDate(date);
+    switchView('calendar');
   }
 
   function handleEntryDeleted(entryId: string) {
@@ -425,6 +478,15 @@ export default function DiaryPage() {
               title={t('diary.calendar')}
             >
               📅
+            </button>
+            <button
+              type="button"
+              class={`diary-header__toggle-btn${view === 'gantt' ? ' diary-header__toggle-btn--active' : ''}`}
+              aria-pressed={view === 'gantt'}
+              onClick={() => switchView('gantt')}
+              title={t('gantt.title')}
+            >
+              📊
             </button>
           </div>
           {/* Layout toggle: tabs vs split (#291) */}
@@ -540,7 +602,11 @@ export default function DiaryPage() {
             type="button"
             class="btn btn--primary"
             style={{ marginTop: 'var(--space-4)' }}
-            onClick={() => view === 'calendar' ? loadCalendarEntries() : loadEntries()}
+            onClick={() => {
+              if (view === 'calendar') loadCalendarEntries();
+              else if (view === 'gantt') loadGanttEntries();
+              else loadEntries();
+            }}
           >
             {t('buttons.retry')}
           </button>
@@ -681,6 +747,17 @@ export default function DiaryPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Gantt chart view (#297) */}
+      {!loading && !error && view === 'gantt' && (
+        <GanttChart
+          beds={beds}
+          entries={entries}
+          onDotClick={handleGanttDotClick}
+          onMarkDone={canWrite ? handleMarkDone : undefined}
+          onUndoDone={canWrite ? handleUndoDone : undefined}
+        />
       )}
 
       {/* Diary entry form (bottom sheet) */}

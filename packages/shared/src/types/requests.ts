@@ -42,6 +42,7 @@ export interface UpdateBedRequest {
   planted_at?: string | null;    // ISO 8601 date; null to clear
   expected_harvest?: string | null;
   notes?: string | null;         // max 500 chars; null to clear
+  completed_at?: string | null;  // YYYY-MM-DD; null to clear (reactivate)
 }
 
 /** POST /api/v1/images/{imageId}/tags */
