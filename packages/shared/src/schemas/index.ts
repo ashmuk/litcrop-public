@@ -518,10 +518,10 @@ export const DiaryListQuerySchema = z.object({
 }).refine(data => {
   if (data.from && data.to) {
     const diff = (Date.parse(data.to) - Date.parse(data.from)) / 86_400_000;
-    return diff >= 0 && diff <= 366;
+    return diff >= 0 && diff <= 400;
   }
   return true;
-}, { message: 'Date range must be 0-366 days' });
+}, { message: 'Date range must be 0-400 days' });
 
 /** Diary entry response shape — for contract tests */
 export const DiaryEntryResponseSchema = z.object({

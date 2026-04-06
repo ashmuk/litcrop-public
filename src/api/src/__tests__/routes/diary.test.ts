@@ -298,13 +298,32 @@ describe('GET /api/v1/farms/:farmId/diary', () => {
     );
   });
 
-  it('rejects date range > 366 days → 400', async () => {
+  it('rejects date range > 400 days → 400', async () => {
     const res = await app.request(
       `/api/v1/farms/${FARM_ID}/diary?from=2025-01-01&to=2026-12-31`,
       { headers: authHeaders() },
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it('default range includes future-dated entries (#301)', async () => {
+    const futureDate = new Date();
+    futureDate.setMonth(futureDate.getMonth() + 3);
+    const futureDateStr = futureDate.toISOString().slice(0, 10);
+
+    const futureEntry = { ...entryFixture, id: 'entry-future-001', date: futureDateStr, entry_type: 'reserved' as const };
+    mockRepo.getDiaryEntries.mockResolvedValue({ items: [futureEntry], nextCursor: null });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(200);
+    // Verify the default 'to' param passed to getDiaryEntries is in the future
+    const callArgs = mockRepo.getDiaryEntries.mock.calls.at(-1)!;
+    const toArg = callArgs[2]; // third arg is 'to' date
+    expect(toArg > futureDateStr).toBe(true);
   });
 
   // MF-4 #3: invalid cursor → 400
