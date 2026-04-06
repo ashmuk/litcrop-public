@@ -226,12 +226,13 @@ describe('PATCH /api/v1/beds/:bedId', () => {
     expect(res.status).toBe(200);
 
     // Verify updateBed was called with null (not undefined)
+    // When crop_type changes, lifecycle dates are auto-cleared (#321)
     expect(dynamoRepo.updateBed).toHaveBeenCalledWith(
       FARM_ID,
       BED_ID,
       1,
       1,
-      { crop_type: null },
+      { crop_type: null, planted_at: null, expected_harvest: null, completed_at: null },
     );
 
     const body = await res.json() as Record<string, unknown>;

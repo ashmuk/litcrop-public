@@ -124,6 +124,13 @@ router.patch('/:bedId', async (c) => {
     }
   }
 
+  // When crop_type changes, auto-clear lifecycle dates unless explicitly provided (#321)
+  if ('crop_type' in updates && updates['crop_type'] !== bed.crop_type) {
+    if (!('planted_at' in updates)) updates['planted_at'] = null;
+    if (!('expected_harvest' in updates)) updates['expected_harvest'] = null;
+    if (!('completed_at' in updates)) updates['completed_at'] = null;
+  }
+
   try {
     await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, updates);
   } catch (err) {

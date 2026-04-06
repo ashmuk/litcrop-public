@@ -211,10 +211,13 @@ export default function BedDetail() {
     setSaving(true);
     try {
       const data: Record<string, string | null> = {};
-      data.crop_type = cropForm.crop_type.trim() || null;
+      const newCropType = cropForm.crop_type.trim() || null;
+      const cropChanged = newCropType !== (bed?.crop_type ?? null);
+      data.crop_type = newCropType;
       data.crop_variety = cropForm.crop_variety.trim() || null;
-      data.planted_at = cropForm.planted_at || null;
-      data.expected_harvest = cropForm.expected_harvest || null;
+      // Clear lifecycle dates when crop changes, unless user set new dates (#321)
+      data.planted_at = cropChanged && !cropForm.planted_at ? null : (cropForm.planted_at || null);
+      data.expected_harvest = cropChanged && !cropForm.expected_harvest ? null : (cropForm.expected_harvest || null);
       data.notes = cropForm.notes.trim() || null;
       const updated = await updateBed(bedId, data);
       setBed(updated);

@@ -475,12 +475,15 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
             {/* Smart default hint (#287) */}
             {entryType === 'reserved' && category === 'planting' && bedId && (() => {
               const bed = beds.find((b) => b.id === bedId);
-              const harvestDate = bed?.crop_type ? estimateHarvestDate(date, bed.crop_type) : null;
+              if (!bed?.crop_type) return null;
+              // Use bed's planted_at if available (more accurate), otherwise fall back to diary entry date
+              const plantingDate = bed.planted_at ?? date;
+              const harvestDate = estimateHarvestDate(plantingDate, bed.crop_type);
               if (!harvestDate) return null;
               return (
                 <div class="diary-smart-hint">
                   <span>💡</span>
-                  <span>{bed!.crop_type}: {t('diary.harvest_estimate')} <strong>{harvestDate}</strong></span>
+                  <span>{bed.crop_type}: {t('diary.harvest_estimate')} <strong>{harvestDate}</strong></span>
                 </div>
               );
             })()}
