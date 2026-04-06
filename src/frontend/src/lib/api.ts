@@ -588,6 +588,11 @@ export interface DiaryEntryResponse {
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
+  // Beta-10: harvest & revenue fields (populated when category === 'harvesting')
+  harvest_amount: number | null;
+  harvest_unit: string | null;
+  revenue: number | null;
+  revenue_currency: 'JPY' | 'USD' | null;
 }
 
 export interface DiaryListResponse {

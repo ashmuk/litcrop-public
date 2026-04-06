@@ -33,8 +33,13 @@ function makeEntry(
     costs: [],
     cost_total: 0,
     created_by: 'user-uuid',
+    created_by_name: null,
     created_at: `${date}T09:00:00Z`,
     updated_at: `${date}T09:00:00Z`,
+    harvest_amount: null,
+    harvest_unit: null,
+    revenue: null,
+    revenue_currency: null,
     ...overrides,
     date,
     category,
@@ -325,6 +330,10 @@ describe('buildActualDatesMap', () => {
     created_by_name: null,
     created_at: '2026-04-10T00:00:00Z',
     updated_at: '2026-04-10T00:00:00Z',
+    harvest_amount: null,
+    harvest_unit: null,
+    revenue: null,
+    revenue_currency: null,
     ...overrides,
   });
 
@@ -429,6 +438,10 @@ describe('buildEventDotMap', () => {
     created_by_name: null,
     created_at: '2026-04-10T00:00:00Z',
     updated_at: '2026-04-10T00:00:00Z',
+    harvest_amount: null,
+    harvest_unit: null,
+    revenue: null,
+    revenue_currency: null,
     ...overrides,
   });
 
