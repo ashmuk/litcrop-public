@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LitCrop — ROI Dashboard (Beta-10 #248)</title>
+<style>
+/* ============================================================
+   Design Tokens (LitCrop Design System — inline for standalone)
+   ============================================================ */
+:root {
+  --color-primary:          #1B6B3A;
+  --color-primary-dark:     #0E4D28;
+  --color-primary-light:    #E8F5EC;
+
+  --color-gray-900:         #1A1A1A;
+  --color-gray-700:         #4A4A4A;
+  --color-gray-500:         #595959;
+  --color-gray-300:         #C4C4C4;
+  --color-gray-100:         #F2F2F2;
+  --color-white:            #FFFFFF;
+
+  --color-surface:          #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-background:       #F5F5F5;
+  --color-surface-alt:      #f3f4f6;
+
+  --color-error:            #C62828;
+  --color-success:          #1B7D3C;
+  --color-info:             #1565C0;
+
+  /* ROI Tokens (Section 16.2) */
+  --color-roi-positive:       #1B7D3C;
+  --color-roi-positive-bg:    #E8F5EC;
+  --color-roi-negative:       #C62828;
+  --color-roi-negative-bg:    #FFEBEE;
+  --color-roi-neutral:        #6b7280;
+  --color-roi-neutral-bg:     #F5F5F5;
+  --color-roi-cost:           #ef4444;
+  --color-roi-cost-light:     #fca5a5;
+  --color-roi-revenue:        #22c55e;
+  --color-roi-revenue-light:  #86efac;
+  --color-chart-grid:         var(--color-gray-300);
+  --color-chart-grid-light:   var(--color-gray-100);
+
+  /* Category Colors (Section 16.6) */
+  --cat-planting:     #22c55e;
+  --cat-watering:     #3b82f6;
+  --cat-fertilizing:  #a855f7;
+  --cat-harvesting:   #f59e0b;
+  --cat-weeding:      #84cc16;
+  --cat-pest:         #ef4444;
+  --cat-maintenance:  #6b7280;
+  --cat-purchase:     #f97316;
+  --cat-other:        #9ca3af;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-size-xs:     12px;
+  --font-size-sm:     14px;
+  --font-size-base:   16px;
+  --font-size-lg:     18px;
+  --font-size-xl:     22px;
+  --font-size-2xl:    28px;
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+  --line-height-tight:    1.2;
+  --line-height-normal:   1.5;
+  --line-height-relaxed:  1.75;
+
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.12);
+  --shadow-lg:  0 4px 16px rgba(0, 0, 0, 0.16);
+
+  --border-default: 1px solid var(--color-gray-300);
+  --touch-target-min: 48px;
+  --transition-fast:   120ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --transition-slow:   300ms ease-out;
+  --focus-ring: 0 0 0 3px rgba(27, 107, 58, 0.5);
+
+  --color-text:           var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-700);
+  --color-text-muted:     var(--color-gray-500);
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface:          #1E1E1E;
+    --color-surface-elevated: #2A2A2A;
+    --color-background:       #121212;
+    --color-white:            #1E1E1E;
+    --color-gray-900:  #F0F0F0;
+    --color-gray-700:  #C0C0C0;
+    --color-gray-500:  #909090;
+    --color-gray-300:  #444444;
+    --color-gray-100:  #2A2A2A;
+    --color-surface-alt: #2A2A2A;
+    --color-text:           #F0F0F0;
+    --color-text-secondary: #C0C0C0;
+    --color-text-muted:     #909090;
+    --border-default:  1px solid #444444;
+    --shadow-sm:       0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md:       0 2px 8px rgba(0,0,0,0.4);
+    --color-roi-positive:    #4ade80;
+    --color-roi-positive-bg: rgba(74,222,128,0.15);
+    --color-roi-negative:    #f87171;
+    --color-roi-negative-bg: rgba(248,113,113,0.15);
+    --color-roi-neutral:     #9ca3af;
+    --color-roi-neutral-bg:  rgba(156,163,175,0.1);
+    --color-roi-cost:        #f87171;
+    --color-roi-revenue:     #4ade80;
+    --color-chart-grid:      rgba(255,255,255,0.15);
+    --color-chart-grid-light: rgba(255,255,255,0.05);
+  }
+}
+
+/* Class-based dark mode toggle */
+.theme-dark {
+  --color-surface:          #1E1E1E;
+  --color-surface-elevated: #2A2A2A;
+  --color-background:       #121212;
+  --color-white:            #1E1E1E;
+  --color-gray-900:  #F0F0F0;
+  --color-gray-700:  #C0C0C0;
+  --color-gray-500:  #909090;
+  --color-gray-300:  #444444;
+  --color-gray-100:  #2A2A2A;
+  --color-surface-alt: #2A2A2A;
+  --color-text:           #F0F0F0;
+  --color-text-secondary: #C0C0C0;
+  --color-text-muted:     #909090;
+  --border-default:  1px solid #444444;
+  --shadow-sm:       0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:       0 2px 8px rgba(0,0,0,0.4);
+  --color-roi-positive:    #4ade80;
+  --color-roi-positive-bg: rgba(74,222,128,0.15);
+  --color-roi-negative:    #f87171;
+  --color-roi-negative-bg: rgba(248,113,113,0.15);
+  --color-roi-neutral:     #9ca3af;
+  --color-roi-neutral-bg:  rgba(156,163,175,0.1);
+  --color-roi-cost:        #f87171;
+  --color-roi-revenue:     #4ade80;
+  --color-chart-grid:      rgba(255,255,255,0.15);
+  --color-chart-grid-light: rgba(255,255,255,0.05);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-family);
+  background: var(--color-background);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+  min-height: 100vh;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   Page chrome: mock diary header with tab bar
+   ============================================================ */
+.diary-header {
+  background: var(--color-surface);
+  border-bottom: var(--border-default);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
+.diary-header__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.diary-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.diary-header__tabs {
+  display: flex;
+  gap: var(--space-1);
+  role: group;
+}
+
+.diary-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast);
+}
+
+.diary-tab:hover {
+  background: var(--color-gray-100);
+}
+
+.diary-tab[aria-pressed="true"] {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.diary-header__add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xl);
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   ROI Dashboard Container
+   ============================================================ */
+.roi-dashboard {
+  padding: var(--space-4);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   Year Selector (Section 16.4)
+   ============================================================ */
+.roi-dashboard__year-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  height: var(--touch-target-min);
+  margin-bottom: var(--space-4);
+}
+
+.roi-year-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: var(--color-surface);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.roi-year-btn:hover {
+  background: var(--color-primary-light);
+  box-shadow: var(--shadow-md);
+}
+
+.roi-year-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.roi-year-btn[disabled],
+.roi-year-btn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.roi-year-label {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  min-width: 72px;
+  text-align: center;
+}
+
+/* ============================================================
+   Summary Cards (Section 16.5)
+   ============================================================ */
+.roi-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.roi-summary__card {
+  background: var(--color-surface);
+  border: var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.roi-summary__card--positive {
+  background: var(--color-roi-positive-bg);
+  border-color: var(--color-roi-positive);
+}
+
+.roi-summary__card--negative {
+  background: var(--color-roi-negative-bg);
+  border-color: var(--color-roi-negative);
+}
+
+.roi-summary__card--neutral {
+  background: var(--color-roi-neutral-bg);
+}
+
+.roi-summary__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.roi-summary__icon {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.roi-summary__value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  text-align: right;
+  line-height: var(--line-height-tight);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roi-summary__value--positive { color: var(--color-roi-positive); }
+.roi-summary__value--negative { color: var(--color-roi-negative); }
+.roi-summary__value--revenue  { color: var(--color-roi-revenue); }
+
+.roi-summary__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+}
+
+/* ============================================================
+   Section Wrapper
+   ============================================================ */
+.roi-section {
+  margin-bottom: var(--space-5);
+}
+
+.roi-section__heading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.roi-section__card {
+  background: var(--color-surface);
+  border: var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   Cost by Category Chart (Section 16.6)
+   ============================================================ */
+.roi-category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.roi-category__bar-row {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  gap: var(--space-2);
+}
+
+.roi-category__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 110px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.roi-category__label-icon {
+  font-size: var(--font-size-base);
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.roi-category__bar-track {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  background: var(--color-gray-100);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.roi-category__bar {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width var(--transition-normal);
+  min-width: 4px;
+}
+
+.roi-category__amount {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  min-width: 64px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Monthly Trend Chart (Section 16.7)
+   ============================================================ */
+.roi-trend__wrapper {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.roi-trend__y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 200px;
+  min-width: 44px;
+  text-align: right;
+  padding-bottom: 22px; /* leave space for month label row */
+}
+
+.roi-trend__y-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+
+.roi-trend__chart-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.roi-trend__chart {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 3px;
+  height: 200px;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--color-chart-grid);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.roi-trend__bar-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  gap: 0;
+  min-width: 0;
+}
+
+.roi-trend__bar-col--current .roi-trend__bar-cost,
+.roi-trend__bar-col--current .roi-trend__bar-revenue {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.roi-trend__bar-cost {
+  width: clamp(12px, 80%, 36px);
+  background: var(--color-roi-cost);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  flex-shrink: 0;
+}
+
+.roi-trend__bar-revenue {
+  width: clamp(12px, 80%, 36px);
+  background: var(--color-roi-revenue);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  flex-shrink: 0;
+}
+
+.roi-trend__month-labels {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 3px;
+  margin-top: var(--space-2);
+}
+
+.roi-trend__month-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1;
+}
+
+.roi-trend__bar-col--current + * .roi-trend__month-label,
+.roi-trend__month-label--current {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.roi-trend__legend {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-left: 48px; /* align with chart, roughly */
+}
+
+.roi-trend__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.roi-trend__legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   ROI by Bed — Desktop Table (Section 16.8)
+   ============================================================ */
+.roi-bed__table-wrap {
+  border-radius: var(--radius-lg);
+  border: var(--border-default);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.roi-bed__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.roi-bed__table thead tr {
+  background: var(--color-gray-100);
+}
+
+.roi-bed__table th {
+  padding: var(--space-3);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.roi-bed__table th.align-right { text-align: right; }
+.roi-bed__table th.align-center { text-align: center; }
+
+.roi-bed__header--active {
+  color: var(--color-primary);
+}
+
+.roi-bed__table td {
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-gray-100);
+  color: var(--color-text);
+}
+
+.roi-bed__table td.align-right { text-align: right; }
+.roi-bed__table td.align-center { text-align: center; }
+
+.roi-bed__table tfoot tr {
+  background: var(--color-gray-100);
+  border-top: 2px solid var(--color-gray-300);
+}
+
+.roi-bed__table tfoot td {
+  font-weight: var(--font-weight-bold);
+  border-top: 2px solid var(--color-gray-300);
+}
+
+.roi-bed__cell-bed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-medium);
+}
+
+.roi-bed__roi-value--positive {
+  color: var(--color-roi-positive);
+  font-weight: var(--font-weight-semibold);
+}
+
+.roi-bed__roi-value--negative {
+  color: var(--color-roi-negative);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Mobile: Card list (hidden on desktop) */
+.roi-bed__cards { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.roi-bed__card {
+  padding: var(--space-3);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.roi-bed__card-name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.roi-bed__card-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.roi-bed__card-roi {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Mobile sort dropdown */
+.roi-bed__sort-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.roi-bed__sort-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.roi-bed__sort-select {
+  flex: 1;
+  height: var(--touch-target-min);
+  padding: 0 var(--space-3);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+/* Footer totals card (mobile) */
+.roi-bed__card--total {
+  border-top: 2px solid var(--color-gray-300);
+  background: var(--color-gray-100);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ============================================================
+   Harvest hint banner (partial data state)
+   ============================================================ */
+.roi-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: rgba(21, 101, 192, 0.08);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.roi-hint__icon { font-size: var(--font-size-base); flex-shrink: 0; }
+
+/* ============================================================
+   Desktop layout (1024px+)
+   ============================================================ */
+@media (min-width: 1024px) {
+  .roi-dashboard {
+    max-width: 1100px;
+    padding: var(--space-6);
+  }
+
+  .roi-dashboard__sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+  }
+
+  .roi-dashboard__col-left { display: flex; flex-direction: column; gap: var(--space-4); }
+  .roi-dashboard__col-right { display: flex; flex-direction: column; }
+
+  .roi-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-bottom: 0;
+  }
+
+  .roi-trend__chart {
+    height: 280px;
+  }
+
+  .roi-trend__y-axis {
+    height: 280px;
+  }
+
+  /* Full-width sections span both columns */
+  .roi-dashboard__full-row {
+    grid-column: 1 / -1;
+  }
+
+  /* Show table on desktop, hide cards */
+  .roi-bed__cards { display: none; }
+  .roi-bed__table-wrap { display: block; }
+}
+
+/* On mobile, flip — show cards, hide table */
+@media (max-width: 1023px) {
+  .roi-dashboard__sections { display: contents; }
+  .roi-dashboard__col-left { display: contents; }
+  .roi-dashboard__col-right { display: contents; }
+  .roi-dashboard__full-row { display: contents; }
+  .roi-bed__table-wrap { display: none; }
+  .roi-bed__cards { display: flex; }
+}
+
+/* ============================================================
+   Page header / annotation block
+   ============================================================ */
+.page-header {
+  background: var(--color-primary);
+  color: white;
+  padding: var(--space-4);
+  text-align: center;
+}
+.page-header h1 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: white;
+}
+.page-header p {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+  margin-top: var(--space-1);
+}
+.page-header a {
+  color: rgba(255,255,255,0.8);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+.page-header a:hover { color: white; text-decoration: underline; }
+
+/* Annotation tags */
+.mock-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  margin: var(--space-1) 2px 0;
+}
+
+.viewport-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-2);
+  background: var(--color-gray-100);
+  border-bottom: var(--border-default);
+}
+
+h2.section-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  border-bottom: 2px solid var(--color-primary);
+  padding-bottom: var(--space-2);
+  margin: var(--space-8) var(--space-4) var(--space-4);
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>ROI Dashboard — Mock-up</h1>
+  <p>Beta-10 &bull; Issue #248 &bull; Step 4 of 9 (UX Design)</p>
+  <div>
+    <span class="mock-tag">Section 16 of UX-DESIGNS.md</span>
+    <span class="mock-tag">Pure HTML/CSS</span>
+    <span class="mock-tag">Mobile-first 375px</span>
+  </div>
+  <p style="margin-top:var(--space-2)"><a href="index.html">&larr; Back to index</a></p>
+</div>
+
+<!-- =====================================================
+     MOBILE VIEW (375px)
+     ===================================================== -->
+<h2 class="section-title">Mobile Layout (375px)</h2>
+<div class="viewport-label">Viewport: 375px &bull; Single-column layout &bull; Card list for bed ROI</div>
+
+<div style="max-width:375px; margin:0 auto; background:var(--color-background); padding-bottom:var(--space-10);">
+
+  <!-- Diary Tab Bar -->
+  <header class="diary-header">
+    <span class="diary-header__title">Farm Diary</span>
+    <div class="diary-header__right">
+      <div class="diary-header__tabs" role="group" aria-label="Diary view tabs">
+        <button class="diary-tab" aria-pressed="false" aria-label="List view" title="List">📋</button>
+        <button class="diary-tab" aria-pressed="false" aria-label="Calendar view" title="Calendar">📅</button>
+        <button class="diary-tab" aria-pressed="false" aria-label="Gantt view" title="Gantt">📊</button>
+        <button class="diary-tab" aria-pressed="true" aria-label="ROI view" title="ROI">💰</button>
+      </div>
+      <button class="diary-header__add-btn" aria-label="Add diary entry">+</button>
+    </div>
+  </header>
+
+  <!-- ROI Dashboard body -->
+  <div class="roi-dashboard">
+
+    <!-- Year Selector -->
+    <div class="roi-dashboard__year-nav" role="group" aria-label="Year selector">
+      <button class="roi-year-btn" aria-label="Previous year">&lsaquo;</button>
+      <span class="roi-year-label" aria-live="polite">2026</span>
+      <button class="roi-year-btn" aria-label="Next year" aria-disabled="true" disabled>&rsaquo;</button>
+    </div>
+
+    <!-- Harvest hint (partial data state) -->
+    <div class="roi-hint" role="note">
+      <span class="roi-hint__icon" aria-hidden="true">ℹ️</span>
+      <span>Log harvest entries to track revenue and calculate ROI.</span>
+    </div>
+
+    <!-- Summary Cards 2x2 -->
+    <div class="roi-summary" aria-label="ROI summary">
+
+      <div class="roi-summary__card" role="group" aria-label="Total Cost: 26,000 yen">
+        <div class="roi-summary__header">
+          <span class="roi-summary__icon" aria-hidden="true">💸</span>
+          <span class="roi-summary__value">¥26,000</span>
+        </div>
+        <div class="roi-summary__label">Total Cost</div>
+      </div>
+
+      <div class="roi-summary__card" role="group" aria-label="Revenue: 25,000 yen">
+        <div class="roi-summary__header">
+          <span class="roi-summary__icon" aria-hidden="true">💰</span>
+          <span class="roi-summary__value roi-summary__value--revenue">¥25,000</span>
+        </div>
+        <div class="roi-summary__label">Revenue</div>
+      </div>
+
+      <div class="roi-summary__card roi-summary__card--negative" role="group" aria-label="ROI: negative 4 percent">
+        <div class="roi-summary__header">
+          <span class="roi-summary__icon" aria-hidden="true">📊</span>
+          <span class="roi-summary__value roi-summary__value--negative">&#9660;&nbsp;-4%</span>
+        </div>
+        <div class="roi-summary__label">ROI</div>
+      </div>
+
+      <div class="roi-summary__card" role="group" aria-label="Harvests: 12">
+        <div class="roi-summary__header">
+          <span class="roi-summary__icon" aria-hidden="true">🌾</span>
+          <span class="roi-summary__value">12</span>
+        </div>
+        <div class="roi-summary__label">Harvests</div>
+      </div>
+
+    </div><!-- /.roi-summary -->
+
+    <!-- Cost by Category -->
+    <div class="roi-section">
+      <h3 class="roi-section__heading">Cost by Category</h3>
+      <div class="roi-section__card">
+        <div class="roi-category" role="list" aria-label="Cost breakdown by category">
+
+          <!-- Planting: ¥12,000 = 43% of ¥28k total -->
+          <div class="roi-category__bar-row" role="listitem" aria-label="Planting: 12,000 yen, 43 percent of total costs">
+            <div class="roi-category__label">
+              <span class="roi-category__label-icon" aria-hidden="true">🌱</span>
+              <span>Planting</span>
+            </div>
+            <div class="roi-category__bar-track">
+              <div class="roi-category__bar" style="width:100%;background:var(--cat-planting);" aria-hidden="true"></div>
+            </div>
+            <span class="roi-category__amount">¥12,000</span>
+          </div>
+
+          <!-- Watering: ¥8,000 = 67% -->
+          <div class="roi-category__bar-row" role="listitem" aria-label="Watering: 8,000 yen, 29 percent of total costs">
+            <div class="roi-category__label">
+              <span class="roi-category__label-icon" aria-hidden="true">💧</span>
+              <span>Watering</span>
+            </div>
+            <div class="roi-category__bar-track">
+              <div class="roi-category__bar" style="width:67%;background:var(--cat-watering);" aria-hidden="true"></div>
+            </div>
+            <span class="roi-category__amount">¥8,000</span>
+          </div>
+
+          <!-- Purchase: ¥5,000 = 42% -->
+          <div class="roi-category__bar-row" role="listitem" aria-label="Purchase: 5,000 yen, 18 percent of total costs">
+            <div class="roi-category__label">
+              <span class="roi-category__label-icon" aria-hidden="true">🛒</span>
+              <span>Purchase</span>
+            </div>
+            <div class="roi-category__bar-track">
+              <div class="roi-category__bar" style="width:42%;background:var(--cat-purchase);" aria-hidden="true"></div>
+            </div>
+            <span class="roi-category__amount">¥5,000</span>
+          </div>
+
+          <!-- Weeding: ¥2,500 = 21% -->
+          <div class="roi-category__bar-row" role="listitem" aria-label="Weeding: 2,500 yen, 9 percent of total costs">
+            <div class="roi-category__label">
+              <span class="roi-category__label-icon" aria-hidden="true">🌿</span>
+              <span>Weeding</span>
+            </div>
+            <div class="roi-category__bar-track">
+              <div class="roi-category__bar" style="width:21%;background:var(--cat-weeding);" aria-hidden="true"></div>
+            </div>
+            <span class="roi-category__amount">¥2,500</span>
+          </div>
+
+          <!-- Other: ¥500 = 4% -->
+          <div class="roi-category__bar-row" role="listitem" aria-label="Other: 500 yen, 2 percent of total costs">
+            <div class="roi-category__label">
+              <span class="roi-category__label-icon" aria-hidden="true">📝</span>
+              <span>Other</span>
+            </div>
+            <div class="roi-category__bar-track">
+              <div class="roi-category__bar" style="width:4%;background:var(--cat-other);" aria-hidden="true"></div>
+            </div>
+            <span class="roi-category__amount">¥500</span>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /.roi-section (category) -->
+
+    <!-- Monthly Trend Chart -->
+    <div class="roi-section">
+      <h3 class="roi-section__heading">Monthly Trend</h3>
+      <div class="roi-section__card">
+
+        <div class="roi-trend__wrapper">
+          <!-- Y-axis labels -->
+          <div class="roi-trend__y-axis" aria-hidden="true">
+            <span class="roi-trend__y-label">¥20k</span>
+            <span class="roi-trend__y-label">¥10k</span>
+            <span class="roi-trend__y-label">¥0</span>
+          </div>
+
+          <!-- Chart columns -->
+          <div class="roi-trend__chart-area">
+            <div class="roi-trend__chart" aria-hidden="true">
+
+              <!-- Jan: cost 5k, revenue 0 (5k/20k = 25%) -->
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-cost" style="height:25%;" title="Jan cost ¥5,000"></div>
+              </div>
+
+              <!-- Feb: cost 3k, revenue 0 -->
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-cost" style="height:15%;"></div>
+              </div>
+
+              <!-- Mar: cost 4k, revenue 2k -->
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-revenue" style="height:10%;"></div>
+                <div class="roi-trend__bar-cost" style="height:20%;"></div>
+              </div>
+
+              <!-- Apr: cost 8k, revenue 5k (current month highlight) -->
+              <div class="roi-trend__bar-col roi-trend__bar-col--current">
+                <div class="roi-trend__bar-revenue" style="height:25%;"></div>
+                <div class="roi-trend__bar-cost" style="height:40%;"></div>
+              </div>
+
+              <!-- May: cost 6k, revenue 8k -->
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-revenue" style="height:40%;"></div>
+                <div class="roi-trend__bar-cost" style="height:30%;"></div>
+              </div>
+
+              <!-- Jun: cost 4k, revenue 10k -->
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-revenue" style="height:50%;"></div>
+                <div class="roi-trend__bar-cost" style="height:20%;"></div>
+              </div>
+
+              <!-- Jul: cost 2k, revenue 0 -->
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-cost" style="height:10%;"></div>
+              </div>
+
+              <!-- Aug: nothing -->
+              <div class="roi-trend__bar-col"></div>
+
+              <!-- Sep: nothing -->
+              <div class="roi-trend__bar-col"></div>
+
+              <!-- Oct: nothing -->
+              <div class="roi-trend__bar-col"></div>
+
+              <!-- Nov: nothing -->
+              <div class="roi-trend__bar-col"></div>
+
+              <!-- Dec: nothing -->
+              <div class="roi-trend__bar-col"></div>
+
+            </div><!-- /.roi-trend__chart -->
+
+            <!-- Month labels below -->
+            <div class="roi-trend__month-labels" aria-hidden="true">
+              <span class="roi-trend__month-label">J</span>
+              <span class="roi-trend__month-label">F</span>
+              <span class="roi-trend__month-label">M</span>
+              <span class="roi-trend__month-label roi-trend__month-label--current">A</span>
+              <span class="roi-trend__month-label">M</span>
+              <span class="roi-trend__month-label">J</span>
+              <span class="roi-trend__month-label">J</span>
+              <span class="roi-trend__month-label">A</span>
+              <span class="roi-trend__month-label">S</span>
+              <span class="roi-trend__month-label">O</span>
+              <span class="roi-trend__month-label">N</span>
+              <span class="roi-trend__month-label">D</span>
+            </div>
+
+          </div><!-- /.roi-trend__chart-area -->
+        </div><!-- /.roi-trend__wrapper -->
+
+        <!-- Legend -->
+        <div class="roi-trend__legend" aria-hidden="true">
+          <div class="roi-trend__legend-item">
+            <span class="roi-trend__legend-swatch" style="background:var(--color-roi-cost);"></span>
+            <span>Cost</span>
+          </div>
+          <div class="roi-trend__legend-item">
+            <span class="roi-trend__legend-swatch" style="background:var(--color-roi-revenue);"></span>
+            <span>Revenue</span>
+          </div>
+        </div>
+
+        <!-- Hidden accessible table for screen readers -->
+        <table class="sr-only" aria-label="Monthly cost and revenue trend">
+          <thead><tr><th>Month</th><th>Cost</th><th>Revenue</th></tr></thead>
+          <tbody>
+            <tr><td>January</td><td>¥5,000</td><td>¥0</td></tr>
+            <tr><td>February</td><td>¥3,000</td><td>¥0</td></tr>
+            <tr><td>March</td><td>¥4,000</td><td>¥2,000</td></tr>
+            <tr><td>April</td><td>¥8,000</td><td>¥5,000</td></tr>
+            <tr><td>May</td><td>¥6,000</td><td>¥8,000</td></tr>
+            <tr><td>June</td><td>¥4,000</td><td>¥10,000</td></tr>
+            <tr><td>July</td><td>¥2,000</td><td>¥0</td></tr>
+            <tr><td>August</td><td>¥0</td><td>¥0</td></tr>
+            <tr><td>September</td><td>¥0</td><td>¥0</td></tr>
+            <tr><td>October</td><td>¥0</td><td>¥0</td></tr>
+            <tr><td>November</td><td>¥0</td><td>¥0</td></tr>
+            <tr><td>December</td><td>¥0</td><td>¥0</td></tr>
+          </tbody>
+        </table>
+
+      </div><!-- /.roi-section__card -->
+    </div><!-- /.roi-section (trend) -->
+
+    <!-- ROI by Bed (mobile: card list) -->
+    <div class="roi-section">
+      <h3 class="roi-section__heading">ROI by Bed</h3>
+
+      <!-- Sort dropdown (mobile only) -->
+      <div class="roi-bed__sort-row">
+        <span class="roi-bed__sort-label">Sort by:</span>
+        <select class="roi-bed__sort-select" aria-label="Sort beds by">
+          <option value="roi" selected>ROI (highest)</option>
+          <option value="cost">Cost (highest)</option>
+          <option value="revenue">Revenue (highest)</option>
+          <option value="name">Bed name (A-Z)</option>
+          <option value="entries">Entries (most)</option>
+        </select>
+      </div>
+
+      <div class="roi-bed__cards">
+
+        <!-- Bed 1: Tomato +67% -->
+        <div class="roi-bed__card">
+          <div class="roi-bed__card-name">
+            <span aria-hidden="true">🍅</span>
+            <span>Tomato (B1)</span>
+          </div>
+          <div class="roi-bed__card-row">
+            <span>Cost: ¥12,000</span>
+            <span>Revenue: ¥20,000</span>
+          </div>
+          <div class="roi-bed__card-roi">
+            <span class="roi-bed__roi-value--positive" aria-label="ROI: positive 67 percent">&#9650;&nbsp;+67%</span>
+            <span style="color:var(--color-text-muted)">15 entries</span>
+          </div>
+        </div>
+
+        <!-- Bed 2: Spinach +25% -->
+        <div class="roi-bed__card">
+          <div class="roi-bed__card-name">
+            <span aria-hidden="true">🥬</span>
+            <span>Spinach (B2)</span>
+          </div>
+          <div class="roi-bed__card-row">
+            <span>Cost: ¥4,000</span>
+            <span>Revenue: ¥5,000</span>
+          </div>
+          <div class="roi-bed__card-roi">
+            <span class="roi-bed__roi-value--positive" aria-label="ROI: positive 25 percent">&#9650;&nbsp;+25%</span>
+            <span style="color:var(--color-text-muted)">6 entries</span>
+          </div>
+        </div>
+
+        <!-- Bed 3: Radish -38% -->
+        <div class="roi-bed__card">
+          <div class="roi-bed__card-name">
+            <span aria-hidden="true">🌸</span>
+            <span>Radish (B3)</span>
+          </div>
+          <div class="roi-bed__card-row">
+            <span>Cost: ¥8,000</span>
+            <span>Revenue: ¥0</span>
+          </div>
+          <div class="roi-bed__card-roi">
+            <span class="roi-bed__roi-value--negative" aria-label="ROI: negative 100 percent">&#9660;&nbsp;-100%</span>
+            <span style="color:var(--color-text-muted)">8 entries</span>
+          </div>
+        </div>
+
+        <!-- Bed 4: Carrot (no harvest yet) -->
+        <div class="roi-bed__card">
+          <div class="roi-bed__card-name">
+            <span aria-hidden="true">🥕</span>
+            <span>Carrot (B4)</span>
+          </div>
+          <div class="roi-bed__card-row">
+            <span>Cost: ¥2,000</span>
+            <span>Revenue: ¥0</span>
+          </div>
+          <div class="roi-bed__card-roi">
+            <span class="roi-bed__roi-value--negative" aria-label="ROI: negative 100 percent">&#9660;&nbsp;-100%</span>
+            <span style="color:var(--color-text-muted)">4 entries</span>
+          </div>
+        </div>
+
+        <!-- Total (footer) -->
+        <div class="roi-bed__card roi-bed__card--total">
+          <div class="roi-bed__card-name" style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">TOTAL</div>
+          <div class="roi-bed__card-row">
+            <span>Cost: ¥26,000</span>
+            <span>Revenue: ¥25,000</span>
+          </div>
+          <div class="roi-bed__card-roi">
+            <span class="roi-bed__roi-value--negative" aria-label="ROI: negative 4 percent">&#9660;&nbsp;-4%</span>
+            <span style="color:var(--color-text-muted)">33 entries</span>
+          </div>
+        </div>
+
+      </div><!-- /.roi-bed__cards -->
+    </div><!-- /.roi-section (bed) -->
+
+  </div><!-- /.roi-dashboard (mobile) -->
+</div><!-- /375px container -->
+
+<!-- =====================================================
+     DESKTOP VIEW (1024px+)
+     ===================================================== -->
+<h2 class="section-title">Desktop Layout (1024px+)</h2>
+<div class="viewport-label">Viewport: 1024px+ &bull; Two-column header row &bull; Sortable table for bed ROI</div>
+
+<div style="background:var(--color-background); padding-bottom:var(--space-10);">
+
+  <!-- Diary Tab Bar (desktop) -->
+  <header class="diary-header" style="max-width:none;">
+    <span class="diary-header__title">Farm Diary</span>
+    <div class="diary-header__right">
+      <div class="diary-header__tabs" role="group" aria-label="Diary view tabs">
+        <button class="diary-tab" aria-pressed="false" aria-label="List view" title="List">📋</button>
+        <button class="diary-tab" aria-pressed="false" aria-label="Calendar view" title="Calendar">📅</button>
+        <button class="diary-tab" aria-pressed="false" aria-label="Gantt view" title="Gantt">📊</button>
+        <button class="diary-tab" aria-pressed="true" aria-label="ROI view" title="ROI">💰</button>
+      </div>
+      <button class="diary-header__add-btn" aria-label="Add diary entry">+</button>
+    </div>
+  </header>
+
+  <!-- Desktop ROI Dashboard -->
+  <div class="roi-dashboard" style="max-width:1100px;">
+
+    <!-- Year Selector -->
+    <div class="roi-dashboard__year-nav" role="group" aria-label="Year selector">
+      <button class="roi-year-btn" aria-label="Previous year">&lsaquo;</button>
+      <span class="roi-year-label">2026</span>
+      <button class="roi-year-btn" aria-label="Next year" aria-disabled="true" disabled>&rsaquo;</button>
+    </div>
+
+    <!-- Two-column top section -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6);">
+
+      <!-- Left: Summary Cards (2x2) -->
+      <div>
+        <h3 class="roi-section__heading" style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-3);">Summary</h3>
+        <div class="roi-summary" style="grid-template-columns:1fr 1fr;gap:var(--space-4);">
+
+          <div class="roi-summary__card" role="group" aria-label="Total Cost: 26,000 yen">
+            <div class="roi-summary__header">
+              <span class="roi-summary__icon" aria-hidden="true">💸</span>
+              <span class="roi-summary__value">¥26,000</span>
+            </div>
+            <div class="roi-summary__label">Total Cost</div>
+          </div>
+
+          <div class="roi-summary__card" role="group" aria-label="Revenue: 25,000 yen">
+            <div class="roi-summary__header">
+              <span class="roi-summary__icon" aria-hidden="true">💰</span>
+              <span class="roi-summary__value roi-summary__value--revenue">¥25,000</span>
+            </div>
+            <div class="roi-summary__label">Revenue</div>
+          </div>
+
+          <div class="roi-summary__card roi-summary__card--negative" role="group" aria-label="ROI: negative 4 percent">
+            <div class="roi-summary__header">
+              <span class="roi-summary__icon" aria-hidden="true">📊</span>
+              <span class="roi-summary__value roi-summary__value--negative">&#9660;&nbsp;-4%</span>
+            </div>
+            <div class="roi-summary__label">ROI</div>
+          </div>
+
+          <div class="roi-summary__card" role="group" aria-label="Harvests: 12">
+            <div class="roi-summary__header">
+              <span class="roi-summary__icon" aria-hidden="true">🌾</span>
+              <span class="roi-summary__value">12</span>
+            </div>
+            <div class="roi-summary__label">Harvests</div>
+          </div>
+        </div>
+      </div><!-- /left col -->
+
+      <!-- Right: Cost by Category -->
+      <div>
+        <h3 class="roi-section__heading">Cost by Category</h3>
+        <div class="roi-section__card">
+          <div class="roi-category" role="list" aria-label="Cost breakdown by category">
+
+            <div class="roi-category__bar-row" role="listitem" aria-label="Planting: 12,000 yen, 43 percent of total costs">
+              <div class="roi-category__label">
+                <span class="roi-category__label-icon" aria-hidden="true">🌱</span>
+                <span>Planting</span>
+              </div>
+              <div class="roi-category__bar-track">
+                <div class="roi-category__bar" style="width:100%;background:var(--cat-planting);"></div>
+              </div>
+              <span class="roi-category__amount">¥12,000</span>
+            </div>
+
+            <div class="roi-category__bar-row" role="listitem" aria-label="Watering: 8,000 yen, 29 percent of total costs">
+              <div class="roi-category__label">
+                <span class="roi-category__label-icon" aria-hidden="true">💧</span>
+                <span>Watering</span>
+              </div>
+              <div class="roi-category__bar-track">
+                <div class="roi-category__bar" style="width:67%;background:var(--cat-watering);"></div>
+              </div>
+              <span class="roi-category__amount">¥8,000</span>
+            </div>
+
+            <div class="roi-category__bar-row" role="listitem" aria-label="Purchase: 5,000 yen, 18 percent of total costs">
+              <div class="roi-category__label">
+                <span class="roi-category__label-icon" aria-hidden="true">🛒</span>
+                <span>Purchase</span>
+              </div>
+              <div class="roi-category__bar-track">
+                <div class="roi-category__bar" style="width:42%;background:var(--cat-purchase);"></div>
+              </div>
+              <span class="roi-category__amount">¥5,000</span>
+            </div>
+
+            <div class="roi-category__bar-row" role="listitem" aria-label="Weeding: 2,500 yen, 9 percent of total costs">
+              <div class="roi-category__label">
+                <span class="roi-category__label-icon" aria-hidden="true">🌿</span>
+                <span>Weeding</span>
+              </div>
+              <div class="roi-category__bar-track">
+                <div class="roi-category__bar" style="width:21%;background:var(--cat-weeding);"></div>
+              </div>
+              <span class="roi-category__amount">¥2,500</span>
+            </div>
+
+            <div class="roi-category__bar-row" role="listitem" aria-label="Other: 500 yen, 2 percent of total costs">
+              <div class="roi-category__label">
+                <span class="roi-category__label-icon" aria-hidden="true">📝</span>
+                <span>Other</span>
+              </div>
+              <div class="roi-category__bar-track">
+                <div class="roi-category__bar" style="width:4%;background:var(--cat-other);"></div>
+              </div>
+              <span class="roi-category__amount">¥500</span>
+            </div>
+
+          </div>
+        </div>
+      </div><!-- /right col -->
+    </div><!-- /two-column top -->
+
+    <!-- Monthly Trend (full width) -->
+    <div class="roi-section">
+      <h3 class="roi-section__heading">Monthly Trend</h3>
+      <div class="roi-section__card">
+        <div class="roi-trend__wrapper">
+          <div class="roi-trend__y-axis" style="height:280px;" aria-hidden="true">
+            <span class="roi-trend__y-label">¥20k</span>
+            <span class="roi-trend__y-label">¥10k</span>
+            <span class="roi-trend__y-label">¥0</span>
+          </div>
+          <div class="roi-trend__chart-area">
+            <div class="roi-trend__chart" style="height:280px;" aria-hidden="true">
+              <div class="roi-trend__bar-col"><div class="roi-trend__bar-cost" style="height:25%;"></div></div>
+              <div class="roi-trend__bar-col"><div class="roi-trend__bar-cost" style="height:15%;"></div></div>
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-revenue" style="height:10%;"></div>
+                <div class="roi-trend__bar-cost" style="height:20%;"></div>
+              </div>
+              <div class="roi-trend__bar-col roi-trend__bar-col--current">
+                <div class="roi-trend__bar-revenue" style="height:25%;"></div>
+                <div class="roi-trend__bar-cost" style="height:40%;"></div>
+              </div>
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-revenue" style="height:40%;"></div>
+                <div class="roi-trend__bar-cost" style="height:30%;"></div>
+              </div>
+              <div class="roi-trend__bar-col">
+                <div class="roi-trend__bar-revenue" style="height:50%;"></div>
+                <div class="roi-trend__bar-cost" style="height:20%;"></div>
+              </div>
+              <div class="roi-trend__bar-col"><div class="roi-trend__bar-cost" style="height:10%;"></div></div>
+              <div class="roi-trend__bar-col"></div>
+              <div class="roi-trend__bar-col"></div>
+              <div class="roi-trend__bar-col"></div>
+              <div class="roi-trend__bar-col"></div>
+              <div class="roi-trend__bar-col"></div>
+            </div>
+            <div class="roi-trend__month-labels" aria-hidden="true">
+              <span class="roi-trend__month-label">J</span>
+              <span class="roi-trend__month-label">F</span>
+              <span class="roi-trend__month-label">M</span>
+              <span class="roi-trend__month-label roi-trend__month-label--current">A</span>
+              <span class="roi-trend__month-label">M</span>
+              <span class="roi-trend__month-label">J</span>
+              <span class="roi-trend__month-label">J</span>
+              <span class="roi-trend__month-label">A</span>
+              <span class="roi-trend__month-label">S</span>
+              <span class="roi-trend__month-label">O</span>
+              <span class="roi-trend__month-label">N</span>
+              <span class="roi-trend__month-label">D</span>
+            </div>
+          </div>
+        </div>
+        <div class="roi-trend__legend" aria-hidden="true">
+          <div class="roi-trend__legend-item">
+            <span class="roi-trend__legend-swatch" style="background:var(--color-roi-cost);"></span>
+            <span>Cost</span>
+          </div>
+          <div class="roi-trend__legend-item">
+            <span class="roi-trend__legend-swatch" style="background:var(--color-roi-revenue);"></span>
+            <span>Revenue</span>
+          </div>
+        </div>
+        <table class="sr-only" aria-label="Monthly cost and revenue trend">
+          <thead><tr><th>Month</th><th>Cost</th><th>Revenue</th></tr></thead>
+          <tbody>
+            <tr><td>January</td><td>¥5,000</td><td>¥0</td></tr>
+            <tr><td>February</td><td>¥3,000</td><td>¥0</td></tr>
+            <tr><td>March</td><td>¥4,000</td><td>¥2,000</td></tr>
+            <tr><td>April</td><td>¥8,000</td><td>¥5,000</td></tr>
+            <tr><td>May</td><td>¥6,000</td><td>¥8,000</td></tr>
+            <tr><td>June</td><td>¥4,000</td><td>¥10,000</td></tr>
+            <tr><td>July</td><td>¥2,000</td><td>¥0</td></tr>
+            <tr><td>August through December</td><td>¥0</td><td>¥0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ROI by Bed (desktop: table) -->
+    <div class="roi-section">
+      <h3 class="roi-section__heading">ROI by Bed</h3>
+
+      <!-- Desktop table -->
+      <div class="roi-bed__table-wrap" style="display:block;">
+        <table class="roi-bed__table" aria-label="ROI by bed for 2026">
+          <thead>
+            <tr>
+              <th class="roi-bed__header" aria-sort="none" scope="col">
+                Bed <span aria-hidden="true">&#8597;</span>
+              </th>
+              <th class="roi-bed__header align-right" aria-sort="none" scope="col">
+                Costs <span aria-hidden="true">&#8597;</span>
+              </th>
+              <th class="roi-bed__header align-right" aria-sort="none" scope="col">
+                Revenue <span aria-hidden="true">&#8597;</span>
+              </th>
+              <th class="roi-bed__header roi-bed__header--active align-right" aria-sort="descending" scope="col">
+                ROI <span aria-hidden="true">&#9660;</span>
+              </th>
+              <th class="roi-bed__header align-center" aria-sort="none" scope="col">
+                # <span aria-hidden="true">&#8597;</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="roi-bed__cell-bed">
+                  <span aria-hidden="true">🍅</span>
+                  <span>Tomato (B1)</span>
+                </div>
+              </td>
+              <td class="align-right">¥12,000</td>
+              <td class="align-right">¥20,000</td>
+              <td class="align-right">
+                <span class="roi-bed__roi-value--positive" aria-label="positive 67 percent">&#9650; +67%</span>
+              </td>
+              <td class="align-center">15</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="roi-bed__cell-bed">
+                  <span aria-hidden="true">🥬</span>
+                  <span>Spinach (B2)</span>
+                </div>
+              </td>
+              <td class="align-right">¥4,000</td>
+              <td class="align-right">¥5,000</td>
+              <td class="align-right">
+                <span class="roi-bed__roi-value--positive" aria-label="positive 25 percent">&#9650; +25%</span>
+              </td>
+              <td class="align-center">6</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="roi-bed__cell-bed">
+                  <span aria-hidden="true">🌸</span>
+                  <span>Radish (B3)</span>
+                </div>
+              </td>
+              <td class="align-right">¥8,000</td>
+              <td class="align-right">¥0</td>
+              <td class="align-right">
+                <span class="roi-bed__roi-value--negative" aria-label="negative 100 percent">&#9660; -100%</span>
+              </td>
+              <td class="align-center">8</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="roi-bed__cell-bed">
+                  <span aria-hidden="true">🥕</span>
+                  <span>Carrot (B4)</span>
+                </div>
+              </td>
+              <td class="align-right">¥2,000</td>
+              <td class="align-right">¥0</td>
+              <td class="align-right">
+                <span class="roi-bed__roi-value--negative" aria-label="negative 100 percent">&#9660; -100%</span>
+              </td>
+              <td class="align-center">4</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td><strong>TOTAL</strong></td>
+              <td class="align-right"><strong>¥26,000</strong></td>
+              <td class="align-right"><strong>¥25,000</strong></td>
+              <td class="align-right">
+                <span class="roi-bed__roi-value--negative" aria-label="negative 4 percent"><strong>&#9660; -4%</strong></span>
+              </td>
+              <td class="align-center"><strong>33</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+    </div><!-- /.roi-section (bed desktop) -->
+
+  </div><!-- /.roi-dashboard (desktop) -->
+</div><!-- /desktop container -->
+
+</body>
+</html>

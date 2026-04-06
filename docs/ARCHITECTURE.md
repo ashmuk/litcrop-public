@@ -1392,6 +1392,260 @@ interface BedTimelineItem {
 
 ---
 
+## 15. ROI Dashboard — Architecture Delta (#248, #245)
+
+> Added: 2026-04-06 | Scope: **MVP** | Sprint: Beta-10
+> ADR: [ADR-20260406-roi-dashboard](decisions/ADR-20260406-roi-dashboard.md)
+
+### 15.1 Problem Statement
+
+The Farm Diary tracks work and costs but lacks harvest volume tracking, revenue
+recording, and financial analytics. Farmers need to answer: "Is this bed/crop
+profitable?" and "Where am I spending the most?" The ROI Dashboard adds these
+capabilities with minimal data model changes and zero new AWS services.
+
+### 15.2 Data Model Extension
+
+**Decision: Extend DiaryEntry with harvest and revenue fields (Option A)**
+
+Add four optional fields to `DiaryEntry`, populated only when `category === 'harvesting'`:
+
+```typescript
+// Added to DiaryEntry (domain.ts)
+interface DiaryEntry {
+  // ... existing fields ...
+  harvest_amount: number | null;   // quantity harvested (e.g. 5.2)
+  harvest_unit: string | null;     // unit label (e.g. 'kg', 'bunch', 'piece')
+  revenue: number | null;          // sale value of harvest (e.g. 15000)
+  revenue_currency: 'JPY' | 'USD' | null; // currency of revenue
+}
+```
+
+Harvest fields record volumes; revenue fields record income. Both are nullable and only meaningful for harvesting entries. Revenue is kept separate from cost tracking to avoid semantic confusion.
+
+**Rationale** (vs. alternatives):
+- **Option A (chosen): Inline fields** — Reuses existing DiaryEntry CRUD, no new DDB entity, no new access pattern. The diary entry already has `category: 'harvesting'` which is the natural place for harvest data. Four nullable fields on an existing entity is the simplest change.
+- **Option B (rejected): Separate HarvestRecord** — Adds a new DDB entity type, new PK/SK pattern, new CRUD routes, new Zod schema. Complexity disproportionate to value at MVP scope.
+- **Option C (rejected): Revenue as negative CostItem** — Semantically confusing. Mixing income and expense in the same array makes aggregation logic error-prone and breaks the existing "costs are expenses" mental model.
+
+**DynamoDB impact**: Four new attributes on existing DIARY# items. No new entity, no new GSI, no schema migration needed — DynamoDB is schemaless, so old entries simply have these fields as `undefined`/`null`.
+
+**Schema changes** (Zod):
+
+```typescript
+// CreateDiaryEntrySchema additions
+harvest_amount: z.number().min(0).max(999_999).nullable().optional(),
+harvest_unit: z.string().min(1).max(20).trim().nullable().optional(),
+revenue: z.number().min(0).max(99_999_999).nullable().optional(),
+revenue_currency: z.enum(['JPY', 'USD']).nullable().optional(),
+```
+
+With a `.refine()` validation: if `category !== 'harvesting'`, then `harvest_amount`, `harvest_unit`, `revenue`, and `revenue_currency` must be null/undefined.
+
+**DiaryEntryResponse additions** (showing NEW fields only — existing fields like `bed_name`, `cost_total`, `created_by_name` remain unchanged; see `DiaryEntryResponseSchema` in `schemas/index.ts` for the full shape):
+
+```typescript
+// New fields added to DiaryEntryResponse
+interface DiaryEntryResponse extends DiaryEntry {
+  // ... existing: bed_name, cost_total, created_by_name ...
+  harvest_amount: number | null;
+  harvest_unit: string | null;
+  revenue: number | null;
+  revenue_currency: 'JPY' | 'USD' | null;
+}
+```
+
+### 15.3 Aggregation Strategy
+
+**Decision: Client-side aggregation (Option A)**
+
+All ROI computations happen in the browser after fetching diary entries.
+
+**Rationale**:
+- **Option A (chosen): Client-side** — A typical farm has ~50 beds and ~500-2000 diary entries per year. At ~200 bytes per entry, a full year is ~400KB — well within a single API response. The existing `GET /farms/:farmId/diary?from=...&to=...` endpoint already supports 400-day ranges. No new Lambda compute, no new DynamoDB reads beyond what list already does.
+- **Option B (rejected): Server-side aggregation endpoint** — Adds Lambda compute time and complexity for marginal benefit. The data volume is small enough that client-side is faster (no extra round-trip) and more flexible (user can change filters without hitting API).
+- **Option C (rejected): Pre-computed DynamoDB aggregates** — Adds write amplification (every diary write updates aggregate records), eventual consistency complexity, and DynamoDB write costs. Overkill for <2000 entries.
+
+**Important: Currency-aware cost aggregation** — The existing `cost_total` field on `DiaryEntryResponse` sums all `costs[].amount` regardless of currency (see `calcCostTotal()` in `diary.ts`). This produces a meaningless mixed-currency sum for farms with both JPY and USD cost items. ROI aggregation in `roi-utils.ts` **must sum `costs[]` items directly, filtering by the farm's `default_currency`**, rather than using the pre-computed `cost_total` field. The `cost_total` field remains useful for per-entry display (where all costs are typically in one currency) but is unsuitable for cross-entry aggregation.
+
+**Aggregation logic** (frontend utility):
+
+```typescript
+// src/frontend/src/lib/roi-utils.ts
+
+interface RoiSummary {
+  total_cost: number;
+  total_revenue: number;
+  roi_percent: number | null;  // null when total_cost === 0
+  entry_count: number;
+  harvest_count: number;
+}
+
+interface BedRoiSummary extends RoiSummary {
+  bed_id: string;
+  bed_name: string;
+  crop_type: string | null;
+}
+
+interface CategoryCostSummary {
+  category: DiaryCategory;
+  total: number;
+  count: number;
+}
+
+interface MonthlyTrend {
+  month: string;  // YYYY-MM
+  cost: number;
+  revenue: number;
+}
+
+// Core computation
+function computeRoi(entries: DiaryEntryResponse[]): RoiSummary;
+function computeRoiByBed(entries: DiaryEntryResponse[], beds: FarmBedItem[]): BedRoiSummary[];
+function computeCostByCategory(entries: DiaryEntryResponse[]): CategoryCostSummary[];
+function computeMonthlyTrend(entries: DiaryEntryResponse[]): MonthlyTrend[];
+```
+
+**ROI formula**: `ROI = ((revenue - costs) / costs) * 100`
+- When `costs === 0` and `revenue > 0`: display "No costs recorded" (not infinity)
+- When `costs === 0` and `revenue === 0`: display "No data"
+- Negative ROI is valid and displayed normally
+
+### 15.4 Currency Handling
+
+**Decision: Single-currency aggregation per view, farm-level default currency**
+
+**Problem**: A farm could have diary entries with mixed JPY and USD costs. Summing them naively is meaningless.
+
+**Approach (MVP)**:
+1. Add `default_currency: 'JPY' | 'USD'` to the Farm entity (default: `'JPY'` for existing farms). This is a display/reporting preference, not a constraint on entry creation.
+2. ROI dashboard aggregations filter to the farm's default currency only. Entries in other currencies are shown in a separate "other currency" note but excluded from totals.
+3. No currency conversion at MVP — conversion rates add complexity and external API dependency.
+
+**Deferred to Production**: Real-time currency conversion, multi-currency ROI reports, historical exchange rates.
+
+**Farm schema change**:
+```typescript
+// Farm entity addition
+default_currency: 'JPY' | 'USD';  // default 'JPY'
+```
+
+### 15.5 API Design
+
+**Decision: No new endpoints. Extend existing diary response.**
+
+The existing `GET /farms/:farmId/diary` endpoint returns all the data needed for ROI computation. Changes:
+
+1. **DiaryEntryResponse** gains four fields: `harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency` (all nullable, backward compatible).
+2. **CreateDiaryEntrySchema / UpdateDiaryEntrySchema** accept the new fields with appropriate validation.
+3. **No dedicated `/roi` or `/analytics` endpoint** — aggregation is client-side.
+
+**Query pattern for ROI dashboard**:
+```
+GET /farms/:farmId/diary?from=2025-04-01&to=2026-03-31&limit=100
+# Paginate with cursor if > 100 entries
+# Client fetches all pages, then computes aggregates
+```
+
+For farms with >100 entries in the date range, the frontend will auto-paginate (fetch all pages sequentially) before rendering the dashboard. This is a one-time load when opening the ROI tab.
+
+### 15.6 Frontend Architecture
+
+**Decision: ROI as a new view tab within the Diary page**
+
+```
+DiaryPage
+├── [tab bar] → list | calendar | gantt | roi (NEW)
+├── [list view] → DiaryEntryCard list (unchanged)
+├── [calendar view] → DiaryCalendar (unchanged)
+├── [gantt view] → GanttChart (unchanged)
+└── [roi view] → RoiDashboard (NEW)
+    ├── RoiSummaryCards        — total cost, revenue, ROI %, entry count
+    ├── RoiByBedTable          — sortable table: bed | crop | cost | revenue | ROI
+    ├── CostByCategoryChart    — horizontal bar chart (pure CSS)
+    └── MonthlyTrendChart      — stacked bar chart (pure CSS)
+```
+
+**Chart approach: Pure CSS (no library)**
+
+Rationale:
+- The project already uses pure CSS for the Gantt chart bars — same pattern.
+- Only 2-3 chart types needed (horizontal bars, stacked bars), all achievable with CSS grid/flexbox + percentage widths.
+- No bundle size increase (vs. ~30-50KB for a chart library).
+- Mobile-friendly — CSS charts are inherently responsive.
+
+**Deferred to Production**: Interactive tooltips, drill-down charts, CSV/PDF export, comparison periods.
+
+**Component structure**:
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `RoiDashboard` | `src/frontend/src/components/RoiDashboard.tsx` | Container: fetches entries, computes aggregates, renders sub-components |
+| `RoiSummaryCards` | `src/frontend/src/components/roi/RoiSummaryCards.tsx` | 4 metric cards (cost, revenue, ROI %, harvests) |
+| `RoiByBedTable` | `src/frontend/src/components/roi/RoiByBedTable.tsx` | Sortable table with per-bed breakdown |
+| `CostByCategoryChart` | `src/frontend/src/components/roi/CostByCategoryChart.tsx` | Horizontal bar chart by diary category |
+| `MonthlyTrendChart` | `src/frontend/src/components/roi/MonthlyTrendChart.tsx` | Monthly cost vs. revenue stacked bars |
+| `roi-utils.ts` | `src/frontend/src/lib/roi-utils.ts` | Pure computation functions (testable, no UI) |
+
+### 15.7 Data Flow
+
+```
+Browser (ROI tab opened)
+  |
+  |-- GET /farms/:farmId/diary?from=YYYY-01-01&to=YYYY-12-31&limit=100
+  |   (auto-paginate if next_cursor exists)
+  |
+  |-- GET /farms/:farmId/beds (for bed names + crop types)
+  |
+  v
+[roi-utils.ts] Client-side aggregation
+  |
+  |-- computeRoi(entries)            → RoiSummary
+  |-- computeRoiByBed(entries, beds) → BedRoiSummary[]
+  |-- computeCostByCategory(entries) → CategoryCostSummary[]
+  |-- computeMonthlyTrend(entries)   → MonthlyTrend[]
+  |
+  v
+[RoiDashboard] Renders summary cards + charts
+```
+
+### 15.8 Scope Progression
+
+| Aspect | MVP (Beta-10) | Production (deferred) |
+|--------|---------------|----------------------|
+| Harvest fields | `harvest_amount`, `harvest_unit` on DiaryEntry | Structured unit enum, conversion tables |
+| Revenue | `revenue`, `revenue_currency` on DiaryEntry | Revenue linked to market prices, auto-estimate |
+| Aggregation | Client-side, full fetch | Server-side with caching if data >5000 entries |
+| Currency | Single-currency aggregation, farm default | Multi-currency with conversion rates |
+| Charts | Pure CSS bars (horizontal + stacked) | Interactive library (e.g., Chart.js), drill-down |
+| Date range | Manual from/to selection | Presets (this month, quarter, YTD, custom) |
+| Export | None | CSV download, PDF report |
+| Comparison | None | Period-over-period comparison |
+| Per-crop ROI | Via bed grouping (bed has crop_type) | Crop lifecycle ROI across multiple beds |
+
+**Exit criteria for MVP → Production advancement**:
+1. At least 3 farms have used ROI dashboard with real harvest + revenue data
+2. User feedback collected on chart usefulness and missing analytics
+3. No performance issues with client-side aggregation at observed data volumes
+
+### 15.9 Cost Impact
+
+- **DynamoDB**: No new table, no new GSI. Four additional attributes on diary items add ~50 bytes per harvesting entry. At 200 harvesting entries/year: +10KB storage. Negligible.
+- **Lambda**: No new endpoints. Diary list response slightly larger with new fields (~20 bytes per entry). Well within 6MB Lambda payload limit.
+- **S3/CloudFront**: No change.
+- **Estimated monthly delta**: $0.00
+
+### 15.10 Risks and Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| Client-side aggregation too slow for large farms | Low | Medium | Data volume is small (<2000 entries/year). If needed, add `useMemo` with date-range dependency. Defer server-side to Production. |
+| Mixed-currency entries cause confusion | Medium | Low | Farm default currency filters aggregation. UI clearly labels excluded entries. |
+| Harvest fields unused (farmers skip revenue entry) | Medium | Medium | Default `harvest_amount` prompt in harvesting form. Gentle nudge on harvest entries without revenue. |
+| Auto-pagination for >100 entries is slow | Low | Low | Sequential fetch of 2-3 pages is <1s. Loading state shown. |
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Full requirements specification (expanded for MVP)

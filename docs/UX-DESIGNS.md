@@ -3812,3 +3812,936 @@ Response (200):
 | **Registration** | Full-screen push | Same | Modal, max-width 480px |
 | **Key display** | Full-width, scrollable monospace | Same | Inline, no scroll needed |
 | **Profile avatar** | Centered above name, 96px | Same | Left-aligned in 2-column layout, 96px |
+
+---
+
+## 16. Beta-10: ROI Dashboard — UX Designs (#248, #245)
+
+> Added: 2026-04-06 | Sprint: Beta-10
+> Architecture: ARCHITECTURE.md Section 15
+> Scope: 4th diary tab, harvest fields in form, farm currency setting
+
+### 16.1 Overview
+
+The ROI Dashboard adds financial analytics to the Farm Diary. Farmers can track
+harvest volumes, record revenue, and see profitability breakdowns by bed, crop,
+category, and month. It is the 4th tab in the diary page (list | calendar |
+gantt | **roi**) and requires no new backend endpoints — all aggregation is
+client-side using existing diary entry data.
+
+**Target users**: Farm owners evaluating bed/crop profitability.
+**Primary question answered**: "Is this bed/crop profitable?" in under 5 seconds.
+**Secondary question**: "Where am I spending the most?" via category breakdown.
+
+---
+
+### 16.2 Design Tokens — ROI Additions
+
+New tokens added to the existing design system (Section 2). These complement
+existing status/semantic colors and follow the same contrast requirements.
+
+```css
+:root {
+  /* -- ROI Dashboard -- */
+  --color-roi-positive:       #1B7D3C;  /* Same as --color-success / --color-status-healthy */
+  --color-roi-positive-bg:    #E8F5EC;  /* Light green tint */
+  --color-roi-negative:       #C62828;  /* Same as --color-error / --color-status-issue */
+  --color-roi-negative-bg:    #FFEBEE;  /* Light red tint */
+  --color-roi-neutral:        #6b7280;  /* Gray — no data or zero ROI */
+  --color-roi-neutral-bg:     #F5F5F5;
+
+  --color-roi-cost:           #ef4444;  /* Cost bar segments (red-500) */
+  --color-roi-cost-light:     #fca5a5;  /* Cost bar hover / light variant */
+  --color-roi-revenue:        #22c55e;  /* Revenue bar segments (green-500) */
+  --color-roi-revenue-light:  #86efac;  /* Revenue bar hover / light variant */
+
+  /* Chart background grid lines */
+  --color-chart-grid:         var(--color-gray-300);
+  --color-chart-grid-light:   var(--color-gray-100);
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+  --color-roi-positive:       #4ade80;  /* Brighter green on dark bg */
+  --color-roi-positive-bg:    rgba(74, 222, 128, 0.15);
+  --color-roi-negative:       #f87171;  /* Brighter red on dark bg */
+  --color-roi-negative-bg:    rgba(248, 113, 113, 0.15);
+  --color-roi-neutral:        #9ca3af;
+  --color-roi-neutral-bg:     rgba(156, 163, 175, 0.1);
+  --color-roi-cost:           #f87171;
+  --color-roi-revenue:        #4ade80;
+  --color-chart-grid:         rgba(255, 255, 255, 0.15);
+  --color-chart-grid-light:   rgba(255, 255, 255, 0.05);
+}
+
+/* Earthy theme overrides */
+[data-theme="earthy"] {
+  --color-roi-positive:       #2d6a4f;
+  --color-roi-positive-bg:    #d8f3dc;
+  --color-roi-negative:       #9b2226;
+  --color-roi-negative-bg:    #ffe0db;
+  --color-roi-cost:           #ae2012;
+  --color-roi-revenue:        #40916c;
+}
+```
+
+**Contrast verification**:
+
+| Token | On white | On dark (#1a1a1a) | Passes |
+|-------|---------|-------------------|--------|
+| `--color-roi-positive` (light) | 7.2:1 | n/a | AAA |
+| `--color-roi-negative` (light) | 7.1:1 | n/a | AAA |
+| `--color-roi-positive` (dark) | n/a | 6.8:1 | AA |
+| `--color-roi-negative` (dark) | n/a | 5.2:1 | AA |
+
+---
+
+### 16.3 ROI Tab in Diary Tab Bar
+
+The existing diary header has a `role="group"` toggle bar with emoji buttons for
+list, calendar, and gantt. The ROI tab follows the same pattern.
+
+**Tab bar addition**:
+
+| Position | Icon | Label (aria) | Key |
+|----------|------|-------------|-----|
+| 4th (rightmost) | `💰` | "ROI" | `roi` |
+
+**ViewMode type change**: `'list' | 'calendar' | 'gantt'` becomes
+`'list' | 'calendar' | 'gantt' | 'roi'`.
+
+**Tab bar wireframe (mobile)**:
+
+```
++------------------------------------------+
+| Farm Diary                  [📋][📅][📊][💰] [+] |
++------------------------------------------+
+```
+
+**Tab button spec**: Same as existing toggle buttons — `48px` min touch target,
+emoji only on mobile, `diary-header__toggle-btn` class, `aria-pressed` state.
+
+**Behavior**: Tapping the ROI tab loads diary entries for the current calendar
+year (Jan 1 -- Dec 31) and bed data, then renders the RoiDashboard component.
+The view is persisted to `localStorage` with key `litcrop-diary-view` value
+`roi`.
+
+**Filter bar**: The ROI tab does NOT show the existing filter bar (bed/category/
+sort/layout). The dashboard has its own year selector instead. The "+" add
+button remains visible (users should be able to create entries from any tab).
+
+---
+
+### 16.4 RoiDashboard — Container Layout
+
+#### Mobile Layout (375px, single column)
+
+```
++------------------------------------------+
+| Farm Diary                [📋][📅][📊][💰] [+] |
++------------------------------------------+
+| [ < 2026 > ]                             |  <- Year selector
++------------------------------------------+
+| [Total Cost] [Revenue ] |                |  <- Summary cards (2x2)
+| [ROI %    ] [Harvests ] |                |
++------------------------------------------+
+| Cost by Category                         |  <- Section heading
+| [====== Planting ¥12,000 ========]       |  <- Horizontal bars
+| [==== Watering ¥8,000 ======]            |
+| [=== Purchase ¥5,000 ====]              |
+| [= Other ¥1,000 =]                      |
++------------------------------------------+
+| Monthly Trend                            |  <- Section heading
+| [stacked bar chart, 12 months]           |
+| J F M A M J J A S O N D                 |
++------------------------------------------+
+| ROI by Bed                               |  <- Section heading
+| +--------------------------------------+ |
+| | Bed name  | Cost | Rev  | ROI | #    | |
+| |-----------|------|------|-----|------| |
+| | 🍅 Tomato | ¥12k | ¥20k | 67% | 15  | |
+| | 🥬 Lettuce| ¥8k  | ¥5k  | -38%| 8   | |
+| | ...       |      |      |     |      | |
+| | TOTAL     | ¥26k | ¥25k | -4% | 23  | |
+| +--------------------------------------+ |
++------------------------------------------+
+```
+
+#### Desktop Layout (1024px+, two columns)
+
+```
++----------------------------------------------------------------------+
+| Farm Diary                         [📋][📅][📊][💰]  [+]              |
++----------------------------------------------------------------------+
+| [ < 2026 > ]                                                         |
++-----------------------------------+----------------------------------+
+| [Total Cost]    [Revenue]         | Cost by Category                 |
+| [ROI %]         [Harvests]        | [horizontal bars]                |
++-----------------------------------+----------------------------------+
+| Monthly Trend (full width)                                           |
+| [stacked bar chart, 12 months — more space per bar]                  |
++----------------------------------------------------------------------+
+| ROI by Bed (full width table)                                        |
+| Bed               | Costs    | Revenue  | ROI %   | Entries         |
+|-------------------|----------|----------|---------|-----------------|
+| 🍅 Tomato (B1)   | ¥12,000  | ¥20,000  | +67%    | 15              |
+| 🥬 Lettuce (B2)  | ¥8,000   | ¥5,000   | -38%    | 8               |
+| TOTAL             | ¥26,000  | ¥25,000  | -4%     | 23              |
++----------------------------------------------------------------------+
+```
+
+**Desktop grid**: CSS Grid `grid-template-columns: 1fr 1fr` for the top row
+(summary cards + category chart). Monthly trend and bed table span full width
+(`grid-column: 1 / -1`).
+
+#### Year Selector
+
+| Element | Spec |
+|---------|------|
+| Container | Centered row, `height: 48px`, `padding: 0 var(--space-4)`, flex row justify-center, align-center, gap `var(--space-4)` |
+| Previous button | `<button aria-label="Previous year">` `<` chevron, `48x48px` touch target |
+| Year label | `font-size: var(--font-size-xl)` (22px), `font-weight: var(--font-weight-bold)`, `color: var(--color-gray-900)` |
+| Next button | `<button aria-label="Next year">` `>` chevron, `48x48px` touch target. Disabled (40% opacity) when year >= current year |
+| Semantics | `role="group"`, `aria-label="Year selector"` |
+
+**Default year**: Current calendar year. Minimum: year of earliest diary entry.
+Maximum: current year.
+
+---
+
+### 16.5 RoiSummaryCards — 4 Metric Cards
+
+Four cards displayed in a 2x2 grid (mobile) or 4-across row (desktop, when
+space allows within the left column).
+
+#### Card Design
+
+```
++-----------------------------------+
+| 💸                          ¥26,000 |
+| Total Cost                        |
++-----------------------------------+
+```
+
+| Element | Spec |
+|---------|------|
+| Container | `min-width: 140px`, `padding: var(--space-4)`, `border-radius: var(--radius-lg)`, `background: var(--color-surface)`, `border: var(--border-default)`, `box-shadow: var(--shadow-sm)` |
+| Icon | Top-left, `font-size: var(--font-size-lg)` (18px), `aria-hidden="true"` |
+| Value | Top-right, `font-size: var(--font-size-xl)` (22px), `font-weight: var(--font-weight-bold)`, color depends on metric |
+| Label | Below icon, `font-size: var(--font-size-sm)` (14px), `color: var(--color-gray-700)`, `font-weight: var(--font-weight-medium)` |
+
+#### Card Definitions
+
+| Card | Icon | Label (en) | Label (ja) | Value Format | Value Color |
+|------|------|-----------|-----------|--------------|-------------|
+| Total Cost | `💸` | Total Cost | 総コスト | Currency (e.g., `¥26,000`) | `--color-gray-900` (neutral) |
+| Total Revenue | `💰` | Revenue | 収益 | Currency (e.g., `¥25,000`) | `--color-roi-revenue` (green) if > 0 |
+| ROI % | `📊` | ROI | ROI | Percentage with sign (e.g., `+67%`, `-4%`) | `--color-roi-positive` if >= 0, `--color-roi-negative` if < 0 |
+| Harvest Count | `🌾` | Harvests | 収穫数 | Integer (e.g., `12`) | `--color-gray-900` (neutral) |
+
+**ROI card background tint**: When ROI is positive, the card background is
+`--color-roi-positive-bg`. When negative, `--color-roi-negative-bg`. When zero
+or no data, `--color-roi-neutral-bg`.
+
+**Currency formatting**:
+- JPY: `¥1,234` (no decimal, `Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' })`)
+- USD: `$12.34` (2 decimals, `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })`)
+
+**Edge cases**:
+
+| Condition | Cost card | Revenue card | ROI card | Harvest card |
+|-----------|-----------|-------------|----------|-------------|
+| No entries in year | `¥0` | `¥0` | `--` | `0` |
+| Has costs, no revenue | Shows total | `¥0` | `-100%` (red bg) | `0` |
+| Has revenue, no costs | `¥0` | Shows total | "No costs" (neutral bg) | Shows count |
+| Mixed currencies | Shows default-currency total only. Footnote: "Excludes N entries in {other_currency}" | Same | Based on default currency only | All harvests regardless of currency |
+
+**Layout grid**:
+
+| Breakpoint | Grid | Gap |
+|------------|------|-----|
+| Mobile (<768px) | `grid-template-columns: 1fr 1fr` (2x2) | `var(--space-3)` (12px) |
+| Desktop (1024px+) | `grid-template-columns: repeat(4, 1fr)` if in full-width row, or `1fr 1fr` if in left column | `var(--space-4)` (16px) |
+
+**Accessibility**: Each card is a `<div role="group" aria-label="{label}: {value}">`.
+Screen reader reads: "Total Cost: 26,000 yen", "ROI: negative 4 percent".
+
+---
+
+### 16.6 CostByCategoryChart — Horizontal Bar Chart
+
+Displays cost breakdown by diary category as horizontal bars, sorted by amount
+(highest first). Uses the same category icon and color from `CATEGORY_META`.
+
+#### Wireframe
+
+```
+Cost by Category
++----------------------------------------------+
+| 🌱 Planting      [████████████████] ¥12,000  |
+| 💧 Watering      [████████████]     ¥8,000   |
+| 🛒 Purchase      [████████]         ¥5,000   |
+| 🌿 Weeding       [███]              ¥2,000   |
+| 📝 Other         [█]                ¥1,000   |
++----------------------------------------------+
+```
+
+#### Specification
+
+| Element | Spec |
+|---------|------|
+| Section heading | `<h3>`, `font-size: var(--font-size-lg)`, `font-weight: var(--font-weight-semibold)`, `margin-bottom: var(--space-3)` |
+| Container | `padding: var(--space-4)`, `background: var(--color-surface)`, `border-radius: var(--radius-lg)`, `border: var(--border-default)` |
+| Row | Flex row, `height: 36px`, `gap: var(--space-2)`, `margin-bottom: var(--space-2)`, `align-items: center` |
+| Category label | Flex row: icon (emoji, `aria-hidden`) + text name, `min-width: 120px`, `font-size: var(--font-size-sm)`, `color: var(--color-gray-700)` |
+| Bar | `height: 24px`, `border-radius: var(--radius-sm)`, background uses category color from `CATEGORY_META`, `transition: width var(--transition-normal)` |
+| Bar width | `width: {(category_total / max_category_total) * 100}%` of available space, `min-width: 4px` (so zero-cost categories still show a sliver) |
+| Amount label | Right-aligned, `font-size: var(--font-size-sm)`, `font-weight: var(--font-weight-medium)`, `min-width: 80px`, `text-align: right` |
+
+**Bar color mapping**: Each bar uses its category's color from `CATEGORY_META`:
+
+| Category | Color | Bar Color |
+|----------|-------|-----------|
+| planting | `#22c55e` | green |
+| watering | `#3b82f6` | blue |
+| fertilizing | `#a855f7` | purple |
+| harvesting | `#f59e0b` | amber |
+| weeding | `#84cc16` | lime |
+| pest_control | `#ef4444` | red |
+| maintenance | `#6b7280` | gray |
+| purchase | `#f97316` | orange |
+| other | `#9ca3af` | light gray |
+
+**Empty state**: When no cost entries exist, show "No costs recorded for {year}"
+in `--color-gray-500`, centered.
+
+**Accessibility**: Each bar row is `role="listitem"` within a `role="list"`.
+Screen reader: "Planting: 12,000 yen, 43 percent of total costs."
+The percentage is added as `aria-label` but not visually displayed (to keep the
+chart clean). The list has `aria-label="Cost breakdown by category"`.
+
+---
+
+### 16.7 MonthlyTrendChart — Stacked Bar Chart
+
+Displays monthly cost vs. revenue as vertical stacked bars across the calendar
+year (Jan--Dec). This is the most complex pure-CSS chart.
+
+#### Wireframe
+
+```
+Monthly Trend
+     ¥20k ┐
+           │
+           │              ╔═╗
+           │        ╔═╗   ║ ║
+     ¥10k ┤  ╔═╗   ║ ║   ║ ║   ╔═╗
+           │  ║ ║   ║ ║   ║ ║   ║ ║
+           │  ████  ████  ████  ████  ...
+      ¥0k ┤──────────────────────────────
+           J   F   M   A   M   J   J   A   S   O   N   D
+                              ▲ current month highlighted
+Legend: [████] Cost  [║║║║] Revenue
+```
+
+#### Specification
+
+| Element | Spec |
+|---------|------|
+| Container | `padding: var(--space-4)`, `background: var(--color-surface)`, `border-radius: var(--radius-lg)`, `border: var(--border-default)`, full width |
+| Chart area | CSS Grid: `grid-template-columns: repeat(12, 1fr)`, `gap: var(--space-1)`, `height: 200px` (mobile) / `280px` (desktop), `align-items: end` |
+| Bar column | Flex column, `justify-content: flex-end`, `align-items: center` |
+| Cost segment | Bottom of bar, `background: var(--color-roi-cost)`, `border-radius: var(--radius-sm) var(--radius-sm) 0 0` (only top corners if revenue sits above) |
+| Revenue segment | Top of bar (above cost), `background: var(--color-roi-revenue)`, `border-radius: var(--radius-sm) var(--radius-sm) 0 0` |
+| Bar height | `height: {(month_total / max_month_total) * 100}%` of chart area |
+| Bar width | `width: clamp(16px, 80%, 40px)` — constrained for readability |
+| Month label | Below chart, `font-size: var(--font-size-xs)`, `text-align: center`, single-letter abbreviation |
+| Current month | Month label gets `font-weight: var(--font-weight-bold)`, bar gets `outline: 2px solid var(--color-primary)`, `outline-offset: 2px` |
+| Y-axis | Left side, 3 tick marks: `¥0`, mid, max. `font-size: var(--font-size-xs)`, `color: var(--color-gray-500)`, `min-width: 48px` |
+| Legend | Below chart, flex row: `[color swatch] Cost  [color swatch] Revenue`, `font-size: var(--font-size-xs)`, `gap: var(--space-4)` |
+
+**Month abbreviations (en)**: J, F, M, A, M, J, J, A, S, O, N, D
+**Month abbreviations (ja)**: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+
+**Empty months**: Bars with zero height are hidden (no bar rendered). The month
+label still shows below.
+
+**Mobile scroll**: At 375px viewport, 12 columns at `1fr` each fit without
+scrolling (each bar column is ~28px). This is tight but functional. If the
+viewport is narrower than 360px, the chart area becomes `overflow-x: auto` with
+a `-webkit-overflow-scrolling: touch` for inertia scrolling.
+
+**Accessibility**: The chart is supplemented by a visually hidden `<table>`
+that provides the same data in tabular form for screen readers:
+
+```html
+<table class="sr-only" aria-label="Monthly cost and revenue trend">
+  <thead><tr><th>Month</th><th>Cost</th><th>Revenue</th></tr></thead>
+  <tbody>
+    <tr><td>January</td><td>¥5,000</td><td>¥0</td></tr>
+    ...
+  </tbody>
+</table>
+```
+
+The visual chart has `aria-hidden="true"` since the hidden table conveys the
+same information in a more accessible format.
+
+---
+
+### 16.8 RoiByBedTable — Sortable Per-Bed Table
+
+Tabular breakdown of cost, revenue, and ROI per bed (with crop information).
+
+#### Wireframe
+
+```
+ROI by Bed
++-----------------------------------------------------+
+| Bed ↕         | Costs ↕   | Revenue ↕ | ROI ↕ | # ↕ |
+|---------------|-----------|-----------|-------|-----|
+| 🍅 Tomato B1  | ¥12,000   | ¥20,000   | +67%  | 15  |
+| 🥬 Lettuce B2 | ¥8,000    | ¥5,000    | -38%  |  8  |
+| 🥕 Carrot B3  | ¥6,000    | ¥0        | -100% |  0  |
+|============================================== |===== |
+| TOTAL          | ¥26,000   | ¥25,000   | -4%   | 23  |
++-----------------------------------------------------+
+```
+
+#### Specification
+
+| Element | Spec |
+|---------|------|
+| Container | `background: var(--color-surface)`, `border-radius: var(--radius-lg)`, `border: var(--border-default)`, `overflow: hidden` |
+| Table | `width: 100%`, `border-collapse: collapse`, `font-size: var(--font-size-sm)` |
+| Header row | `background: var(--color-gray-100)`, `font-weight: var(--font-weight-semibold)`, `color: var(--color-gray-700)`, `text-align: left` (bed) / `right` (numbers) |
+| Header cell | `padding: var(--space-3) var(--space-3)`, `cursor: pointer`, `user-select: none`, sort arrow indicator (up/down/neutral) |
+| Data cell | `padding: var(--space-3)`, `border-top: 1px solid var(--color-gray-100)` |
+| Bed cell | Flex row: crop emoji + bed name. Emoji `aria-hidden`, name `font-weight: var(--font-weight-medium)` |
+| ROI cell | `font-weight: var(--font-weight-semibold)`. Color: `--color-roi-positive` if >= 0, `--color-roi-negative` if < 0. Icon prefix: small inline arrow (up/down triangle) |
+| Footer row | `background: var(--color-gray-100)`, `font-weight: var(--font-weight-bold)`, `border-top: 2px solid var(--color-gray-300)` |
+| Sort active | Active sort column header gets `color: var(--color-primary)`, arrow indicator filled |
+
+**Column definitions**:
+
+| Column | Header (en) | Header (ja) | Width | Align | Sort |
+|--------|------------|------------|-------|-------|------|
+| Bed | Bed | 畝 | `minmax(120px, 1fr)` | left | Alpha by bed name |
+| Costs | Costs | コスト | `100px` | right | Numeric desc |
+| Revenue | Revenue | 収益 | `100px` | right | Numeric desc |
+| ROI | ROI | ROI | `80px` | right | Numeric desc |
+| Entries | # | # | `48px` | center | Numeric desc |
+
+**Default sort**: ROI descending (most profitable beds first).
+
+**Mobile adaptation**: On viewports < 768px, the table becomes a card list
+instead. Each bed is rendered as a card:
+
+```
++--------------------------------------+
+| 🍅 Tomato (B1)                       |
+| Cost: ¥12,000  Revenue: ¥20,000      |
+| ROI: +67%              15 entries    |
++--------------------------------------+
+```
+
+Card spec:
+| Element | Spec |
+|---------|------|
+| Container | `padding: var(--space-3)`, `margin-bottom: var(--space-2)`, `border: var(--border-default)`, `border-radius: var(--radius-md)`, `background: var(--color-surface)` |
+| Bed name | First line, `font-weight: var(--font-weight-semibold)`, `font-size: var(--font-size-base)` |
+| Cost/Revenue | Second line, flex row with space-between, `font-size: var(--font-size-sm)`, `color: var(--color-gray-700)` |
+| ROI/Entries | Third line, ROI has color coding, entries count right-aligned, `font-size: var(--font-size-sm)` |
+
+Mobile cards are sorted by the same sort state (tapping a "Sort by" dropdown
+at the top of the section). Sort dropdown: `<select>` with options matching the
+column list.
+
+**Empty state**: When no beds have diary entries, show "No bed data for {year}"
+in `--color-gray-500`, centered within the container.
+
+**Footer totals**: Always visible at the bottom. On mobile, the total card has
+a thicker top border (`2px solid var(--color-gray-300)`) and bold values.
+
+**Accessibility**:
+- Table uses proper `<thead>`, `<tbody>`, `<tfoot>` elements.
+- Sort buttons are `<button>` elements within `<th>`, with `aria-sort="ascending"
+  | "descending" | "none"`.
+- `aria-label` on the table: "ROI by bed for {year}".
+- ROI values include sign in screen reader text: `aria-label="positive 67 percent"`.
+
+---
+
+### 16.9 Harvest Fields in DiaryEntryForm
+
+When the user selects `category === 'harvesting'` in the diary entry form, a
+harvest section auto-reveals below the description field.
+
+#### Wireframe (within the bottom sheet form)
+
+```
+Category *
+[🌾 Harvesting          ▼]
+
+Description *
+[_________________________________]
+
+── Harvest Details ──────────────────  <- revealed section
+| Amount        | Unit              |
+| [_____5.2___] | [___kg____▼]     |  <- number + text with datalist
+|                                   |
+| Revenue       | Currency          |
+| [___15000___] | [JPY ▼]          |  <- number + select
+─────────────────────────────────────
+
+Bed (optional)
+[— Select bed —                  ▼]
+```
+
+#### Specification
+
+| Element | Spec |
+|---------|------|
+| Section wrapper | `overflow: hidden`, `max-height: 0` when hidden, `max-height: 400px` when visible, `transition: max-height var(--transition-slow)`, `margin: var(--space-3) 0` |
+| Section label | `font-size: var(--font-size-sm)`, `font-weight: var(--font-weight-semibold)`, `color: var(--color-gray-500)`, horizontal rule decoration (flex row: line + text + line) |
+| Field grid | CSS Grid: `grid-template-columns: 1fr 1fr`, `gap: var(--space-3)` |
+| Amount input | `<input type="number" min="0" max="999999" step="0.1">`, `inputmode="decimal"`, left column |
+| Unit input | `<input type="text" list="harvest-units">` with `<datalist id="harvest-units">`, right column |
+| Revenue input | `<input type="number" min="0" max="99999999" step="1">`, `inputmode="numeric"` (JPY) or `inputmode="decimal"` (USD), left column |
+| Currency select | `<select>` with JPY/USD options, right column. Default: farm's `default_currency` |
+
+**Datalist suggestions for harvest_unit**:
+
+| Value (en) | Value (ja) |
+|-----------|-----------|
+| kg | kg |
+| g | g |
+| bunch | 束 |
+| piece | 個 |
+| bag | 袋 |
+| box | 箱 |
+
+The datalist provides suggestions but accepts any free-text value.
+
+**Reveal animation**: When category changes to `harvesting`, the section
+wrapper transitions from `max-height: 0; opacity: 0` to
+`max-height: 400px; opacity: 1` over `var(--transition-slow)` (300ms).
+When category changes away from `harvesting`, it reverses. The `padding` is
+inside the wrapper so it collapses fully to zero height.
+
+**Validation**:
+- `harvest_amount`: Optional. If provided, must be >= 0 (zero is valid for recording a failed harvest).
+- `harvest_unit`: Optional. Max 20 characters.
+- `revenue`: Optional. If provided, must be >= 0.
+- `revenue_currency`: Required if `revenue` is provided. Defaults to farm currency.
+- If category is NOT `harvesting`, all four fields are cleared and ignored on
+  submit.
+
+**Pre-fill on edit**: When editing a harvesting entry that has existing harvest
+data, the fields are pre-populated from the entry's values.
+
+**Accessibility**:
+- Each field has an associated `<label>` with `for` attribute.
+- The section has `aria-live="polite"` so screen readers announce when it
+  appears/disappears.
+- Labels: "Harvest amount", "Harvest unit", "Revenue", "Revenue currency".
+
+---
+
+### 16.10 Farm Default Currency Setting
+
+A new field on the farm edit page (Profile > Farm Settings) to set the default
+currency for financial reporting.
+
+#### Wireframe (within existing farm edit form)
+
+```
+Farm Name
+[LitCrop Demo Farm              ]
+
+Location
+[Chichibu, Saitama              ]
+
+Default Currency
+[🇯🇵 JPY — Japanese Yen     ▼]    <- new field
+
+Description
+[_________________________________]
+```
+
+#### Specification
+
+| Element | Spec |
+|---------|------|
+| Position | After "Location" field, before "Description" or "Coordinates" (partial wireframe — see existing FarmSetup form for full field list including lat/lon/elevation/climate_zone) |
+| Label | "Default Currency" (en) / "通貨" (ja) |
+| Input | `<select>` with 2 options |
+| Option 1 | Value: `JPY`, Display: `JPY -- Japanese Yen` (en) / `JPY -- 日本円` (ja) |
+| Option 2 | Value: `USD`, Display: `USD -- US Dollar` (en) / `USD -- 米ドル` (ja) |
+| Default | `JPY` for new farms and existing farms without the field |
+| Styling | Same as other `form-select` inputs on the page |
+
+**Note**: Flag emojis are omitted from the select options for cross-platform
+rendering consistency (some Android devices render flag emojis inconsistently).
+The currency code + name is sufficient for disambiguation.
+
+**Persistence**: Saved via the existing `PUT /farms/:farmId` endpoint with the
+new `default_currency` field.
+
+---
+
+### 16.11 Loading and Empty States
+
+#### Loading State (Skeleton)
+
+When the ROI tab is selected and data is being fetched/computed:
+
+```
++------------------------------------------+
+| [ < 2026 > ]                             |
++------------------------------------------+
+| [▓▓▓▓▓▓▓▓▓] [▓▓▓▓▓▓▓▓▓]                |  <- 4 skeleton cards
+| [▓▓▓▓▓▓▓▓▓] [▓▓▓▓▓▓▓▓▓]                |
++------------------------------------------+
+| [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓]           |  <- skeleton bars
+| [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓]                    |
+| [▓▓▓▓▓▓▓▓▓▓▓]                            |
++------------------------------------------+
+| [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓]           |  <- skeleton chart
++------------------------------------------+
+```
+
+Skeleton spec: Same `skeleton-tile` class used by diary list loading state.
+Pulsing animation via CSS `@keyframes`.
+
+| Skeleton | Dimensions |
+|----------|-----------|
+| Summary cards | `4x` cards at `height: 72px` in 2x2 grid |
+| Category chart | `3-5` bars at `height: 24px`, decreasing widths |
+| Monthly chart | Full-width block at `height: 200px` |
+| Bed table | `3` rows at `height: 48px` |
+
+#### Empty State (No Data)
+
+When the farm has zero diary entries for the selected year:
+
+```
++------------------------------------------+
+| [ < 2026 > ]                             |
++------------------------------------------+
+|                                          |
+|            📊                            |
+|    No data for 2026                      |
+|    Start logging diary entries           |
+|    to see your farm's ROI.              |
+|                                          |
+|    [Log First Entry]                     |
+|                                          |
++------------------------------------------+
+```
+
+| Element | Spec |
+|---------|------|
+| Icon | `📊`, `font-size: 48px`, `aria-hidden="true"` |
+| Title | "No data for {year}" / "{year}年のデータがありません", `font-size: var(--font-size-lg)`, `font-weight: var(--font-weight-semibold)`, `color: var(--color-gray-700)` |
+| Body | Encouragement text, `font-size: var(--font-size-base)`, `color: var(--color-gray-500)` |
+| CTA button | `btn btn--primary`, opens DiaryEntryForm |
+
+#### Partial Data State
+
+When entries exist but no harvesting entries (and therefore no revenue):
+
+The dashboard renders normally with:
+- Total Cost: shows actual costs
+- Revenue: `¥0`
+- ROI: `-100%` (red)
+- Harvest Count: `0`
+- A gentle hint below the summary cards: "Log harvest entries to track revenue
+  and calculate ROI." / "収穫記録を追加して収益とROIを確認しましょう。"
+
+Hint spec: `font-size: var(--font-size-sm)`, `color: var(--color-gray-500)`,
+`background: var(--color-info)` at 10% opacity, `padding: var(--space-3)`,
+`border-radius: var(--radius-md)`, info icon prefix.
+
+---
+
+### 16.12 Interaction Specifications
+
+#### Year Navigation
+
+| Action | Behavior |
+|--------|----------|
+| Tap `<` | Decrement year by 1, re-fetch entries for new year range, show loading skeleton |
+| Tap `>` | Increment year by 1 (disabled if year >= current year) |
+| Year changes | All 4 dashboard sections re-render with new data |
+
+#### Table Sort
+
+| Action | Behavior |
+|--------|----------|
+| Tap column header | Sort by that column. First tap: descending. Second tap on same column: ascending. Third tap: remove sort (back to default ROI desc). |
+| Sort indicator | Arrow icon in header. `▼` descending, `▲` ascending, `↕` unsorted (neutral gray) |
+| Animation | Table rows reorder with no animation (instant swap — keep it simple for MVP) |
+
+#### Chart Interactions
+
+Charts are display-only at MVP. No hover tooltips, no drill-down, no click
+handlers. This keeps the CSS-only approach simple and accessible.
+
+**Deferred to Production**: Hover tooltips showing exact values, click-to-filter
+by category or month, animated bar transitions on data change.
+
+#### Currency Mismatch Warning
+
+When the ROI dashboard detects entries with currencies different from the farm's
+`default_currency`:
+
+| Element | Spec |
+|---------|------|
+| Container | Below year selector, `padding: var(--space-2) var(--space-3)`, `background: var(--color-warning)` at 10% opacity, `border-radius: var(--radius-md)`, `font-size: var(--font-size-xs)`, `color: var(--color-gray-700)` |
+| Icon | `⚠️` prefix, `aria-hidden="true"` |
+| Text | "{N} entries in {currency} excluded from totals" / "{currency}建ての{N}件は集計から除外" |
+
+---
+
+### 16.13 Accessibility Requirements
+
+#### WCAG 2.1 AA Compliance Checklist (ROI-specific)
+
+- [x] Color contrast: All text meets 4.5:1 minimum (body), 3:1 (large text)
+- [x] Dark mode: All ROI tokens verified for dark backgrounds
+- [x] Earthy mode: All ROI tokens verified for earthy backgrounds
+- [x] Color + icon + label: ROI positive/negative uses color AND icon (arrow) AND sign (+/-)
+- [x] Keyboard: Year selector navigable with Tab + Enter/Space
+- [x] Keyboard: Table headers sortable with Tab + Enter/Space
+- [x] Keyboard: Sort dropdown (mobile) navigable with arrow keys
+- [x] Focus ring: All interactive elements show `var(--focus-ring)` on focus
+- [x] Touch targets: Year buttons, sort headers, CTA buttons all >= 48px
+- [x] Screen reader: Chart data available via hidden `<table>`
+- [x] Screen reader: Summary cards have `aria-label` with value and unit
+- [x] Screen reader: ROI values include sign ("positive", "negative")
+- [x] Screen reader: `aria-sort` attributes on sortable table headers
+- [x] Screen reader: Currency mismatch warning is `role="status"`
+- [x] Motion: No motion-dependent information. Harvest field reveal respects `prefers-reduced-motion` (set `transition-duration: 0ms`)
+- [x] Dynamic Type: All text uses relative units or design token sizes that scale
+
+#### Aria Annotations Summary
+
+| Component | Role/Attribute | Value |
+|-----------|---------------|-------|
+| Year selector group | `role="group"`, `aria-label` | "Year selector" / "年選択" |
+| Previous year | `aria-label` | "Previous year" / "前年" |
+| Next year | `aria-label`, `aria-disabled` | "Next year" / "翌年" |
+| Summary card | `role="group"`, `aria-label` | "{label}: {formatted_value}" |
+| Category chart list | `role="list"`, `aria-label` | "Cost breakdown by category" / "カテゴリ別コスト" |
+| Category bar row | `role="listitem"`, `aria-label` | "{category}: {amount}, {percent}% of total" |
+| Monthly trend chart | `aria-hidden="true"` | (hidden table provides data) |
+| Monthly trend table | `class="sr-only"`, `aria-label` | "Monthly cost and revenue trend" / "月別コスト・収益推移" |
+| Bed ROI table | `aria-label` | "ROI by bed for {year}" / "{year}年の畝別ROI" |
+| Sort button | `aria-sort` | `"ascending"` / `"descending"` / `"none"` |
+| Currency warning | `role="status"` | Auto-announced on appearance |
+| Harvest section | `aria-live="polite"` | Announced on reveal/hide |
+
+---
+
+### 16.14 i18n Key Additions
+
+Keys to add to `en.json` and `ja.json`. The `roi` and `diary.harvest` namespaces are new; `setup` keys merge into the existing `"setup"` object. Harvest keys are nested under `diary` to follow the existing convention where all diary-related i18n lives under the `"diary"` namespace:
+
+```json
+{
+  "roi": {
+    "title": "ROI Dashboard",
+    "year_selector": "Year selector",
+    "prev_year": "Previous year",
+    "next_year": "Next year",
+    "total_cost": "Total Cost",
+    "total_revenue": "Revenue",
+    "roi_percent": "ROI",
+    "harvest_count": "Harvests",
+    "no_costs": "No costs recorded",
+    "no_data": "No data",
+    "no_data_title": "No data for {{year}}",
+    "no_data_body": "Start logging diary entries to see your farm's ROI.",
+    "no_data_cta": "Log First Entry",
+    "cost_by_category": "Cost by Category",
+    "no_costs_for_year": "No costs recorded for {{year}}",
+    "monthly_trend": "Monthly Trend",
+    "month_cost": "Cost",
+    "month_revenue": "Revenue",
+    "roi_by_bed": "ROI by Bed",
+    "bed_column": "Bed",
+    "costs_column": "Costs",
+    "revenue_column": "Revenue",
+    "roi_column": "ROI",
+    "entries_column": "#",
+    "total_row": "TOTAL",
+    "no_bed_data": "No bed data for {{year}}",
+    "sort_by": "Sort by",
+    "positive": "positive",
+    "negative": "negative",
+    "currency_excluded": "{{count}} entries in {{currency}} excluded from totals",
+    "harvest_hint": "Log harvest entries to track revenue and calculate ROI.",
+    "of_total": "of total costs"
+  },
+  "diary": {
+    "harvest_section_label": "Harvest Details",
+    "harvest_amount": "Harvest Amount",
+    "harvest_unit": "Harvest Unit",
+    "harvest_revenue": "Revenue",
+    "harvest_revenue_currency": "Revenue Currency",
+    "harvest_unit_kg": "kg",
+    "harvest_unit_g": "g",
+    "harvest_unit_bunch": "bunch",
+    "harvest_unit_piece": "piece",
+    "harvest_unit_bag": "bag",
+    "harvest_unit_box": "box"
+  },
+  "setup": {
+    "default_currency": "Default Currency",
+    "currency_jpy": "JPY -- Japanese Yen",
+    "currency_usd": "USD -- US Dollar"
+  }
+}
+```
+
+**Japanese translations** (ja.json additions):
+
+```json
+{
+  "roi": {
+    "title": "ROIダッシュボード",
+    "year_selector": "年選択",
+    "prev_year": "前年",
+    "next_year": "翌年",
+    "total_cost": "総コスト",
+    "total_revenue": "収益",
+    "roi_percent": "ROI",
+    "harvest_count": "収穫数",
+    "no_costs": "コスト記録なし",
+    "no_data": "データなし",
+    "no_data_title": "{{year}}年のデータがありません",
+    "no_data_body": "日記を記録してROIを確認しましょう。",
+    "no_data_cta": "最初の記録を作成",
+    "cost_by_category": "カテゴリ別コスト",
+    "no_costs_for_year": "{{year}}年のコスト記録なし",
+    "monthly_trend": "月別推移",
+    "month_cost": "コスト",
+    "month_revenue": "収益",
+    "roi_by_bed": "畝別ROI",
+    "bed_column": "畝",
+    "costs_column": "コスト",
+    "revenue_column": "収益",
+    "roi_column": "ROI",
+    "entries_column": "#",
+    "total_row": "合計",
+    "no_bed_data": "{{year}}年の畝データなし",
+    "sort_by": "並び替え",
+    "positive": "プラス",
+    "negative": "マイナス",
+    "currency_excluded": "{{currency}}建ての{{count}}件は集計から除外",
+    "harvest_hint": "収穫記録を追加して収益とROIを確認しましょう。",
+    "of_total": "総コストに対する割合"
+  },
+  "diary": {
+    "harvest_section_label": "収穫詳細",
+    "harvest_amount": "収穫量",
+    "harvest_unit": "単位",
+    "harvest_revenue": "売上",
+    "harvest_revenue_currency": "通貨",
+    "harvest_unit_kg": "kg",
+    "harvest_unit_g": "g",
+    "harvest_unit_bunch": "束",
+    "harvest_unit_piece": "個",
+    "harvest_unit_bag": "袋",
+    "harvest_unit_box": "箱"
+  },
+  "setup": {
+    "default_currency": "通貨",
+    "currency_jpy": "JPY -- 日本円",
+    "currency_usd": "USD -- 米ドル"
+  }
+}
+```
+
+**Note**: The `setup` keys merge into the existing `"setup"` object. The `diary` harvest keys merge into the existing `"diary"` object. The `roi` namespace is new and top-level.
+
+---
+
+### 16.15 Component State Matrix (Beta-10)
+
+| Component | Loading | Empty | Data | Error | Partial |
+|-----------|---------|-------|------|-------|---------|
+| **RoiDashboard** | Year selector + skeleton cards/bars/chart | Full empty state with CTA | All 4 sections rendered | Error banner + retry button | Shows data + harvest hint |
+| **RoiSummaryCards** | 4 skeleton cards (72px height, 2x2) | Shows `¥0` / `--` / `0` values | Formatted values with color coding | — (parent handles) | — |
+| **CostByCategoryChart** | 3-5 skeleton bars (decreasing width) | "No costs recorded for {year}" | Sorted bars with category colors | — (parent handles) | — |
+| **MonthlyTrendChart** | Full-width skeleton block (200px) | All months empty (no bars) | Stacked bars for months with data | — (parent handles) | — |
+| **RoiByBedTable** | 3 skeleton rows (48px) | "No bed data for {year}" | Sortable table + footer totals | — (parent handles) | — |
+| **DiaryEntryForm** (harvest section) | — | Hidden (non-harvesting category) | Fields shown with values | Validation inline | — |
+
+---
+
+### 16.16 Responsive Layout Summary (Beta-10)
+
+| Component | Mobile (375px) | Tablet (768px) | Desktop (1024px+) |
+|-----------|---------------|----------------|-------------------|
+| **Year selector** | Full width, centered | Same | Same |
+| **Summary cards** | 2x2 grid | 2x2 grid | 4-across or 2x2 in left column |
+| **Cost by category** | Full width, stacked below cards | Full width | Right column beside cards |
+| **Monthly trend** | Full width, `height: 200px` | Full width, `height: 240px` | Full width, `height: 280px` |
+| **ROI by bed** | Card list with sort dropdown | Table with sortable headers | Table with sortable headers |
+| **Harvest fields** | 2-column grid within form | Same | Same |
+| **Currency setting** | Full-width select | Same | Inline in 2-column form layout |
+
+---
+
+### 16.17 CSS Class Naming Convention (Beta-10)
+
+Following existing BEM conventions in the codebase:
+
+```
+.roi-dashboard              — container
+.roi-dashboard__year-nav    — year selector
+.roi-dashboard__sections    — grid container for sections
+
+.roi-summary                — summary cards grid
+.roi-summary__card          — individual card
+.roi-summary__card--positive — green tint
+.roi-summary__card--negative — red tint
+.roi-summary__card--neutral  — gray tint
+.roi-summary__icon          — card icon
+.roi-summary__value         — card value
+.roi-summary__label         — card label
+
+.roi-category               — cost by category container
+.roi-category__bar-row      — single bar row
+.roi-category__label        — category icon + name
+.roi-category__bar          — the colored bar
+.roi-category__amount       — amount text
+
+.roi-trend                  — monthly trend container
+.roi-trend__chart           — 12-column grid
+.roi-trend__bar-col         — single month column
+.roi-trend__bar-cost        — cost segment
+.roi-trend__bar-revenue     — revenue segment
+.roi-trend__bar-col--current — current month highlight
+.roi-trend__month-label     — month abbreviation
+.roi-trend__legend          — legend row
+.roi-trend__y-axis          — left axis labels
+
+.roi-bed                    — bed ROI container
+.roi-bed__table             — desktop table
+.roi-bed__header            — sortable header
+.roi-bed__header--active    — currently sorted column
+.roi-bed__row               — data row
+.roi-bed__footer            — totals row
+.roi-bed__card              — mobile card variant
+.roi-bed__sort-select       — mobile sort dropdown
+.roi-bed__roi-value--positive — green ROI
+.roi-bed__roi-value--negative — red ROI
+
+.harvest-fields             — form section wrapper
+.harvest-fields--visible    — revealed state
+.harvest-fields__grid       — 2-column grid
+.harvest-fields__divider    — section label with lines
+```

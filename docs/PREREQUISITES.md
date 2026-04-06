@@ -174,6 +174,67 @@ These items are documented for awareness but do not block PoC:
 
 ---
 
+## 8. Beta-10 Prerequisites (ROI Dashboard — #248, #245)
+
+> Added 2026-04-06 — review checklist for Beta-10 architecture delta (section 15 in ARCHITECTURE.md).
+
+### Architecture Review (Beta-10 Delta)
+
+- [ ] **Data model approach**: Inline harvest fields on DiaryEntry (4 nullable fields: `harvest_amount`, `harvest_unit`, `revenue`, `revenue_currency`). Only populated when `category === 'harvesting'`. [ADR](decisions/ADR-20260406-roi-dashboard.md)
+- [ ] **Aggregation strategy**: Client-side aggregation in `roi-utils.ts`. No new API endpoint. Acceptable for <2000 entries/year? (section 15.3)
+- [ ] **Currency handling**: Farm `default_currency` field, single-currency aggregation. No real-time conversion at MVP. (section 15.4)
+- [ ] **Chart rendering**: Pure CSS charts (horizontal bars, stacked bars). No chart library dependency. (section 15.6)
+- [ ] **ROI tab placement**: 4th tab in diary page (list | calendar | gantt | roi). (section 15.6)
+- [ ] **Cost impact**: $0.00/month delta — within budget constraint. (section 15.9)
+
+### Data Model Approval (Beta-10)
+
+- [ ] **DiaryEntry additions**: `harvest_amount` (number, max 999,999), `harvest_unit` (string, max 20 chars), `revenue` (number, max 99,999,999), `revenue_currency` ('JPY' | 'USD')
+- [ ] **Farm addition**: `default_currency: 'JPY' | 'USD'` (default 'JPY' for existing farms)
+- [ ] **Validation rule**: Harvest/revenue fields must be null when category is not 'harvesting'
+- [ ] **Backward compatibility**: Old diary entries read back with null harvest/revenue fields (no migration)
+- [ ] **Type drift fix**: `DiaryEntryResponse` in `domain.ts` is missing `created_by_name` that exists in the Zod schema — fix during this sprint
+
+### Open Questions (Beta-10)
+
+- [x] **Harvest unit format**: Free-text with UI suggestions ✅ (confirmed 2026-04-06)
+- [x] **Date range default**: Calendar year (Jan–Dec) — agricultural seasons map to calendar year; Jan–Mar is quiet ✅ (confirmed 2026-04-06)
+- [x] **Farm currency setting**: Explicit setting on farm edit page ✅ (confirmed 2026-04-06)
+- [x] **Revenue entry UX**: Auto-show harvest fields when category = 'harvesting' ✅ (confirmed 2026-04-06)
+
+### Infrastructure & Access (Beta-10)
+
+- [ ] **No new AWS resources needed**: All changes are schema extensions on existing DynamoDB items + frontend components
+- [ ] **No CDK changes needed**: No new Lambda, no new GSI, no new S3 bucket
+- [ ] **No new dependencies**: Pure CSS charts, computation in existing frontend bundle
+
+### Files to Create (Beta-10)
+
+| File | Type | Purpose |
+|------|------|---------|
+| `src/frontend/src/lib/roi-utils.ts` | New | Pure aggregation functions |
+| `src/frontend/src/components/RoiDashboard.tsx` | New | Container: fetch + compute + render |
+| `src/frontend/src/components/roi/RoiSummaryCards.tsx` | New | 4 metric cards |
+| `src/frontend/src/components/roi/RoiByBedTable.tsx` | New | Sortable per-bed table |
+| `src/frontend/src/components/roi/CostByCategoryChart.tsx` | New | Horizontal bar chart (CSS) |
+| `src/frontend/src/components/roi/MonthlyTrendChart.tsx` | New | Monthly stacked bar chart (CSS) |
+| `src/frontend/src/lib/__tests__/roi-utils.test.ts` | New | Unit tests for aggregation |
+
+### Files to Modify (Beta-10)
+
+| File | Change |
+|------|--------|
+| `packages/shared/src/types/domain.ts` | Add harvest/revenue fields to DiaryEntry, default_currency to Farm |
+| `packages/shared/src/schemas/index.ts` | Extend diary schemas with new fields + validation |
+| `src/api/src/services/dynamodb.ts` | Read/write new fields in diary and farm methods |
+| `src/api/src/routes/diary.ts` | Include new fields in response builder |
+| `src/frontend/src/components/DiaryPage.tsx` | Add ROI tab to ViewMode |
+| `src/frontend/src/components/DiaryEntryForm.tsx` | Conditional harvest fields |
+| `src/frontend/src/i18n/en.json` | ROI translation keys |
+| `src/frontend/src/i18n/ja.json` | ROI translation keys (Japanese) |
+
+---
+
 ## Next Steps
 
 After all prerequisites are confirmed:
