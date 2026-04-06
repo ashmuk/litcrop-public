@@ -766,7 +766,8 @@
     "negative": "negative",
     "currency_excluded": "{{count}} entries in {{currency}} excluded from totals",
     "harvest_hint": "Log harvest entries to track revenue and calculate ROI.",
-    "of_total": "of total costs"
+    "of_total": "of total costs",
+    "unassigned": "Unassigned"
   },
   "profile_picture": {
     "change": "Change photo",

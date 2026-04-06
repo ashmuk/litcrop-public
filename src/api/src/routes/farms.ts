@@ -508,6 +508,7 @@ router.post('/', async (c) => {
       theme: (body['theme'] as Farm['theme']) ?? DEFAULT_THEME,
       grid_rows: gridRows as number,
       grid_cols: gridCols as number,
+      default_currency: (body['default_currency'] as Farm['default_currency']) ?? 'JPY',
     });
   } catch (err) {
     if (isConditionalCheckFailed(err) || isTransactionCanceled(err)) {

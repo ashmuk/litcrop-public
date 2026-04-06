@@ -173,7 +173,7 @@ export function computeRoiByBed(
     results.push({
       ...summary,
       bed_id: bedId,
-      bed_name: isUnassigned ? 'Unassigned' : (bed?.name ?? bedId),
+      bed_name: isUnassigned ? '' : (bed?.name ?? bedId),
       crop_type,
       crop_emoji: crop_type ? getCropEmoji(crop_type) : null,
     });

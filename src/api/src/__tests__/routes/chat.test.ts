@@ -498,6 +498,7 @@ describe('POST /api/v1/chat — no coordinates (#277)', () => {
       grid_rows: 1,
       grid_cols: 1,
       created_at: '2026-01-01T00:00:00.000Z',
+      default_currency: 'JPY' as const,
     });
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       user_id: TEST_USER_ID,

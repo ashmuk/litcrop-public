@@ -18,6 +18,7 @@ export interface CreateFarmRequest {
   theme?: Theme;
   grid_rows?: number; // 1-5, default 1
   grid_cols?: number; // 1-5, default 1
+  default_currency?: 'JPY' | 'USD'; // Beta-10: farm default currency for ROI
 }
 
 /** PATCH /api/v1/farms/{farmId} — Update Farm */

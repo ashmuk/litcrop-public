@@ -216,3 +216,108 @@ All 3 MUST-FIX and 3 SHOULD-FIX items addressed:
 - #6: File manifest §12.9 → added FarmSetupPage, CSS, and test files
 
 3 SUGGESTION items remain as-is (i18n key count recount, .agent/ skill file updates, computeMonthlyTrend comment — non-blocking).
+
+---
+
+## Review 3: Implementation (Batches 1-5)
+
+> Reviewed: 2026-04-06
+> Reviewer: my-reviewer
+> Scope: All implementation code across Batches 1-5 for Beta-10 ROI Dashboard (#248, #245)
+> Files reviewed: domain.ts, schemas/index.ts, dynamodb.ts, diary.ts, farms.ts, roi-utils.ts, roi-utils.test.ts, api.ts, RoiDashboard.tsx, RoiSummaryCards.tsx, CostByCategoryChart.tsx, MonthlyTrendChart.tsx, RoiByBedTable.tsx, DiaryPage.tsx, DiaryEntryForm.tsx, SetupForm.tsx, requests.ts, contracts.test.ts, en.json, ja.json, components.css
+
+### Summary
+
+The Beta-10 ROI Dashboard implementation is well-executed overall. The core architecture is sound: currency-aware aggregation in roi-utils.ts correctly filters by currency and avoids the pre-computed cost_total (addressing Review 1 finding #3), the harvest refine guard is enforced at schema, API, and frontend layers, and the component structure matches the system design. Two blocking issues need remediation: the POST /farms handler does not pass default_currency to createFarm (so new farms always get JPY regardless of what the user selects in SetupForm), and all existing test fixtures for Farm objects are missing the required default_currency field causing TypeScript compilation errors across 16+ test files. Several quality and accessibility issues round out the findings.
+
+### Findings
+
+| # | Severity | Area | Finding | Recommendation |
+|---|----------|------|---------|----------------|
+| 1 | **MUST-FIX** | `farms.ts:499-511` | POST /farms handler does not extract `default_currency` from request body. The `createFarm` call passes only name, location, description, lat/lng, elevation, climate_zone, locale, theme, grid_rows, grid_cols -- omitting `default_currency`. Since `Farm.default_currency` is required (`'JPY' | 'USD'`), TypeScript should reject this, but esbuild transpilation at runtime masks the error. The result: `default_currency` is always `undefined` when creating a farm, and `itemToFarm()` defaults it to `'JPY'`. This means the currency selector in SetupForm has no effect on new farms. | Add `default_currency: (body['default_currency'] as Farm['default_currency']) ?? 'JPY'` to the `createFarm()` call in the POST handler (line ~511). The `validateFarmFields` function already validates the value on line 122-127, so only the pass-through is missing. |
+| 2 | **MUST-FIX** | `requests.ts:10-21` | `CreateFarmRequest` interface is missing `default_currency?: 'JPY' | 'USD'`. The `UpdateFarmRequest` correctly includes it (line 36), but `CreateFarmRequest` does not. This means the frontend `createFarm()` API call cannot type-safely pass the field (it works at runtime because the payload is cast, but the type contract is incomplete). | Add `default_currency?: 'JPY' | 'USD';` to `CreateFarmRequest`. |
+| 3 | **MUST-FIX** | `contracts.test.ts` + 6 other test files | All existing mock Farm objects are missing the required `default_currency` field, causing 16+ TypeScript compilation errors (`Property 'default_currency' is missing in type ... but required in type 'Farm'`). While tests pass at runtime (esbuild does not enforce types), the codebase does not compile cleanly with `tsc --noEmit`. Files affected: contracts.test.ts (10 errors), ownership.test.ts, admin.test.ts, beds.test.ts, chat.test.ts, devices.test.ts, diary.test.ts. | Add `default_currency: 'JPY' as const` to every mock Farm object in all affected test files. Consider extracting a shared `baseFarm` fixture to prevent this class of error in future sprints. |
+| 4 | **SHOULD-FIX** | `diary.ts:32-34` | `calcCostTotal()` still sums costs across currencies without filtering. While the ROI dashboard correctly avoids using `cost_total` (as specified in Review 1 finding #3), the `cost_total` field in every `DiaryEntryResponse` remains incorrect for entries with mixed-currency costs. This is a pre-existing bug that predates Beta-10, but now that currency-awareness is a first-class concern, it creates a misleading number in the diary list view. | Either (a) deprecate `cost_total` from the response and let clients compute it, or (b) change `calcCostTotal` to accept a currency parameter and filter accordingly -- but this requires knowing the farm's default_currency in the diary route, adding a lookup. Option (a) is simpler but is a breaking API change; documenting `cost_total` as "sum across all currencies, for display only" in the schema is the minimal fix. |
+| 5 | **SHOULD-FIX** | `components.css:2848-2857` | The `.roi-excluded-notice` uses hardcoded color `#92400e` (dark amber text) which will be illegible on dark theme backgrounds. The component correctly uses CSS custom properties for background but the text color bypasses the design token system. | Replace `color: #92400e` with a CSS custom property (e.g., `--color-roi-warning-text`) and add dark theme overrides alongside the other ROI color tokens. |
+| 6 | **SHOULD-FIX** | `components.css:2735-2743` | ROI color tokens (`--color-roi-positive`, `--color-roi-negative`, `--color-roi-positive-bg`, `--color-roi-negative-bg`, `--color-roi-cost`, `--color-roi-revenue`, `--color-roi-neutral`) are defined only in `:root`. No dark/earthy theme overrides exist. On dark backgrounds: green (#1B7D3C) and red (#C62828) text will have low contrast against dark surfaces; light backgrounds (#E8F5EC, #FFEBEE) will appear as bright rectangles. | Add dark theme token overrides for all 7 ROI color tokens. Example: in dark mode, swap backgrounds to darker tints (e.g., `#1a2e1a`, `#2e1a1a`) and brighten text colors (e.g., `#4ade80`, `#f87171`). |
+| 7 | **SHOULD-FIX** | `RoiDashboard.tsx:197` | The currency mismatch notice hardcodes the "other" currency as `farmCurrency === 'JPY' ? 'USD' : 'JPY'`. This is correct for the current two-currency system but would break if a third currency is added. More importantly, the actual excluded entries might have costs in BOTH other currencies. | Low risk given only two currencies are supported. Add a comment noting this assumption. If/when a third currency is added, the excluded notice should list all non-default currencies found in excluded entries. |
+| 8 | **SHOULD-FIX** | `roi-utils.ts:176` | The bed name for unassigned entries is hardcoded as the English string `'Unassigned'`. This is not internationalized -- Japanese users will see "Unassigned" instead of a localized label. | Add an i18n key `roi.unassigned_bed` to both en.json and ja.json, and pass the label from the component rather than hardcoding it in the utility function. Alternative: have `computeRoiByBed` use a sentinel value (e.g., empty string) and let the component resolve the display label via `t()`. |
+| 9 | **SUGGESTION** | `roi-utils.test.ts:61` | The `makeBed` helper sets `latest_status: 'empty'` which is not a valid `BedStatus` value (valid values are: healthy, slow_growth, issue, animal_intrusion, no_data). This works because the tests don't validate the status field, but it's technically incorrect test data. | Change to `latest_status: 'no_data'` for correctness. |
+| 10 | **SUGGESTION** | `DiaryEntryForm.tsx:204` | `harvest_amount` parsing: if the user types a non-numeric string like "abc", `parseFloat("abc")` returns `NaN`, and the falsy check sends `NaN` to the API. The Zod schema catches this server-side, but the UX would be a generic error. | Add client-side validation: if `harvestAmount` is non-empty and `parseFloat` returns `NaN`, show a form error before submitting. Same applies to `revenue` field. |
+| 11 | **SUGGESTION** | `RoiByBedTable.tsx:157-161` | The bed table sort headers use `onClick` on `<th>` elements but lack `role="button"` and keyboard event handlers (`onKeyDown` for Enter/Space). Keyboard-only users cannot sort the table. | Add `role="button"`, `tabIndex={0}`, and an `onKeyDown` handler that calls `handleSort` on Enter/Space. |
+| 12 | **SUGGESTION** | `computeRoiByBed` | Results are not sorted -- the order depends on Map iteration order (insertion order). The component sorts via user interaction, but the initial render order is non-deterministic relative to bed grid position. | Consider sorting results by bed_name alphabetically as a default, or by total_cost descending (matching the default sort state in the component). |
+| 13 | **SUGGESTION** | Test coverage | The 32 roi-utils tests are comprehensive. Missing edge cases: (a) floating-point precision (e.g., costs of 0.1 + 0.2), (b) very large numbers near the max schema limit (99,999,999), (c) entry with harvest revenue but non-harvesting category (should be ignored). These are low-risk but would increase confidence. | Add 2-3 edge case tests for floating-point and boundary values. |
+| 14 | **SUGGESTION** | `RoiDashboard.tsx:175-176` | The "No data" empty state uses `.replace('{{year}}', String(year))` for i18n interpolation. This manual string replacement pattern is used throughout the codebase so it is consistent, but is fragile if placeholder syntax ever changes. | No code change needed. Note for future: consider a centralized `t()` interpolation helper. |
+
+### Cross-Reference: Design vs Implementation
+
+| Design Spec | Implementation | Match |
+|------------|---------------|-------|
+| SYSTEM-DESIGN.md 12.1: 4 harvest fields on DiaryEntry | domain.ts:229-233 | Yes |
+| SYSTEM-DESIGN.md 12.1: Farm.default_currency | domain.ts:64 | Yes |
+| SYSTEM-DESIGN.md 12.2: harvestFieldsRefine guard | schemas/index.ts:521-548 | Yes |
+| SYSTEM-DESIGN.md 12.2: CurrencySchema | schemas/index.ts:44 | Yes |
+| SYSTEM-DESIGN.md 12.3: itemToDiaryEntry maps harvest fields | dynamodb.ts:1668-1671 | Yes |
+| SYSTEM-DESIGN.md 12.3: createDiaryEntry writes harvest fields | dynamodb.ts:1717-1721 | Yes |
+| SYSTEM-DESIGN.md 12.3: updateDiaryEntry handles harvest fields | dynamodb.ts:1805-1808 | Yes |
+| SYSTEM-DESIGN.md 12.4: sumCostsByCurrency (NOT cost_total) | roi-utils.ts:48-59 | Yes |
+| SYSTEM-DESIGN.md 12.4: computeRoi formula | roi-utils.ts:94-129 | Yes |
+| SYSTEM-DESIGN.md 12.4: computeRoiByBed | roi-utils.ts:141-183 | Yes |
+| SYSTEM-DESIGN.md 12.4: computeCostByCategory | roi-utils.ts:190-212 | Yes |
+| SYSTEM-DESIGN.md 12.4: computeMonthlyTrend (12 months) | roi-utils.ts:220-243 | Yes |
+| SYSTEM-DESIGN.md 12.5: RoiDashboard container | RoiDashboard.tsx | Yes |
+| SYSTEM-DESIGN.md 12.5: 4 sub-components | roi/*.tsx (4 files) | Yes |
+| SYSTEM-DESIGN.md 12.5: ROI tab in DiaryPage | DiaryPage.tsx:59,497-501,768-770 | Yes |
+| SYSTEM-DESIGN.md 12.5: Harvest fields in DiaryEntryForm | DiaryEntryForm.tsx:90-101,366-449 | Yes |
+| SYSTEM-DESIGN.md 12.7: i18n keys | en.json, ja.json | Yes, all keys present and matching |
+| SYSTEM-DESIGN.md 12.5: Farm currency in SetupForm | SetupForm.tsx:216-226 | Yes |
+| Currency filtering warning (ARCHITECTURE.md 15.3) | roi-utils.ts:47 comment | Yes |
+| buildEntryResponse includes harvest fields | diary.ts:98-101 | Yes |
+| farmToResponse includes default_currency | farms.ts:150 | Yes |
+| PATCH /farms handles default_currency | farms.ts:542,553 | Yes |
+| POST /farms handles default_currency | farms.ts:499-511 | **NO -- see finding #1** |
+
+### Security Assessment
+
+- **Injection/XSS**: No user content is rendered via innerHTML or unsafe DOM APIs. All values go through Preact's JSX escaping. Cost items, descriptions, and bed names are text-node rendered. Safe.
+- **Authorization**: Diary entry access uses existing `assertFarmAccess` + `loadAndAuthorizeEntry` guards. No new authorization paths introduced. ROI dashboard reads diary entries through the existing paginated GET endpoint. Safe.
+- **Input validation**: Harvest fields are validated by Zod schema (`harvest_amount: min(0), max(999_999)`; `harvest_unit: min(1), max(20)`; `revenue: min(0), max(99_999_999)`). The `harvestFieldsRefine` guard prevents setting harvest fields on non-harvesting entries at schema level. Safe.
+- **Secrets/credentials**: No secrets in code or logs. No new environment variables.
+
+### Accessibility Assessment
+
+- Year selector: `role="group"`, `aria-label` on buttons -- good
+- Summary cards: emoji icons have `aria-hidden="true"` -- good
+- Monthly trend chart: hidden `<table class="sr-only">` provides accessible data -- good
+- Bed table: `aria-sort` on sortable headers -- good
+- Harvest form section: `aria-hidden` when not visible, `tabIndex={-1}` when hidden -- good
+- Category chart: labels include text, emoji has `aria-hidden="true"` -- good
+- Error state: form errors use `role="alert"` -- good
+- Currency mismatch notice: `role="status"` -- good
+- Gap: bed table sort headers lack keyboard support (see finding #11)
+
+### Backward Compatibility Assessment
+
+- Old diary entries (without harvest fields) read correctly: `itemToDiaryEntry` defaults all four harvest fields to `null` via `?? null` -- confirmed
+- Old farms (without default_currency) read correctly: `itemToFarm` defaults to `'JPY'` via `?? 'JPY'` -- confirmed
+- `FarmBaseSchema` has `.default('JPY')` for `default_currency` -- confirmed
+- `DiaryEntryResponseSchema` includes all four harvest fields as `.nullable()` -- confirmed
+- No API contract breaking changes: all new fields are nullable additions -- confirmed
+
+### Verdict
+
+**NEEDS-REMEDIATION**
+
+3 MUST-FIX items block acceptance:
+- #1: POST /farms ignores default_currency from request body
+- #2: CreateFarmRequest type missing default_currency field
+- #3: 16+ TypeScript compilation errors in test fixtures (missing default_currency on mock Farm objects)
+
+5 SHOULD-FIX items should be addressed before finalizing:
+- #4: calcCostTotal mixed-currency documentation
+- #5: Hardcoded color in .roi-excluded-notice
+- #6: Missing dark theme overrides for ROI color tokens
+- #7: Hardcoded "other currency" assumption (comment needed)
+- #8: Hardcoded English "Unassigned" label in roi-utils.ts (i18n gap)
+
+6 SUGGESTION items are non-blocking improvements (#9-#14).

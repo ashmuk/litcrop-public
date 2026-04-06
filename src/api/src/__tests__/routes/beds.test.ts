@@ -86,6 +86,7 @@ const farmFixture = {
   grid_rows: 1,
   grid_cols: 1,
   created_at: '2026-03-17T00:00:00.000Z',
+  default_currency: 'JPY' as const,
 };
 
 beforeEach(() => {

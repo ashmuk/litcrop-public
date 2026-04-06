@@ -766,7 +766,8 @@
     "negative": "マイナス",
     "currency_excluded": "{{count}}件の{{currency}}の記録は合計から除外",
     "harvest_hint": "収穫記録を追加して収益とROIを計算しましょう。",
-    "of_total": "コスト全体に対する割合"
+    "of_total": "コスト全体に対する割合",
+    "unassigned": "未割り当て"
   },
   "profile_picture": {
     "change": "写真を変更",

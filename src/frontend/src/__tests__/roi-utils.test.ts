@@ -307,7 +307,7 @@ describe('computeRoiByBed', () => {
       }),
     ];
     const result = computeRoiByBed(entries, beds, 'JPY');
-    const unassigned = result.find((r) => r.bed_name === 'Unassigned')!;
+    const unassigned = result.find((r) => r.bed_name === '')!;
     expect(unassigned).toBeDefined();
     expect(unassigned.total_cost).toBe(200);
     expect(unassigned.crop_type).toBeNull();

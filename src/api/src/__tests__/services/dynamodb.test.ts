@@ -41,6 +41,7 @@ const farmItem = {
   grid_rows: 2,
   grid_cols: 2,
   created_at: '2026-03-17T00:00:00.000Z',
+  default_currency: 'JPY',
 };
 
 const bedItem = {
@@ -285,6 +286,7 @@ describe('createFarm', () => {
       theme: 'system',
       grid_rows: 2,
       grid_cols: 2,
+      default_currency: 'JPY',
     });
     expect(farm.id).toBe(FARM_ID);
     expect(farm.name).toBe('Test Farm');
@@ -306,6 +308,7 @@ describe('createFarm', () => {
       theme: 'system',
       grid_rows: 1,
       grid_cols: 1,
+      default_currency: 'JPY',
     });
     const calls = ddbMock.commandCalls(TransactWriteCommand);
     expect(calls).toHaveLength(1);
@@ -342,6 +345,7 @@ describe('createFarm', () => {
       theme: 'system',
       grid_rows: 2,
       grid_cols: 3,
+      default_currency: 'JPY',
     });
     // Should create 2x3=6 beds via BatchWrite
     const batchCalls = ddbMock.commandCalls(BatchWriteCommand);

@@ -59,6 +59,7 @@ const farmFixture = {
   grid_rows: 2,
   grid_cols: 3,
   created_at: '2026-04-01T00:00:00Z',
+  default_currency: 'JPY' as const,
 };
 
 const membershipFixture = {

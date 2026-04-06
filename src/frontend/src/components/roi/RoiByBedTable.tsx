@@ -124,7 +124,7 @@ export default function RoiByBedTable({ data, currency }: Props) {
           <div key={bed.bed_id} class="roi-bed-card">
             <div class="roi-bed-card__name">
               {bed.crop_emoji && <span aria-hidden="true">{bed.crop_emoji}</span>}
-              {bed.bed_name}
+              {bed.bed_name || t('roi.unassigned')}
             </div>
             <div class="roi-bed-card__stats">
               <div>
@@ -195,7 +195,7 @@ export default function RoiByBedTable({ data, currency }: Props) {
               <tr key={bed.bed_id}>
                 <td>
                   {bed.crop_emoji && <span aria-hidden="true">{bed.crop_emoji} </span>}
-                  {bed.bed_name}
+                  {bed.bed_name || t('roi.unassigned')}
                 </td>
                 <td class="roi-bed-table__num">{formatCurrency(bed.total_cost, currency)}</td>
                 <td class="roi-bed-table__num">{formatCurrency(bed.total_revenue, currency)}</td>
