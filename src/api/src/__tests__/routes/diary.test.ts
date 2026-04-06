@@ -86,6 +86,10 @@ const entryFixture = {
   created_by: TEST_USER_ID,
   created_at: '2026-04-03T09:00:00Z',
   updated_at: '2026-04-03T09:00:00Z',
+  harvest_amount: null,
+  harvest_unit: null,
+  revenue: null,
+  revenue_currency: null,
 };
 
 // ── Default mock setup ────────────────────────────────────────────
