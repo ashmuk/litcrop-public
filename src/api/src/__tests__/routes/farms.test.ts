@@ -284,6 +284,39 @@ describe('PATCH /api/v1/farms/:farmId', () => {
     });
     expect(res.status).toBe(404);
   });
+
+  // Beta-10: default_currency PATCH tests
+
+  it('T8: set default_currency to USD → 200, response shows USD', async () => {
+    vi.mocked(dynamoRepo.updateFarm).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, default_currency: 'USD' as const });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ default_currency: 'USD' }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['default_currency']).toBe('USD');
+    expect(vi.mocked(dynamoRepo.updateFarm)).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.objectContaining({ default_currency: 'USD' }),
+    );
+  });
+
+  it('T9: set default_currency to invalid value → 400', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ default_currency: 'EUR' }),
+    });
+
+    expect(res.status).toBe(400);
+  });
 });
 
 // ── GET /api/v1/farms/:farmId/plots — now returns 410 Gone ──────

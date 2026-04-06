@@ -103,6 +103,18 @@ beforeEach(() => {
   mockRepo.getUserProfile.mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Test Farmer', preferred_role: 'staff', created_at: '2026-04-01T00:00:00Z' });
 });
 
+// ── Harvest entry fixture (Beta-10) ──────────────────────────────
+
+const harvestEntryFixture = {
+  ...entryFixture,
+  category: 'harvesting' as const,
+  description: 'Harvested tomatoes',
+  harvest_amount: 5.2,
+  harvest_unit: 'kg',
+  revenue: 15000,
+  revenue_currency: 'JPY' as const,
+};
+
 // ── POST /api/v1/farms/:farmId/diary ─────────────────────────────
 
 describe('POST /api/v1/farms/:farmId/diary', () => {
@@ -263,6 +275,135 @@ describe('POST /api/v1/farms/:farmId/diary', () => {
     });
 
     expect(res.status).toBe(400);
+  });
+});
+
+// ── Beta-10: POST diary harvest fields ───────────────────────────
+
+describe('Beta-10: POST /api/v1/farms/:farmId/diary — harvest fields', () => {
+  it('T1: harvesting entry with all harvest fields → 201, response includes harvest_amount/unit/revenue/currency', async () => {
+    mockRepo.createDiaryEntry.mockResolvedValue(harvestEntryFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-04-03',
+        category: 'harvesting',
+        description: 'Harvested tomatoes',
+        harvest_amount: 5.2,
+        harvest_unit: 'kg',
+        revenue: 15000,
+        revenue_currency: 'JPY',
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['harvest_amount']).toBe(5.2);
+    expect(body['harvest_unit']).toBe('kg');
+    expect(body['revenue']).toBe(15000);
+    expect(body['revenue_currency']).toBe('JPY');
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({
+        harvest_amount: 5.2,
+        harvest_unit: 'kg',
+        revenue: 15000,
+        revenue_currency: 'JPY',
+      }),
+    );
+  });
+
+  it('T2: non-harvesting entry with harvest fields → 400 (refine guard rejects)', async () => {
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-04-03',
+        category: 'planting',
+        description: 'Planting with harvest fields',
+        harvest_amount: 5.2,
+        harvest_unit: 'kg',
+      }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('T3: harvesting entry without harvest fields → 201, harvest fields are null', async () => {
+    const noHarvestFixture = {
+      ...harvestEntryFixture,
+      harvest_amount: null,
+      harvest_unit: null,
+      revenue: null,
+      revenue_currency: null,
+    };
+    mockRepo.createDiaryEntry.mockResolvedValue(noHarvestFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-04-03',
+        category: 'harvesting',
+        description: 'Harvested without recording amounts',
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['harvest_amount']).toBeNull();
+    expect(body['harvest_unit']).toBeNull();
+  });
+
+  it('T4: harvesting entry with revenue but no harvest_amount → 201, revenue present', async () => {
+    const revenueOnlyFixture = {
+      ...harvestEntryFixture,
+      harvest_amount: null,
+      harvest_unit: null,
+      revenue: 5000,
+      revenue_currency: 'JPY' as const,
+    };
+    mockRepo.createDiaryEntry.mockResolvedValue(revenueOnlyFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-04-03',
+        category: 'harvesting',
+        description: 'Harvested, revenue recorded',
+        revenue: 5000,
+        revenue_currency: 'JPY',
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['revenue']).toBe(5000);
+  });
+});
+
+// ── Beta-10: GET diary list — harvest fields present ─────────────
+
+describe('Beta-10: GET /api/v1/farms/:farmId/diary — harvest fields in list', () => {
+  it('T6: GET diary list — harvest fields present in response items', async () => {
+    mockRepo.getDiaryEntries.mockResolvedValue({ items: [harvestEntryFixture], nextCursor: null });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<Record<string, unknown>>; meta: Record<string, unknown> };
+    expect(body.data).toHaveLength(1);
+    const item = body.data[0];
+    expect(item['harvest_amount']).toBe(5.2);
+    expect(item['harvest_unit']).toBe('kg');
+    expect(item['revenue']).toBe(15000);
+    expect(item['revenue_currency']).toBe('JPY');
   });
 });
 
@@ -519,6 +660,68 @@ describe('PATCH /api/v1/farms/:farmId/diary/:entryId', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['description']).toBe('Staff self-update');
+  });
+});
+
+// ── Beta-10: PATCH diary harvest fields ──────────────────────────
+
+describe('Beta-10: PATCH /api/v1/farms/:farmId/diary/:entryId — harvest fields', () => {
+  it('T5: add harvest fields to existing harvesting entry → 200, fields updated', async () => {
+    mockRepo.getDiaryEntryById.mockResolvedValue(harvestEntryFixture);
+    const updatedEntry = {
+      ...harvestEntryFixture,
+      harvest_amount: 3.0,
+      revenue: 10000,
+      revenue_currency: 'JPY' as const,
+    };
+    mockRepo.updateDiaryEntry.mockResolvedValue(updatedEntry);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ harvest_amount: 3.0, revenue: 10000, revenue_currency: 'JPY' }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['harvest_amount']).toBe(3.0);
+    expect(body['revenue']).toBe(10000);
+    expect(body['revenue_currency']).toBe('JPY');
+  });
+
+  it('T6: PATCH body with category non-harvesting and harvest fields → 400 (refine guard fires)', async () => {
+    // The body explicitly sets category to 'watering' while providing harvest fields
+    mockRepo.getDiaryEntryById.mockResolvedValue(harvestEntryFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: 'watering', harvest_amount: 3.0 }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('T7: PATCH to clear harvest fields with nulls on harvesting entry → 200', async () => {
+    mockRepo.getDiaryEntryById.mockResolvedValue(harvestEntryFixture);
+    const clearedEntry = {
+      ...harvestEntryFixture,
+      harvest_amount: null,
+      revenue: null,
+      revenue_currency: null,
+    };
+    mockRepo.updateDiaryEntry.mockResolvedValue(clearedEntry);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ harvest_amount: null, revenue: null }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['harvest_amount']).toBeNull();
+    expect(body['revenue']).toBeNull();
   });
 });
 

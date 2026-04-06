@@ -38,6 +38,7 @@ import {
   DiaryEntryResponseSchema,
   DiaryListResponseSchema,
   CreateDiaryEntrySchema,
+  UpdateDiaryEntrySchema,
   FarmBaseSchema,
 } from '@litcrop/shared';
 
@@ -782,5 +783,43 @@ describe('Diary contracts (Beta-7 + Beta-10)', () => {
     if (result.success) {
       expect(result.data.default_currency).toBe('JPY');
     }
+  });
+
+  // Beta-10: UpdateDiaryEntrySchema harvest refine guard
+
+  it('T10: UpdateDiaryEntrySchema accepts harvest fields when category is harvesting', () => {
+    const body = {
+      category: 'harvesting',
+      description: 'Harvested tomatoes',
+      harvest_amount: 5.2,
+      harvest_unit: 'kg',
+      revenue: 15000,
+      revenue_currency: 'JPY',
+    };
+    expect(UpdateDiaryEntrySchema.safeParse(body).success).toBe(true);
+  });
+
+  it('T11: UpdateDiaryEntrySchema rejects harvest fields when category is not harvesting', () => {
+    const body = {
+      category: 'planting',
+      description: 'Planted seeds',
+      harvest_amount: 5.2,
+      harvest_unit: 'kg',
+    };
+    const result = UpdateDiaryEntrySchema.safeParse(body);
+    expect(result.success).toBe(false);
+  });
+
+  it('T12: DiaryEntryResponseSchema accepts entry with null harvest fields (backward compat)', () => {
+    const entry = {
+      ...baseEntryResponse,
+      category: 'planting',
+      description: 'Pre-Beta-10 entry',
+      harvest_amount: null,
+      harvest_unit: null,
+      revenue: null,
+      revenue_currency: null,
+    };
+    expect(DiaryEntryResponseSchema.safeParse(entry).success).toBe(true);
   });
 });

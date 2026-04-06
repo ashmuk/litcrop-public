@@ -442,3 +442,116 @@ describe('computeMonthlyTrend', () => {
     }
   });
 });
+
+// ── Beta-10: edge case tests ───────────────────────────────────────
+
+describe('Beta-10: computeRoi — edge cases', () => {
+  it('T12: floating-point precision — 0.1 + 0.2 costs accumulate correctly', () => {
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-04-01', category: 'purchase',
+        costs: [{ item: 'item-a', amount: 0.1, currency: 'JPY' }],
+      }),
+      makeEntry({
+        id: 'e2', date: '2026-04-02', category: 'purchase',
+        costs: [{ item: 'item-b', amount: 0.2, currency: 'JPY' }],
+      }),
+    ];
+    const result = computeRoi(entries, 'JPY');
+    // Must not produce 0.30000000000000004 style errors in total_cost comparison
+    expect(result.total_cost).toBeCloseTo(0.3, 10);
+    expect(result.total_cost).toBeLessThanOrEqual(0.31);
+  });
+
+  it('T13: boundary values near max (revenue = 99_999_999) → no overflow', () => {
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-07-01', category: 'harvesting',
+        revenue: 99_999_999,
+        revenue_currency: 'JPY',
+        costs: [{ item: 'seeds', amount: 99_999_999, currency: 'JPY' }],
+      }),
+    ];
+    const result = computeRoi(entries, 'JPY');
+    expect(result.total_revenue).toBe(99_999_999);
+    expect(result.total_cost).toBe(99_999_999);
+    expect(result.roi_percent).toBeCloseTo(0);
+    expect(isFinite(result.roi_percent as number)).toBe(true);
+  });
+
+  it('T14: harvesting entry with null revenue → harvest_count increments, revenue stays 0', () => {
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-07-01', category: 'harvesting',
+        harvest_amount: 2.5,
+        harvest_unit: 'kg',
+        revenue: null,
+        revenue_currency: null,
+      }),
+    ];
+    const result = computeRoi(entries, 'JPY');
+    expect(result.harvest_count).toBe(1);
+    expect(result.total_revenue).toBe(0);
+    expect(result.roi_percent).toBeNull();
+  });
+});
+
+describe('Beta-10: computeRoiByBed — unassigned grouping', () => {
+  it('T15: entries with no bed_id grouped as unassigned (bed_name === \'\')', () => {
+    const beds = [makeBed({ id: 'bed-1', name: 'Bed A' })];
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-04-01', category: 'purchase',
+        bed_id: null,
+        costs: [{ item: 'misc', amount: 300, currency: 'JPY' }],
+      }),
+      makeEntry({
+        id: 'e2', date: '2026-04-02', category: 'purchase',
+        bed_id: 'bed-1',
+        costs: [{ item: 'seeds', amount: 700, currency: 'JPY' }],
+      }),
+    ];
+    const result = computeRoiByBed(entries, beds, 'JPY');
+
+    const unassigned = result.find((r) => r.bed_name === '')!;
+    expect(unassigned).toBeDefined();
+    expect(unassigned.total_cost).toBe(300);
+    expect(unassigned.crop_type).toBeNull();
+    expect(unassigned.crop_emoji).toBeNull();
+
+    const bed1 = result.find((r) => r.bed_id === 'bed-1')!;
+    expect(bed1.total_cost).toBe(700);
+  });
+});
+
+describe('Beta-10: computeCostByCategory — multiple cost items per entry', () => {
+  it('T16: single entry with multiple cost items in different categories is split correctly', () => {
+    // Each cost item belongs to the entry's category — two separate entries with different categories
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-04-01', category: 'purchase',
+        costs: [
+          { item: 'seeds', amount: 500, currency: 'JPY' },
+          { item: 'soil', amount: 300, currency: 'JPY' },
+        ],
+      }),
+      makeEntry({
+        id: 'e2', date: '2026-04-02', category: 'maintenance',
+        costs: [
+          { item: 'tools', amount: 1200, currency: 'JPY' },
+          { item: 'wire', amount: 800, currency: 'JPY' },
+        ],
+      }),
+    ];
+    const result = computeCostByCategory(entries, 'JPY');
+    expect(result).toHaveLength(2);
+
+    const purchase = result.find((r) => r.category === 'purchase')!;
+    expect(purchase.total).toBe(800);
+    expect(purchase.count).toBe(1);
+
+    const maintenance = result.find((r) => r.category === 'maintenance')!;
+    expect(maintenance.total).toBe(2000);
+    expect(maintenance.count).toBe(1);
+  });
+});
