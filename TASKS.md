@@ -42,6 +42,7 @@
 - [#280](https://github.com/ashmuk/litcrop/issues/280) **feat(frontend): release notes, what's new, disclaimer, and report bug pages** `area:frontend` `type:feature` `size:M`
 - [#281](https://github.com/ashmuk/litcrop/issues/281) **design(platform): free vs paid tier concept — monetization strategy** `type:feature` `size:M` `status:deferred` — design only, no implementation
 - [#284](https://github.com/ashmuk/litcrop/issues/284) **feat(crops): dynamic crop API integration — OpenFarm/USDA runtime fallback** `area:api` `type:feature` `size:L` `status:deferred` — extends static library from #274
+- [#313](https://github.com/ashmuk/litcrop/issues/313) **chore(auth): review and refine role-based access matrix — admin/owner/staff** `area:api` `area:frontend` `type:docs` `priority:high` `status:queued`
 
 ---
 
@@ -53,6 +54,9 @@
 
 ## Recently Closed
 
+- [#311](https://github.com/ashmuk/litcrop/issues/311) ~~**fix(diary): restore list view toggle**~~ `closed 2026-04-06`
+- [#310](https://github.com/ashmuk/litcrop/issues/310) ~~**bug(auth): deleted user cannot re-register — Cognito sub: prefix**~~ `closed 2026-04-06`
+- [#309](https://github.com/ashmuk/litcrop/issues/309) ~~**fix(gantt): mobile month headers too cramped**~~ `closed 2026-04-06`
 - [#306](https://github.com/ashmuk/litcrop/issues/306) ~~**fix(diary): disable entry type tabs in side-by-side view**~~ `closed 2026-04-06`
 - [#305](https://github.com/ashmuk/litcrop/issues/305) ~~**fix(diary): remove redundant layout toggle next to calendar button**~~ `closed 2026-04-06`
 - [#304](https://github.com/ashmuk/litcrop/issues/304) ~~**fix(diary): show date on each diary entry card**~~ `closed 2026-04-06`
