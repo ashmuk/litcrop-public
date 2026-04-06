@@ -127,6 +127,26 @@ describe('GET /api/v1/beds/:bedId', () => {
     expect((img['tags'] as Array<Record<string, unknown>>)[0]['tag']).toBe('healthy');
   });
 
+  it('returns completed_at in GET response (#297)', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue({ ...bedFixture, completed_at: '2026-04-06' });
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['completed_at']).toBe('2026-04-06');
+  });
+
+  it('returns completed_at null when not set (#297)', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
+    vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['completed_at']).toBeNull();
+  });
+
   it('returns 200 with latest_image null when no images', async () => {
     vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
     vi.mocked(dynamoRepo.getLatestImageForBed).mockResolvedValue(null);

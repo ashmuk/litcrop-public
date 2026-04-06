@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  parseDate,
   toDateString,
   buildCalendarCells,
   buildDotMap,
@@ -39,6 +40,30 @@ function makeEntry(
     category,
   };
 }
+
+// ── parseDate ─────────────────────────────────────────────────────
+
+describe('parseDate', () => {
+  it('parses YYYY-MM-DD to Date at midnight local time', () => {
+    const d = parseDate('2026-04-06');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(3); // 0-based
+    expect(d.getDate()).toBe(6);
+    expect(d.getHours()).toBe(0);
+  });
+
+  it('handles month boundaries correctly', () => {
+    const d = parseDate('2026-01-31');
+    expect(d.getDate()).toBe(31);
+    expect(d.getMonth()).toBe(0);
+  });
+
+  it('handles leap year Feb 29', () => {
+    const d = parseDate('2024-02-29');
+    expect(d.getDate()).toBe(29);
+    expect(d.getMonth()).toBe(1);
+  });
+});
 
 // ── toDateString ───────────────────────────────────────────────────
 
@@ -212,6 +237,11 @@ describe('computeBarPosition', () => {
     expect(pos!.left).toBe(0);
     expect(pos!.width).toBeGreaterThan(0);
     expect(pos!.width).toBeLessThan(100);
+  });
+
+  it('zero-width range (start === end) — returns null', () => {
+    const d = new Date(2026, 3, 15);
+    expect(computeBarPosition(d, d, d, d)).toBeNull();
   });
 
   it('multi-month range: 6-month window works correctly (#297)', () => {
@@ -460,6 +490,14 @@ describe('buildEventDotMap', () => {
 
   it('returns empty map for empty input', () => {
     expect(buildEventDotMap([]).size).toBe(0);
+  });
+
+  it('unknown category falls back to "other" color', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', category: 'unknown_category', date: '2026-04-10' }),
+    ]);
+    const dots = map.get('bed-1')!;
+    expect(dots[0].color).toBe('#9ca3af'); // CATEGORY_META.other.color
   });
 
   it('includes both reserved and actual entries', () => {

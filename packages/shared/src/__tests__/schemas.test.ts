@@ -206,6 +206,24 @@ describe('UpdateBedRequestSchema', () => {
       UpdateBedRequestSchema.safeParse({ notes: 'x'.repeat(500) }).success,
     ).toBe(true);
   });
+
+  it('accepts valid completed_at date (#297)', () => {
+    expect(
+      UpdateBedRequestSchema.safeParse({ completed_at: '2026-04-06' }).success,
+    ).toBe(true);
+  });
+
+  it('accepts completed_at null to clear (#297)', () => {
+    expect(
+      UpdateBedRequestSchema.safeParse({ completed_at: null }).success,
+    ).toBe(true);
+  });
+
+  it('rejects completed_at with invalid format (#297)', () => {
+    expect(
+      UpdateBedRequestSchema.safeParse({ completed_at: 'not-a-date' }).success,
+    ).toBe(false);
+  });
 });
 
 // ── ImageDetailResponseSchema ─────────────────────────────────────

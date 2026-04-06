@@ -84,8 +84,11 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
   // Today indicator position
   const todayPct = ((now.getTime() - rangeStart.getTime()) / totalMs) * 100;
 
-  // Month headers
-  const monthHeaders = useMemo(() => buildMonthHeaders(rangeStart, rangeEnd), []);
+  // Month headers (deps use primitives to avoid stale closure — range is stable per mount)
+  const monthHeaders = useMemo(
+    () => buildMonthHeaders(rangeStart, rangeEnd),
+    [rangeStart.getTime(), rangeEnd.getTime()],
+  );
 
   // Diary data maps
   const actualMap = useMemo(() => buildActualDatesMap(entries), [entries]);
@@ -192,7 +195,7 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
                 style={{ left: `${dotPct}%`, backgroundColor: dot.color }}
                 title={`${CATEGORY_META[dot.category]?.icon ?? '📝'} ${dot.date}`}
                 onClick={(e) => { e.stopPropagation(); onDotClick?.(dot.date, dot.id); }}
-                aria-label={`${dot.category} ${dot.date}`}
+                aria-label={`${t(`diary.categories.${dot.category}`)} ${dot.date}`}
               />
             );
           })}
@@ -214,24 +217,25 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
 
   return (
     <div class="gantt">
-      {/* Header with month columns */}
-      <div class="gantt__header">
-        <div class="gantt__label gantt__label--header" />
-        <div class="gantt__track gantt__track--header">
-          {monthHeaders.map((mh, i) => (
-            <div
-              key={i}
-              class={`gantt__month-header${mh.left <= todayPct && todayPct < mh.left + mh.width ? ' gantt__month-header--current' : ''}`}
-              style={{ left: `${mh.left}%`, width: `${mh.width}%` }}
-            >
-              {mh.label}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Active beds */}
+      {/* Scroll container: header + rows scroll together */}
       <div class="gantt__scroll" ref={scrollRef}>
+        {/* Header with month columns */}
+        <div class="gantt__header">
+          <div class="gantt__label gantt__label--header" />
+          <div class="gantt__track gantt__track--header">
+            {monthHeaders.map((mh, i) => (
+              <div
+                key={i}
+                class={`gantt__month-header${mh.left <= todayPct && todayPct < mh.left + mh.width ? ' gantt__month-header--current' : ''}`}
+                style={{ left: `${mh.left}%`, width: `${mh.width}%` }}
+              >
+                {mh.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Active beds */}
         {activeBeds.map((bed) => renderRow(bed, false))}
 
         {/* Done divider */}
