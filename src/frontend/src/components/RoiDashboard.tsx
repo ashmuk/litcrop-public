@@ -155,7 +155,7 @@ export default function RoiDashboard({ farmId, beds }: Props) {
       {/* Error */}
       {!loading && error && (
         <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
-          <p class="empty-state__title" style={{ color: 'var(--color-error)' }}>{error}</p>
+          <p class="empty-state__heading" style={{ color: 'var(--color-error)' }}>{error}</p>
           <button
             type="button"
             class="btn btn--primary"
@@ -171,10 +171,17 @@ export default function RoiDashboard({ farmId, beds }: Props) {
       {!loading && !error && entries.length === 0 && (
         <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
           <div class="empty-state__icon" aria-hidden="true">📊</div>
-          <p class="empty-state__title">
+          <p class="empty-state__heading">
             {t('roi.no_data_title').replace('{{year}}', String(year))}
           </p>
           <p class="empty-state__body">{t('roi.no_data_body')}</p>
+          <a
+            href="/diary"
+            class="btn btn--primary"
+            style={{ marginTop: 'var(--space-4)', display: 'inline-block' }}
+          >
+            {t('roi.no_data_cta')}
+          </a>
         </div>
       )}
 
@@ -184,11 +191,11 @@ export default function RoiDashboard({ farmId, beds }: Props) {
           <RoiSummaryCards summary={summary} currency={farmCurrency} />
 
           {summary.excluded_entry_count > 0 && (
-            <p class="roi-excluded-notice">
+            <div class="roi-excluded-notice" role="status">
               {t('roi.currency_excluded')
                 .replace('{{count}}', String(summary.excluded_entry_count))
                 .replace('{{currency}}', farmCurrency === 'JPY' ? 'USD' : 'JPY')}
-            </p>
+            </div>
           )}
 
           {summary.harvest_count === 0 && (

@@ -33,6 +33,7 @@ export interface UpdateFarmRequest {
   temp_unit?: TempUnit;
   grid_rows?: number; // 1-5
   grid_cols?: number; // 1-5
+  default_currency?: 'JPY' | 'USD'; // Beta-10: farm default currency for ROI
 }
 
 /** PATCH /api/v1/beds/{bedId} — Assign/Update Crop */

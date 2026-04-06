@@ -600,7 +600,7 @@ export default function DiaryPage() {
 
       {!loading && error && (
         <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
-          <p class="empty-state__title" style={{ color: 'var(--color-error)' }}>{error}</p>
+          <p class="empty-state__heading" style={{ color: 'var(--color-error)' }}>{error}</p>
           <p class="empty-state__body">{t('diary.error_body')}</p>
           <button
             type="button"
@@ -620,7 +620,7 @@ export default function DiaryPage() {
       {!loading && !error && entries.length === 0 && view === 'list' && (
         <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
           <div class="empty-state__icon" aria-hidden="true">📓</div>
-          <p class="empty-state__title">{t('diary.empty')}</p>
+          <p class="empty-state__heading">{t('diary.empty')}</p>
           <button
             type="button"
             class="btn btn--primary"
@@ -634,7 +634,7 @@ export default function DiaryPage() {
 
       {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length === 0 && (
         <div class="empty-state" style={{ padding: 'var(--space-8) var(--space-4)' }}>
-          <p class="empty-state__title">{t('diary.no_matches')}</p>
+          <p class="empty-state__heading">{t('diary.no_matches')}</p>
         </div>
       )}
 

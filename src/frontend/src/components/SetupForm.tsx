@@ -18,6 +18,7 @@ interface FarmConfig {
   longitude: string;
   elevation: string;
   description: string;
+  default_currency: 'JPY' | 'USD';
 }
 
 const EMPTY: FarmConfig = {
@@ -27,6 +28,7 @@ const EMPTY: FarmConfig = {
   longitude: '',
   elevation: '',
   description: '',
+  default_currency: 'JPY',
 };
 
 export default function SetupForm() {
@@ -83,6 +85,7 @@ export default function SetupForm() {
         ...(!isNaN(lat) && !isNaN(lng) && { latitude: lat, longitude: lng }),
         ...(form.elevation && !isNaN(parseFloat(form.elevation)) && { elevation_m: parseFloat(form.elevation) }),
         ...(form.description.trim() && { description: form.description.trim() }),
+        default_currency: form.default_currency,
       };
 
       if (existingFarmId) {
@@ -207,6 +210,19 @@ export default function SetupForm() {
           placeholder="0"
           min="0"
         />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="farm-currency">{t('setup.default_currency')}</label>
+        <select
+          id="farm-currency"
+          class="form-input"
+          value={form.default_currency}
+          onChange={(e) => update('default_currency', (e.target as HTMLSelectElement).value)}
+        >
+          <option value="JPY">{t('setup.currency_jpy')}</option>
+          <option value="USD">{t('setup.currency_usd')}</option>
+        </select>
       </div>
 
       {/* Climate profile */}
