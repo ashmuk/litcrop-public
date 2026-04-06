@@ -1165,29 +1165,23 @@ completed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 
 **API change**: The existing `PATCH /api/v1/beds/:bedId` endpoint already supports arbitrary field updates via `UpdateBedRequestSchema`. Adding `completed_at` to the schema is sufficient. Bed GET/list responses must include the new field.
 
-**"Mark done" semantics**:
+**"Mark done" semantics** — means "current crop cycle finished", NOT "bed retired":
 - Sets `completed_at` to today's date (YYYY-MM-DD)
 - Reversible: PATCH with `completed_at: null` to undo
 - Does NOT delete diary entries or change bed status
+- Bed remains available for replanting — setting new `planted_at` should clear `completed_at`
 - UI shows a confirmation dialog before marking done
+- Mobile UX: icon button (✓) on bed label row (consistent with desktop)
+
+**Beta-10 migration**: When 1:N bed:crop (#279) lands, `completed_at` moves from Bed to CropAssignment entity (~30 min migration)
 
 ### 14.3 Multi-Month Positioning Algorithm
 
-The existing `computeBarPosition()` works for any time range (it takes `monthStart`/`monthEnd` as generic boundaries). The new Gantt view reuses it with a wider range.
+The existing `computeBarPosition()` already works for any time range (it takes start/end boundaries as generic Date params). The new Gantt view calls it directly with a wider range — no wrapper function needed.
 
 ```typescript
-// diary-utils.ts — new function
-export function computeRangePosition(
-  start: Date,
-  end: Date,
-  rangeStart: Date,
-  rangeEnd: Date,
-): { left: number; width: number } | null {
-  // Identical math to computeBarPosition — just renamed for clarity
-  // Clamps [start, end] to visible [rangeStart, rangeEnd]
-  // Returns left% and width% relative to the full range
-  return computeBarPosition(start, end, rangeStart, rangeEnd);
-}
+// GanttChart.tsx — call existing function directly
+const pos = computeBarPosition(plantedDate, harvestDate, rangeStart, rangeEnd);
 ```
 
 **Range calculation:**

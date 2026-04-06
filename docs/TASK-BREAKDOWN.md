@@ -1439,23 +1439,23 @@ T-B5-29 (full test suite) ←── T-B5-17, T-B5-28 ──→ T-B5-30 (build) �
 - **Tests**: Add test for PATCH with completed_at, test clearing (null)
 
 ### T9.3 — Include `completed_at` in bed list response
-- **Files**: `src/api/src/routes/beds.ts`
-- **Work**: Ensure `completed_at` is included in GET response (no migration — absent = active)
+- **Files**: `src/api/src/routes/beds.ts`, `packages/shared/src/types/api.ts`
+- **Work**: Ensure `completed_at` is included in GET response and `FarmBed`/`FarmBedItem` types (no migration — absent = active)
 - **Size**: XS
 
 ## Batch 2: Shared Utilities
 
-### T9.4 — `computeMultiMonthPosition()` utility
+### T9.4 — Extend `computeBarPosition()` for multi-month range
 - **Files**: `src/frontend/src/lib/diary-utils.ts`
-- **Work**: New function: `(startDate, endDate, rangeStart, rangeEnd)` → `{ left%, width% }` across multi-month range (day-based, not month-bounded)
+- **Work**: Reuse existing `computeBarPosition()` with wider `rangeStart`/`rangeEnd` params (day-based). No new function needed — the existing signature already accepts arbitrary date ranges.
 - **Size**: S
 - **Tests**: Unit tests for edge cases (bar before range, after, partial overlap, single day)
 
 ### T9.5 — `buildEventDotMap()` utility
 - **Files**: `src/frontend/src/lib/diary-utils.ts`
-- **Work**: Group diary entries by `bed_id` → `Map<bedId, { date, category, color, id }[]>`. Exclude entries without bed_id. All categories included.
+- **Work**: Group diary entries by `bed_id` → `Map<bedId, { date, category, color, id }[]>`. Exclude entries without bed_id. All 9 categories included (planting, watering, fertilizing, harvesting, weeding, pest_control, maintenance, purchase, other).
 - **Size**: S
-- **Tests**: Unit tests for grouping, null bed_id filtering, color mapping
+- **Tests**: Unit tests for grouping, null bed_id filtering, color mapping, all categories
 
 ## Batch 3: GanttChart Component (Frontend Core)
 
@@ -1498,7 +1498,7 @@ T-B5-29 (full test suite) ←── T-B5-17, T-B5-28 ──→ T-B5-30 (build) �
 - **Work**:
   - Add `'gantt'` to `ViewMode` union
   - Third toggle button in header (📊)
-  - Fetch diary entries with wider date range for gantt view (full visible range)
+  - Fetch diary entries with wider date range for gantt view (paginate with AbortController + loading state)
   - Render `<GanttChart>` when `view === 'gantt'`
   - Cross-reference: `onDotClick` → switch to calendar, set calYear/calMonth/selectedDate
 - **Size**: M

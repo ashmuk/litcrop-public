@@ -53,6 +53,14 @@ The existing `CropTimeline` is rendered inline below the calendar in the diary's
 
 Add `'gantt'` as a third view mode in DiaryPage alongside list and calendar. The GanttChart component handles multi-month rendering, event dots, active/obsolete panes, and scroll. CropTimeline remains the compact single-month summary for the calendar view.
 
+### Semantic Definition: `completed_at`
+
+`completed_at` on a Bed means **"the current crop cycle is finished"** — not "the bed is retired." The bed remains available for replanting. When a new crop is planted (new `planted_at` set), `completed_at` should be cleared to reactivate the bed.
+
+- **Gantt**: Beds with `completed_at` set move to the grayed-out "Done" pane
+- **Crops page**: No changes in Beta-9 — `completed_at` is Gantt-only for now
+- **Reactivation**: Setting new `planted_at` or clearing `completed_at` via PATCH moves the bed back to active
+
 ## Rationale
 
 - **Separation of concerns**: Two distinct UX patterns (single-month inline summary vs. multi-month scrollable interactive chart) should not share a component. The prop surface and rendering logic diverge significantly.
@@ -73,6 +81,15 @@ Add `'gantt'` as a third view mode in DiaryPage alongside list and calendar. The
 - Three view modes in DiaryPage increases the header toggle complexity (3 buttons instead of 2)
 - Diary API must be called with wider date ranges for the Gantt view (up to 400 days), which returns more data per request
 - Bed domain model gains a new optional field (`completed_at`), requiring schema and API changes
+
+### Beta-10 Migration Path (#279: 1:N bed:crop)
+When 1:N bed-to-crop (#279) is introduced, `completed_at` migrates from the `Bed` entity to a new `CropAssignment` entity. Migration steps:
+1. Create `CropAssignment` entity with `bed_id`, `crop_type`, `planted_at`, `expected_harvest`, `completed_at`
+2. Migrate existing Bed crop fields → first CropAssignment per bed
+3. Update GanttChart to render one row per CropAssignment (or stacked bars per bed)
+4. Remove `completed_at`, `crop_type`, `planted_at`, `expected_harvest` from Bed
+
+This is estimated at ~30 minutes of migration work. Designing CropAssignment now would triple #297's scope for a feature 2+ sprints away.
 
 ## Implementation Notes
 
