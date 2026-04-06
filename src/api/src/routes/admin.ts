@@ -15,6 +15,7 @@ import { getUsage } from '../services/budget';
 import { ServiceUnavailableError, ValidationError, NotFoundError } from '../errors';
 import { queryActivities } from '../services/activity';
 import { appEvents } from '../services/events';
+import { isNotificationEnabled } from '../services/notification';
 
 const router = new Hono();
 
@@ -48,6 +49,7 @@ router.get('/stats', async (c) => {
       global_budget: usage.global_budget,
       period_start: usage.period_start,
       reset_at: usage.reset_at,
+      notifications_enabled: isNotificationEnabled,
     });
   } catch (err) {
     console.error('[admin] failed to fetch stats', err);

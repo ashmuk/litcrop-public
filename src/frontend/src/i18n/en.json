@@ -359,6 +359,7 @@
     "grid": "grid",
     "preferred": "Preferred role",
     "notifications": "Notifications",
+    "notifications_disabled": "Email notifications are not configured. Set SES_FROM_EMAIL and ADMIN_EMAILS environment variables in the deployment to enable.",
     "notifications_title": "Email Notification Preferences",
     "notifications_description": "Configure which events trigger admin email notifications.",
     "notifications_section_user": "User Events",

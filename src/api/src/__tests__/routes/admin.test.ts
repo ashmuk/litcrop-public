@@ -108,6 +108,7 @@ describe('GET /api/v1/admin/stats', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['entity_counts']).toEqual(statsFixture);
+    expect(typeof body['notifications_enabled']).toBe('boolean');
   });
 
   it('returns 403 for non-admin authenticated user', async () => {

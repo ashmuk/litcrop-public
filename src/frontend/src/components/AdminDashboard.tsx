@@ -284,6 +284,12 @@ export default function AdminDashboard() {
           />
         )}
         {activeTab === 'notifications' && (
+          <>
+          {stats && stats.notifications_enabled === false && (
+            <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3);font-size:var(--font-size-sm);color:#92400e">
+              {t('admin.notifications_disabled')}
+            </div>
+          )}
           <NotificationsPanel
             isLoading={notifLoading}
             hasError={notifError}
@@ -294,6 +300,7 @@ export default function AdminDashboard() {
             onToggle={togglePref}
             onSave={saveNotifPrefs}
           />
+          </>
         )}
       </div>
     </div>

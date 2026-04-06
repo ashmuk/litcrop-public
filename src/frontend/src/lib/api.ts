@@ -348,6 +348,7 @@ export interface AdminStatsResponse {
   };
   period_start: string;
   reset_at: string;
+  notifications_enabled?: boolean;
 }
 
 /** GET /api/v1/admin/stats — admin only, returns 403 for non-admins */

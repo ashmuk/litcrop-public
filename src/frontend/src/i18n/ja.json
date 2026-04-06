@@ -359,6 +359,7 @@
     "grid": "グリッド",
     "preferred": "希望ロール",
     "notifications": "通知",
+    "notifications_disabled": "メール通知が設定されていません。デプロイ時にSES_FROM_EMAILとADMIN_EMAILS環境変数を設定してください。",
     "notifications_title": "メール通知設定",
     "notifications_description": "管理者メール通知のトリガーとなるイベントを設定します。",
     "notifications_section_user": "ユーザーイベント",

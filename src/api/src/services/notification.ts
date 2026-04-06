@@ -18,6 +18,9 @@ const ADMIN_EMAILS: string[] = (process.env['ADMIN_EMAILS'] ?? '')
 
 const ENABLED = SES_FROM_EMAIL.length > 0 && ADMIN_EMAILS.length > 0;
 
+/** Whether email notifications are configured and active. */
+export const isNotificationEnabled = ENABLED;
+
 // ── SES Client ──────────────────────────────────────────────────
 
 const ses = ENABLED ? new SESClient({ region: SES_REGION }) : null;
