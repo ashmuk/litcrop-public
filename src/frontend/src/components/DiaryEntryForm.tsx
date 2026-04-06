@@ -44,12 +44,24 @@ export interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-function todayIso(): string {
-  const d = new Date();
+function formatLocalDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function todayIso(): string {
+  return formatLocalDate(new Date());
+}
+
+function maxDateIso(): string {
+  const now = new Date();
+  const y = now.getFullYear() + 1;
+  const m = now.getMonth();
+  const d = new Date(y, m, now.getDate());
+  if (d.getMonth() !== m) d.setDate(0); // clamp Feb 29 → Feb 28 on non-leap year
+  return formatLocalDate(d);
 }
 
 // ── Component ─────────────────────────────────────────────────────
@@ -243,6 +255,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 type="date"
                 class="form-input"
                 value={date}
+                max={maxDateIso()}
                 onInput={(e) => {
                   const newDate = (e.target as HTMLInputElement).value;
                   setDate(newDate);

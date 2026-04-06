@@ -42,11 +42,12 @@ interface Props {
   selectedDate: string | null;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  disableNext?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────
 
-export default function DiaryCalendar({ entries, year, month, onDaySelect, selectedDate, onPrevMonth, onNextMonth }: Props) {
+export default function DiaryCalendar({ entries, year, month, onDaySelect, selectedDate, onPrevMonth, onNextMonth, disableNext }: Props) {
   const locale = getLocale();
   const today = todayString();
   const cells = useMemo(() => buildCalendarCells(year, month), [year, month]);
@@ -110,7 +111,9 @@ export default function DiaryCalendar({ entries, year, month, onDaySelect, selec
           type="button"
           class="btn btn--secondary btn--sm"
           onClick={onNextMonth}
+          disabled={disableNext}
           aria-label="Next month"
+          style={disableNext ? 'opacity:0.3;cursor:not-allowed' : undefined}
         >
           ▶
         </button>

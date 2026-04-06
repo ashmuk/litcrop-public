@@ -304,7 +304,14 @@ export default function DiaryPage() {
     else setCalMonth((m) => m - 1);
   }
 
+  // Limit: 12 months ahead of current month (#299)
+  const now = new Date();
+  const maxCalYear = now.getFullYear() + 1;
+  const maxCalMonth = now.getMonth();
+  const canGoNext = calYear < maxCalYear || (calYear === maxCalYear && calMonth <= maxCalMonth);
+
   function handleNextMonth() {
+    if (!canGoNext) return;
     setSelectedDate(null);
     if (calMonth === 11) { setCalYear((y) => y + 1); setCalMonth(0); }
     else setCalMonth((m) => m + 1);
@@ -646,6 +653,7 @@ export default function DiaryPage() {
             selectedDate={selectedDate}
             onPrevMonth={handlePrevMonth}
             onNextMonth={handleNextMonth}
+            disableNext={!canGoNext}
           />
           <CropTimeline beds={beds} entries={entries} year={calYear} month={calMonth} />
           {selectedDate && (
