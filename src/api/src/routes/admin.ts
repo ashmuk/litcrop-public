@@ -221,7 +221,7 @@ router.delete('/users/:userId', async (c) => {
       try {
         await cognitoClient.send(new AdminDeleteUserCommand({
           UserPoolId: COGNITO_USER_POOL_ID,
-          Username: `sub:${targetUserId}`,
+          Username: targetUserId,
         }));
         cognitoDeleted = true;
       } catch (cognitoErr) {
