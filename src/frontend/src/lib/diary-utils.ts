@@ -141,6 +141,53 @@ export function buildActualDatesMap(
   return map;
 }
 
+// ── Event dot map (#297) ──────────────────────────────────────────
+
+/** Dot data for a single diary event on the Gantt chart */
+export interface EventDot {
+  date: string;
+  category: string;
+  color: string;
+  id: string;
+}
+
+/**
+ * Group diary entries by bed_id for Gantt event dot rendering.
+ * Excludes entries without bed_id. All 9 categories are included.
+ * Returns Map<bedId, EventDot[]> sorted by date within each bed.
+ */
+export function buildEventDotMap(
+  entries: DiaryEntryResponse[],
+): Map<string, EventDot[]> {
+  const map = new Map<string, EventDot[]>();
+
+  for (const entry of entries) {
+    if (!entry.bed_id) continue;
+
+    const meta = CATEGORY_META[entry.category] ?? CATEGORY_META['other'];
+    const dot: EventDot = {
+      date: entry.date,
+      category: entry.category,
+      color: meta.color,
+      id: entry.id,
+    };
+
+    const existing = map.get(entry.bed_id);
+    if (existing) {
+      existing.push(dot);
+    } else {
+      map.set(entry.bed_id, [dot]);
+    }
+  }
+
+  // Sort dots by date within each bed
+  for (const dots of map.values()) {
+    dots.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  return map;
+}
+
 // ── Formatting helpers ─────────────────────────────────────────────
 
 /**

@@ -11,6 +11,7 @@ import {
   formatCurrency,
   groupByDate,
   buildActualDatesMap,
+  buildEventDotMap,
 } from '../lib/diary-utils';
 import type { DiaryEntryResponse } from '../lib/api';
 
@@ -212,6 +213,19 @@ describe('computeBarPosition', () => {
     expect(pos!.width).toBeGreaterThan(0);
     expect(pos!.width).toBeLessThan(100);
   });
+
+  it('multi-month range: 6-month window works correctly (#297)', () => {
+    const rangeStart = new Date(2026, 0, 1);  // Jan 1
+    const rangeEnd   = new Date(2026, 5, 30); // Jun 30
+    const planted    = new Date(2026, 2, 15); // Mar 15
+    const harvest    = new Date(2026, 4, 20); // May 20
+    const pos = computeBarPosition(planted, harvest, rangeStart, rangeEnd);
+    expect(pos).not.toBeNull();
+    expect(pos!.left).toBeGreaterThan(10);
+    expect(pos!.left).toBeLessThan(50);
+    expect(pos!.width).toBeGreaterThan(10);
+    expect(pos!.width).toBeLessThan(50);
+  });
 });
 
 // ── formatCurrency ────────────────────────────────────────────────
@@ -362,5 +376,97 @@ describe('buildActualDatesMap', () => {
     delete (entry as Record<string, unknown>)['entry_type'];
     const map = buildActualDatesMap([entry]);
     expect(map.get('bed-1')?.planted).toBe('2026-04-01');
+  });
+});
+
+// ── buildEventDotMap (#297) ──────────────────────────────────────
+
+describe('buildEventDotMap', () => {
+  const makeEntry = (overrides: Partial<DiaryEntryResponse>): DiaryEntryResponse => ({
+    id: 'e1',
+    farm_id: 'f1',
+    date: '2026-04-10',
+    category: 'planting',
+    entry_type: 'actual' as const,
+    description: 'test',
+    time_spent_minutes: null,
+    bed_id: 'bed-1',
+    bed_name: 'A1',
+    photo_ids: [],
+    costs: [],
+    cost_total: 0,
+    created_by: 'u1',
+    created_by_name: null,
+    created_at: '2026-04-10T00:00:00Z',
+    updated_at: '2026-04-10T00:00:00Z',
+    ...overrides,
+  });
+
+  it('groups entries by bed_id with correct dot data', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', category: 'planting', date: '2026-04-10' }),
+    ]);
+    expect(map.size).toBe(1);
+    const dots = map.get('bed-1')!;
+    expect(dots).toHaveLength(1);
+    expect(dots[0]).toEqual({ date: '2026-04-10', category: 'planting', color: '#22c55e', id: 'e1' });
+  });
+
+  it('excludes entries without bed_id', () => {
+    const map = buildEventDotMap([
+      makeEntry({ bed_id: null }),
+    ]);
+    expect(map.size).toBe(0);
+  });
+
+  it('includes all 9 categories', () => {
+    const categories = ['planting', 'watering', 'fertilizing', 'harvesting', 'weeding', 'pest_control', 'maintenance', 'purchase', 'other'];
+    const entries = categories.map((cat, i) =>
+      makeEntry({ id: `e${i}`, bed_id: 'bed-1', category: cat, date: `2026-04-${String(i + 1).padStart(2, '0')}` }),
+    );
+    const map = buildEventDotMap(entries);
+    const dots = map.get('bed-1')!;
+    expect(dots).toHaveLength(9);
+    // Each has a distinct color (except 'other' which shares gray)
+    const colors = dots.map((d) => d.color);
+    expect(colors).toContain('#22c55e'); // planting
+    expect(colors).toContain('#3b82f6'); // watering
+    expect(colors).toContain('#ef4444'); // pest_control
+    expect(colors).toContain('#9ca3af'); // other
+  });
+
+  it('groups multiple beds independently', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', category: 'planting', date: '2026-04-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-2', category: 'watering', date: '2026-04-05' }),
+      makeEntry({ id: 'e3', bed_id: 'bed-1', category: 'harvesting', date: '2026-07-01' }),
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get('bed-1')).toHaveLength(2);
+    expect(map.get('bed-2')).toHaveLength(1);
+  });
+
+  it('sorts dots by date within each bed', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', category: 'harvesting', date: '2026-07-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'planting', date: '2026-04-01' }),
+      makeEntry({ id: 'e3', bed_id: 'bed-1', category: 'watering', date: '2026-05-15' }),
+    ]);
+    const dots = map.get('bed-1')!;
+    expect(dots[0].date).toBe('2026-04-01');
+    expect(dots[1].date).toBe('2026-05-15');
+    expect(dots[2].date).toBe('2026-07-01');
+  });
+
+  it('returns empty map for empty input', () => {
+    expect(buildEventDotMap([]).size).toBe(0);
+  });
+
+  it('includes both reserved and actual entries', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', category: 'planting', entry_type: 'reserved' as const }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'planting', entry_type: 'actual' as const, date: '2026-04-11' }),
+    ]);
+    expect(map.get('bed-1')).toHaveLength(2);
   });
 });
