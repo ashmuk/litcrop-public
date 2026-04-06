@@ -10,6 +10,11 @@ import { CATEGORY_META } from './diary';
 
 // ── Date formatting ────────────────────────────────────────────────
 
+/** Parse a YYYY-MM-DD string to a Date at midnight local time */
+export function parseDate(s: string): Date {
+  return new Date(s + 'T00:00:00');
+}
+
 /** Format a Date object as YYYY-MM-DD */
 export function toDateString(d: Date): string {
   const y = d.getFullYear();

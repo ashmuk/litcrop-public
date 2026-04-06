@@ -7,7 +7,7 @@
  */
 
 import { t } from '../i18n/i18n';
-import { computeBarPosition, buildActualDatesMap, toDateString } from '../lib/diary-utils';
+import { parseDate, computeBarPosition, buildActualDatesMap, toDateString } from '../lib/diary-utils';
 import { getCropName } from '../lib/crops';
 import type { DiaryEntryResponse } from '../lib/api';
 
@@ -24,10 +24,6 @@ interface Props {
   entries?: DiaryEntryResponse[];
   year: number;
   month: number; // 0-based
-}
-
-function parseDate(s: string): Date {
-  return new Date(s + 'T00:00:00');
 }
 
 export default function CropTimeline({ beds, entries = [], year, month }: Props) {

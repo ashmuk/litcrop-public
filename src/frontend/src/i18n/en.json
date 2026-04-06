@@ -104,6 +104,13 @@
     "in_progress": "in progress",
     "today": "Today"
   },
+  "gantt": {
+    "title": "Farm Gantt",
+    "mark_done": "Mark done",
+    "undo_done": "Undo",
+    "done_section": "Done",
+    "empty": "No beds with crop dates yet"
+  },
   "settings": {
     "theme": "Theme",
     "locale": "Language",

@@ -2384,3 +2384,309 @@
   width: 2px;
   height: 8px;
 }
+
+/* ----------------------------------------------------------
+   40. GanttChart — Beta-9 (#297)
+   ---------------------------------------------------------- */
+
+.gantt {
+  margin: 0 var(--space-4);
+}
+
+/* Header row with month labels */
+.gantt__header {
+  display: flex;
+  border-bottom: 2px solid var(--color-gray-100);
+}
+
+.gantt__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Bed label column */
+.gantt__label {
+  width: 80px;
+  min-width: 80px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  left: 0;
+  background: var(--color-surface, #fff);
+  z-index: 2;
+}
+
+.gantt__label--header {
+  font-weight: var(--font-weight-bold);
+}
+
+.gantt__label-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.gantt__label-emoji {
+  margin-right: 2px;
+}
+
+.gantt__done-btn,
+.gantt__undo-btn {
+  background: none;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: 10px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  margin-left: var(--space-1);
+}
+
+.gantt__row:hover .gantt__done-btn,
+.gantt__row:hover .gantt__undo-btn,
+.gantt__row--done .gantt__undo-btn {
+  opacity: 1;
+}
+
+.gantt__done-btn:hover {
+  background: var(--color-primary-light, #E8F5EC);
+  color: var(--color-primary, #1B6B3A);
+  border-color: var(--color-primary, #1B6B3A);
+}
+
+.gantt__undo-btn:hover {
+  background: var(--color-gray-100);
+}
+
+/* Track area (timeline bars + dots) */
+.gantt__track {
+  flex: 1;
+  position: relative;
+  height: 28px;
+  min-width: 600px;
+}
+
+.gantt__track--header {
+  height: 24px;
+  overflow: hidden;
+}
+
+/* Row */
+.gantt__row {
+  display: flex;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.gantt__row--done {
+  opacity: 0.4;
+  filter: grayscale(0.6);
+}
+
+/* Month headers */
+.gantt__month-header {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-right: 1px solid var(--color-gray-100);
+  box-sizing: border-box;
+}
+
+.gantt__month-header--current {
+  color: var(--color-primary, #1B6B3A);
+  background: var(--color-primary-light, #E8F5EC);
+}
+
+/* Month grid lines in track */
+.gantt__month-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-gray-100);
+}
+
+/* Today indicator */
+.gantt__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-danger, #ef4444);
+  z-index: 3;
+}
+
+/* Bars */
+.gantt__bar {
+  position: absolute;
+  top: 20%;
+  height: 60%;
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.gantt__bar--reserved {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(var(--bar-reserved-rgb, 245, 158, 11), 0.25) 0px,
+    rgba(var(--bar-reserved-rgb, 245, 158, 11), 0.25) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  border: 1px dashed rgba(var(--bar-reserved-rgb, 245, 158, 11), 0.6);
+  z-index: 0;
+}
+
+.gantt__bar--actual {
+  background: rgba(var(--bar-actual-rgb, 34, 197, 94), 0.6);
+  border: 1px solid rgba(var(--bar-actual-rgb, 34, 197, 94), 0.8);
+  z-index: 1;
+}
+
+/* Event dots */
+.gantt__dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 4;
+}
+
+.gantt__dot::before {
+  content: '';
+  position: absolute;
+  top: -19px;
+  left: -19px;
+  width: 44px;
+  height: 44px;
+}
+
+/* Done divider */
+.gantt__divider {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-gray-100);
+  border: none;
+  border-bottom: 1px solid var(--color-gray-300);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-500);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.gantt__divider:hover {
+  background: var(--color-gray-300);
+}
+
+.gantt__divider-arrow {
+  font-size: 8px;
+}
+
+/* Empty state */
+.gantt__empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-gray-500);
+  font-size: var(--font-size-sm);
+}
+
+/* Legend */
+.gantt__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.gantt__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.gantt__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.gantt__swatch--reserved {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.4) 0px,
+    rgba(245, 158, 11, 0.4) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  border: 1px dashed rgba(245, 158, 11, 0.6);
+  border-radius: 2px;
+}
+
+.gantt__swatch--actual {
+  background: rgba(34, 197, 94, 0.6);
+  border: 1px solid rgba(34, 197, 94, 0.8);
+  border-radius: 2px;
+}
+
+.gantt__swatch--today {
+  background: var(--color-danger, #ef4444);
+  width: 2px;
+  height: 10px;
+  border-radius: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .gantt__label {
+    width: 40px;
+    min-width: 40px;
+    padding: var(--space-1);
+  }
+
+  .gantt__label-emoji {
+    display: none;
+  }
+
+  .gantt__dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .gantt__track {
+    min-width: 400px;
+  }
+
+  .gantt__done-btn,
+  .gantt__undo-btn {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,277 @@
+/**
+ * GanttChart — Multi-month Gantt with diary event dots (#297)
+ *
+ * Renders bed timelines across a 6-month (mobile) or 12-month (desktop) range.
+ * Features: reserved/actual bars, diary event dots, active/obsolete bed panes.
+ * Separate from CropTimeline (single-month calendar embed).
+ */
+
+import { useState, useMemo, useEffect, useRef } from 'preact/hooks';
+import { t } from '../i18n/i18n';
+import { parseDate, computeBarPosition, buildActualDatesMap, buildEventDotMap, toDateString } from '../lib/diary-utils';
+import { getCropName, getCropEmoji } from '../lib/crops';
+import { CATEGORY_META } from '../lib/diary';
+import type { DiaryEntryResponse } from '../lib/api';
+import type { EventDot } from '../lib/diary-utils';
+
+// ── Types ────────────────────────────────────────────────────────
+
+interface GanttBed {
+  id: string;
+  name: string;
+  crop_type: string | null;
+  planted_at?: string | null;
+  expected_harvest?: string | null;
+  completed_at?: string | null;
+}
+
+interface Props {
+  beds: GanttBed[];
+  entries: DiaryEntryResponse[];
+  onDotClick?: (date: string, entryId: string) => void;
+  onMarkDone?: (bedId: string) => void;
+  onUndoDone?: (bedId: string) => void;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+const LS_DONE_COLLAPSED = 'litcrop-gantt-done-collapsed';
+
+/** Build month headers for the visible range */
+function buildMonthHeaders(rangeStart: Date, rangeEnd: Date): Array<{ label: string; left: number; width: number }> {
+  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
+  if (totalMs <= 0) return [];
+
+  const headers: Array<{ label: string; left: number; width: number }> = [];
+  const locale = typeof window !== 'undefined' ? (localStorage.getItem('litcrop-locale') ?? 'en') : 'en';
+
+  const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+  while (cursor < rangeEnd) {
+    const monthStart = new Date(Math.max(cursor.getTime(), rangeStart.getTime()));
+    const nextMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    const monthEnd = new Date(Math.min(nextMonth.getTime(), rangeEnd.getTime()));
+
+    const left = ((monthStart.getTime() - rangeStart.getTime()) / totalMs) * 100;
+    const width = ((monthEnd.getTime() - monthStart.getTime()) / totalMs) * 100;
+
+    const label = cursor.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', { month: 'short' });
+    headers.push({ label, left, width });
+
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return headers;
+}
+
+// ── Component ────────────────────────────────────────────────────
+
+export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUndoDone }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [doneCollapsed, setDoneCollapsed] = useState(() => {
+    try { return localStorage.getItem(LS_DONE_COLLAPSED) === 'true'; } catch { return false; }
+  });
+
+  // Responsive: 6 months mobile, 12 months desktop
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const monthsAhead = isMobile ? 3 : 9;
+  const monthsBack = 3;
+
+  const now = new Date();
+  const rangeStart = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + monthsAhead + 1, 0, 23, 59, 59);
+  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
+
+  // Today indicator position
+  const todayPct = ((now.getTime() - rangeStart.getTime()) / totalMs) * 100;
+
+  // Month headers
+  const monthHeaders = useMemo(() => buildMonthHeaders(rangeStart, rangeEnd), []);
+
+  // Diary data maps
+  const actualMap = useMemo(() => buildActualDatesMap(entries), [entries]);
+  const dotMap = useMemo(() => buildEventDotMap(entries), [entries]);
+
+  // Split active vs done beds
+  const activeBeds = useMemo(() => beds.filter((b) => !b.completed_at), [beds]);
+  const doneBeds = useMemo(() => beds.filter((b) => !!b.completed_at), [beds]);
+
+  // Auto-scroll to center today on mount
+  useEffect(() => {
+    if (scrollRef.current) {
+      const container = scrollRef.current;
+      const todayOffset = (todayPct / 100) * container.scrollWidth;
+      container.scrollLeft = todayOffset - container.clientWidth / 2;
+    }
+  }, []);
+
+  function toggleDoneCollapsed() {
+    setDoneCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(LS_DONE_COLLAPSED, String(next)); } catch {}
+      return next;
+    });
+  }
+
+  function renderRow(bed: GanttBed, isDone: boolean) {
+    // Reserved bar
+    let reservedPos: { left: number; width: number } | null = null;
+    if (bed.planted_at && bed.expected_harvest) {
+      reservedPos = computeBarPosition(parseDate(bed.planted_at), parseDate(bed.expected_harvest), rangeStart, rangeEnd);
+    }
+
+    // Actual bar
+    let actualPos: { left: number; width: number } | null = null;
+    const actual = actualMap.get(bed.id);
+    if (actual?.planted) {
+      const actualEnd = actual.harvested ?? toDateString(new Date());
+      actualPos = computeBarPosition(parseDate(actual.planted), parseDate(actualEnd), rangeStart, rangeEnd);
+    }
+
+    // Event dots for this bed
+    const dots = dotMap.get(bed.id) ?? [];
+
+    return (
+      <div key={bed.id} class={`gantt__row${isDone ? ' gantt__row--done' : ''}`}>
+        <div class="gantt__label" title={`${bed.name}${bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}`}>
+          <span class="gantt__label-text">
+            {bed.crop_type && <span class="gantt__label-emoji">{getCropEmoji(bed.crop_type)}</span>}
+            {bed.name}
+          </span>
+          {!isDone && onMarkDone && (
+            <button
+              type="button"
+              class="gantt__done-btn"
+              onClick={(e) => { e.stopPropagation(); onMarkDone(bed.id); }}
+              title={t('gantt.mark_done')}
+              aria-label={`${t('gantt.mark_done')}: ${bed.name}`}
+            >✓</button>
+          )}
+          {isDone && onUndoDone && (
+            <button
+              type="button"
+              class="gantt__undo-btn"
+              onClick={(e) => { e.stopPropagation(); onUndoDone(bed.id); }}
+              title={t('gantt.undo_done')}
+              aria-label={`${t('gantt.undo_done')}: ${bed.name}`}
+            >↺</button>
+          )}
+        </div>
+        <div class="gantt__track">
+          {/* Month grid lines */}
+          {monthHeaders.map((mh, i) => (
+            <div key={i} class="gantt__month-line" style={{ left: `${mh.left}%` }} aria-hidden="true" />
+          ))}
+          {/* Today line */}
+          <div class="gantt__today" style={{ left: `${todayPct}%` }} aria-hidden="true" />
+          {/* Reserved bar */}
+          {reservedPos && (
+            <div
+              class="gantt__bar gantt__bar--reserved"
+              style={{ left: `${reservedPos.left}%`, width: `${reservedPos.width}%` }}
+              title={`${t('timeline.reserved')}: ${bed.planted_at} → ${bed.expected_harvest}`}
+            />
+          )}
+          {/* Actual bar */}
+          {actualPos && (
+            <div
+              class="gantt__bar gantt__bar--actual"
+              style={{ left: `${actualPos.left}%`, width: `${actualPos.width}%` }}
+              title={`${t('timeline.actual')}: ${actual?.planted} → ${actual?.harvested ?? t('timeline.in_progress')}`}
+            />
+          )}
+          {/* Event dots */}
+          {dots.map((dot) => {
+            const dotDate = parseDate(dot.date);
+            if (dotDate < rangeStart || dotDate > rangeEnd) return null;
+            const dotPct = ((dotDate.getTime() - rangeStart.getTime()) / totalMs) * 100;
+            return (
+              <button
+                key={dot.id}
+                type="button"
+                class="gantt__dot"
+                style={{ left: `${dotPct}%`, backgroundColor: dot.color }}
+                title={`${CATEGORY_META[dot.category]?.icon ?? '📝'} ${dot.date}`}
+                onClick={(e) => { e.stopPropagation(); onDotClick?.(dot.date, dot.id); }}
+                aria-label={`${dot.category} ${dot.date}`}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const hasActive = activeBeds.length > 0;
+  const hasDone = doneBeds.length > 0;
+
+  if (!hasActive && !hasDone) {
+    return (
+      <div class="gantt">
+        <div class="gantt__empty">{t('gantt.empty')}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div class="gantt">
+      {/* Header with month columns */}
+      <div class="gantt__header">
+        <div class="gantt__label gantt__label--header" />
+        <div class="gantt__track gantt__track--header">
+          {monthHeaders.map((mh, i) => (
+            <div
+              key={i}
+              class={`gantt__month-header${mh.left <= todayPct && todayPct < mh.left + mh.width ? ' gantt__month-header--current' : ''}`}
+              style={{ left: `${mh.left}%`, width: `${mh.width}%` }}
+            >
+              {mh.label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Active beds */}
+      <div class="gantt__scroll" ref={scrollRef}>
+        {activeBeds.map((bed) => renderRow(bed, false))}
+
+        {/* Done divider */}
+        {hasDone && (
+          <button
+            type="button"
+            class="gantt__divider"
+            onClick={toggleDoneCollapsed}
+            aria-expanded={!doneCollapsed}
+          >
+            <span class="gantt__divider-arrow">{doneCollapsed ? '▶' : '▼'}</span>
+            {t('gantt.done_section')} ({doneBeds.length})
+          </button>
+        )}
+
+        {/* Done beds */}
+        {hasDone && !doneCollapsed && doneBeds.map((bed) => renderRow(bed, true))}
+      </div>
+
+      {/* Legend */}
+      <div class="gantt__legend">
+        <span class="gantt__legend-item">
+          <span class="gantt__swatch gantt__swatch--reserved" />
+          {t('timeline.reserved')}
+        </span>
+        <span class="gantt__legend-item">
+          <span class="gantt__swatch gantt__swatch--actual" />
+          {t('timeline.actual')}
+        </span>
+        <span class="gantt__legend-item">
+          <span class="gantt__swatch gantt__swatch--today" />
+          {t('timeline.today')}
+        </span>
+        {Object.entries(CATEGORY_META).slice(0, 5).map(([key, meta]) => (
+          <span key={key} class="gantt__legend-item">
+            <span class="gantt__swatch" style={{ backgroundColor: meta.color }} />
+            {meta.icon}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}

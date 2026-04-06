@@ -104,6 +104,13 @@
     "in_progress": "進行中",
     "today": "今日"
   },
+  "gantt": {
+    "title": "ファームガント",
+    "mark_done": "完了にする",
+    "undo_done": "戻す",
+    "done_section": "完了",
+    "empty": "作物データのあるベッドがありません"
+  },
   "settings": {
     "theme": "テーマ",
     "locale": "言語",
