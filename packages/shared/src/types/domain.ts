@@ -76,6 +76,7 @@ export interface Bed {
   expected_harvest?: string; // ISO 8601 date
   notes?: string;
   latest_status: BedStatus;
+  completed_at?: string;     // ISO 8601 date — current crop cycle done
 }
 
 export interface Image {

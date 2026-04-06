@@ -154,6 +154,7 @@ function bedToSummary(bed: Bed) {
     latest_status: bed.latest_status,
     planted_at: bed.planted_at ?? null,
     expected_harvest: bed.expected_harvest ?? null,
+    completed_at: bed.completed_at ?? null,
   };
 }
 

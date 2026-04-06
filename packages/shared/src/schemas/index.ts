@@ -68,6 +68,9 @@ export const FarmBedSchema = z.object({
   crop_type: z.string().nullable(),
   crop_variety: z.string().nullable(),
   latest_status: BedStatusSchema,
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
 });
 
 /** GET /api/v1/farms/:farmId — farm with flat beds array */
@@ -114,6 +117,7 @@ export const FarmBedItemSchema = z.object({
   latest_image: LatestImageThumbnailSchema.nullable(),
   planted_at: z.string().nullable().optional(),
   expected_harvest: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
 });
 
 /** GET /api/v1/farms/:farmId/beds — envelope */
@@ -147,6 +151,7 @@ export const BedDetailResponseSchema = FarmBedSchema.extend({
   farm_id: z.string(),
   planted_at: z.string().nullable(),
   expected_harvest: z.string().nullable(),
+  completed_at: z.string().nullable(),
   notes: z.string().nullable(),
   latest_image: BedDetailImageSchema.nullable(),
 });
@@ -158,6 +163,7 @@ export const UpdateBedRequestSchema = z.object({
   planted_at: z.string().nullable().optional(),
   expected_harvest: z.string().nullable().optional(),
   notes: z.string().max(500).nullable().optional(),
+  completed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
 // ── Image list schema ─────────────────────────────────────────────

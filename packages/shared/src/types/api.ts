@@ -59,6 +59,7 @@ export interface FarmBed {
   latest_status: BedStatus;
   planted_at?: string | null;
   expected_harvest?: string | null;
+  completed_at?: string | null;
 }
 
 /** GET /api/v1/farms/{farmId} */

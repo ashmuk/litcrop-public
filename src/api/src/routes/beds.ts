@@ -88,6 +88,7 @@ router.get('/:bedId', async (c) => {
     expected_harvest: bed.expected_harvest ?? null,
     notes: bed.notes ?? null,
     latest_status: bed.latest_status,
+    completed_at: bed.completed_at ?? null,
     latest_image: latestImage ? await makeBedDetailImage(latestImage) : null,
   });
 });
@@ -162,6 +163,7 @@ router.patch('/:bedId', async (c) => {
     expected_harvest: updated.expected_harvest ?? null,
     notes: updated.notes ?? null,
     latest_status: updated.latest_status,
+    completed_at: updated.completed_at ?? null,
   });
 });
 

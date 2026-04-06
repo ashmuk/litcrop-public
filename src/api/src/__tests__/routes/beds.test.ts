@@ -228,6 +228,55 @@ describe('PATCH /api/v1/beds/:bedId', () => {
     expect(res.status).toBe(404);
   });
 
+  it('sets completed_at to mark crop cycle done (#297)', async () => {
+    vi.mocked(dynamoRepo.getBedById)
+      .mockResolvedValueOnce(bedFixture)
+      .mockResolvedValueOnce({ ...bedFixture, completed_at: '2026-04-06' });
+    vi.mocked(dynamoRepo.updateBed).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ completed_at: '2026-04-06' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['completed_at']).toBe('2026-04-06');
+    expect(dynamoRepo.updateBed).toHaveBeenCalledWith(
+      FARM_ID, BED_ID, 1, 1, { completed_at: '2026-04-06' },
+    );
+  });
+
+  it('clears completed_at with null to reactivate bed (#297)', async () => {
+    vi.mocked(dynamoRepo.getBedById)
+      .mockResolvedValueOnce({ ...bedFixture, completed_at: '2026-04-06' })
+      .mockResolvedValueOnce({ ...bedFixture, completed_at: undefined });
+    vi.mocked(dynamoRepo.updateBed).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ completed_at: null }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['completed_at']).toBeNull();
+    expect(dynamoRepo.updateBed).toHaveBeenCalledWith(
+      FARM_ID, BED_ID, 1, 1, { completed_at: null },
+    );
+  });
+
+  it('rejects invalid completed_at format → 400', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ completed_at: 'not-a-date' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('returns 400 for invalid body', async () => {
     vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
 

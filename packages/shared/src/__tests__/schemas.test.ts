@@ -153,6 +153,7 @@ describe('BedDetailResponseSchema', () => {
     farm_id: 'farm-1',
     planted_at: null,
     expected_harvest: null,
+    completed_at: null,
     notes: null,
     latest_image: null,
   };
