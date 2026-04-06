@@ -121,8 +121,8 @@ f51cbdf  fix(diary): limit future date selection to 1 year ahead (#299)
 
 ## Remaining for Next Session
 
-1. **Merge PR #300** to main
+1. ~~**Merge PR #300** to main~~ ✅ merged
 2. **Tag v0.42** (or update v0.41)
-3. **#297**: Diary events on Gantt chart — needs `/cc-design` with mockups
-4. **Beta-9**: ROI dashboard (#248) — next sprint
+3. **#297**: Diary events on Gantt chart — moved to **Beta-9** scope, needs `/cc-design` with mockups
+4. **Beta-9**: ROI dashboard (#248) + Gantt events (#297) — next sprint
 5. **SES diagnosis**: Check CloudWatch logs for notification send errors
