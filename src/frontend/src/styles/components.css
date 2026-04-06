@@ -1520,6 +1520,10 @@
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   border-bottom: var(--border-default);
+  background-color: var(--color-surface);
+  position: sticky;
+  top: 96px; /* below diary-header (~56px) + pane-tabs (~40px) */
+  z-index: 98;
 }
 
 .diary-filter-bar__select {
@@ -2085,6 +2089,10 @@
   display: flex;
   border-bottom: 2px solid var(--color-gray-100);
   padding: 0 var(--space-4);
+  background-color: var(--color-surface);
+  position: sticky;
+  top: 56px; /* below diary-header */
+  z-index: 99;
 }
 
 .diary-pane-tab {
