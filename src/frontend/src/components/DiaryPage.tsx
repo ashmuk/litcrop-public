@@ -223,6 +223,13 @@ export default function DiaryPage() {
   });
   const [activeTab, setActiveTab] = useState<'all' | 'reserved' | 'actual'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [layout, setLayout] = useState<'tabs' | 'split'>(() => {
+    try {
+      const saved = localStorage.getItem('litcrop-diary-layout');
+      if (saved === 'tabs' || saved === 'split') return saved;
+    } catch {}
+    return typeof window !== 'undefined' && window.innerWidth >= 768 ? 'split' : 'tabs';
+  });
 
   // Initialise farmId and view from localStorage (synchronous-first)
   useEffect(() => {
@@ -377,6 +384,15 @@ export default function DiaryPage() {
     [entries, selectedDate],
   );
 
+  // Split-pane data (memoized for #291)
+  const splitReserved = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'reserved'), [preFiltered]);
+  const splitActual = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'actual'), [preFiltered]);
+  const splitMonths = useMemo(() => {
+    const set = new Set<string>();
+    preFiltered.forEach((e) => set.add(e.date.slice(0, 7)));
+    return [...set].sort((a, b) => sortOrder === 'oldest' ? a.localeCompare(b) : b.localeCompare(a));
+  }, [preFiltered, sortOrder]);
+
   return (
     <div class="diary-page">
       {/* Page header */}
@@ -404,6 +420,31 @@ export default function DiaryPage() {
               📅
             </button>
           </div>
+          {/* Layout toggle: tabs vs split (#291) */}
+          {view === 'list' && (
+            <div class="diary-header__toggle" role="group" aria-label="Layout mode">
+              <button
+                type="button"
+                class={`diary-header__toggle-btn${layout === 'tabs' ? ' diary-header__toggle-btn--active' : ''}`}
+                aria-pressed={layout === 'tabs'}
+                onClick={() => { setLayout('tabs'); try { localStorage.setItem('litcrop-diary-layout', 'tabs'); } catch {} }}
+                title={t('diary.layout_tabs')}
+                style="font-size:12px"
+              >
+                |||
+              </button>
+              <button
+                type="button"
+                class={`diary-header__toggle-btn${layout === 'split' ? ' diary-header__toggle-btn--active' : ''}`}
+                aria-pressed={layout === 'split'}
+                onClick={() => { setLayout('split'); try { localStorage.setItem('litcrop-diary-layout', 'split'); } catch {} }}
+                title={t('diary.layout_split')}
+                style="font-size:12px"
+              >
+                &#9636;
+              </button>
+            </div>
+          )}
           {/* Add button */}
           <button
             type="button"
@@ -520,7 +561,7 @@ export default function DiaryPage() {
         </div>
       )}
 
-      {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length > 0 && (
+      {!loading && !error && entries.length > 0 && view === 'list' && filteredEntries.length > 0 && layout === 'tabs' && (
         <div class="diary-list">
           {grouped.map(([date, dayEntries]) => (
             <div key={date} class="diary-group">
@@ -539,11 +580,59 @@ export default function DiaryPage() {
               ))}
             </div>
           ))}
-          {/* End of list sentinel */}
           <div class="diary-list__end" aria-label="End of entries">
             <span aria-hidden="true">📓</span>
             <span>{t('diary.no_more_entries')}</span>
           </div>
+        </div>
+      )}
+
+      {/* Split-pane view: month-aligned reserved | actual (#291) */}
+      {!loading && !error && entries.length > 0 && view === 'list' && preFiltered.length > 0 && layout === 'split' && (
+        <div class="diary-split">
+          <div class="diary-split__header">
+            <div class="diary-split__month-col">{t('diary.date')}</div>
+            <div class="diary-split__reserved-col">{t('diary.tab_reserved')} ({splitReserved.length})</div>
+            <div class="diary-split__actual-col">{t('diary.tab_actual')} ({splitActual.length})</div>
+          </div>
+          {splitMonths.map((ym) => {
+            const monthReserved = splitReserved.filter((e) => e.date.startsWith(ym));
+            const monthActual = splitActual.filter((e) => e.date.startsWith(ym));
+            const [y, m] = ym.split('-').map(Number);
+            const loc = getLocale();
+            const monthLabel = new Date(y, m - 1).toLocaleDateString(loc === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: 'short' });
+            return (
+              <div key={ym} class="diary-split__row">
+                <div class="diary-split__month-col diary-split__month-label">{monthLabel}</div>
+                <div class="diary-split__reserved-col">
+                  {monthReserved.length > 0 ? monthReserved.map((entry) => (
+                    <DiaryEntryCard
+                      key={entry.id} entry={entry}
+                      expanded={expandedId === entry.id}
+                      canEdit={canWrite || entry.created_by === currentUser?.sub}
+                      onExpand={() => setExpandedId(entry.id)}
+                      onCollapse={() => setExpandedId(null)}
+                      onEdit={() => handleEdit(entry)}
+                      onDeleted={() => handleEntryDeleted(entry.id)}
+                    />
+                  )) : <div class="diary-split__empty">{t('diary.no_entries')}</div>}
+                </div>
+                <div class="diary-split__actual-col">
+                  {monthActual.length > 0 ? monthActual.map((entry) => (
+                    <DiaryEntryCard
+                      key={entry.id} entry={entry}
+                      expanded={expandedId === entry.id}
+                      canEdit={canWrite || entry.created_by === currentUser?.sub}
+                      onExpand={() => setExpandedId(entry.id)}
+                      onCollapse={() => setExpandedId(null)}
+                      onEdit={() => handleEdit(entry)}
+                      onDeleted={() => handleEntryDeleted(entry.id)}
+                    />
+                  )) : <div class="diary-split__empty">{t('diary.no_entries')}</div>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

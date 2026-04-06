@@ -2120,6 +2120,81 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Split-pane layout (#291) */
+.diary-split {
+  margin: 0 var(--space-4);
+}
+
+.diary-split__header {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  border-bottom: 2px solid var(--color-gray-100);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-gray-500);
+}
+
+.diary-split__header > div {
+  padding: var(--space-2) var(--space-2);
+}
+
+.diary-split__reserved-col {
+  border-left: 1px solid var(--color-gray-100);
+}
+
+.diary-split__actual-col {
+  border-left: 1px solid var(--color-gray-100);
+}
+
+.diary-split__row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  border-bottom: 1px solid var(--color-gray-100);
+  min-height: 60px;
+}
+
+.diary-split__month-col {
+  padding: var(--space-2);
+}
+
+.diary-split__month-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-700);
+  background: var(--color-gray-100);
+  border-right: 1px solid var(--color-gray-100);
+}
+
+.diary-split__reserved-col,
+.diary-split__actual-col {
+  padding: var(--space-2);
+}
+
+.diary-split__empty {
+  color: var(--color-gray-300);
+  font-size: var(--font-size-xs);
+  padding: var(--space-3);
+  text-align: center;
+  font-style: italic;
+}
+
+@media (max-width: 639px) {
+  .diary-split__header,
+  .diary-split__row {
+    grid-template-columns: 1fr;
+  }
+  .diary-split__month-label {
+    border-right: none;
+    border-bottom: 1px solid var(--color-gray-100);
+  }
+  .diary-split__reserved-col,
+  .diary-split__actual-col {
+    border-left: none;
+  }
+}
+
 /* ----------------------------------------------------------
    39. Crop Timeline — Beta-7 (T3.3)
    ---------------------------------------------------------- */
