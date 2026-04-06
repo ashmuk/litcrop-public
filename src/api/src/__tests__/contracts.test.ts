@@ -37,6 +37,8 @@ import {
   UsageResponseSchema,
   DiaryEntryResponseSchema,
   DiaryListResponseSchema,
+  CreateDiaryEntrySchema,
+  FarmBaseSchema,
 } from '@litcrop/shared';
 
 vi.mock('../services/dynamodb', () => ({
@@ -631,27 +633,41 @@ describe('zod contract: GET /api/v1/usage', () => {
   });
 });
 
-// ── Diary contracts (Beta-7) ─────────────────────────────────────
+// ── Diary contracts (Beta-7 + Beta-10) ──────────────────────────
 
-describe('Diary contracts (Beta-7)', () => {
+const baseEntryResponse = {
+  id: 'entry-uuid',
+  farm_id: 'farm-uuid',
+  date: '2026-04-03',
+  entry_type: 'actual',
+  time_spent_minutes: null,
+  bed_id: null,
+  bed_name: null,
+  photo_ids: [],
+  costs: [],
+  cost_total: 0,
+  created_by: 'user-uuid',
+  created_by_name: null,
+  created_at: '2026-04-03T09:00:00Z',
+  updated_at: '2026-04-03T09:00:00Z',
+  harvest_amount: null,
+  harvest_unit: null,
+  revenue: null,
+  revenue_currency: null,
+};
+
+describe('Diary contracts (Beta-7 + Beta-10)', () => {
   it('DiaryEntryResponseSchema validates a complete entry', () => {
     const entry = {
-      id: 'entry-uuid',
-      farm_id: 'farm-uuid',
-      date: '2026-04-03',
+      ...baseEntryResponse,
       category: 'planting',
-      entry_type: 'actual',
       description: 'Planted tomatoes',
       time_spent_minutes: 45,
       bed_id: 'bed-uuid',
       bed_name: 'A1',
-      photo_ids: [],
       costs: [{ item: 'Seeds', amount: 500, currency: 'JPY' }],
       cost_total: 500,
-      created_by: 'user-uuid',
       created_by_name: 'Ash',
-      created_at: '2026-04-03T09:00:00Z',
-      updated_at: '2026-04-03T09:00:00Z',
     };
     expect(DiaryEntryResponseSchema.safeParse(entry).success).toBe(true);
   });
@@ -662,5 +678,108 @@ describe('Diary contracts (Beta-7)', () => {
       meta: { count: 0, limit: 50, next_cursor: null },
     };
     expect(DiaryListResponseSchema.safeParse(list).success).toBe(true);
+  });
+
+  // Beta-10: Harvest & revenue contract tests
+
+  it('DiaryEntryResponseSchema accepts populated harvest fields', () => {
+    const entry = {
+      ...baseEntryResponse,
+      category: 'harvesting',
+      description: 'Harvested tomatoes',
+      time_spent_minutes: 60,
+      bed_id: 'bed-uuid',
+      bed_name: 'A1',
+      created_by_name: 'Ash',
+      harvest_amount: 5.2,
+      harvest_unit: 'kg',
+      revenue: 15000,
+      revenue_currency: 'JPY',
+    };
+    expect(DiaryEntryResponseSchema.safeParse(entry).success).toBe(true);
+  });
+
+  it('CreateDiaryEntrySchema accepts harvest fields when category is harvesting', () => {
+    const body = {
+      date: '2026-04-03',
+      category: 'harvesting',
+      description: 'Harvested tomatoes',
+      harvest_amount: 5.2,
+      harvest_unit: 'kg',
+      revenue: 15000,
+      revenue_currency: 'JPY',
+    };
+    expect(CreateDiaryEntrySchema.safeParse(body).success).toBe(true);
+  });
+
+  it('CreateDiaryEntrySchema rejects harvest fields when category is not harvesting', () => {
+    const body = {
+      date: '2026-04-03',
+      category: 'planting',
+      description: 'Planted seeds',
+      harvest_amount: 5.2,
+      harvest_unit: 'kg',
+    };
+    const result = CreateDiaryEntrySchema.safeParse(body);
+    expect(result.success).toBe(false);
+  });
+
+  it('CreateDiaryEntrySchema allows null harvest fields on non-harvesting category', () => {
+    const body = {
+      date: '2026-04-03',
+      category: 'watering',
+      description: 'Watered beds',
+      harvest_amount: null,
+      harvest_unit: null,
+      revenue: null,
+      revenue_currency: null,
+    };
+    expect(CreateDiaryEntrySchema.safeParse(body).success).toBe(true);
+  });
+
+  it('FarmBaseSchema accepts default_currency JPY and USD', () => {
+    const farm = {
+      id: 'farm-uuid',
+      user_id: 'user-uuid',
+      name: 'Test Farm',
+      description: null,
+      location_text: 'Chichibu',
+      latitude: null,
+      longitude: null,
+      elevation_m: null,
+      climate_zone: null,
+      locale: 'ja',
+      theme: 'earthy',
+      grid_rows: 3,
+      grid_cols: 3,
+      created_at: '2026-04-03T09:00:00Z',
+      default_currency: 'JPY',
+    };
+    expect(FarmBaseSchema.safeParse(farm).success).toBe(true);
+    expect(FarmBaseSchema.safeParse({ ...farm, default_currency: 'USD' }).success).toBe(true);
+  });
+
+  it('FarmBaseSchema defaults default_currency to JPY when absent', () => {
+    const farm = {
+      id: 'farm-uuid',
+      user_id: 'user-uuid',
+      name: 'Test Farm',
+      description: null,
+      location_text: 'Chichibu',
+      latitude: null,
+      longitude: null,
+      elevation_m: null,
+      climate_zone: null,
+      locale: 'ja',
+      theme: 'earthy',
+      grid_rows: 3,
+      grid_cols: 3,
+      created_at: '2026-04-03T09:00:00Z',
+    };
+    const result = FarmBaseSchema.safeParse(farm);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.default_currency).toBe('JPY');
+    }
   });
 });

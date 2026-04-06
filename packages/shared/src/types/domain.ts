@@ -61,6 +61,7 @@ export interface Farm {
   grid_rows: number; // 1-5, bed grid dimensions
   grid_cols: number; // 1-5, bed grid dimensions
   created_at: string; // ISO 8601
+  default_currency: 'JPY' | 'USD'; // Beta-10: default 'JPY' for existing farms
 }
 
 /** Bed — primary crop unit (replaces Field + Bed + Plot from PoC) */
@@ -225,12 +226,18 @@ export interface DiaryEntry {
   created_by: string;
   created_at: string;     // ISO 8601
   updated_at: string;     // ISO 8601
+  // Beta-10: Harvest & revenue fields (only when category === 'harvesting')
+  harvest_amount: number | null;
+  harvest_unit: string | null;
+  revenue: number | null;
+  revenue_currency: 'JPY' | 'USD' | null;
 }
 
-/** Diary entry response — includes resolved bed_name and cost_total */
+/** Diary entry response — includes resolved bed_name, cost_total, and creator name */
 export interface DiaryEntryResponse extends DiaryEntry {
   bed_name: string | null;
   cost_total: number;
+  created_by_name: string | null;
 }
 
 export interface DiscoverableFarm {

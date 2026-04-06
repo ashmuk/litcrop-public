@@ -41,6 +41,8 @@ export const FarmRoleSchema = z.enum(['admin', 'owner', 'staff']);
 
 // ── Farm schemas ─────────────────────────────────────────────────
 
+export const CurrencySchema = z.enum(['JPY', 'USD']);
+
 /** farmToResponse() shape — base farm fields without beds */
 export const FarmBaseSchema = z.object({
   id: z.string(),
@@ -57,6 +59,7 @@ export const FarmBaseSchema = z.object({
   grid_rows: z.number().int().min(1).max(5),
   grid_cols: z.number().int().min(1).max(5),
   created_at: z.string(),
+  default_currency: CurrencySchema.default('JPY'),
 });
 
 /** Bed summary within GET /farms/:farmId response */
@@ -488,11 +491,11 @@ export const DiaryEntryTypeSchema = z.enum(['reserved', 'actual']);
 export const CostItemSchema = z.object({
   item: z.string().min(1).max(100).trim(),
   amount: z.number().min(0).max(99_999_999),
-  currency: z.enum(['JPY', 'USD']),
+  currency: CurrencySchema,
 });
 
-/** POST /api/v1/farms/:farmId/diary — request body */
-export const CreateDiaryEntrySchema = z.object({
+/** Base diary entry fields (shared between create and update schemas) */
+const DiaryEntryFieldsSchema = z.object({
   date: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
     .refine(s => !isNaN(Date.parse(s)), { message: 'Invalid calendar date' })
@@ -507,12 +510,42 @@ export const CreateDiaryEntrySchema = z.object({
   bed_id: z.string().uuid().nullable().optional(),
   photo_ids: z.array(z.string().uuid()).max(5).default([]),
   costs: z.array(CostItemSchema).max(10).default([]),
+  // Beta-10: Harvest & revenue fields
+  harvest_amount: z.number().min(0).max(999_999).nullable().optional(),
+  harvest_unit: z.string().min(1).max(20).trim().nullable().optional(),
+  revenue: z.number().min(0).max(99_999_999).nullable().optional(),
+  revenue_currency: CurrencySchema.nullable().optional(),
 });
 
+/** Returns false when harvest/revenue fields are set on a non-harvesting entry */
+function harvestFieldsRefine(data: {
+  category?: string;
+  harvest_amount?: number | null;
+  harvest_unit?: string | null;
+  revenue?: number | null;
+  revenue_currency?: string | null;
+}): boolean {
+  if (data.category && data.category !== 'harvesting') {
+    return data.harvest_amount == null && data.harvest_unit == null &&
+           data.revenue == null && data.revenue_currency == null;
+  }
+  return true;
+}
+
+const harvestRefineOptions = {
+  message: 'Harvest and revenue fields are only allowed when category is harvesting',
+  path: ['category'] as (string | number)[],
+};
+
+/** POST /api/v1/farms/:farmId/diary — request body */
+export const CreateDiaryEntrySchema = DiaryEntryFieldsSchema
+  .refine(harvestFieldsRefine, harvestRefineOptions);
+
 /** PATCH /api/v1/farms/:farmId/diary/:entryId — request body */
-export const UpdateDiaryEntrySchema = CreateDiaryEntrySchema
+export const UpdateDiaryEntrySchema = DiaryEntryFieldsSchema
   .omit({ date: true })
-  .partial();
+  .partial()
+  .refine(harvestFieldsRefine, harvestRefineOptions);
 
 /** GET /api/v1/farms/:farmId/diary — query params */
 export const DiaryListQuerySchema = z.object({
@@ -547,6 +580,11 @@ export const DiaryEntryResponseSchema = z.object({
   created_by_name: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  // Beta-10: Harvest & revenue fields
+  harvest_amount: z.number().nullable(),
+  harvest_unit: z.string().nullable(),
+  revenue: z.number().nullable(),
+  revenue_currency: CurrencySchema.nullable(),
 });
 
 /** Paginated diary list response */
