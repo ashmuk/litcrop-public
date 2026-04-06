@@ -420,6 +420,8 @@
     "assign_crop": "作物を割り当て",
     "edit_crop": "作物を編集",
     "crop_saved": "作物を更新しました",
+    "plant_method": "開始方法",
+    "seeding_date": "種まき日",
     "save_error": "変更を保存できませんでした",
     "grid_rows": "行数",
     "grid_cols": "列数",

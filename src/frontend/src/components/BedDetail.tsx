@@ -82,6 +82,7 @@ export default function BedDetail() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [plantMethod, setPlantMethod] = useState<'seed' | 'seedling'>('seedling');
 
   const bedId =
     typeof window !== 'undefined'
@@ -230,7 +231,7 @@ export default function BedDetail() {
         if (data.planted_at && data.planted_at !== bed?.planted_at) {
           createDiaryEntry(farmId, {
             date: data.planted_at,
-            category: 'planting',
+            category: plantMethod === 'seed' ? 'seeding' : 'planting',
             entry_type: 'reserved',
             description: `${t('diary.entry_reserved')}: ${getCropDisplay(data.crop_type ?? '')} → ${updated.name}`,
             bed_id: bedId,
@@ -358,7 +359,20 @@ export default function BedDetail() {
             <input id="crop-variety" type="text" class="form-input" value={cropForm.crop_variety} onInput={(e) => setCropForm({ ...cropForm, crop_variety: (e.target as HTMLInputElement).value })} placeholder="e.g. Cherry, Roma" />
           </div>
           <div class="form-group">
-            <label class="form-label" for="planted-at">{t('plot.planted')}</label>
+            <label class="form-label">{t('bed.plant_method')}</label>
+            <div style="display:flex;gap:var(--space-3)">
+              <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
+                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => setPlantMethod('seed')} />
+                🫘 {t('diary.categories.seeding')}
+              </label>
+              <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
+                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => setPlantMethod('seedling')} />
+                🌱 {t('diary.categories.planting')}
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="planted-at">{plantMethod === 'seed' ? t('bed.seeding_date') : t('plot.planted')}</label>
             <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => {
               const planted = (e.target as HTMLInputElement).value;
               const next = { ...cropForm, planted_at: planted };

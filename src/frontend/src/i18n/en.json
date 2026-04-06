@@ -420,6 +420,8 @@
     "assign_crop": "Assign crop",
     "edit_crop": "Edit Crop",
     "crop_saved": "Crop updated",
+    "plant_method": "Start method",
+    "seeding_date": "Seeding date",
     "save_error": "Could not save changes",
     "grid_rows": "Rows",
     "grid_cols": "Columns",
