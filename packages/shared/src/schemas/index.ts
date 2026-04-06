@@ -482,7 +482,7 @@ export const DeviceHeartbeatRequestSchema = z.object({
 // ── Diary schemas (Beta-7) ───────────────────────────────────────
 
 export const DiaryCategorySchema = z.enum([
-  'planting', 'watering', 'fertilizing', 'harvesting',
+  'seeding', 'planting', 'watering', 'fertilizing', 'harvesting',
   'weeding', 'pest_control', 'maintenance', 'purchase', 'other',
 ]);
 

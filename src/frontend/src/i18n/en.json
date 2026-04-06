@@ -723,6 +723,7 @@
     "harvest_unit_bag": "bag",
     "harvest_unit_box": "box",
     "categories": {
+      "seeding": "Seeding",
       "planting": "Planting",
       "watering": "Watering",
       "fertilizing": "Fertilizing",

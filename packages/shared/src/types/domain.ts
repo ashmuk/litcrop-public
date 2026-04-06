@@ -198,7 +198,7 @@ export interface JoinRequest {
 
 /** Diary entry work category */
 export type DiaryCategory =
-  | 'planting' | 'watering' | 'fertilizing' | 'harvesting'
+  | 'seeding' | 'planting' | 'watering' | 'fertilizing' | 'harvesting'
   | 'weeding' | 'pest_control' | 'maintenance' | 'purchase' | 'other';
 
 /** Diary entry type — reserved (planned) or actual (logged) */

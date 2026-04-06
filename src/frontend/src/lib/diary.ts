@@ -5,6 +5,7 @@ export function getLocale(): string {
 
 /** Diary category metadata — shared by DiaryPage and DiaryEntryForm */
 export const CATEGORY_META: Record<string, { icon: string; color: string; key: string }> = {
+  seeding:      { icon: '🫘', color: '#10b981', key: 'seeding' },
   planting:     { icon: '🌱', color: '#22c55e', key: 'planting' },
   watering:     { icon: '💧', color: '#3b82f6', key: 'watering' },
   fertilizing:  { icon: '🧪', color: '#a855f7', key: 'fertilizing' },
