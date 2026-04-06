@@ -21,6 +21,48 @@ const ENABLED = SES_FROM_EMAIL.length > 0 && ADMIN_EMAILS.length > 0;
 /** Whether email notifications are configured and active. */
 export const isNotificationEnabled = ENABLED;
 
+/** Send a diagnostic test email to all admins. Returns detailed result. */
+export async function sendTestEmail(): Promise<{
+  success: boolean;
+  enabled: boolean;
+  from: string;
+  to: string[];
+  error?: string;
+}> {
+  if (!ENABLED || !ses) {
+    return {
+      success: false,
+      enabled: ENABLED,
+      from: SES_FROM_EMAIL || '(not set)',
+      to: ADMIN_EMAILS,
+      error: !SES_FROM_EMAIL
+        ? 'SES_FROM_EMAIL environment variable is not set'
+        : 'ADMIN_EMAILS environment variable is not set',
+    };
+  }
+  try {
+    await ses.send(
+      new SendEmailCommand({
+        Source: SES_FROM_EMAIL,
+        Destination: { ToAddresses: ADMIN_EMAILS },
+        Message: {
+          Subject: { Data: '[LitCrop] Test notification', Charset: 'UTF-8' },
+          Body: {
+            Text: {
+              Data: 'This is a test email from LitCrop admin dashboard.\n\nIf you received this, email notifications are working correctly.',
+              Charset: 'UTF-8',
+            },
+          },
+        },
+      }),
+    );
+    return { success: true, enabled: true, from: SES_FROM_EMAIL, to: ADMIN_EMAILS };
+  } catch (err) {
+    console.error('[notification] sendTestEmail failed:', err);
+    return { success: false, enabled: true, from: SES_FROM_EMAIL, to: ADMIN_EMAILS, error: 'SES send failed — check server logs for details' };
+  }
+}
+
 // ── SES Client ──────────────────────────────────────────────────
 
 const ses = ENABLED ? new SESClient({ region: SES_REGION }) : null;

@@ -15,7 +15,7 @@ import { getUsage } from '../services/budget';
 import { ServiceUnavailableError, ValidationError, NotFoundError } from '../errors';
 import { queryActivities } from '../services/activity';
 import { appEvents } from '../services/events';
-import { isNotificationEnabled } from '../services/notification';
+import { isNotificationEnabled, sendTestEmail } from '../services/notification';
 
 const router = new Hono();
 
@@ -98,6 +98,25 @@ router.get('/farms', async (c) => {
     console.error('[admin] failed to fetch farms', err);
     throw new ServiceUnavailableError('Unable to retrieve farm list');
   }
+});
+
+// ── POST /api/v1/admin/notifications/test ────────────────────────
+// Send a diagnostic test email to all admins. Returns detailed result.
+
+let lastTestEmailAt = 0;
+
+router.post('/notifications/test', async (c) => {
+  const result = requireAdmin(c);
+  if (result instanceof Response) return result;
+
+  const now = Date.now();
+  if (now - lastTestEmailAt < 60_000) {
+    throw new ValidationError('Test email already sent recently. Wait 60 seconds.');
+  }
+  lastTestEmailAt = now;
+
+  const testResult = await sendTestEmail();
+  return c.json(testResult, testResult.success ? 200 : 500);
 });
 
 // ── GET /api/v1/admin/activity ────────────────────────────────────

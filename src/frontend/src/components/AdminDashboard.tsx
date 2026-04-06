@@ -7,7 +7,7 @@
 
 import type { JSX } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { getAdminStats, getAdminUsers, getAdminFarms, getNotificationPrefs, updateNotificationPrefs, getAdminActivities, adminDeleteUser, ApiError } from '../lib/api';
+import { getAdminStats, getAdminUsers, getAdminFarms, getNotificationPrefs, updateNotificationPrefs, getAdminActivities, adminDeleteUser, adminTestNotification, ApiError } from '../lib/api';
 import type { AdminStatsResponse, AdminUserItem, AdminFarmItem, NotificationPrefsResponse, ActivityItem, ActivityResponse } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
@@ -290,6 +290,7 @@ export default function AdminDashboard() {
               {t('admin.notifications_disabled')}
             </div>
           )}
+          <TestEmailButton />
           <NotificationsPanel
             isLoading={notifLoading}
             hasError={notifError}
@@ -698,6 +699,48 @@ interface NotificationsPanelProps {
   hasSaveError: boolean;
   onToggle: (key: string) => void;
   onSave: () => void;
+}
+
+function TestEmailButton() {
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ success: boolean; error?: string } | null>(null);
+
+  async function handleTest() {
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await adminTestNotification();
+      setResult(res);
+      if (res.success) {
+        showToast(t('admin.test_email_sent'), 'success');
+      } else {
+        showToast(res.error ?? t('admin.test_email_failed'), 'error');
+      }
+    } catch {
+      setResult({ success: false, error: 'Network error' });
+      showToast(t('admin.test_email_failed'), 'error');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div style="margin-bottom:var(--space-3);display:flex;align-items:center;gap:var(--space-3)">
+      <button
+        class="btn btn--secondary btn--sm"
+        onClick={handleTest}
+        disabled={sending}
+        style="font-size:var(--font-size-sm)"
+      >
+        {sending ? '...' : t('admin.test_email')}
+      </button>
+      {result && (
+        <span style={`font-size:var(--font-size-xs);color:${result.success ? '#16a34a' : 'var(--color-error)'}`}>
+          {result.success ? t('admin.test_email_success') : (result.error ?? t('admin.test_email_failed'))}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function NotificationsPanel({

@@ -41,9 +41,16 @@ vi.mock('../../services/activity', () => ({
   initActivitySubscriptions: vi.fn(),
 }));
 
+vi.mock('../../services/notification', () => ({
+  isNotificationEnabled: false,
+  sendTestEmail: vi.fn(),
+  default: undefined,
+}));
+
 import { getUsage } from '../../services/budget';
 import { dynamoRepo } from '../../services/dynamodb';
 import { queryActivities } from '../../services/activity';
+import { sendTestEmail } from '../../services/notification';
 
 const adminHeaders = () => makeAuthHeaders(ADMIN_USER_ID, ADMIN_EMAIL);
 
@@ -359,5 +366,46 @@ describe('DELETE /api/v1/admin/users/:userId', () => {
       headers: adminHeaders(),
     });
     expect(res.status).toBe(503);
+  });
+});
+
+// ── POST /api/v1/admin/notifications/test (#298) ────────────────
+
+describe('POST /api/v1/admin/notifications/test', () => {
+  it('non-admin gets 403', async () => {
+    const res = await app.request('/api/v1/admin/notifications/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: '{}',
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('admin gets test result', async () => {
+    vi.mocked(sendTestEmail).mockResolvedValue({
+      success: false,
+      enabled: false,
+      from: '(not set)',
+      to: [],
+      error: 'SES_FROM_EMAIL not set',
+    });
+
+    const res = await app.request('/api/v1/admin/notifications/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+      body: '{}',
+    });
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['success']).toBe(false);
+  });
+
+  it('unauthenticated gets 401', async () => {
+    const res = await app.request('/api/v1/admin/notifications/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    expect(res.status).toBe(401);
   });
 });
