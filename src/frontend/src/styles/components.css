@@ -2691,9 +2691,10 @@
 /* Mobile responsive */
 @media (max-width: 767px) {
   .gantt__label {
-    width: 40px;
-    min-width: 40px;
+    width: 48px;
+    min-width: 48px;
     padding: var(--space-1);
+    font-size: 11px;
   }
 
   .gantt__label-emoji {
@@ -2706,7 +2707,11 @@
   }
 
   .gantt__track {
-    min-width: 400px;
+    min-width: 560px;
+  }
+
+  .gantt__month-header {
+    font-size: 11px;
   }
 
   .gantt__done-btn,

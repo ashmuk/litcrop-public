@@ -225,7 +225,7 @@ export default function DiaryPage() {
   });
   const [activeTab, setActiveTab] = useState<'all' | 'reserved' | 'actual'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [layout] = useState<'tabs' | 'split'>(() => {
+  const [layout, setLayout] = useState<'tabs' | 'split'>(() => {
     try {
       const saved = localStorage.getItem('litcrop-diary-layout');
       if (saved === 'tabs' || saved === 'split') return saved;
@@ -560,6 +560,18 @@ export default function DiaryPage() {
             style="flex-shrink:0;font-size:var(--font-size-xs);padding:var(--space-1) var(--space-2)"
           >
             {sortOrder === 'newest' ? '↓ ' : '↑ '}{sortOrder === 'newest' ? t('diary.sort_newest') : t('diary.sort_oldest')}
+          </button>
+          <button
+            class="btn btn--secondary btn--sm"
+            onClick={() => {
+              const next = layout === 'tabs' ? 'split' : 'tabs';
+              setLayout(next);
+              try { localStorage.setItem('litcrop-diary-layout', next); } catch {}
+            }}
+            title={layout === 'tabs' ? t('diary.layout_split') : t('diary.layout_tabs')}
+            style="flex-shrink:0;font-size:var(--font-size-xs);padding:var(--space-1) var(--space-2)"
+          >
+            {layout === 'tabs' ? '⇄' : '≡'}
           </button>
         </div>
       )}
