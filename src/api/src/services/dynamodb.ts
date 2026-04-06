@@ -99,6 +99,7 @@ function itemToFarm(item: Record<string, unknown>, farmId: string): Farm {
     grid_rows: (item['grid_rows'] as number) ?? 1,
     grid_cols: (item['grid_cols'] as number) ?? 1,
     created_at: item['created_at'] as string,
+    default_currency: (item['default_currency'] as Farm['default_currency']) ?? 'JPY',
   };
 }
 
@@ -752,7 +753,7 @@ export class DynamoRepository {
 
   async updateFarm(
     farmId: string,
-    updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>>,
+    updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>>,
   ): Promise<void> {
     const expressions: string[] = [];
     const values: Record<string, unknown> = {};
@@ -1664,6 +1665,10 @@ export class DynamoRepository {
       bed_id: (item['bed_id'] as string) ?? null,
       photo_ids: (item['photo_ids'] as string[]) ?? [],
       costs: (item['costs'] as CostItem[]) ?? [],
+      harvest_amount: (item['harvest_amount'] as number) ?? null,
+      harvest_unit: (item['harvest_unit'] as string) ?? null,
+      revenue: (item['revenue'] as number) ?? null,
+      revenue_currency: (item['revenue_currency'] as DiaryEntry['revenue_currency']) ?? null,
       created_by: item['created_by'] as string,
       created_at: item['created_at'] as string,
       updated_at: item['updated_at'] as string,
@@ -1682,11 +1687,15 @@ export class DynamoRepository {
       bed_id: string | null;
       photo_ids: string[];
       costs: CostItem[];
+      harvest_amount?: number | null;
+      harvest_unit?: string | null;
+      revenue?: number | null;
+      revenue_currency?: DiaryEntry['revenue_currency'];
       created_by: string;
     },
   ): Promise<DiaryEntry> {
     const now = new Date().toISOString();
-    const item = {
+    const item: Record<string, unknown> = {
       PK: pk.farm(farmId),
       SK: sk.diary(data.date, entryId),
       GSI1PK: `${DDB_KEY_PREFIXES.DIARY}${entryId}`,
@@ -1705,18 +1714,18 @@ export class DynamoRepository {
       created_at: now,
       updated_at: now,
     };
+    // Only write harvest/revenue attributes when non-null (avoids empty attributes)
+    if (data.harvest_amount != null) item['harvest_amount'] = data.harvest_amount;
+    if (data.harvest_unit != null) item['harvest_unit'] = data.harvest_unit;
+    if (data.revenue != null) item['revenue'] = data.revenue;
+    if (data.revenue_currency != null) item['revenue_currency'] = data.revenue_currency;
+
     await ddb.send(new PutCommand({
       TableName: TABLE_NAME,
       Item: item,
       ConditionExpression: 'attribute_not_exists(SK)',
     }));
-    return {
-      id: entryId,
-      farm_id: farmId,
-      ...data,
-      created_at: now,
-      updated_at: now,
-    };
+    return this.itemToDiaryEntry(item, entryId);
   }
 
   async getDiaryEntryById(entryId: string): Promise<DiaryEntry | null> {
@@ -1793,6 +1802,10 @@ export class DynamoRepository {
       bed_id: string | null;
       photo_ids: string[];
       costs: CostItem[];
+      harvest_amount: number | null;
+      harvest_unit: string | null;
+      revenue: number | null;
+      revenue_currency: DiaryEntry['revenue_currency'];
     }>,
   ): Promise<DiaryEntry> {
     // Split into SET (non-null values) and REMOVE (null values) per updateBed pattern.

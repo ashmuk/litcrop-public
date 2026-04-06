@@ -37,13 +37,19 @@ function calcCostTotal(entry: DiaryEntry): number {
  * Resolve a bed_id to its bed_name.
  * Returns null if bed_id is null or the bed has been deleted.
  */
-async function resolveBedName(bedId: string | null): Promise<string | null> {
+async function resolveBedName(bedId: string | null, nameCache?: Map<string, string | null>): Promise<string | null> {
   if (!bedId) return null;
+  if (nameCache?.has(bedId)) return nameCache.get(bedId) ?? null;
   try {
     const bed = await dynamoRepo.getBedById(bedId);
-    return bed.name;
+    const name = bed.name;
+    nameCache?.set(bedId, name);
+    return name;
   } catch (err) {
-    if (err instanceof NotFoundError) return null;
+    if (err instanceof NotFoundError) {
+      nameCache?.set(bedId, null);
+      return null;
+    }
     throw err;
   }
 }
@@ -74,15 +80,7 @@ async function buildEntryResponse(
   bedNameCache?: Map<string, string | null>,
   creatorNameCache?: Map<string, string | null>,
 ) {
-  let bed_name: string | null = null;
-  if (entry.bed_id) {
-    if (bedNameCache?.has(entry.bed_id)) {
-      bed_name = bedNameCache.get(entry.bed_id) ?? null;
-    } else {
-      bed_name = await resolveBedName(entry.bed_id);
-      bedNameCache?.set(entry.bed_id, bed_name);
-    }
-  }
+  const bed_name = await resolveBedName(entry.bed_id, bedNameCache);
   const created_by_name = await resolveCreatorName(entry.created_by, creatorNameCache);
   return {
     id: entry.id,
@@ -97,6 +95,10 @@ async function buildEntryResponse(
     photo_ids: entry.photo_ids,
     costs: entry.costs,
     cost_total: calcCostTotal(entry),
+    harvest_amount: entry.harvest_amount,
+    harvest_unit: entry.harvest_unit,
+    revenue: entry.revenue,
+    revenue_currency: entry.revenue_currency,
     created_by: entry.created_by,
     created_by_name,
     created_at: entry.created_at,

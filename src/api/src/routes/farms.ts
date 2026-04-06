@@ -119,6 +119,13 @@ function validateFarmFields(body: Record<string, unknown>, required?: string[]) 
     }
   }
 
+  const default_currency = body['default_currency'];
+  if (default_currency !== undefined && default_currency !== null) {
+    if (default_currency !== 'JPY' && default_currency !== 'USD') {
+      errors.push("Invalid value for 'default_currency': must be 'JPY' or 'USD'");
+    }
+  }
+
   if (errors.length > 0) {
     throw new ValidationError(errors[0], { errors });
   }
@@ -140,6 +147,7 @@ function farmToResponse(farm: Farm) {
     grid_rows: farm.grid_rows,
     grid_cols: farm.grid_cols,
     created_at: farm.created_at,
+    default_currency: farm.default_currency,
   };
 }
 
@@ -531,7 +539,7 @@ router.patch('/:farmId', async (c) => {
 
   validateFarmFields(body);
 
-  const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols'>> = {};
+  const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>> = {};
   if (body['name'] !== undefined) updates['name'] = (body['name'] as string).trim();
   if (body['description'] !== undefined) updates['description'] = body['description'] as string | undefined;
   if (body['location_text'] !== undefined) updates['location_text'] = (body['location_text'] as string).trim();
@@ -542,6 +550,7 @@ router.patch('/:farmId', async (c) => {
   if (body['theme'] !== undefined) updates['theme'] = body['theme'] as Farm['theme'];
   if (body['grid_rows'] !== undefined) updates['grid_rows'] = body['grid_rows'] as number;
   if (body['grid_cols'] !== undefined) updates['grid_cols'] = body['grid_cols'] as number;
+  if (body['default_currency'] !== undefined) updates['default_currency'] = body['default_currency'] as Farm['default_currency'];
 
   try {
     await dynamoRepo.updateFarm(farmId, updates);
