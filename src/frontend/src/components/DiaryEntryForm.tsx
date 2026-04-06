@@ -87,6 +87,18 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
       : [],
   );
 
+  // Harvest fields (Beta-10: shown when category === 'harvesting')
+  const [harvestAmount, setHarvestAmount] = useState(
+    entry?.harvest_amount != null ? String(entry.harvest_amount) : '',
+  );
+  const [harvestUnit, setHarvestUnit] = useState(entry?.harvest_unit ?? '');
+  const [revenue, setRevenue] = useState(
+    entry?.revenue != null ? String(entry.revenue) : '',
+  );
+  const [revenueCurrency, setRevenueCurrency] = useState<'JPY' | 'USD'>(
+    entry?.revenue_currency ?? 'JPY',
+  );
+
   // ── Beds ──────────────────────────────────────────────────────
   const [beds, setBeds] = useState<FarmBedItem[]>([]);
   const [bedsLoading, setBedsLoading] = useState(true);
@@ -179,7 +191,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
         currency: c.currency,
       }));
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       date,
       category,
       entry_type: entryType,
@@ -188,14 +200,19 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
       bed_id: bedId || null,
       photo_ids: entry?.photo_ids ?? [],
       costs: parsedCosts,
+      // Harvest fields (Beta-10)
+      harvest_amount: category === 'harvesting' && harvestAmount ? parseFloat(harvestAmount) : null,
+      harvest_unit: category === 'harvesting' && harvestUnit ? harvestUnit.trim() : null,
+      revenue: category === 'harvesting' && revenue ? parseFloat(revenue) : null,
+      revenue_currency: category === 'harvesting' && revenue ? revenueCurrency : null,
     };
 
     setSubmitting(true);
     try {
       if (isEdit && entry) {
-        await updateDiaryEntry(farmId, entry.id, payload as Record<string, unknown>);
+        await updateDiaryEntry(farmId, entry.id, payload);
       } else {
-        await createDiaryEntry(farmId, payload);
+        await createDiaryEntry(farmId, payload as Parameters<typeof createDiaryEntry>[1]);
       }
       showToast(t('diary.save_success'), 'success');
       onSave();
@@ -309,7 +326,16 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 id="diary-category"
                 class="form-select"
                 value={category}
-                onChange={(e) => setCategory((e.target as HTMLSelectElement).value)}
+                onChange={(e) => {
+                  const newCat = (e.target as HTMLSelectElement).value;
+                  setCategory(newCat);
+                  if (newCat !== 'harvesting') {
+                    setHarvestAmount('');
+                    setHarvestUnit('');
+                    setRevenue('');
+                    setRevenueCurrency('JPY');
+                  }
+                }}
                 required
               >
                 {CATEGORY_KEYS.map((key) => (
@@ -335,6 +361,91 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 required
                 placeholder={t('diary.description_placeholder')}
               />
+            </div>
+
+            {/* Harvest fields (Beta-10: shown when category === 'harvesting') */}
+            <div
+              class="diary-harvest-section"
+              style={{ maxHeight: category === 'harvesting' ? '400px' : '0' }}
+              aria-hidden={category !== 'harvesting'}
+            >
+              <fieldset class="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend class="form-label">{t('diary.harvest_section_label')}</legend>
+                <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                  <div style={{ flex: 1 }}>
+                    <label class="form-label" for="diary-harvest-amount" style={{ fontSize: 'var(--font-size-xs)' }}>
+                      {t('diary.harvest_amount')}
+                    </label>
+                    <input
+                      id="diary-harvest-amount"
+                      type="number"
+                      class="form-input"
+                      value={harvestAmount}
+                      onInput={(e) => setHarvestAmount((e.target as HTMLInputElement).value)}
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      tabIndex={category === 'harvesting' ? 0 : -1}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label class="form-label" for="diary-harvest-unit" style={{ fontSize: 'var(--font-size-xs)' }}>
+                      {t('diary.harvest_unit')}
+                    </label>
+                    <input
+                      id="diary-harvest-unit"
+                      type="text"
+                      class="form-input"
+                      value={harvestUnit}
+                      onInput={(e) => setHarvestUnit((e.target as HTMLInputElement).value)}
+                      list="harvest-units"
+                      placeholder="kg"
+                      tabIndex={category === 'harvesting' ? 0 : -1}
+                    />
+                    <datalist id="harvest-units">
+                      <option value="kg" />
+                      <option value="g" />
+                      <option value="bunch" />
+                      <option value="piece" />
+                      <option value="bag" />
+                      <option value="box" />
+                    </datalist>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <div style={{ flex: 1 }}>
+                    <label class="form-label" for="diary-revenue" style={{ fontSize: 'var(--font-size-xs)' }}>
+                      {t('diary.harvest_revenue')}
+                    </label>
+                    <input
+                      id="diary-revenue"
+                      type="number"
+                      class="form-input"
+                      value={revenue}
+                      onInput={(e) => setRevenue((e.target as HTMLInputElement).value)}
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      tabIndex={category === 'harvesting' ? 0 : -1}
+                    />
+                  </div>
+                  <div style={{ flex: '0 0 100px' }}>
+                    <label class="form-label" for="diary-revenue-currency" style={{ fontSize: 'var(--font-size-xs)' }}>
+                      {t('diary.harvest_revenue_currency')}
+                    </label>
+                    <select
+                      id="diary-revenue-currency"
+                      class="form-select"
+                      value={revenueCurrency}
+                      onChange={(e) => setRevenueCurrency((e.target as HTMLSelectElement).value as 'JPY' | 'USD')}
+                      tabIndex={category === 'harvesting' ? 0 : -1}
+                    >
+                      <option value="JPY">JPY</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </div>
+                </div>
+              </fieldset>
             </div>
 
             {/* Bed (optional) */}

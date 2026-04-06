@@ -23,6 +23,7 @@ import DiaryEntryForm from './DiaryEntryForm';
 import DiaryCalendar from './DiaryCalendar';
 import CropTimeline from './CropTimeline';
 import GanttChart from './GanttChart';
+import RoiDashboard from './RoiDashboard';
 import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib/diary';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 import { getCurrentUser } from '../lib/auth';
@@ -55,7 +56,7 @@ function formatDateLabel(date: string): string {
 
 // ── Types ─────────────────────────────────────────────────────────
 
-type ViewMode = 'list' | 'calendar' | 'gantt';
+type ViewMode = 'list' | 'calendar' | 'gantt' | 'roi';
 
 // ── DiaryEntryCard ────────────────────────────────────────────────
 
@@ -239,7 +240,7 @@ export default function DiaryPage() {
     setFarmId(storedFarmId);
 
     const storedView = localStorage.getItem(LS_VIEW_KEY);
-    if (storedView === 'list' || storedView === 'calendar' || storedView === 'gantt') {
+    if (storedView === 'list' || storedView === 'calendar' || storedView === 'gantt' || storedView === 'roi') {
       setView(storedView);
     }
 
@@ -344,7 +345,9 @@ export default function DiaryPage() {
 
   function switchView(next: ViewMode) {
     setEntries([]);
-    setLoading(true);
+    // ROI dashboard manages its own loading state
+    if (next !== 'roi') setLoading(true);
+    else setLoading(false);
     setView(next);
     try { localStorage.setItem(LS_VIEW_KEY, next); } catch {}
   }
@@ -488,6 +491,16 @@ export default function DiaryPage() {
               title={t('gantt.title')}
             >
               📊
+            </button>
+            <button
+              type="button"
+              class={`diary-header__toggle-btn${view === 'roi' ? ' diary-header__toggle-btn--active' : ''}`}
+              aria-pressed={view === 'roi'}
+              onClick={() => switchView('roi')}
+              aria-label="ROI"
+              title={t('roi.title')}
+            >
+              💰
             </button>
           </div>
           {/* Add button */}
@@ -749,6 +762,11 @@ export default function DiaryPage() {
           onMarkDone={canWrite ? handleMarkDone : undefined}
           onUndoDone={canWrite ? handleUndoDone : undefined}
         />
+      )}
+
+      {/* ROI dashboard view */}
+      {!loading && !error && view === 'roi' && farmId && (
+        <RoiDashboard farmId={farmId} beds={beds} />
       )}
 
       {/* Diary entry form (bottom sheet) */}
