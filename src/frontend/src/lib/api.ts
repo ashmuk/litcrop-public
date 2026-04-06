@@ -428,7 +428,7 @@ export async function getAdminUsers(): Promise<{ users: AdminUserItem[]; total: 
 /** DELETE /api/v1/admin/users/:userId — admin only (#282) */
 /** POST /api/v1/admin/notifications/test — send diagnostic email (#298) */
 export async function adminTestNotification(): Promise<{ success: boolean; enabled: boolean; from: string; to: string[]; error?: string }> {
-  return request<{ success: boolean; enabled: boolean; from: string; to: string[]; error?: string }>('POST', '/admin/notifications/test');
+  return request<{ success: boolean; enabled: boolean; from: string; to: string[]; error?: string }>('POST', '/admin/notifications/test', {});
 }
 
 export async function adminDeleteUser(userId: string): Promise<{ deleted: boolean; summary: Record<string, unknown> }> {
