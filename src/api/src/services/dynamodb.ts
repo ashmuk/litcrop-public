@@ -115,6 +115,7 @@ function itemToBed(item: Record<string, unknown>, farmId: string, bedId: string)
     expected_harvest: item['expected_harvest'] as string | undefined,
     notes: item['notes'] as string | undefined,
     latest_status: (item['latest_status'] as BedStatus) ?? 'no_data',
+    completed_at: item['completed_at'] as string | undefined,
   };
 }
 
