@@ -2226,9 +2226,17 @@
 
 .crop-timeline__marker-label {
   position: absolute;
-  font-size: 9px;
-  color: var(--color-gray-500);
-  font-weight: var(--font-weight-semibold);
+  font-size: 10px;
+  color: var(--color-gray-700);
+  font-weight: var(--font-weight-bold);
+  transform: translateX(0);
+  white-space: nowrap;
+}
+
+.crop-timeline__marker-label--week {
+  font-size: 8px;
+  color: var(--color-gray-300);
+  font-weight: var(--font-weight-regular);
   transform: translateX(-50%);
 }
 
@@ -2237,8 +2245,9 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--color-gray-200);
+  background: var(--color-gray-100);
   z-index: 0;
+  opacity: 0.6;
 }
 
 .crop-timeline__today {

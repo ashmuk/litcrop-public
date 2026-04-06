@@ -8,6 +8,7 @@
 
 import { t } from '../i18n/i18n';
 import { computeBarPosition, buildActualDatesMap, toDateString } from '../lib/diary-utils';
+import { getCropName } from '../lib/crops';
 import type { DiaryEntryResponse } from '../lib/api';
 
 interface BedTimelineItem {
@@ -85,31 +86,34 @@ export default function CropTimeline({ beds, entries = [], year, month }: Props)
 
   if (rows.length === 0) return null;
 
-  // Month label + week markers
+  // Month + weekly grid (#294)
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const jaMonthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const locale = typeof window !== 'undefined' ? (localStorage.getItem('litcrop-locale') ?? 'en') : 'en';
+  const mNames = locale === 'ja' ? jaMonthNames : monthNames;
   const daysInMonth = monthEnd.getDate();
-  const weekDays = [7, 14, 21].filter((d) => d < daysInMonth);
-  const weekTicks = weekDays.map((d) => (d / daysInMonth) * 100);
+  // Weekly grid: lines at every 7 days
+  const weekTicks = [7, 14, 21, 28].filter((d) => d < daysInMonth).map((d) => (d / daysInMonth) * 100);
 
   return (
     <div class="crop-timeline">
-      <div class="crop-timeline__title">{t('diary.crop_timeline')} — {monthNames[month]} {year}</div>
-      {/* Week markers header */}
+      <div class="crop-timeline__title">{t('diary.crop_timeline')} — {mNames[month]} {year}</div>
+      {/* Month label + weekly grid header */}
       <div class="crop-timeline__markers" style={{ paddingLeft: 'var(--crop-timeline-label-w, 80px)' }}>
-        <span class="crop-timeline__marker-label" style={{ left: '0%' }}>1</span>
-        {weekDays.map((d, i) => (
-          <span key={d} class="crop-timeline__marker-label" style={{ left: `${weekTicks[i]}%` }}>{d}</span>
+        <span class="crop-timeline__marker-label" style={{ left: '0%' }}>{mNames[month]}</span>
+        {weekTicks.map((pct, i) => (
+          <span key={i} class="crop-timeline__marker-label crop-timeline__marker-label--week" style={{ left: `${pct}%` }}>W{i + 2}</span>
         ))}
       </div>
       {rows.map(({ bed, reservedPos, actualPos, actual }) => (
         <div key={bed.id} class="crop-timeline__row">
           <div
             class="crop-timeline__label"
-            title={`${bed.name}${bed.crop_type ? ` — ${bed.crop_type}` : ''}`}
+            title={`${bed.name}${bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}`}
           >
             {bed.name}
             {bed.crop_type && (
-              <span class="crop-timeline__label-crop">{` ${bed.crop_type}`}</span>
+              <span class="crop-timeline__label-crop">{` ${getCropName(bed.crop_type)}`}</span>
             )}
           </div>
           <div class="crop-timeline__track">

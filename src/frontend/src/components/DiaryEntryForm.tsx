@@ -23,6 +23,7 @@ import {
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { CATEGORY_META, CATEGORY_KEYS } from '../lib/diary';
+import { getCropName } from '../lib/crops';
 import { estimateHarvestDate } from '@litcrop/shared';
 import type { DiaryEntryType } from '@litcrop/shared';
 
@@ -336,7 +337,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 <option value="">— {t('diary.bed_optional')} —</option>
                 {beds.map((bed) => (
                   <option key={bed.id} value={bed.id}>
-                    {bed.name ?? bed.id}
+                    {bed.name ?? bed.id}{bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}
                   </option>
                 ))}
               </select>

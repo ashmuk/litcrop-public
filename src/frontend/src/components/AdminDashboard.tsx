@@ -11,6 +11,7 @@ import { getAdminStats, getAdminUsers, getAdminFarms, getNotificationPrefs, upda
 import type { AdminStatsResponse, AdminUserItem, AdminFarmItem, NotificationPrefsResponse, ActivityItem, ActivityResponse } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
+import { getCurrentUser } from '../lib/auth';
 
 type AdminTab = 'system' | 'users' | 'farms' | 'activity' | 'notifications';
 
@@ -347,6 +348,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 function UsersPanel({ users, onReload }: { users: AdminUserItem[]; onReload: () => void }) {
+  const currentUser = getCurrentUser();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -379,35 +381,37 @@ function UsersPanel({ users, onReload }: { users: AdminUserItem[]; onReload: () 
             <div style="font-size:var(--font-size-xs);color:var(--color-gray-400)">
               {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
             </div>
-            {confirmingId === user.user_id ? (
-              <div style="display:flex;gap:var(--space-1)">
-                <button
-                  class="btn btn--danger btn--sm"
-                  onClick={() => handleDelete(user.user_id)}
-                  disabled={deleting}
-                  style="font-size:var(--font-size-xs)"
-                >
-                  {deleting ? '…' : t('admin.confirm_delete')}
-                </button>
+            {currentUser?.sub !== user.user_id && (
+              confirmingId === user.user_id ? (
+                <div style="display:flex;gap:var(--space-1)">
+                  <button
+                    class="btn btn--danger btn--sm"
+                    onClick={() => handleDelete(user.user_id)}
+                    disabled={deleting}
+                    style="font-size:var(--font-size-xs)"
+                  >
+                    {deleting ? '…' : t('admin.confirm_delete')}
+                  </button>
+                  <button
+                    class="btn btn--secondary btn--sm"
+                    onClick={() => setConfirmingId(null)}
+                    disabled={deleting}
+                    style="font-size:var(--font-size-xs)"
+                  >
+                    {t('buttons.cancel')}
+                  </button>
+                </div>
+              ) : (
                 <button
                   class="btn btn--secondary btn--sm"
-                  onClick={() => setConfirmingId(null)}
+                  onClick={() => setConfirmingId(user.user_id)}
                   disabled={deleting}
-                  style="font-size:var(--font-size-xs)"
+                  style="font-size:var(--font-size-xs);color:var(--color-error)"
+                  title={t('admin.delete_user')}
                 >
-                  {t('buttons.cancel')}
+                  {t('admin.delete_user')}
                 </button>
-              </div>
-            ) : (
-              <button
-                class="btn btn--secondary btn--sm"
-                onClick={() => setConfirmingId(user.user_id)}
-                disabled={deleting}
-                style="font-size:var(--font-size-xs);color:var(--color-error)"
-                title={t('admin.delete_user')}
-              >
-                {t('admin.delete_user')}
-              </button>
+              )
             )}
           </div>
         </div>
