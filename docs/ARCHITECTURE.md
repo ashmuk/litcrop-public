@@ -1105,6 +1105,299 @@ Well within the ~$1.18/month budget constraint. Config polling at 30-min interva
 
 ---
 
+## 14. Gantt Chart with Diary Events — Architecture Delta (#297)
+
+> **ADR**: [ADR-20260406-gantt-chart-multi-month](decisions/ADR-20260406-gantt-chart-multi-month.md)
+> **Scope**: Beta-9 | **Decision**: New `GanttChart` component alongside existing `CropTimeline`
+
+### 14.1 Component Architecture
+
+```
+DiaryPage.tsx (modified)
+├── ViewMode: 'list' | 'calendar' | 'gantt'  ← add 'gantt'
+├── [list view] → DiaryEntryCard list (unchanged)
+├── [calendar view] → DiaryCalendar + CropTimeline (unchanged)
+└── [gantt view] → GanttChart (NEW)
+                   ├── GanttHeader (month columns + today indicator)
+                   ├── GanttActivePane (active beds)
+                   │   └── GanttRow × N (bar + event dots)
+                   └── GanttObsoletePane (completed beds, collapsed)
+                       └── GanttRow × N (grayed out)
+```
+
+**New files:**
+| File | Purpose | Est. Lines |
+|------|---------|------------|
+| `src/frontend/src/components/GanttChart.tsx` | Main multi-month Gantt component | ~250 |
+| `src/frontend/src/components/GanttRow.tsx` | Single bed row with bars + dots | ~80 |
+
+**Modified files:**
+| File | Change |
+|------|--------|
+| `src/frontend/src/components/DiaryPage.tsx` | Add `'gantt'` view mode, 3-way toggle, gantt data fetch |
+| `src/frontend/src/lib/diary-utils.ts` | Add `computeRangePosition()`, `buildEventDotMap()` |
+| `packages/shared/src/types/domain.ts` | Add `completed_at?: string` to `Bed` interface |
+| `packages/shared/src/schemas/index.ts` | Add `completed_at` to `UpdateBedRequestSchema` |
+| `src/api/src/routes/beds.ts` | Return `completed_at` in responses |
+| `src/frontend/src/lib/diary.ts` | Export `GANTT_DOT_CATEGORIES` filter list |
+| `src/frontend/src/i18n/*.ts` | Add gantt-related i18n keys |
+
+### 14.2 Data Model: Bed `completed_at`
+
+**Current state**: No "done" concept. Completion is inferred from a harvesting diary entry.
+
+**Change**: Add optional `completed_at` field to `Bed` domain type.
+
+```typescript
+// packages/shared/src/types/domain.ts
+export interface Bed {
+  // ... existing fields ...
+  completed_at?: string; // ISO 8601 date — set by "Mark done" action
+}
+```
+
+**Schema change** (UpdateBedRequestSchema):
+```typescript
+completed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+```
+
+**DynamoDB impact**: None — single-table design, `completed_at` is a new attribute on existing bed items. No GSI needed (filtering is client-side on the small bed set per farm, max 25 beds).
+
+**API change**: The existing `PATCH /api/v1/beds/:bedId` endpoint already supports arbitrary field updates via `UpdateBedRequestSchema`. Adding `completed_at` to the schema is sufficient. Bed GET/list responses must include the new field.
+
+**"Mark done" semantics**:
+- Sets `completed_at` to today's date (YYYY-MM-DD)
+- Reversible: PATCH with `completed_at: null` to undo
+- Does NOT delete diary entries or change bed status
+- UI shows a confirmation dialog before marking done
+
+### 14.3 Multi-Month Positioning Algorithm
+
+The existing `computeBarPosition()` works for any time range (it takes `monthStart`/`monthEnd` as generic boundaries). The new Gantt view reuses it with a wider range.
+
+```typescript
+// diary-utils.ts — new function
+export function computeRangePosition(
+  start: Date,
+  end: Date,
+  rangeStart: Date,
+  rangeEnd: Date,
+): { left: number; width: number } | null {
+  // Identical math to computeBarPosition — just renamed for clarity
+  // Clamps [start, end] to visible [rangeStart, rangeEnd]
+  // Returns left% and width% relative to the full range
+  return computeBarPosition(start, end, rangeStart, rangeEnd);
+}
+```
+
+**Range calculation:**
+```
+rangeStart = first day of (today - 3 months)   // show recent history
+rangeEnd   = last day of (today + 3 months)    // mobile: 6 months
+             last day of (today + 9 months)    // desktop: 12 months
+```
+
+Alternatively, if the user has beds with planting dates outside this window, extend the range to include them. The range is computed once on mount and when the window resizes past the 768px breakpoint.
+
+**Month column rendering:**
+```
+Total months = monthDiff(rangeStart, rangeEnd)
+Column width = 100% / totalMonths (CSS)
+Each month header = positioned at (monthIndex / totalMonths * 100)%
+```
+
+**Today indicator:**
+```
+todayPct = (today - rangeStart) / (rangeEnd - rangeStart) * 100
+```
+
+**Scroll container:**
+- Outer div: `overflow-x: auto; -webkit-overflow-scrolling: touch`
+- Inner div: `min-width: totalMonths * 120px` (each month gets at least 120px)
+- On mount: auto-scroll to center today in the viewport
+- Bed labels column: `position: sticky; left: 0; z-index: 2` (stays visible during scroll)
+
+### 14.4 Diary Event Dots
+
+**Which categories show as dots:**
+All categories except `other`. Each dot uses the color from `CATEGORY_META`.
+
+```typescript
+// diary.ts
+export const GANTT_DOT_CATEGORIES = CATEGORY_KEYS.filter(k => k !== 'other');
+```
+
+**Data structure** (new utility in `diary-utils.ts`):
+```typescript
+export function buildEventDotMap(
+  entries: DiaryEntryResponse[],
+): Map<string, Array<{ date: string; category: string; color: string; entryId: string }>> {
+  // Groups diary entries by bed_id
+  // Each entry becomes a dot: { date, category, color (from CATEGORY_META), entryId }
+  // Entries without bed_id are excluded (general farm entries don't appear on bed rows)
+  const map = new Map();
+  for (const entry of entries) {
+    if (!entry.bed_id) continue;
+    if (entry.category === 'other') continue;
+    const dots = map.get(entry.bed_id) ?? [];
+    dots.push({
+      date: entry.date,
+      category: entry.category,
+      color: CATEGORY_META[entry.category]?.color ?? '#9ca3af',
+      entryId: entry.id,
+    });
+    map.set(entry.bed_id, dots);
+  }
+  return map;
+}
+```
+
+**Dot positioning:**
+```
+dotPct = (parseDate(dot.date) - rangeStart) / (rangeEnd - rangeStart) * 100
+```
+Rendered as `position: absolute; left: ${dotPct}%` within the bar track (same technique as bars).
+
+**Dot rendering:**
+- 8px diameter circle, `border-radius: 50%`
+- Color from `CATEGORY_META`
+- Vertically centered within the 24px row height
+- On hover (desktop): tooltip showing category name + date
+- On click/tap: navigate to calendar view with that date selected
+
+**Dot overlap handling:**
+When multiple dots land on the same date, stack them vertically (max 3 visible, then show a `+N` indicator). At the scale of farm diary entries (a few per day), this is rare.
+
+### 14.5 Cross-Reference: Gantt Dot to Calendar
+
+Clicking a diary event dot on the Gantt chart:
+1. Switches the view mode to `'calendar'`
+2. Sets `calYear` and `calMonth` to the dot's date month
+3. Sets `selectedDate` to the dot's date
+
+This is achieved by lifting the view-switching logic already in `DiaryPage.tsx`:
+
+```typescript
+function handleDotClick(date: string) {
+  const d = new Date(date + 'T00:00:00');
+  setCalYear(d.getFullYear());
+  setCalMonth(d.getMonth());
+  setSelectedDate(date);
+  switchView('calendar');
+}
+```
+
+The callback is passed from `DiaryPage` → `GanttChart` → `GanttRow` as `onDotClick`.
+
+### 14.6 Active / Obsolete Panes
+
+**Partition logic:**
+```typescript
+const activeBeds = beds.filter(b => !b.completed_at);
+const obsoleteBeds = beds.filter(b => !!b.completed_at);
+```
+
+**Active pane** (top):
+- Full-color bars and dots
+- Normal row height (24px)
+- All interactive features (hover, click)
+
+**Obsolete pane** (bottom):
+- Section header: "Completed" with collapse toggle (chevron)
+- Collapsed by default (show count only: "Completed (3)")
+- Expanded: grayed-out rows (`opacity: 0.5; filter: grayscale(0.7)`)
+- Bars and dots are non-interactive (no hover tooltips, no click handlers)
+- Collapsed state persisted to `localStorage`
+
+**"Mark done" UI:**
+- Long-press (mobile) or right-click (desktop) on a bed label opens a context action
+- Single action: "Mark as completed" / "Reactivate" toggle
+- Alternatively (simpler, recommended for MVP): a small checkbox or icon button at the end of the bed label row
+- Calls `PATCH /api/v1/beds/:bedId` with `{ completed_at: '2026-04-06' }` or `{ completed_at: null }`
+- Optimistic update: move the bed between panes immediately, revert on API error
+
+### 14.7 API Changes
+
+**Diary entries for Gantt range:**
+The existing `GET /api/v1/farms/:farmId/diary?from=YYYY-MM-DD&to=YYYY-MM-DD` supports up to 400 days (more than the 365-day max Gantt range). However, the default `limit=50` may be insufficient.
+
+**Approach**: Fetch with `limit=100` and follow cursor pagination until all entries in the range are loaded. This is acceptable because:
+- A farm with daily entries for 12 months = ~365 entries = 4 paginated requests
+- Entries are small JSON objects (~200 bytes each)
+- Fetching happens once on Gantt view mount, not on every render
+
+**No new API endpoints needed.** All data is available from existing endpoints:
+- `GET /farms/:farmId/diary?from=...&to=...` — diary entries for dot overlay
+- `GET /farms/:farmId/beds` — bed list with `completed_at` (after schema update)
+- `PATCH /beds/:bedId` — mark done / reactivate
+
+### 14.8 Responsive Strategy
+
+| Aspect | Mobile (<768px) | Desktop (>=768px) |
+|--------|-----------------|-------------------|
+| Time range | 6 months | 12 months |
+| Month column width | 120px min | 120px min |
+| Scroll | Touch scroll (momentum) | Mouse scroll + scroll bar |
+| Bed label width | 60px (bed name only) | 100px (name + crop) |
+| Event dots | 10px diameter, tap target 44px | 8px diameter, hover tooltip |
+| Row height | 28px (touch-friendly) | 24px |
+| Today indicator | Red line (2px) | Red line (1px) + "Today" label |
+| Obsolete pane | Collapsed by default | Collapsed by default |
+| "Mark done" | Tap icon button | Click icon button |
+
+**Breakpoint detection**: Use `window.matchMedia('(min-width: 768px)')` with a listener, consistent with the existing `layout` state in DiaryPage.
+
+### 14.9 Scroll Behavior
+
+- **Initial scroll position**: Auto-scroll to center "today" in the viewport on mount
+- **Sticky labels**: Bed name column uses `position: sticky; left: 0` to remain visible during horizontal scroll
+- **Month header**: Also sticky at `top: 0` during vertical scroll (if many beds cause vertical overflow)
+- **Performance**: No virtualization needed (max 25 beds x 12 months = small DOM)
+
+### 14.10 Key Technical Decisions (#297)
+
+| # | Decision | Choice | Key Rationale |
+|---|----------|--------|---------------|
+| 23 | Gantt component | New `GanttChart.tsx`, keep `CropTimeline` | Separation of concerns; calendar embed stays simple |
+| 24 | Multi-month positioning | Reuse `computeBarPosition()` with wider range | Zero new math; proven and tested |
+| 25 | Bed completion model | `completed_at` optional field on Bed | Explicit, reversible, no migration needed |
+| 26 | Event dot data | Client-side filtering of diary entries by `bed_id` | No API changes; entry set is small (max ~400/year) |
+| 27 | Cross-reference | View switch + date selection callback | Leverages existing calendar infrastructure |
+| 28 | Dot overlap | Vertical stacking (max 3) | Pragmatic; overlaps are rare at farm scale |
+| 29 | Responsive range | 6 months mobile / 12 months desktop | Balances information density with screen space |
+
+### 14.11 Component Props
+
+```typescript
+// GanttChart.tsx
+interface GanttChartProps {
+  beds: BedTimelineItem[];       // from GET /farms/:farmId/beds
+  entries: DiaryEntryResponse[]; // from GET /farms/:farmId/diary (full range)
+  rangeStart: Date;              // first day of range
+  rangeEnd: Date;                // last day of range
+  onDotClick: (date: string) => void;  // cross-reference to calendar
+}
+
+// BedTimelineItem (extended)
+interface BedTimelineItem {
+  id: string;
+  name: string;
+  crop_type: string | null;
+  planted_at?: string | null;
+  expected_harvest?: string | null;
+  completed_at?: string | null;  // NEW
+}
+```
+
+### 14.12 Cost Impact
+
+- **DynamoDB**: No new table, no new GSI. `completed_at` is a single attribute write (~1 WCU per mark-done). Negligible.
+- **Lambda**: Diary list queries with wider date ranges return more items per request, but response size stays well under Lambda's 6MB payload limit. No cold start impact.
+- **S3/CloudFront**: No change.
+- **Estimated monthly delta**: $0.00
+
+---
+
 ## References
 
 - [REQUIREMENTS.md](../REQUIREMENTS.md) -- Full requirements specification (expanded for MVP)
