@@ -8,7 +8,7 @@
  *   - entries:      loaded diary entries
  *   - loading:      initial fetch in progress
  *   - error:        fetch error message
- *   - view:         'list' | 'calendar' (persisted to localStorage)
+ *   - view:         'list' | 'calendar' | 'gantt' (persisted to localStorage)
  *   - showForm:     whether DiaryEntryForm is open
  *   - editingEntry: entry being edited (null = create mode)
  *   - expandedId:   entry card currently expanded
@@ -114,11 +114,12 @@ function DiaryEntryCard({ entry, expanded, canEdit, onExpand, onCollapse, onEdit
       }}
       aria-expanded={expanded}
     >
-      {/* Header row: category + cost */}
+      {/* Header row: date + category + cost */}
       <div class="diary-entry__header">
         <div class="diary-entry__category" style={{ color: meta.color }}>
           <span aria-hidden="true">{meta.icon}</span>
           <span>{categoryLabel}</span>
+          <span class="diary-entry__date">{new Date(entry.date + 'T00:00:00').toLocaleDateString(getLocale() === 'ja' ? 'ja-JP' : 'en-US', { month: 'numeric', day: 'numeric' })}</span>
         </div>
         <div class="diary-entry__header-end">
           <span class={`diary-entry__badge diary-entry__badge--${entry.entry_type ?? 'actual'}`}>
@@ -224,7 +225,7 @@ export default function DiaryPage() {
   });
   const [activeTab, setActiveTab] = useState<'all' | 'reserved' | 'actual'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [layout, setLayout] = useState<'tabs' | 'split'>(() => {
+  const [layout] = useState<'tabs' | 'split'>(() => {
     try {
       const saved = localStorage.getItem('litcrop-diary-layout');
       if (saved === 'tabs' || saved === 'split') return saved;
@@ -489,31 +490,6 @@ export default function DiaryPage() {
               📊
             </button>
           </div>
-          {/* Layout toggle: tabs vs split (#291) */}
-          {view === 'list' && (
-            <div class="diary-header__toggle" role="group" aria-label="Layout mode">
-              <button
-                type="button"
-                class={`diary-header__toggle-btn${layout === 'tabs' ? ' diary-header__toggle-btn--active' : ''}`}
-                aria-pressed={layout === 'tabs'}
-                onClick={() => { setLayout('tabs'); try { localStorage.setItem('litcrop-diary-layout', 'tabs'); } catch {} }}
-                title={t('diary.layout_tabs')}
-                style="font-size:12px"
-              >
-                |||
-              </button>
-              <button
-                type="button"
-                class={`diary-header__toggle-btn${layout === 'split' ? ' diary-header__toggle-btn--active' : ''}`}
-                aria-pressed={layout === 'split'}
-                onClick={() => { setLayout('split'); try { localStorage.setItem('litcrop-diary-layout', 'split'); } catch {} }}
-                title={t('diary.layout_split')}
-                style="font-size:12px"
-              >
-                &#9636;
-              </button>
-            </div>
-          )}
           {/* Add button */}
           <button
             type="button"
@@ -526,24 +502,27 @@ export default function DiaryPage() {
         </div>
       </div>
 
-      {/* Entry type tabs (#287) */}
+      {/* Entry type tabs (#287) — read-only counters in split layout (#306) */}
       {view === 'list' && !loading && !error && entries.length > 0 && (
-        <div class="diary-pane-tabs">
+        <div class={`diary-pane-tabs${layout === 'split' ? ' diary-pane-tabs--readonly' : ''}`}>
           <button
             class={`diary-pane-tab diary-pane-tab--all${activeTab === 'all' ? ' diary-pane-tab--active' : ''}`}
             onClick={() => setActiveTab('all')}
+            disabled={layout === 'split'}
           >
             {t('diary.tab_all')} <span class="diary-pane-tab__count">{preFiltered.length}</span>
           </button>
           <button
             class={`diary-pane-tab diary-pane-tab--reserved${activeTab === 'reserved' ? ' diary-pane-tab--active' : ''}`}
             onClick={() => { setActiveTab('reserved'); setSortOrder('oldest'); }}
+            disabled={layout === 'split'}
           >
             {t('diary.tab_reserved')} <span class="diary-pane-tab__count">{reservedCount}</span>
           </button>
           <button
             class={`diary-pane-tab diary-pane-tab--actual${activeTab === 'actual' ? ' diary-pane-tab--active' : ''}`}
             onClick={() => { setActiveTab('actual'); setSortOrder('newest'); }}
+            disabled={layout === 'split'}
           >
             {t('diary.tab_actual')} <span class="diary-pane-tab__count">{actualCount}</span>
           </button>

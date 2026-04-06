@@ -1584,6 +1584,13 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.diary-entry__date {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-gray-500);
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-1);
+}
+
 .diary-entry__header-end {
   display: flex;
   align-items: center;
@@ -2118,6 +2125,19 @@
   font-size: var(--font-size-xs);
   margin-left: 4px;
   font-weight: var(--font-weight-medium);
+}
+
+/* Readonly tabs in split layout (#306) */
+.diary-pane-tabs--readonly .diary-pane-tab,
+.diary-pane-tabs--readonly .diary-pane-tab.diary-pane-tab--active {
+  cursor: default;
+  opacity: 0.6;
+  border-bottom-color: transparent;
+  pointer-events: none;
+}
+
+.diary-pane-tabs--readonly .diary-pane-tab:hover {
+  color: inherit;
 }
 
 /* Split-pane layout (#291) */
