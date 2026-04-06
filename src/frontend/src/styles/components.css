@@ -548,6 +548,9 @@
   border-bottom: var(--border-default);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  position: sticky;
+  top: 56px; /* below nav-header */
+  z-index: 99;
   scrollbar-width: none;
 }
 
