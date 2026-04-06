@@ -672,6 +672,8 @@
     "tab_all": "All",
     "tab_reserved": "Reserved",
     "tab_actual": "Actual",
+    "sort_newest": "Newest first",
+    "sort_oldest": "Oldest first",
     "cancel": "Cancel",
     "calendar": "Calendar",
     "list": "List",

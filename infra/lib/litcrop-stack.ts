@@ -339,6 +339,12 @@ function handler(event) {
       }));
     }
 
+    // Admin user deletion: allow Cognito AdminDeleteUser (#293)
+    apiLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:AdminDeleteUser'],
+      resources: [userPool.userPoolArn],
+    }));
+
     // CDK-Nag: suppress AwsSolutions-IAM5 for SES wildcard resource (required by AWS)
     NagSuppressions.addResourceSuppressions(apiLambda, [
       {

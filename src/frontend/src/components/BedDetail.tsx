@@ -10,8 +10,9 @@ import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
 import { getCropDisplay } from '../lib/crops';
 import { estimateHarvestDate } from '@litcrop/shared';
-import { getBed, getImages, createTag, uploadImage, updateBed, ApiError } from '../lib/api';
+import { getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError } from '../lib/api';
 import { getLocalFarmRole } from '../lib/hooks';
+import { LS_FARM_ID } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
 import { displaySrc, fullSrc } from '../lib/image';
@@ -219,6 +220,29 @@ export default function BedDetail() {
       setBed(updated);
       setEditing(false);
       showToast(t('bed.crop_saved'), 'success');
+
+      // Create reserved diary entries only when dates actually changed (#289)
+      const farmId = localStorage.getItem(LS_FARM_ID);
+      if (farmId) {
+        if (data.planted_at && data.planted_at !== bed?.planted_at) {
+          createDiaryEntry(farmId, {
+            date: data.planted_at,
+            category: 'planting',
+            entry_type: 'reserved',
+            description: `${t('diary.entry_reserved')}: ${getCropDisplay(data.crop_type ?? '')} → ${updated.name}`,
+            bed_id: bedId,
+          }).catch(() => {});
+        }
+        if (data.expected_harvest && data.expected_harvest !== bed?.expected_harvest) {
+          createDiaryEntry(farmId, {
+            date: data.expected_harvest,
+            category: 'harvesting',
+            entry_type: 'reserved',
+            description: `${t('diary.entry_reserved')}: ${getCropDisplay(data.crop_type ?? '')} → ${updated.name}`,
+            bed_id: bedId,
+          }).catch(() => {});
+        }
+      }
     } catch {
       showToast(t('bed.save_error'), 'error');
     } finally {

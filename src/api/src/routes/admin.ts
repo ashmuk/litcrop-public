@@ -16,8 +16,15 @@ import { ServiceUnavailableError, ValidationError, NotFoundError } from '../erro
 import { queryActivities } from '../services/activity';
 import { appEvents } from '../services/events';
 import { isNotificationEnabled, sendTestEmail } from '../services/notification';
+import { CognitoIdentityProviderClient, AdminDeleteUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 
 const router = new Hono();
+
+// Cognito client for admin user deletion (#293)
+const COGNITO_USER_POOL_ID = process.env['COGNITO_USER_POOL_ID'] ?? '';
+const cognitoClient = COGNITO_USER_POOL_ID
+  ? new CognitoIdentityProviderClient({ region: process.env['AWS_REGION'] ?? 'ap-northeast-1' })
+  : null;
 
 /**
  * Extracts auth context and verifies admin access via isAdmin (ADMIN_EMAILS).
@@ -208,7 +215,21 @@ router.delete('/users/:userId', async (c) => {
       },
     });
 
-    return c.json({ deleted: true, summary });
+    // Clean up Cognito user (#293) — non-blocking, best-effort
+    let cognitoDeleted = false;
+    if (cognitoClient && COGNITO_USER_POOL_ID) {
+      try {
+        await cognitoClient.send(new AdminDeleteUserCommand({
+          UserPoolId: COGNITO_USER_POOL_ID,
+          Username: `sub:${targetUserId}`,
+        }));
+        cognitoDeleted = true;
+      } catch (cognitoErr) {
+        console.warn('[admin] Cognito user deletion failed (DynamoDB data already removed):', cognitoErr);
+      }
+    }
+
+    return c.json({ deleted: true, summary, cognito_deleted: cognitoDeleted });
   } catch (err) {
     console.error('[admin] deleteAccount failed', err);
     throw new ServiceUnavailableError('Account deletion failed');

@@ -222,6 +222,7 @@ export default function DiaryPage() {
     try { return localStorage.getItem(LS_FILTER_CAT) ?? ''; } catch { return ''; }
   });
   const [activeTab, setActiveTab] = useState<'all' | 'reserved' | 'actual'>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   // Initialise farmId and view from localStorage (synchronous-first)
   useEffect(() => {
@@ -367,7 +368,10 @@ export default function DiaryPage() {
   const reservedCount = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'reserved').length, [preFiltered]);
   const actualCount = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'actual').length, [preFiltered]);
 
-  const grouped = useMemo(() => [...groupByDate(filteredEntries).entries()], [filteredEntries]);
+  const grouped = useMemo(() => {
+    const g = [...groupByDate(filteredEntries).entries()];
+    return sortOrder === 'oldest' ? g.reverse() : g;
+  }, [filteredEntries, sortOrder]);
   const selectedEntries = useMemo(
     () => (selectedDate ? entries.filter((e) => e.date === selectedDate) : []),
     [entries, selectedDate],
@@ -423,13 +427,13 @@ export default function DiaryPage() {
           </button>
           <button
             class={`diary-pane-tab diary-pane-tab--reserved${activeTab === 'reserved' ? ' diary-pane-tab--active' : ''}`}
-            onClick={() => setActiveTab('reserved')}
+            onClick={() => { setActiveTab('reserved'); setSortOrder('oldest'); }}
           >
             {t('diary.tab_reserved')} <span class="diary-pane-tab__count">{reservedCount}</span>
           </button>
           <button
             class={`diary-pane-tab diary-pane-tab--actual${activeTab === 'actual' ? ' diary-pane-tab--active' : ''}`}
-            onClick={() => setActiveTab('actual')}
+            onClick={() => { setActiveTab('actual'); setSortOrder('newest'); }}
           >
             {t('diary.tab_actual')} <span class="diary-pane-tab__count">{actualCount}</span>
           </button>
@@ -460,6 +464,14 @@ export default function DiaryPage() {
               <option key={key} value={key}>{CATEGORY_META[key].icon} {t(`diary.categories.${key}`)}</option>
             ))}
           </select>
+          <button
+            class="btn btn--secondary btn--sm"
+            onClick={() => setSortOrder((s) => s === 'newest' ? 'oldest' : 'newest')}
+            title={sortOrder === 'newest' ? t('diary.sort_oldest') : t('diary.sort_newest')}
+            style="flex-shrink:0;font-size:var(--font-size-xs);padding:var(--space-1) var(--space-2)"
+          >
+            {sortOrder === 'newest' ? '↓ ' : '↑ '}{sortOrder === 'newest' ? t('diary.sort_newest') : t('diary.sort_oldest')}
+          </button>
         </div>
       )}
 
