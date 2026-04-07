@@ -347,8 +347,8 @@ export default function BedDetail() {
               value={cropForm.crop_type}
               onChange={(v) => {
                 const next = { ...cropForm, crop_type: v };
-                if (next.planted_at && !next.expected_harvest) {
-                  next.expected_harvest = estimateHarvestDate(next.planted_at, v) ?? '';
+                if (next.planted_at) {
+                  next.expected_harvest = estimateHarvestDate(next.planted_at, v) ?? next.expected_harvest;
                 }
                 setCropForm(next);
               }}
