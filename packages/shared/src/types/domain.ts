@@ -33,6 +33,9 @@ export type Theme = 'light' | 'dark' | 'earthy' | 'system';
 /** Temperature unit preference */
 export type TempUnit = 'C' | 'F';
 
+/** Plant method — seed (direct sow) or seedling (transplant) */
+export type PlantMethod = 'seed' | 'seedling';
+
 /** Farm membership role */
 export type FarmRole = 'admin' | 'owner' | 'staff';
 

@@ -10,6 +10,7 @@ import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
 import { getCropDisplay } from '../lib/crops';
 import { estimateHarvestDate } from '@litcrop/shared';
+import type { PlantMethod } from '@litcrop/shared';
 import { getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError } from '../lib/api';
 import { getLocalFarmRole } from '../lib/hooks';
 import { LS_FARM_ID } from '../lib/hooks';
@@ -82,7 +83,7 @@ export default function BedDetail() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
-  const [plantMethod, setPlantMethod] = useState<'seed' | 'seedling'>('seedling');
+  const [plantMethod, setPlantMethod] = useState<PlantMethod>('seedling');
 
   const bedId =
     typeof window !== 'undefined'
@@ -206,6 +207,13 @@ export default function BedDetail() {
       notes: bed?.notes ?? '',
     });
     setEditing(true);
+  }
+
+  function handlePlantMethodChange(method: PlantMethod) {
+    setPlantMethod(method);
+    if (cropForm.planted_at && cropForm.crop_type) {
+      setCropForm((f) => ({ ...f, expected_harvest: estimateHarvestDate(f.planted_at, f.crop_type, method) ?? f.expected_harvest }));
+    }
   }
 
   async function handleSaveCrop() {
@@ -362,21 +370,11 @@ export default function BedDetail() {
             <label class="form-label">{t('bed.plant_method')}</label>
             <div style="display:flex;gap:var(--space-3)">
               <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => {
-                  setPlantMethod('seed');
-                  if (cropForm.planted_at && cropForm.crop_type) {
-                    setCropForm((f) => ({ ...f, expected_harvest: estimateHarvestDate(f.planted_at, f.crop_type, 'seed') ?? f.expected_harvest }));
-                  }
-                }} />
+                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => handlePlantMethodChange('seed')} />
                 🫘 {t('diary.categories.seeding')}
               </label>
               <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => {
-                  setPlantMethod('seedling');
-                  if (cropForm.planted_at && cropForm.crop_type) {
-                    setCropForm((f) => ({ ...f, expected_harvest: estimateHarvestDate(f.planted_at, f.crop_type, 'seedling') ?? f.expected_harvest }));
-                  }
-                }} />
+                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => handlePlantMethodChange('seedling')} />
                 🌱 {t('diary.categories.planting')}
               </label>
             </div>

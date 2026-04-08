@@ -13,6 +13,7 @@ export type {
   Locale,
   Theme,
   TempUnit,
+  PlantMethod,
   FarmRole,
   FarmMember,
   Farm,

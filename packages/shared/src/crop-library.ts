@@ -5,6 +5,7 @@
  */
 
 import cropData from './data/crop-library.json';
+import type { PlantMethod } from './types/domain';
 
 export interface CropEntry {
   id: string;
@@ -41,7 +42,7 @@ export function getCropMeta(cropId: string): CropEntry | undefined {
 export function estimateHarvestDate(
   plantedDate: string,
   cropId: string,
-  plantMethod?: 'seed' | 'seedling',
+  plantMethod?: PlantMethod,
 ): string | null {
   const meta = getCropMeta(cropId);
   if (!meta?.days_to_harvest_max) return null;
