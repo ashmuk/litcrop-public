@@ -1,28 +1,36 @@
-# Architecture: Searchable Crop Library (#216 + #257)
+# Architecture: Searchable Crop Library (#216 + #257 + #329)
 
-> Scope: **Frontend-only** -- no backend, no schema changes.
 > `crop_type` remains a free `string` in DynamoDB.
+> Library relocated to `packages/shared/src/` (used by both frontend and API).
+
+> **Note**: Sections 1-6 below were written for the original #216 scope.
+> Paths and schemas have since evolved — see Section 7 for current state.
 
 ---
 
 ## 1. Data File
 
-**Location**: `src/frontend/src/data/crops.json`
+**Location**: `packages/shared/src/data/crop-library.json`
+*(Originally `src/frontend/src/data/crops.json` — relocated to shared package
+when the API began using crop metadata for smart-defaults and diary bridging.)*
 
-Rationale: This data is consumed exclusively by the frontend. Placing it in
-`packages/shared/` would imply backend use (validation, migration) which is
-explicitly out of scope. The frontend bundler (Vite) will inline a <20 KB JSON
-import with zero runtime fetch cost.
+Rationale: The data is consumed by both frontend (autocomplete, display) and API
+(harvest estimation, diary entry validation). The frontend bundler (Vite) inlines
+the ~25 KB JSON import with zero runtime fetch cost.
 
-**Schema** (per entry):
+**Schema** (per entry) — see Section 7a for the full current schema:
 
 ```ts
 interface CropEntry {
-  id: string;        // machine key, e.g. "tomato", "edamame"
-  emoji: string;     // single emoji, e.g. "🍅"
-  category: string;  // grouping key, e.g. "fruit", "root", "leafy", "grain", "legume", "herb"
-  en: string;        // English display name
-  ja: string;        // Japanese display name
+  id: string;                    // machine key, e.g. "tomato", "edamame"
+  emoji: string;                 // single emoji, e.g. "🍅"
+  category: string;              // grain | fruit | vegetable | root | leafy | legume | herb | other
+  en: string;                    // English display name
+  ja: string;                    // Japanese display name
+  days_to_harvest_min?: number;  // added #275
+  days_to_harvest_max?: number;  // added #275
+  season?: string[];             // added #275
+  companions?: string[];         // added #275
 }
 ```
 
@@ -45,60 +53,15 @@ this feature replaces. Deprecate it with a `@deprecated` JSDoc pointing to
 
 ## 2. Crop Lookup Module
 
-**File**: `src/frontend/src/lib/crops.ts`
+**Shared library**: `packages/shared/src/crop-library.ts`
+*(Types, O(1) lookup, `estimateHarvestDate()`, and data re-exports.)*
 
-```ts
-import cropsData from '../data/crops.json';
+**Frontend utilities**: `src/frontend/src/lib/crops.ts`
+*(Search, display helpers, normalization — imports from `@litcrop/shared`.)*
 
-export type CropEntry = { id: string; emoji: string; category: string; en: string; ja: string };
-
-/** Full list, imported once at bundle time. */
-export const CROPS: CropEntry[] = cropsData;
-
-/** O(1) lookup by id. */
-export const CROP_MAP: Map<string, CropEntry> = new Map(cropsData.map(c => [c.id, c]));
-
-/** Get emoji for a crop_type string. Returns fallback for unknown/free-text crops. */
-export function getCropEmoji(cropType: string | undefined): string {
-  if (!cropType) return '';
-  return CROP_MAP.get(cropType)?.emoji ?? '🌱';
-}
-
-/** Get localized name for a crop_type string. Returns the raw string for unknown crops.
- *  Locale is auto-detected from the i18n module (same as t()). */
-export function getCropName(cropType: string | undefined): string {
-  if (!cropType) return '';
-  const locale = getLocale();
-  return CROP_MAP.get(cropType)?.[locale] ?? cropType;
-}
-
-/** Combined display string: "🍅 Tomato". Returns empty string if no crop. */
-export function getCropDisplay(cropType: string | undefined): string {
-  if (!cropType) return '';
-  return `${getCropEmoji(cropType)} ${getCropName(cropType)}`;
-}
-
-/** Search crops by substring match on en or ja name.
- *  Empty query returns all crops (for "show all on focus" behavior).
- *  Romaji-to-kana transliteration is out of scope for v1. */
-export function searchCrops(query: string, limit = 10): CropEntry[] {
-  if (!query) return CROPS.slice(0, limit);
-  const q = query.toLowerCase();
-  return CROPS.filter(c =>
-    c.en.toLowerCase().includes(q) || c.ja.includes(q)
-  ).slice(0, limit);
-}
-
-/** Case-insensitive match on blur: normalize free-text to canonical id if possible. */
-export function normalizeCropType(input: string): string {
-  if (!input) return '';
-  const lower = input.toLowerCase();
-  const match = CROPS.find(c =>
-    c.id === lower || c.en.toLowerCase() === lower || c.ja === input
-  );
-  return match?.id ?? input;
-}
-```
+See actual files for current implementation. Original design spec omitted for brevity
+— the API surface is stable: `CROPS`, `CROP_MAP`, `getCropMeta()`, `getCropEmoji()`,
+`getCropName()`, `getCropDisplay()`, `searchCrops()`, `normalizeCropType()`.
 
 **Locale handling**: `getCropName` and `getCropDisplay` call `getLocale()` internally
 (exported from `i18n.ts`) instead of requiring a `locale` parameter. This matches
@@ -238,8 +201,9 @@ Note: `getCropDisplay()` returns `''` for undefined/null crop_type, so the
 
 | Action | File | Type |
 |--------|------|------|
-| Create | `src/frontend/src/data/crops.json` | Data (~15 KB) |
-| Create | `src/frontend/src/lib/crops.ts` | Lookup module |
+| Create | `packages/shared/src/data/crop-library.json` | Data (~25 KB) |
+| Create | `packages/shared/src/crop-library.ts` | Shared lookup module |
+| Create | `src/frontend/src/lib/crops.ts` | Frontend display/search utilities |
 | Create | `src/frontend/src/components/CropAutocomplete.tsx` | UI component |
 | Modify | `src/frontend/src/components/BedDetail.tsx` | Replace `<select>` |
 | Modify | `src/frontend/src/components/FarmOverview.tsx` | Add emoji display |
@@ -249,3 +213,104 @@ Note: `getCropDisplay()` returns `''` for undefined/null crop_type, so the
 | Modify | `packages/shared/src/constants.ts` | Deprecate `CROP_TYPES` |
 
 No new dependencies. No backend changes. No DynamoDB migration.
+
+---
+
+## 7. Data Sources & Attribution (#329)
+
+The crop library contains agronomic data fields that are **not user-editable**.
+All values are compiled from published agricultural references and bundled as
+static JSON at build time. This section documents the external sources used and
+the rationale for each data field.
+
+### 7a. Current Schema (100 crops)
+
+**Location**: `packages/shared/src/data/crop-library.json`
+(Moved from `src/frontend/src/data/crops.json` — now shared between frontend and API.)
+
+```ts
+interface CropEntry {
+  id: string;                        // machine key, e.g. "tomato"
+  emoji: string;                     // single emoji
+  category: string;                  // grain | fruit | vegetable | root | leafy | legume | herb | other
+  en: string;                        // English display name
+  ja: string;                        // Japanese display name
+  days_to_harvest_min?: number;      // min days from planting/transplant to harvest
+  days_to_harvest_max?: number;      // max days from planting/transplant to harvest
+  days_seed_to_seedling_min?: number; // PLANNED (#329) — min days from seed sow to transplant-ready
+  days_seed_to_seedling_max?: number; // PLANNED (#329) — max days from seed sow to transplant-ready
+  season?: string[];                 // recommended planting seasons
+  companions?: string[];             // companion planting suggestions (crop ids)
+}
+```
+
+### 7b. External Reference Sources
+
+| Source | Language | Used for | Notes |
+|--------|----------|----------|-------|
+| **Takii Seeds (タキイ種苗)** cultivation guides | JA | Harvest timing, nursery periods, transplant stages | Primary source for Japan-market varieties. Seed packet data and online growing manuals. |
+| **Sakata Seeds (サカタのタネ)** growing guides | JA | Tomato, pepper, eggplant, melon family timings | Especially reliable for fruit vegetables and grafted seedling schedules. |
+| **JA (農業協同組合)** regional growing calendars | JA | Season windows, planting schedules | Regional extension guidance; varies by prefecture. |
+| **Prefectural agricultural extension centers (農業改良普及センター)** | JA | Nursery durations, transplant timing, direct-seed guidance | Nagano, Chiba, Hokkaido publications consulted. Authoritative for Japanese growing conditions. |
+| **USDA Plant Hardiness / Germination guides** | EN | Cross-reference for germination and harvest timelines | Used to validate Japanese-source data and fill gaps for non-traditional Japanese crops. |
+| **University Extension services** (US state agriculture departments) | EN | Crop-specific growing guides | Cross-reference source; secondary to Japanese data for Japan-targeted app. |
+| **NHK やさいの時間 / 家庭菜園 guides** | JA | Home garden context, simplified timelines | Useful for home-scale farming assumptions (vs commercial agriculture). |
+
+### 7c. Data Field Rationale
+
+**`days_to_harvest_min/max`** (added Beta-8, #275)
+- Represents days from **transplant** (or direct-sow for direct-seed crops) to first harvest.
+- Uses `max` for smart-default estimation (conservative — better to predict later than surprise early).
+- Source: Takii/Sakata seed packets, cross-referenced with USDA extension data.
+- 98 of 100 crops populated; `tea` and `other` are null (perennial/placeholder).
+
+**`days_seed_to_seedling_min/max`** (PLANNED — #329, not yet in codebase)
+- Will represent days from **seed sowing in nursery** to **transplant-ready seedling**.
+- Target: 35 of 100 crops will have data. The other 65 will be null for one of these reasons:
+
+| Null reason | Count | Examples |
+|-------------|-------|---------|
+| Always direct-seeded (taproot, fast-growing) | 30 | daikon, carrot, spinach, all legumes |
+| Tree fruit / perennial (grafted or cutting-propagated) | 18 | apple, grape, peach, blueberry |
+| Vegetative propagation (tubers, rhizomes, runners) | 13 | potato, ginger, strawberry, mint |
+| Mushroom (substrate-grown) | 3 | shiitake, enoki, maitake |
+| Placeholder | 1 | other |
+
+- **Japan-specific adjustments**: Nursery durations reflect Japanese practice, which
+  can differ from Western sources. For example:
+  - Eggplant/pepper nursery is 55-80 days in Japan (heated greenhouse start in Feb
+    for May transplant) vs 6-8 weeks in US extension guides.
+  - Rice uses the Japanese box-seedling system (箱育苗): 20-30 days.
+  - Green onion (長ネギ) has a 50-70 day nursery standard in Kanto-region practice.
+- **Confidence tiers**:
+  - High: tomato, eggplant, peppers, cucumber, brassicas, rice, onion, lettuce (well-documented, consistent across sources)
+  - Medium-high: basil, pumpkin, shiso, chive, kale, parsley (good data, minor varietal variation)
+  - Medium: rosemary, lavender, thyme, asparagus, celery (rarely seed-started; most growers use cuttings/crowns)
+
+### 7d. Smart-Default Harvest Calculation
+
+**Function**: `estimateHarvestDate()` in `packages/shared/src/crop-library.ts`
+
+**Current** (pre-#329): `harvest = planted_at + days_to_harvest_max`
+- Accepts `(plantedDate, cropId)`. No seed/seedling distinction.
+
+**Planned** (#329): Add `plantMethod` parameter to support two modes:
+```
+Seedling mode:  harvest = planted_at + days_to_harvest_max
+Seed mode:      harvest = planted_at + days_seed_to_seedling_max + days_to_harvest_max
+```
+
+- Uses `_max` values (conservative estimate).
+- Returns `null` if the crop has no harvest data, or if seed mode is selected but
+  the crop has no nursery data (direct-seed crops, trees, etc.).
+- The UI should hide or disable the seed/seedling toggle for crops where
+  `days_seed_to_seedling` is null — the distinction is not meaningful.
+
+### 7e. Maintenance Policy
+
+- Data is **static and bundled** — no runtime API calls.
+- Updates should reference the sources above and note the change in commit messages.
+- Future dynamic crop API (#284) may supplement this data at runtime, but the
+  static library remains the baseline fallback.
+- When adding new crops, all agronomic fields are optional — the library gracefully
+  handles missing data (smart-default returns null, UI shows no estimate).

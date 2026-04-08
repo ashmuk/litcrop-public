@@ -30,6 +30,27 @@ describe('CROPS data', () => {
     }
   });
 
+  it('37 entries have seed-to-seedling data', () => {
+    const withSeed = CROPS.filter((c) => c.days_seed_to_seedling_min != null);
+    expect(withSeed.length).toBe(37);
+  });
+
+  it('days_seed_to_seedling_min <= max for all entries', () => {
+    for (const c of CROPS) {
+      if (c.days_seed_to_seedling_min != null && c.days_seed_to_seedling_max != null) {
+        expect(c.days_seed_to_seedling_min).toBeLessThanOrEqual(c.days_seed_to_seedling_max);
+      }
+    }
+  });
+
+  it('seed-to-seedling fields are paired (both or neither)', () => {
+    for (const c of CROPS) {
+      const hasMin = c.days_seed_to_seedling_min != null;
+      const hasMax = c.days_seed_to_seedling_max != null;
+      expect(hasMin).toBe(hasMax);
+    }
+  });
+
   it('season values are valid', () => {
     const valid = new Set(['spring', 'summer', 'fall', 'winter']);
     for (const c of CROPS) {

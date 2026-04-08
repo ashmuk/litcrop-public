@@ -7,8 +7,17 @@
     "ja": "稲",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 150,
-    "season": ["spring", "summer"],
-    "companions": ["soybean", "azuki", "lotus_root"]
+    "days_seed_to_seedling_min": 20,
+    "days_seed_to_seedling_max": 30,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "soybean",
+      "azuki",
+      "lotus_root"
+    ]
   },
   {
     "id": "wheat",
@@ -18,8 +27,15 @@
     "ja": "小麦",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 130,
-    "season": ["fall", "winter"],
-    "companions": ["pea", "broad_bean", "lentil"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "pea",
+      "broad_bean",
+      "lentil"
+    ]
   },
   {
     "id": "barley",
@@ -29,8 +45,14 @@
     "ja": "大麦",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["fall", "winter"],
-    "companions": ["pea", "lentil"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "pea",
+      "lentil"
+    ]
   },
   {
     "id": "corn",
@@ -40,8 +62,17 @@
     "ja": "とうもろこし",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 100,
-    "season": ["spring", "summer"],
-    "companions": ["soybean", "pumpkin", "edamame"]
+    "days_seed_to_seedling_min": 14,
+    "days_seed_to_seedling_max": 21,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "soybean",
+      "pumpkin",
+      "edamame"
+    ]
   },
   {
     "id": "sorghum",
@@ -51,8 +82,14 @@
     "ja": "モロコシ",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["soybean", "peanut"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "soybean",
+      "peanut"
+    ]
   },
   {
     "id": "millet",
@@ -62,8 +99,14 @@
     "ja": "あわ",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["soybean", "peanut"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "soybean",
+      "peanut"
+    ]
   },
   {
     "id": "buckwheat",
@@ -73,8 +116,14 @@
     "ja": "そば",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
-    "season": ["spring", "fall"],
-    "companions": ["sunflower", "radish"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "sunflower",
+      "radish"
+    ]
   },
   {
     "id": "oat",
@@ -84,8 +133,14 @@
     "ja": "オート麦",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["fall", "winter"],
-    "companions": ["pea", "lentil"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "pea",
+      "lentil"
+    ]
   },
   {
     "id": "tomato",
@@ -95,8 +150,18 @@
     "ja": "トマト",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 85,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "parsley", "carrot", "garlic"]
+    "days_seed_to_seedling_min": 55,
+    "days_seed_to_seedling_max": 70,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "parsley",
+      "carrot",
+      "garlic"
+    ]
   },
   {
     "id": "cherry_tomato",
@@ -106,8 +171,18 @@
     "ja": "ミニトマト",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 75,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "parsley", "carrot", "garlic"]
+    "days_seed_to_seedling_min": 50,
+    "days_seed_to_seedling_max": 65,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "parsley",
+      "carrot",
+      "garlic"
+    ]
   },
   {
     "id": "strawberry",
@@ -117,8 +192,15 @@
     "ja": "いちご",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring"],
-    "companions": ["spinach", "lettuce", "garlic", "thyme"]
+    "season": [
+      "spring"
+    ],
+    "companions": [
+      "spinach",
+      "lettuce",
+      "garlic",
+      "thyme"
+    ]
   },
   {
     "id": "blueberry",
@@ -128,8 +210,14 @@
     "ja": "ブルーベリー",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["summer"],
-    "companions": ["strawberry", "thyme", "basil"]
+    "season": [
+      "summer"
+    ],
+    "companions": [
+      "strawberry",
+      "thyme",
+      "basil"
+    ]
   },
   {
     "id": "grape",
@@ -139,8 +227,16 @@
     "ja": "ぶどう",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 185,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["basil", "rosemary", "oregano"]
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "basil",
+      "rosemary",
+      "oregano"
+    ]
   },
   {
     "id": "melon",
@@ -150,8 +246,17 @@
     "ja": "メロン",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "sunflower", "okra"]
+    "days_seed_to_seedling_min": 30,
+    "days_seed_to_seedling_max": 40,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "sunflower",
+      "okra"
+    ]
   },
   {
     "id": "watermelon",
@@ -161,8 +266,17 @@
     "ja": "すいか",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "okra", "sunflower"]
+    "days_seed_to_seedling_min": 30,
+    "days_seed_to_seedling_max": 40,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "okra",
+      "sunflower"
+    ]
   },
   {
     "id": "peach",
@@ -172,8 +286,15 @@
     "ja": "桃",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 150,
-    "season": ["spring", "summer"],
-    "companions": ["garlic", "basil", "chive"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "garlic",
+      "basil",
+      "chive"
+    ]
   },
   {
     "id": "apple",
@@ -183,8 +304,16 @@
     "ja": "りんご",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 185,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["chive", "garlic", "rosemary"]
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "chive",
+      "garlic",
+      "rosemary"
+    ]
   },
   {
     "id": "pear",
@@ -194,8 +323,15 @@
     "ja": "梨",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 175,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["chive", "garlic"]
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "chive",
+      "garlic"
+    ]
   },
   {
     "id": "persimmon",
@@ -205,8 +341,15 @@
     "ja": "柿",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 200,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["chive", "garlic"]
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "chive",
+      "garlic"
+    ]
   },
   {
     "id": "fig",
@@ -216,8 +359,14 @@
     "ja": "いちじく",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "rosemary"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "rosemary"
+    ]
   },
   {
     "id": "lemon",
@@ -227,8 +376,15 @@
     "ja": "レモン",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 270,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "lavender", "rosemary"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "lavender",
+      "rosemary"
+    ]
   },
   {
     "id": "yuzu",
@@ -238,8 +394,14 @@
     "ja": "ゆず",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 270,
-    "season": ["fall", "winter"],
-    "companions": ["basil", "lavender"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "basil",
+      "lavender"
+    ]
   },
   {
     "id": "mandarin",
@@ -249,8 +411,14 @@
     "ja": "みかん",
     "days_to_harvest_min": 180,
     "days_to_harvest_max": 300,
-    "season": ["fall", "winter"],
-    "companions": ["lavender", "rosemary"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "lavender",
+      "rosemary"
+    ]
   },
   {
     "id": "plum",
@@ -260,8 +428,15 @@
     "ja": "すもも",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
-    "season": ["spring", "summer"],
-    "companions": ["chive", "garlic", "basil"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "chive",
+      "garlic",
+      "basil"
+    ]
   },
   {
     "id": "ume",
@@ -271,8 +446,14 @@
     "ja": "梅",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["chive", "garlic"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "chive",
+      "garlic"
+    ]
   },
   {
     "id": "kiwi",
@@ -282,8 +463,15 @@
     "ja": "キウイ",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 225,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["basil", "garlic"]
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "basil",
+      "garlic"
+    ]
   },
   {
     "id": "cucumber",
@@ -293,8 +481,19 @@
     "ja": "きゅうり",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "dill", "corn", "sunflower", "radish"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "dill",
+      "corn",
+      "sunflower",
+      "radish"
+    ]
   },
   {
     "id": "eggplant",
@@ -304,8 +503,17 @@
     "ja": "なす",
     "days_to_harvest_min": 65,
     "days_to_harvest_max": 85,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "pea", "spinach"]
+    "days_seed_to_seedling_min": 60,
+    "days_seed_to_seedling_max": 80,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "pea",
+      "spinach"
+    ]
   },
   {
     "id": "bell_pepper",
@@ -315,8 +523,17 @@
     "ja": "ピーマン",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "carrot", "tomato"]
+    "days_seed_to_seedling_min": 55,
+    "days_seed_to_seedling_max": 70,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "carrot",
+      "tomato"
+    ]
   },
   {
     "id": "chili_pepper",
@@ -326,8 +543,17 @@
     "ja": "唐辛子",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 100,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "carrot", "tomato"]
+    "days_seed_to_seedling_min": 55,
+    "days_seed_to_seedling_max": 70,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "carrot",
+      "tomato"
+    ]
   },
   {
     "id": "shishito",
@@ -337,8 +563,17 @@
     "ja": "ししとう",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 85,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "carrot", "tomato"]
+    "days_seed_to_seedling_min": 55,
+    "days_seed_to_seedling_max": 70,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "carrot",
+      "tomato"
+    ]
   },
   {
     "id": "zucchini",
@@ -348,8 +583,18 @@
     "ja": "ズッキーニ",
     "days_to_harvest_min": 45,
     "days_to_harvest_max": 65,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "pea", "mint", "basil"]
+    "days_seed_to_seedling_min": 20,
+    "days_seed_to_seedling_max": 30,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "pea",
+      "mint",
+      "basil"
+    ]
   },
   {
     "id": "pumpkin",
@@ -359,8 +604,17 @@
     "ja": "かぼちゃ",
     "days_to_harvest_min": 75,
     "days_to_harvest_max": 100,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "soybean", "edamame"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "soybean",
+      "edamame"
+    ]
   },
   {
     "id": "bitter_melon",
@@ -370,8 +624,17 @@
     "ja": "ゴーヤ",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 75,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "okra", "basil"]
+    "days_seed_to_seedling_min": 30,
+    "days_seed_to_seedling_max": 40,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "okra",
+      "basil"
+    ]
   },
   {
     "id": "okra",
@@ -381,8 +644,17 @@
     "ja": "オクラ",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 65,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "sunflower", "pea"]
+    "days_seed_to_seedling_min": 20,
+    "days_seed_to_seedling_max": 30,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "sunflower",
+      "pea"
+    ]
   },
   {
     "id": "green_bean",
@@ -392,8 +664,16 @@
     "ja": "インゲン",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 65,
-    "season": ["spring", "summer"],
-    "companions": ["carrot", "cucumber", "corn", "radish"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "carrot",
+      "cucumber",
+      "corn",
+      "radish"
+    ]
   },
   {
     "id": "snap_pea",
@@ -403,8 +683,16 @@
     "ja": "スナップえんどう",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
-    "season": ["spring", "fall"],
-    "companions": ["carrot", "radish", "spinach", "lettuce"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "radish",
+      "spinach",
+      "lettuce"
+    ]
   },
   {
     "id": "asparagus",
@@ -414,8 +702,16 @@
     "ja": "アスパラガス",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
-    "season": ["spring"],
-    "companions": ["tomato", "basil", "parsley"]
+    "days_seed_to_seedling_min": 60,
+    "days_seed_to_seedling_max": 90,
+    "season": [
+      "spring"
+    ],
+    "companions": [
+      "tomato",
+      "basil",
+      "parsley"
+    ]
   },
   {
     "id": "broccoli",
@@ -425,8 +721,18 @@
     "ja": "ブロッコリー",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 80,
-    "season": ["spring", "fall"],
-    "companions": ["rosemary", "sage", "celery", "dill"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "rosemary",
+      "sage",
+      "celery",
+      "dill"
+    ]
   },
   {
     "id": "cauliflower",
@@ -436,8 +742,18 @@
     "ja": "カリフラワー",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 80,
-    "season": ["spring", "fall"],
-    "companions": ["celery", "sage", "dill", "rosemary"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "celery",
+      "sage",
+      "dill",
+      "rosemary"
+    ]
   },
   {
     "id": "celery",
@@ -447,8 +763,18 @@
     "ja": "セロリ",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 120,
-    "season": ["spring", "fall"],
-    "companions": ["tomato", "broccoli", "cauliflower", "leek"]
+    "days_seed_to_seedling_min": 60,
+    "days_seed_to_seedling_max": 80,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "tomato",
+      "broccoli",
+      "cauliflower",
+      "leek"
+    ]
   },
   {
     "id": "myoga",
@@ -458,8 +784,15 @@
     "ja": "みょうが",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["summer", "fall"],
-    "companions": ["shiso", "mitsuba", "ginger"]
+    "season": [
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "shiso",
+      "mitsuba",
+      "ginger"
+    ]
   },
   {
     "id": "lettuce",
@@ -469,8 +802,18 @@
     "ja": "レタス",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 60,
-    "season": ["spring", "fall"],
-    "companions": ["carrot", "radish", "strawberry", "chive"]
+    "days_seed_to_seedling_min": 20,
+    "days_seed_to_seedling_max": 30,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "radish",
+      "strawberry",
+      "chive"
+    ]
   },
   {
     "id": "cabbage",
@@ -480,8 +823,18 @@
     "ja": "キャベツ",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
-    "season": ["spring", "fall"],
-    "companions": ["celery", "dill", "rosemary", "sage"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "celery",
+      "dill",
+      "rosemary",
+      "sage"
+    ]
   },
   {
     "id": "napa_cabbage",
@@ -491,8 +844,17 @@
     "ja": "白菜",
     "days_to_harvest_min": 65,
     "days_to_harvest_max": 85,
-    "season": ["fall", "winter"],
-    "companions": ["celery", "dill", "green_onion"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "celery",
+      "dill",
+      "green_onion"
+    ]
   },
   {
     "id": "spinach",
@@ -502,8 +864,17 @@
     "ja": "ほうれん草",
     "days_to_harvest_min": 35,
     "days_to_harvest_max": 50,
-    "season": ["spring", "fall", "winter"],
-    "companions": ["strawberry", "pea", "radish", "lettuce"]
+    "season": [
+      "spring",
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "strawberry",
+      "pea",
+      "radish",
+      "lettuce"
+    ]
   },
   {
     "id": "komatsuna",
@@ -513,8 +884,16 @@
     "ja": "小松菜",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 45,
-    "season": ["spring", "fall", "winter"],
-    "companions": ["spinach", "mizuna", "lettuce"]
+    "season": [
+      "spring",
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "spinach",
+      "mizuna",
+      "lettuce"
+    ]
   },
   {
     "id": "mizuna",
@@ -524,8 +903,16 @@
     "ja": "水菜",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 50,
-    "season": ["spring", "fall", "winter"],
-    "companions": ["komatsuna", "spinach", "lettuce"]
+    "season": [
+      "spring",
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "komatsuna",
+      "spinach",
+      "lettuce"
+    ]
   },
   {
     "id": "bok_choy",
@@ -535,8 +922,15 @@
     "ja": "チンゲン菜",
     "days_to_harvest_min": 45,
     "days_to_harvest_max": 60,
-    "season": ["spring", "fall"],
-    "companions": ["garlic", "ginger", "celery"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "garlic",
+      "ginger",
+      "celery"
+    ]
   },
   {
     "id": "arugula",
@@ -546,8 +940,15 @@
     "ja": "ルッコラ",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 45,
-    "season": ["spring", "fall"],
-    "companions": ["lettuce", "spinach", "radish"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "lettuce",
+      "spinach",
+      "radish"
+    ]
   },
   {
     "id": "kale",
@@ -557,8 +958,19 @@
     "ja": "ケール",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 75,
-    "season": ["spring", "fall", "winter"],
-    "companions": ["celery", "dill", "sage", "rosemary"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "celery",
+      "dill",
+      "sage",
+      "rosemary"
+    ]
   },
   {
     "id": "swiss_chard",
@@ -568,8 +980,15 @@
     "ja": "フダンソウ",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
-    "season": ["spring", "fall"],
-    "companions": ["lettuce", "spinach", "carrot"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "lettuce",
+      "spinach",
+      "carrot"
+    ]
   },
   {
     "id": "shiso",
@@ -579,8 +998,18 @@
     "ja": "しそ",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
-    "season": ["spring", "summer"],
-    "companions": ["myoga", "mitsuba", "eggplant", "tomato"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "myoga",
+      "mitsuba",
+      "eggplant",
+      "tomato"
+    ]
   },
   {
     "id": "mitsuba",
@@ -590,8 +1019,17 @@
     "ja": "三つ葉",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
-    "season": ["spring", "fall"],
-    "companions": ["shiso", "myoga", "lettuce"]
+    "days_seed_to_seedling_min": 25,
+    "days_seed_to_seedling_max": 35,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "shiso",
+      "myoga",
+      "lettuce"
+    ]
   },
   {
     "id": "chrysanthemum",
@@ -601,8 +1039,17 @@
     "ja": "春菊",
     "days_to_harvest_min": 40,
     "days_to_harvest_max": 60,
-    "season": ["fall", "winter"],
-    "companions": ["spinach", "komatsuna", "mizuna"]
+    "days_seed_to_seedling_min": 20,
+    "days_seed_to_seedling_max": 30,
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "spinach",
+      "komatsuna",
+      "mizuna"
+    ]
   },
   {
     "id": "green_onion",
@@ -612,8 +1059,18 @@
     "ja": "ねぎ",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "fall"],
-    "companions": ["carrot", "tomato", "lettuce", "strawberry"]
+    "days_seed_to_seedling_min": 50,
+    "days_seed_to_seedling_max": 70,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "tomato",
+      "lettuce",
+      "strawberry"
+    ]
   },
   {
     "id": "leek",
@@ -623,8 +1080,17 @@
     "ja": "下仁田ねぎ",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
-    "season": ["fall", "winter"],
-    "companions": ["carrot", "celery", "tomato"]
+    "days_seed_to_seedling_min": 50,
+    "days_seed_to_seedling_max": 70,
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "carrot",
+      "celery",
+      "tomato"
+    ]
   },
   {
     "id": "chive",
@@ -634,8 +1100,18 @@
     "ja": "にら",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["tomato", "carrot", "strawberry", "lettuce"]
+    "days_seed_to_seedling_min": 40,
+    "days_seed_to_seedling_max": 60,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "tomato",
+      "carrot",
+      "strawberry",
+      "lettuce"
+    ]
   },
   {
     "id": "daikon",
@@ -645,8 +1121,15 @@
     "ja": "大根",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
-    "season": ["fall", "winter"],
-    "companions": ["lettuce", "spinach", "komatsuna"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "lettuce",
+      "spinach",
+      "komatsuna"
+    ]
   },
   {
     "id": "carrot",
@@ -656,8 +1139,17 @@
     "ja": "にんじん",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 80,
-    "season": ["spring", "fall"],
-    "companions": ["lettuce", "tomato", "chive", "rosemary", "sage"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "lettuce",
+      "tomato",
+      "chive",
+      "rosemary",
+      "sage"
+    ]
   },
   {
     "id": "turnip",
@@ -667,8 +1159,15 @@
     "ja": "かぶ",
     "days_to_harvest_min": 35,
     "days_to_harvest_max": 60,
-    "season": ["spring", "fall"],
-    "companions": ["pea", "spinach", "lettuce"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "pea",
+      "spinach",
+      "lettuce"
+    ]
   },
   {
     "id": "radish",
@@ -678,8 +1177,16 @@
     "ja": "ラディッシュ",
     "days_to_harvest_min": 22,
     "days_to_harvest_max": 35,
-    "season": ["spring", "fall"],
-    "companions": ["lettuce", "cucumber", "pea", "carrot"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "lettuce",
+      "cucumber",
+      "pea",
+      "carrot"
+    ]
   },
   {
     "id": "burdock",
@@ -689,8 +1196,14 @@
     "ja": "ごぼう",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 150,
-    "season": ["spring", "fall"],
-    "companions": ["carrot", "daikon"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "daikon"
+    ]
   },
   {
     "id": "lotus_root",
@@ -700,8 +1213,13 @@
     "ja": "れんこん",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 210,
-    "season": ["spring", "summer"],
-    "companions": ["rice"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "rice"
+    ]
   },
   {
     "id": "sweet_potato",
@@ -711,8 +1229,15 @@
     "ja": "さつまいも",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["okra", "corn", "sunflower"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "okra",
+      "corn",
+      "sunflower"
+    ]
   },
   {
     "id": "potato",
@@ -722,8 +1247,14 @@
     "ja": "じゃがいも",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 120,
-    "season": ["spring"],
-    "companions": ["corn", "pea", "basil"]
+    "season": [
+      "spring"
+    ],
+    "companions": [
+      "corn",
+      "pea",
+      "basil"
+    ]
   },
   {
     "id": "taro",
@@ -733,8 +1264,14 @@
     "ja": "里芋",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 180,
-    "season": ["spring", "summer"],
-    "companions": ["ginger", "myoga"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "ginger",
+      "myoga"
+    ]
   },
   {
     "id": "yam",
@@ -744,8 +1281,14 @@
     "ja": "山芋",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 180,
-    "season": ["spring", "summer"],
-    "companions": ["taro", "ginger"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "taro",
+      "ginger"
+    ]
   },
   {
     "id": "ginger",
@@ -755,8 +1298,15 @@
     "ja": "生姜",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 180,
-    "season": ["spring", "summer"],
-    "companions": ["myoga", "taro", "shiso"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "myoga",
+      "taro",
+      "shiso"
+    ]
   },
   {
     "id": "onion",
@@ -766,8 +1316,19 @@
     "ja": "たまねぎ",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
-    "season": ["fall", "winter", "spring"],
-    "companions": ["carrot", "lettuce", "tomato", "strawberry"]
+    "days_seed_to_seedling_min": 50,
+    "days_seed_to_seedling_max": 65,
+    "season": [
+      "fall",
+      "winter",
+      "spring"
+    ],
+    "companions": [
+      "carrot",
+      "lettuce",
+      "tomato",
+      "strawberry"
+    ]
   },
   {
     "id": "garlic",
@@ -777,8 +1338,16 @@
     "ja": "にんにく",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 210,
-    "season": ["fall", "winter"],
-    "companions": ["tomato", "carrot", "strawberry", "apple"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "tomato",
+      "carrot",
+      "strawberry",
+      "apple"
+    ]
   },
   {
     "id": "wasabi",
@@ -788,8 +1357,15 @@
     "ja": "わさび",
     "days_to_harvest_min": 180,
     "days_to_harvest_max": 365,
-    "season": ["fall", "winter", "spring"],
-    "companions": ["mitsuba", "shiso"]
+    "season": [
+      "fall",
+      "winter",
+      "spring"
+    ],
+    "companions": [
+      "mitsuba",
+      "shiso"
+    ]
   },
   {
     "id": "beetroot",
@@ -799,8 +1375,16 @@
     "ja": "ビーツ",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
-    "season": ["spring", "fall"],
-    "companions": ["lettuce", "spinach", "onion", "garlic"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "lettuce",
+      "spinach",
+      "onion",
+      "garlic"
+    ]
   },
   {
     "id": "soybean",
@@ -810,8 +1394,15 @@
     "ja": "大豆",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "carrot", "sunflower"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "carrot",
+      "sunflower"
+    ]
   },
   {
     "id": "edamame",
@@ -821,8 +1412,15 @@
     "ja": "枝豆",
     "days_to_harvest_min": 65,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "carrot", "cucumber"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "carrot",
+      "cucumber"
+    ]
   },
   {
     "id": "azuki",
@@ -832,8 +1430,15 @@
     "ja": "小豆",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "soybean", "carrot"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "soybean",
+      "carrot"
+    ]
   },
   {
     "id": "peanut",
@@ -843,8 +1448,15 @@
     "ja": "落花生",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "sunflower", "sorghum"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "sunflower",
+      "sorghum"
+    ]
   },
   {
     "id": "broad_bean",
@@ -854,8 +1466,16 @@
     "ja": "そら豆",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 100,
-    "season": ["fall", "winter", "spring"],
-    "companions": ["carrot", "spinach", "lettuce"]
+    "season": [
+      "fall",
+      "winter",
+      "spring"
+    ],
+    "companions": [
+      "carrot",
+      "spinach",
+      "lettuce"
+    ]
   },
   {
     "id": "pea",
@@ -865,8 +1485,17 @@
     "ja": "えんどう豆",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
-    "season": ["spring", "fall"],
-    "companions": ["carrot", "radish", "lettuce", "spinach", "corn"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "radish",
+      "lettuce",
+      "spinach",
+      "corn"
+    ]
   },
   {
     "id": "lentil",
@@ -876,8 +1505,15 @@
     "ja": "レンズ豆",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 110,
-    "season": ["spring", "fall"],
-    "companions": ["carrot", "barley", "oat"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "barley",
+      "oat"
+    ]
   },
   {
     "id": "basil",
@@ -887,8 +1523,18 @@
     "ja": "バジル",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 75,
-    "season": ["spring", "summer"],
-    "companions": ["tomato", "cherry_tomato", "eggplant", "bell_pepper"]
+    "days_seed_to_seedling_min": 20,
+    "days_seed_to_seedling_max": 30,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "tomato",
+      "cherry_tomato",
+      "eggplant",
+      "bell_pepper"
+    ]
   },
   {
     "id": "parsley",
@@ -898,8 +1544,18 @@
     "ja": "パセリ",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 80,
-    "season": ["spring", "fall"],
-    "companions": ["tomato", "carrot", "asparagus", "chive"]
+    "days_seed_to_seedling_min": 30,
+    "days_seed_to_seedling_max": 45,
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "tomato",
+      "carrot",
+      "asparagus",
+      "chive"
+    ]
   },
   {
     "id": "cilantro",
@@ -909,8 +1565,16 @@
     "ja": "パクチー",
     "days_to_harvest_min": 45,
     "days_to_harvest_max": 70,
-    "season": ["spring", "fall"],
-    "companions": ["spinach", "lettuce", "carrot", "pea"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "spinach",
+      "lettuce",
+      "carrot",
+      "pea"
+    ]
   },
   {
     "id": "dill",
@@ -920,8 +1584,16 @@
     "ja": "ディル",
     "days_to_harvest_min": 40,
     "days_to_harvest_max": 60,
-    "season": ["spring", "summer"],
-    "companions": ["cucumber", "broccoli", "cabbage", "lettuce"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "cucumber",
+      "broccoli",
+      "cabbage",
+      "lettuce"
+    ]
   },
   {
     "id": "mint",
@@ -931,8 +1603,16 @@
     "ja": "ミント",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["pea", "carrot", "zucchini", "cabbage"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "pea",
+      "carrot",
+      "zucchini",
+      "cabbage"
+    ]
   },
   {
     "id": "rosemary",
@@ -942,8 +1622,19 @@
     "ja": "ローズマリー",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["carrot", "cabbage", "sage", "broccoli"]
+    "days_seed_to_seedling_min": 60,
+    "days_seed_to_seedling_max": 90,
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "cabbage",
+      "sage",
+      "broccoli"
+    ]
   },
   {
     "id": "thyme",
@@ -953,8 +1644,19 @@
     "ja": "タイム",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["carrot", "strawberry", "rosemary", "sage"]
+    "days_seed_to_seedling_min": 40,
+    "days_seed_to_seedling_max": 60,
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "strawberry",
+      "rosemary",
+      "sage"
+    ]
   },
   {
     "id": "oregano",
@@ -964,8 +1666,18 @@
     "ja": "オレガノ",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer"],
-    "companions": ["tomato", "bell_pepper", "grape", "rosemary"]
+    "days_seed_to_seedling_min": 40,
+    "days_seed_to_seedling_max": 60,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "tomato",
+      "bell_pepper",
+      "grape",
+      "rosemary"
+    ]
   },
   {
     "id": "sage",
@@ -975,8 +1687,19 @@
     "ja": "セージ",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
-    "season": ["spring", "summer", "fall"],
-    "companions": ["carrot", "cabbage", "rosemary", "broccoli"]
+    "days_seed_to_seedling_min": 40,
+    "days_seed_to_seedling_max": 60,
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "companions": [
+      "carrot",
+      "cabbage",
+      "rosemary",
+      "broccoli"
+    ]
   },
   {
     "id": "lavender",
@@ -986,8 +1709,18 @@
     "ja": "ラベンダー",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["thyme", "sage", "rosemary", "lemon"]
+    "days_seed_to_seedling_min": 60,
+    "days_seed_to_seedling_max": 90,
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "thyme",
+      "sage",
+      "rosemary",
+      "lemon"
+    ]
   },
   {
     "id": "lemongrass",
@@ -997,8 +1730,15 @@
     "ja": "レモングラス",
     "days_to_harvest_min": 75,
     "days_to_harvest_max": 100,
-    "season": ["spring", "summer"],
-    "companions": ["basil", "mint", "ginger"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "basil",
+      "mint",
+      "ginger"
+    ]
   },
   {
     "id": "shiitake",
@@ -1008,8 +1748,14 @@
     "ja": "しいたけ",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 180,
-    "season": ["spring", "fall"],
-    "companions": ["enoki", "maitake"]
+    "season": [
+      "spring",
+      "fall"
+    ],
+    "companions": [
+      "enoki",
+      "maitake"
+    ]
   },
   {
     "id": "enoki",
@@ -1019,8 +1765,14 @@
     "ja": "えのき",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 60,
-    "season": ["fall", "winter"],
-    "companions": ["shiitake", "maitake"]
+    "season": [
+      "fall",
+      "winter"
+    ],
+    "companions": [
+      "shiitake",
+      "maitake"
+    ]
   },
   {
     "id": "maitake",
@@ -1030,8 +1782,13 @@
     "ja": "まいたけ",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 120,
-    "season": ["fall"],
-    "companions": ["shiitake", "enoki"]
+    "season": [
+      "fall"
+    ],
+    "companions": [
+      "shiitake",
+      "enoki"
+    ]
   },
   {
     "id": "bamboo_shoot",
@@ -1041,8 +1798,13 @@
     "ja": "たけのこ",
     "days_to_harvest_min": 14,
     "days_to_harvest_max": 21,
-    "season": ["spring"],
-    "companions": ["shiso", "mitsuba"]
+    "season": [
+      "spring"
+    ],
+    "companions": [
+      "shiso",
+      "mitsuba"
+    ]
   },
   {
     "id": "tea",
@@ -1059,8 +1821,16 @@
     "ja": "ひまわり",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 100,
-    "season": ["spring", "summer"],
-    "companions": ["corn", "cucumber", "melon", "soybean"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "corn",
+      "cucumber",
+      "melon",
+      "soybean"
+    ]
   },
   {
     "id": "sesame",
@@ -1070,8 +1840,15 @@
     "ja": "ごま",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
-    "season": ["spring", "summer"],
-    "companions": ["peanut", "soybean", "corn"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "peanut",
+      "soybean",
+      "corn"
+    ]
   },
   {
     "id": "konnyaku",
@@ -1081,8 +1858,15 @@
     "ja": "こんにゃく",
     "days_to_harvest_min": 180,
     "days_to_harvest_max": 270,
-    "season": ["spring", "summer"],
-    "companions": ["taro", "ginger", "yam"]
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "companions": [
+      "taro",
+      "ginger",
+      "yam"
+    ]
   },
   {
     "id": "other",

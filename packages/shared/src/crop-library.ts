@@ -14,6 +14,8 @@ export interface CropEntry {
   ja: string;
   days_to_harvest_min?: number;
   days_to_harvest_max?: number;
+  days_seed_to_seedling_min?: number;
+  days_seed_to_seedling_max?: number;
   season?: string[];
   companions?: string[];
 }
