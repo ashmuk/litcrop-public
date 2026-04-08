@@ -51,6 +51,7 @@ export function estimateHarvestDate(
     totalDays += meta.days_seed_to_seedling_max;
   }
   const d = new Date(plantedDate);
+  if (isNaN(d.getTime())) return null;
   d.setDate(d.getDate() + totalDays);
   return d.toISOString().split('T')[0];
 }

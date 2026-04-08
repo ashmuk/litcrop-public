@@ -167,4 +167,9 @@ describe('estimateHarvestDate', () => {
     const withoutMode = estimateHarvestDate('2026-04-01', 'eggplant');
     expect(withUndef).toBe(withoutMode);
   });
+
+  it('returns null for invalid date string', () => {
+    expect(estimateHarvestDate('', 'tomato')).toBeNull();
+    expect(estimateHarvestDate('not-a-date', 'tomato')).toBeNull();
+  });
 });

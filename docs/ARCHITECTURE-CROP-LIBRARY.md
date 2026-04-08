@@ -237,8 +237,8 @@ interface CropEntry {
   ja: string;                        // Japanese display name
   days_to_harvest_min?: number;      // min days from planting/transplant to harvest
   days_to_harvest_max?: number;      // max days from planting/transplant to harvest
-  days_seed_to_seedling_min?: number; // PLANNED (#329) — min days from seed sow to transplant-ready
-  days_seed_to_seedling_max?: number; // PLANNED (#329) — max days from seed sow to transplant-ready
+  days_seed_to_seedling_min?: number; // #329 — min days from seed sow to transplant-ready
+  days_seed_to_seedling_max?: number; // #329 — max days from seed sow to transplant-ready
   season?: string[];                 // recommended planting seasons
   companions?: string[];             // companion planting suggestions (crop ids)
 }
@@ -264,9 +264,9 @@ interface CropEntry {
 - Source: Takii/Sakata seed packets, cross-referenced with USDA extension data.
 - 98 of 100 crops populated; `tea` and `other` are null (perennial/placeholder).
 
-**`days_seed_to_seedling_min/max`** (PLANNED — #329, not yet in codebase)
-- Will represent days from **seed sowing in nursery** to **transplant-ready seedling**.
-- Target: 35 of 100 crops will have data. The other 65 will be null for one of these reasons:
+**`days_seed_to_seedling_min/max`** (#329)
+- Represents days from **seed sowing in nursery** to **transplant-ready seedling**.
+- 37 of 100 crops have data. The other 63 are null for one of these reasons:
 
 | Null reason | Count | Examples |
 |-------------|-------|---------|
@@ -291,10 +291,7 @@ interface CropEntry {
 
 **Function**: `estimateHarvestDate()` in `packages/shared/src/crop-library.ts`
 
-**Current** (pre-#329): `harvest = planted_at + days_to_harvest_max`
-- Accepts `(plantedDate, cropId)`. No seed/seedling distinction.
-
-**Planned** (#329): Add `plantMethod` parameter to support two modes:
+Accepts `(plantedDate, cropId, plantMethod?)` where `plantMethod` is optional `PlantMethod` type (#329):
 ```
 Seedling mode:  harvest = planted_at + days_to_harvest_max
 Seed mode:      harvest = planted_at + days_seed_to_seedling_max + days_to_harvest_max

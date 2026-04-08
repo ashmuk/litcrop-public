@@ -384,8 +384,8 @@ export default function BedDetail() {
             <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => {
               const planted = (e.target as HTMLInputElement).value;
               const next = { ...cropForm, planted_at: planted };
-              if (planted && next.crop_type && !next.expected_harvest) {
-                next.expected_harvest = estimateHarvestDate(planted, next.crop_type, plantMethod) ?? '';
+              if (planted && next.crop_type) {
+                next.expected_harvest = estimateHarvestDate(planted, next.crop_type, plantMethod) ?? next.expected_harvest;
               }
               setCropForm(next);
             }} />
