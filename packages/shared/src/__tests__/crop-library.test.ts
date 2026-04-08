@@ -140,4 +140,31 @@ describe('estimateHarvestDate', () => {
     const result = estimateHarvestDate('2026-11-01', 'cabbage');
     expect(result).toBe('2027-01-30');
   });
+
+  it('seed mode adds nursery days for crops with seedling data', () => {
+    // tomato: harvest_max=85, seed_to_seedling_max=70 → total 155 days
+    const seedResult = estimateHarvestDate('2026-04-01', 'tomato', 'seed');
+    const seedlingResult = estimateHarvestDate('2026-04-01', 'tomato', 'seedling');
+    expect(seedResult).toBe('2026-09-03'); // Apr 1 + 155 days
+    expect(seedlingResult).toBe('2026-06-25'); // Apr 1 + 85 days (same as default)
+  });
+
+  it('seed mode falls back to harvest-only for crops without seedling data', () => {
+    // daikon: harvest_max=70, no seed_to_seedling data (always direct-seeded)
+    const seedResult = estimateHarvestDate('2026-04-01', 'daikon', 'seed');
+    const defaultResult = estimateHarvestDate('2026-04-01', 'daikon');
+    expect(seedResult).toBe(defaultResult);
+  });
+
+  it('seedling mode matches default (no plantMethod)', () => {
+    const withMode = estimateHarvestDate('2026-04-01', 'tomato', 'seedling');
+    const withoutMode = estimateHarvestDate('2026-04-01', 'tomato');
+    expect(withMode).toBe(withoutMode);
+  });
+
+  it('undefined plantMethod matches default', () => {
+    const withUndef = estimateHarvestDate('2026-04-01', 'eggplant', undefined);
+    const withoutMode = estimateHarvestDate('2026-04-01', 'eggplant');
+    expect(withUndef).toBe(withoutMode);
+  });
 });

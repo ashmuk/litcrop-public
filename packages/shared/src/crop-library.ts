@@ -34,12 +34,22 @@ export function getCropMeta(cropId: string): CropEntry | undefined {
 /**
  * Estimate harvest date from a planting date and crop type.
  * Uses days_to_harvest_max from the crop library.
+ * When plantMethod is 'seed', adds days_seed_to_seedling_max to account
+ * for nursery time before transplanting.
  * Returns null if the crop is unknown or has no harvest data.
  */
-export function estimateHarvestDate(plantedDate: string, cropId: string): string | null {
+export function estimateHarvestDate(
+  plantedDate: string,
+  cropId: string,
+  plantMethod?: 'seed' | 'seedling',
+): string | null {
   const meta = getCropMeta(cropId);
   if (!meta?.days_to_harvest_max) return null;
+  let totalDays = meta.days_to_harvest_max;
+  if (plantMethod === 'seed' && meta.days_seed_to_seedling_max) {
+    totalDays += meta.days_seed_to_seedling_max;
+  }
   const d = new Date(plantedDate);
-  d.setDate(d.getDate() + meta.days_to_harvest_max);
+  d.setDate(d.getDate() + totalDays);
   return d.toISOString().split('T')[0];
 }

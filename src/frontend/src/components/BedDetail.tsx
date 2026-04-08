@@ -348,7 +348,7 @@ export default function BedDetail() {
               onChange={(v) => {
                 const next = { ...cropForm, crop_type: v };
                 if (next.planted_at) {
-                  next.expected_harvest = estimateHarvestDate(next.planted_at, v) ?? next.expected_harvest;
+                  next.expected_harvest = estimateHarvestDate(next.planted_at, v, plantMethod) ?? next.expected_harvest;
                 }
                 setCropForm(next);
               }}
@@ -362,11 +362,21 @@ export default function BedDetail() {
             <label class="form-label">{t('bed.plant_method')}</label>
             <div style="display:flex;gap:var(--space-3)">
               <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => setPlantMethod('seed')} />
+                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => {
+                  setPlantMethod('seed');
+                  if (cropForm.planted_at && cropForm.crop_type) {
+                    setCropForm((f) => ({ ...f, expected_harvest: estimateHarvestDate(f.planted_at, f.crop_type, 'seed') ?? f.expected_harvest }));
+                  }
+                }} />
                 🫘 {t('diary.categories.seeding')}
               </label>
               <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => setPlantMethod('seedling')} />
+                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => {
+                  setPlantMethod('seedling');
+                  if (cropForm.planted_at && cropForm.crop_type) {
+                    setCropForm((f) => ({ ...f, expected_harvest: estimateHarvestDate(f.planted_at, f.crop_type, 'seedling') ?? f.expected_harvest }));
+                  }
+                }} />
                 🌱 {t('diary.categories.planting')}
               </label>
             </div>
@@ -377,7 +387,7 @@ export default function BedDetail() {
               const planted = (e.target as HTMLInputElement).value;
               const next = { ...cropForm, planted_at: planted };
               if (planted && next.crop_type && !next.expected_harvest) {
-                next.expected_harvest = estimateHarvestDate(planted, next.crop_type) ?? '';
+                next.expected_harvest = estimateHarvestDate(planted, next.crop_type, plantMethod) ?? '';
               }
               setCropForm(next);
             }} />
