@@ -11,8 +11,8 @@ import CropAutocomplete from './CropAutocomplete';
 import { getCropDisplay } from '../lib/crops';
 import { estimateHarvestDate } from '@litcrop/shared';
 import type { PlantMethod } from '@litcrop/shared';
-import { getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError } from '../lib/api';
-import { getLocalFarmRole } from '../lib/hooks';
+import { getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, getMyFarms, ApiError } from '../lib/api';
+import { getLocalFarmRole, setLocalFarmList } from '../lib/hooks';
 import { LS_FARM_ID } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
@@ -90,7 +90,7 @@ export default function BedDetail() {
       ? new URLSearchParams(window.location.search).get('id') ?? ''
       : '';
 
-  const isReadOnly = getLocalFarmRole() === 'staff';
+  const [isReadOnly, setIsReadOnly] = useState(getLocalFarmRole() === 'staff');
 
   // Set i18n title immediately on mount (before API returns)
   useEffect(() => {
@@ -104,11 +104,17 @@ export default function BedDetail() {
 
     async function load() {
       try {
-        const [bedData, imagesData] = await Promise.all([
+        const [bedData, imagesData, farms] = await Promise.all([
           getBed(bedId),
           getImages(bedId),
+          getMyFarms().catch(() => null),
         ]);
         if (cancelled) return;
+        // Refresh role cache from API to prevent stale localStorage
+        if (farms) {
+          setLocalFarmList(farms);
+          setIsReadOnly(getLocalFarmRole() === 'staff');
+        }
         setBed(bedData);
         setImages(imagesData.data);
         setNextCursor(imagesData.meta.next_cursor);
