@@ -20,7 +20,7 @@ import { getBeds, updateDevice, deleteDevice } from '../lib/api';
 import type { DeviceListItemResponse } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
-import TierBadge from './TierBadge';
+import TierBadge, { TIER_PRESENTATION } from './TierBadge';
 
 export interface Props {
   farmId: string;
@@ -153,16 +153,7 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
   }
 
   // ── Main form ────────────────────────────────────────────────────
-  const tierBannerKey =
-    deviceClass === 'unknown' ? 'device.tier_banner_unknown' : `device.tier_banner_${deviceClass}`;
-  const tierBannerColor =
-    deviceClass === 'unknown'
-      ? 'var(--color-warning-light, #fef3c7)'
-      : deviceClass === 3
-        ? 'var(--color-success-light, #dcfce7)'
-        : deviceClass === 2
-          ? 'var(--color-primary-light)'
-          : 'var(--color-gray-100)';
+  const { bannerKey: tierBannerKey, bg: tierBannerColor } = TIER_PRESENTATION[deviceClass];
 
   return (
     <form
