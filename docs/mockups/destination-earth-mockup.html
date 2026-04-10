@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Destination Earth Mockup</title>
+<style>
+  :root{
+    --bg1:#7f79a8;
+    --bg2:#68618e;
+    --ink:#e8e6f2;
+    --tree:#d6ef8a;
+    --blue:#63c9ff;
+    --orange:#f2a07a;
+    --shadow:rgba(20,16,40,.18);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    background:
+      radial-gradient(1200px 500px at 50% 10%, rgba(255,255,255,.14), transparent 50%),
+      linear-gradient(180deg, #d7d4c0 0%, #c9c4a7 100%);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color:#222;
+    padding:24px;
+  }
+
+  .scene-wrap{
+    width:min(1200px, 96vw);
+  }
+
+  .note{
+    text-align:center;
+    margin-bottom:14px;
+    font-size:14px;
+    color:#4e4a5b;
+    letter-spacing:.02em;
+  }
+
+  .shirt{
+    position:relative;
+    background: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+    border-radius:28px 28px 18px 18px;
+    min-height:700px;
+    overflow:hidden;
+    box-shadow:
+      0 30px 60px rgba(24,22,44,.18),
+      inset 0 1px 0 rgba(255,255,255,.18);
+  }
+
+  /* subtle fabric texture */
+  .shirt::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(255,255,255,.05) 0 1px,
+        rgba(255,255,255,0) 1px 6px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,.03) 0 1px,
+        rgba(255,255,255,0) 1px 14px
+      );
+    mix-blend-mode:soft-light;
+    opacity:.45;
+    pointer-events:none;
+  }
+
+  .collar{
+    position:absolute;
+    top:32px; left:50%;
+    transform:translateX(-50%);
+    width:340px; height:92px;
+    border:14px solid #66608d;
+    border-radius:0 0 180px 180px / 0 0 120px 120px;
+    border-top:0;
+    background:linear-gradient(180deg, rgba(32,28,56,.55), rgba(32,28,56,.15));
+    box-shadow: inset 0 10px 18px rgba(255,255,255,.06);
+  }
+
+  svg{
+    width:100%;
+    height:700px;
+    display:block;
+    position:relative;
+    z-index:2;
+  }
+
+  .ink{
+    fill:none;
+    stroke:var(--ink);
+    stroke-width:2.2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,.05));
+  }
+
+  .thin{ stroke-width:1.7; }
+  .tree{ stroke:var(--tree); }
+  .blue{ stroke:var(--blue); }
+  .orange{ stroke:var(--orange); }
+
+  .flow{
+    stroke-dasharray: 16 14;
+    animation: drift 10s linear infinite;
+  }
+  .flow.slow{ animation-duration: 18s; }
+  .flow.reverse{ animation-direction: reverse; animation-duration: 13s; }
+  .mountain{
+    stroke-dasharray: 900;
+    stroke-dashoffset: 900;
+    animation: draw 3.2s ease forwards;
+  }
+  .m2{ animation-delay:.35s; }
+  .m3{ animation-delay:.7s; }
+
+  .tree-pop{
+    transform-origin:center bottom;
+    animation: sway 4.6s ease-in-out infinite;
+  }
+  .tree-pop.delay1{ animation-delay:.7s; }
+  .tree-pop.delay2{ animation-delay:1.3s; }
+
+  .canoe{
+    animation: bob 3.6s ease-in-out infinite;
+    transform-origin:center center;
+  }
+  .water{
+    animation: wave 5.5s ease-in-out infinite;
+  }
+  .script{
+    font-family: "Brush Script MT", "Segoe Script", "Snell Roundhand", cursive;
+    font-size: 34px;
+    fill: var(--ink);
+    opacity:.96;
+    letter-spacing:.02em;
+  }
+  .glow{
+    filter: drop-shadow(0 0 6px rgba(255,255,255,.18));
+  }
+
+  .legend{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    padding-top:14px;
+    color:#5b5767;
+    font-size:13px;
+  }
+  .pill{
+    background:rgba(255,255,255,.55);
+    border:1px solid rgba(90,86,112,.12);
+    border-radius:999px;
+    padding:6px 10px;
+    backdrop-filter: blur(6px);
+  }
+
+  @keyframes drift{
+    from{ stroke-dashoffset:0; }
+    to{ stroke-dashoffset:-300; }
+  }
+  @keyframes bob{
+    0%,100%{ transform: translateY(0) rotate(-1deg); }
+    50%{ transform: translateY(-6px) rotate(1deg); }
+  }
+  @keyframes sway{
+    0%,100%{ transform: rotate(-1.2deg); }
+    50%{ transform: rotate(1.2deg); }
+  }
+  @keyframes wave{
+    0%,100%{ transform: translateY(0); }
+    50%{ transform: translateY(2px); }
+  }
+  @keyframes draw{
+    to{ stroke-dashoffset:0; }
+  }
+
+  @media (max-width: 860px){
+    .shirt{ min-height:560px; }
+    svg{ height:560px; }
+    .collar{ width:220px; height:62px; top:18px; border-width:10px; }
+    .script{ font-size:26px; }
+  }
+</style>
+</head>
+<body>
+  <div class="scene-wrap">
+    <div class="note">HTML/CSS animated mockup based on the “Destination Earth” outdoor line-art prompt</div>
+
+    <div class="shirt">
+      <div class="collar" aria-hidden="true"></div>
+
+      <svg viewBox="0 0 1200 700" role="img" aria-label="Minimal animated outdoor line-art design">
+        <!-- distant mountain ridgelines -->
+        <path class="ink thin mountain m1 glow" d="M40 390 C110 340, 160 380, 230 330 S365 360, 420 315 S530 355, 610 300 S740 360, 820 286 S960 338, 1035 285 S1135 325, 1180 304"/>
+        <path class="ink thin blue mountain m2" d="M15 398 C85 420, 130 360, 220 365 S350 425, 425 386 S555 412, 650 364 S820 410, 915 346 S1080 352, 1160 420"/>
+        <path class="ink thin orange mountain m3" d="M20 455 C110 445, 145 405, 220 420 S360 470, 470 442 S615 410, 720 430 S900 452, 1080 438 S1140 455, 1185 446"/>
+
+        <!-- middle flow lines -->
+        <path class="ink thin blue flow" d="M-40 430 C80 390, 140 470, 255 410 S395 448, 505 418 S685 462, 835 400 S1035 392, 1245 432"/>
+        <path class="ink thin orange flow reverse" d="M-20 470 C130 488, 210 398, 315 450 S490 492, 610 440 S785 405, 940 452 S1080 470, 1230 445"/>
+        <path class="ink thin flow slow" d="M-10 520 C80 490, 190 530, 300 500 S470 515, 570 485 S760 515, 900 472 S1080 505, 1220 490"/>
+
+        <!-- shoreline -->
+        <path class="ink" d="M80 500 L1110 500"/>
+        <path class="ink thin" d="M55 525 C100 517, 132 535, 165 526 S228 518, 266 526 S340 535, 383 526 S458 516, 496 526 S571 536, 615 526 S686 516, 734 526 S811 535, 856 526 S930 518, 968 526 S1048 534, 1115 526"/>
+
+        <!-- left tree -->
+        <g class="tree-pop">
+          <path class="ink tree" d="M185 487 L185 418"/>
+          <path class="ink tree" d="M185 418 L150 450 L170 450 L138 476 L160 476 L128 502 L242 502 L210 476 L232 476 L200 450 L220 450 Z"/>
+        </g>
+
+        <!-- tent -->
+        <g>
+          <path class="ink tree" d="M315 492 L315 430"/>
+          <path class="ink tree" d="M315 430 L274 492"/>
+          <path class="ink tree" d="M315 430 L362 492"/>
+          <path class="ink thin" d="M292 492 L340 492"/>
+        </g>
+
+        <!-- center tree -->
+        <g class="tree-pop delay1">
+          <path class="ink tree" d="M655 487 L655 420"/>
+          <path class="ink tree" d="M655 420 L624 450 L642 450 L614 476 L634 476 L606 501 L705 501 L677 476 L696 476 L668 450 L686 450 Z"/>
+        </g>
+
+        <!-- right tree -->
+        <g class="tree-pop delay2">
+          <path class="ink tree" d="M920 489 L920 405"/>
+          <path class="ink tree" d="M920 405 L878 444 L900 444 L864 478 L888 478 L850 508 L990 508 L952 478 L976 478 L940 444 L962 444 Z"/>
+        </g>
+
+        <!-- canoe + paddler -->
+        <g class="canoe">
+          <path class="ink" d="M803 516 C830 524, 892 524, 932 516 C923 538, 815 538, 803 516 Z"/>
+          <path class="ink thin" d="M860 510 C860 494, 854 482, 846 476 C862 472, 872 486, 874 500"/>
+          <path class="ink thin" d="M846 478 C837 468, 839 456, 849 451 C860 455, 861 468, 855 476"/>
+          <path class="ink thin" d="M878 481 L891 520"/>
+          <path class="ink thin" d="M871 492 L899 503"/>
+        </g>
+
+        <!-- subtle water line under canoe -->
+        <g class="water">
+          <path class="ink thin" d="M760 528 C782 522, 800 532, 823 528 S864 522, 888 528 S934 534, 958 528"/>
+        </g>
+
+        <!-- signature -->
+        <text x="245" y="545" class="script glow">Destination Earth</text>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <span class="pill">Minimal line art</span>
+      <span class="pill">Panoramic outdoor scene</span>
+      <span class="pill">Flow-line animation</span>
+      <span class="pill">Hand-drawn feel</span>
+    </div>
+  </div>
+</body>
+</html>
