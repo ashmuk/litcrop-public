@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CROPS, CROP_MAP, getCropMeta, estimateHarvestDate } from '../crop-library';
+import { CROPS, CROP_MAP, getCropMeta, estimateHarvestDate, getCropPropagation } from '../crop-library';
 import type { CropEntry } from '../crop-library';
 
 describe('CROPS data', () => {
@@ -48,6 +48,28 @@ describe('CROPS data', () => {
       const hasMin = c.days_seed_to_seedling_min != null;
       const hasMax = c.days_seed_to_seedling_max != null;
       expect(hasMin).toBe(hasMax);
+    }
+  });
+
+  it('every entry has a propagation value', () => {
+    for (const c of CROPS) {
+      expect(c.propagation).toMatch(/^(seed|seedling|both)$/);
+    }
+  });
+
+  it('propagation=both crops all have days_seed_to_seedling data', () => {
+    for (const c of CROPS) {
+      if (c.propagation === 'both') {
+        expect(c.days_seed_to_seedling_max).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('propagation=seed/seedling crops never have days_seed_to_seedling data', () => {
+    for (const c of CROPS) {
+      if (c.propagation === 'seed' || c.propagation === 'seedling') {
+        expect(c.days_seed_to_seedling_max).toBeUndefined();
+      }
     }
   });
 
@@ -171,5 +193,30 @@ describe('estimateHarvestDate', () => {
   it('returns null for invalid date string', () => {
     expect(estimateHarvestDate('', 'tomato')).toBeNull();
     expect(estimateHarvestDate('not-a-date', 'tomato')).toBeNull();
+  });
+});
+
+describe('getCropPropagation', () => {
+  it('returns "seed" for direct-sown crops', () => {
+    expect(getCropPropagation('daikon')).toBe('seed');
+    expect(getCropPropagation('carrot')).toBe('seed');
+    expect(getCropPropagation('pea')).toBe('seed');
+  });
+
+  it('returns "seedling" for vegetatively propagated crops', () => {
+    expect(getCropPropagation('apple')).toBe('seedling');
+    expect(getCropPropagation('potato')).toBe('seedling');
+    expect(getCropPropagation('shiitake')).toBe('seedling');
+  });
+
+  it('returns "both" for crops with nursery option', () => {
+    expect(getCropPropagation('tomato')).toBe('both');
+    expect(getCropPropagation('cabbage')).toBe('both');
+    expect(getCropPropagation('cucumber')).toBe('both');
+  });
+
+  it('returns "both" as safe default for unknown crops', () => {
+    expect(getCropPropagation('unicorn_fruit')).toBe('both');
+    expect(getCropPropagation('')).toBe('both');
   });
 });

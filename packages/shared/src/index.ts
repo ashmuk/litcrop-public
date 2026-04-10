@@ -162,7 +162,8 @@ export {
 
 // Crop library — shared types and data (#274)
 export type { CropEntry } from './crop-library';
-export { CROPS as CROP_LIBRARY, CROP_MAP as CROP_LIBRARY_MAP, getCropMeta, estimateHarvestDate } from './crop-library';
+export { CROPS as CROP_LIBRARY, CROP_MAP as CROP_LIBRARY_MAP, getCropMeta, estimateHarvestDate, getCropPropagation } from './crop-library';
+export type { CropPropagation } from './crop-library';
 
 // Timezone utilities
 export { getTimezoneOffsetFromCoords } from './timezone';

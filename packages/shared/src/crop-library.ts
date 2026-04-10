@@ -7,12 +7,21 @@
 import cropData from './data/crop-library.json';
 import type { PlantMethod } from './types/domain';
 
+/**
+ * Propagation method — how the crop is typically started:
+ * - 'seed': always direct-sown (daikon, legumes, grains)
+ * - 'seedling': always from starter material (tree fruit, tubers, cuttings, mushrooms)
+ * - 'both': can be direct-sown OR transplanted from nursery (tomato, cabbage, shiso)
+ */
+export type CropPropagation = 'seed' | 'seedling' | 'both';
+
 export interface CropEntry {
   id: string;
   emoji: string;
   category: string;
   en: string;
   ja: string;
+  propagation?: CropPropagation;
   days_to_harvest_min?: number;
   days_to_harvest_max?: number;
   days_seed_to_seedling_min?: number;
@@ -30,6 +39,14 @@ export const CROP_MAP: Map<string, CropEntry> = new Map(CROPS.map((c) => [c.id, 
 /** Get crop metadata by id. Returns undefined for unknown/free-text crops. */
 export function getCropMeta(cropId: string): CropEntry | undefined {
   return CROP_MAP.get(cropId);
+}
+
+/**
+ * Get the propagation method for a crop. Defaults to 'both' when the crop
+ * is unknown or the field is missing (safest fallback — shows both options).
+ */
+export function getCropPropagation(cropId: string): CropPropagation {
+  return CROP_MAP.get(cropId)?.propagation ?? 'both';
 }
 
 /**

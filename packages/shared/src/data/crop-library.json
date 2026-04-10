@@ -5,6 +5,7 @@
     "category": "grain",
     "en": "Rice",
     "ja": "稲",
+    "propagation": "both",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 150,
     "days_seed_to_seedling_min": 20,
@@ -25,6 +26,7 @@
     "category": "grain",
     "en": "Wheat",
     "ja": "小麦",
+    "propagation": "seed",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 130,
     "season": [
@@ -43,6 +45,7 @@
     "category": "grain",
     "en": "Barley",
     "ja": "大麦",
+    "propagation": "seed",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -60,6 +63,7 @@
     "category": "grain",
     "en": "Corn",
     "ja": "とうもろこし",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 100,
     "days_seed_to_seedling_min": 14,
@@ -80,6 +84,7 @@
     "category": "grain",
     "en": "Sorghum",
     "ja": "モロコシ",
+    "propagation": "seed",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -97,6 +102,7 @@
     "category": "grain",
     "en": "Millet",
     "ja": "あわ",
+    "propagation": "seed",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "season": [
@@ -114,6 +120,7 @@
     "category": "grain",
     "en": "Buckwheat",
     "ja": "そば",
+    "propagation": "seed",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
     "season": [
@@ -131,6 +138,7 @@
     "category": "grain",
     "en": "Oat",
     "ja": "オート麦",
+    "propagation": "seed",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -148,6 +156,7 @@
     "category": "fruit",
     "en": "Tomato",
     "ja": "トマト",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 85,
     "days_seed_to_seedling_min": 55,
@@ -169,6 +178,7 @@
     "category": "fruit",
     "en": "Cherry Tomato",
     "ja": "ミニトマト",
+    "propagation": "both",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 75,
     "days_seed_to_seedling_min": 50,
@@ -190,6 +200,7 @@
     "category": "fruit",
     "en": "Strawberry",
     "ja": "いちご",
+    "propagation": "seedling",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "season": [
@@ -208,6 +219,7 @@
     "category": "fruit",
     "en": "Blueberry",
     "ja": "ブルーベリー",
+    "propagation": "seedling",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "season": [
@@ -225,6 +237,7 @@
     "category": "fruit",
     "en": "Grape",
     "ja": "ぶどう",
+    "propagation": "seedling",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 185,
     "season": [
@@ -244,6 +257,7 @@
     "category": "fruit",
     "en": "Melon",
     "ja": "メロン",
+    "propagation": "both",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 30,
@@ -264,6 +278,7 @@
     "category": "fruit",
     "en": "Watermelon",
     "ja": "すいか",
+    "propagation": "both",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 30,
@@ -284,6 +299,7 @@
     "category": "fruit",
     "en": "Peach",
     "ja": "桃",
+    "propagation": "seedling",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 150,
     "season": [
@@ -302,6 +318,7 @@
     "category": "fruit",
     "en": "Apple",
     "ja": "りんご",
+    "propagation": "seedling",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 185,
     "season": [
@@ -321,6 +338,7 @@
     "category": "fruit",
     "en": "Pear",
     "ja": "梨",
+    "propagation": "seedling",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 175,
     "season": [
@@ -339,6 +357,7 @@
     "category": "fruit",
     "en": "Persimmon",
     "ja": "柿",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 200,
     "season": [
@@ -357,6 +376,7 @@
     "category": "fruit",
     "en": "Fig",
     "ja": "いちじく",
+    "propagation": "seedling",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "season": [
@@ -374,6 +394,7 @@
     "category": "fruit",
     "en": "Lemon",
     "ja": "レモン",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 270,
     "season": [
@@ -392,6 +413,7 @@
     "category": "fruit",
     "en": "Yuzu",
     "ja": "ゆず",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 270,
     "season": [
@@ -409,6 +431,7 @@
     "category": "fruit",
     "en": "Mandarin Orange",
     "ja": "みかん",
+    "propagation": "seedling",
     "days_to_harvest_min": 180,
     "days_to_harvest_max": 300,
     "season": [
@@ -426,6 +449,7 @@
     "category": "fruit",
     "en": "Plum",
     "ja": "すもも",
+    "propagation": "seedling",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
     "season": [
@@ -444,6 +468,7 @@
     "category": "fruit",
     "en": "Japanese Apricot",
     "ja": "梅",
+    "propagation": "seedling",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -461,6 +486,7 @@
     "category": "fruit",
     "en": "Kiwi",
     "ja": "キウイ",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 225,
     "season": [
@@ -479,6 +505,7 @@
     "category": "vegetable",
     "en": "Cucumber",
     "ja": "きゅうり",
+    "propagation": "both",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
     "days_seed_to_seedling_min": 25,
@@ -501,6 +528,7 @@
     "category": "vegetable",
     "en": "Eggplant",
     "ja": "なす",
+    "propagation": "both",
     "days_to_harvest_min": 65,
     "days_to_harvest_max": 85,
     "days_seed_to_seedling_min": 60,
@@ -521,6 +549,7 @@
     "category": "vegetable",
     "en": "Bell Pepper",
     "ja": "ピーマン",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 55,
@@ -541,6 +570,7 @@
     "category": "vegetable",
     "en": "Chili Pepper",
     "ja": "唐辛子",
+    "propagation": "both",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 100,
     "days_seed_to_seedling_min": 55,
@@ -561,6 +591,7 @@
     "category": "vegetable",
     "en": "Shishito Pepper",
     "ja": "ししとう",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 85,
     "days_seed_to_seedling_min": 55,
@@ -581,6 +612,7 @@
     "category": "vegetable",
     "en": "Zucchini",
     "ja": "ズッキーニ",
+    "propagation": "both",
     "days_to_harvest_min": 45,
     "days_to_harvest_max": 65,
     "days_seed_to_seedling_min": 20,
@@ -602,6 +634,7 @@
     "category": "vegetable",
     "en": "Pumpkin",
     "ja": "かぼちゃ",
+    "propagation": "both",
     "days_to_harvest_min": 75,
     "days_to_harvest_max": 100,
     "days_seed_to_seedling_min": 25,
@@ -622,6 +655,7 @@
     "category": "vegetable",
     "en": "Bitter Melon",
     "ja": "ゴーヤ",
+    "propagation": "both",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 75,
     "days_seed_to_seedling_min": 30,
@@ -642,6 +676,7 @@
     "category": "vegetable",
     "en": "Okra",
     "ja": "オクラ",
+    "propagation": "both",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 65,
     "days_seed_to_seedling_min": 20,
@@ -662,6 +697,7 @@
     "category": "vegetable",
     "en": "Green Bean",
     "ja": "インゲン",
+    "propagation": "seed",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 65,
     "season": [
@@ -681,6 +717,7 @@
     "category": "vegetable",
     "en": "Snap Pea",
     "ja": "スナップえんどう",
+    "propagation": "seed",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
     "season": [
@@ -700,6 +737,7 @@
     "category": "vegetable",
     "en": "Asparagus",
     "ja": "アスパラガス",
+    "propagation": "both",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
     "days_seed_to_seedling_min": 60,
@@ -719,6 +757,7 @@
     "category": "vegetable",
     "en": "Broccoli",
     "ja": "ブロッコリー",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 80,
     "days_seed_to_seedling_min": 25,
@@ -740,6 +779,7 @@
     "category": "vegetable",
     "en": "Cauliflower",
     "ja": "カリフラワー",
+    "propagation": "both",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 80,
     "days_seed_to_seedling_min": 25,
@@ -761,6 +801,7 @@
     "category": "vegetable",
     "en": "Celery",
     "ja": "セロリ",
+    "propagation": "both",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 120,
     "days_seed_to_seedling_min": 60,
@@ -782,6 +823,7 @@
     "category": "vegetable",
     "en": "Myoga Ginger",
     "ja": "みょうが",
+    "propagation": "seedling",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -800,6 +842,7 @@
     "category": "leafy",
     "en": "Lettuce",
     "ja": "レタス",
+    "propagation": "both",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 60,
     "days_seed_to_seedling_min": 20,
@@ -821,6 +864,7 @@
     "category": "leafy",
     "en": "Cabbage",
     "ja": "キャベツ",
+    "propagation": "both",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 25,
@@ -842,6 +886,7 @@
     "category": "leafy",
     "en": "Napa Cabbage",
     "ja": "白菜",
+    "propagation": "both",
     "days_to_harvest_min": 65,
     "days_to_harvest_max": 85,
     "days_seed_to_seedling_min": 25,
@@ -862,6 +907,7 @@
     "category": "leafy",
     "en": "Spinach",
     "ja": "ほうれん草",
+    "propagation": "seed",
     "days_to_harvest_min": 35,
     "days_to_harvest_max": 50,
     "season": [
@@ -882,6 +928,7 @@
     "category": "leafy",
     "en": "Komatsuna",
     "ja": "小松菜",
+    "propagation": "seed",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 45,
     "season": [
@@ -901,6 +948,7 @@
     "category": "leafy",
     "en": "Mizuna",
     "ja": "水菜",
+    "propagation": "seed",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 50,
     "season": [
@@ -920,6 +968,7 @@
     "category": "leafy",
     "en": "Bok Choy",
     "ja": "チンゲン菜",
+    "propagation": "seed",
     "days_to_harvest_min": 45,
     "days_to_harvest_max": 60,
     "season": [
@@ -938,6 +987,7 @@
     "category": "leafy",
     "en": "Arugula",
     "ja": "ルッコラ",
+    "propagation": "seed",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 45,
     "season": [
@@ -956,6 +1006,7 @@
     "category": "leafy",
     "en": "Kale",
     "ja": "ケール",
+    "propagation": "both",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 75,
     "days_seed_to_seedling_min": 25,
@@ -978,6 +1029,7 @@
     "category": "leafy",
     "en": "Swiss Chard",
     "ja": "フダンソウ",
+    "propagation": "seed",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
     "season": [
@@ -996,6 +1048,7 @@
     "category": "leafy",
     "en": "Shiso (Perilla)",
     "ja": "しそ",
+    "propagation": "both",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
     "days_seed_to_seedling_min": 25,
@@ -1017,6 +1070,7 @@
     "category": "leafy",
     "en": "Mitsuba",
     "ja": "三つ葉",
+    "propagation": "both",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
     "days_seed_to_seedling_min": 25,
@@ -1037,6 +1091,7 @@
     "category": "leafy",
     "en": "Edible Chrysanthemum",
     "ja": "春菊",
+    "propagation": "both",
     "days_to_harvest_min": 40,
     "days_to_harvest_max": 60,
     "days_seed_to_seedling_min": 20,
@@ -1057,6 +1112,7 @@
     "category": "leafy",
     "en": "Green Onion",
     "ja": "ねぎ",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 50,
@@ -1078,6 +1134,7 @@
     "category": "leafy",
     "en": "Leek",
     "ja": "下仁田ねぎ",
+    "propagation": "both",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
     "days_seed_to_seedling_min": 50,
@@ -1098,6 +1155,7 @@
     "category": "leafy",
     "en": "Chive",
     "ja": "にら",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 40,
@@ -1119,6 +1177,7 @@
     "category": "root",
     "en": "Daikon Radish",
     "ja": "大根",
+    "propagation": "seed",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 70,
     "season": [
@@ -1137,6 +1196,7 @@
     "category": "root",
     "en": "Carrot",
     "ja": "にんじん",
+    "propagation": "seed",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 80,
     "season": [
@@ -1157,6 +1217,7 @@
     "category": "root",
     "en": "Turnip",
     "ja": "かぶ",
+    "propagation": "seed",
     "days_to_harvest_min": 35,
     "days_to_harvest_max": 60,
     "season": [
@@ -1175,6 +1236,7 @@
     "category": "root",
     "en": "Radish",
     "ja": "ラディッシュ",
+    "propagation": "seed",
     "days_to_harvest_min": 22,
     "days_to_harvest_max": 35,
     "season": [
@@ -1194,6 +1256,7 @@
     "category": "root",
     "en": "Burdock Root",
     "ja": "ごぼう",
+    "propagation": "seed",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 150,
     "season": [
@@ -1211,6 +1274,7 @@
     "category": "root",
     "en": "Lotus Root",
     "ja": "れんこん",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 210,
     "season": [
@@ -1227,6 +1291,7 @@
     "category": "root",
     "en": "Sweet Potato",
     "ja": "さつまいも",
+    "propagation": "seedling",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -1245,6 +1310,7 @@
     "category": "root",
     "en": "Potato",
     "ja": "じゃがいも",
+    "propagation": "seedling",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 120,
     "season": [
@@ -1262,6 +1328,7 @@
     "category": "root",
     "en": "Taro",
     "ja": "里芋",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 180,
     "season": [
@@ -1279,6 +1346,7 @@
     "category": "root",
     "en": "Japanese Yam",
     "ja": "山芋",
+    "propagation": "seedling",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 180,
     "season": [
@@ -1296,6 +1364,7 @@
     "category": "root",
     "en": "Ginger",
     "ja": "生姜",
+    "propagation": "seedling",
     "days_to_harvest_min": 120,
     "days_to_harvest_max": 180,
     "season": [
@@ -1314,6 +1383,7 @@
     "category": "root",
     "en": "Onion",
     "ja": "たまねぎ",
+    "propagation": "both",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
     "days_seed_to_seedling_min": 50,
@@ -1336,6 +1406,7 @@
     "category": "root",
     "en": "Garlic",
     "ja": "にんにく",
+    "propagation": "seedling",
     "days_to_harvest_min": 150,
     "days_to_harvest_max": 210,
     "season": [
@@ -1355,6 +1426,7 @@
     "category": "root",
     "en": "Wasabi",
     "ja": "わさび",
+    "propagation": "seedling",
     "days_to_harvest_min": 180,
     "days_to_harvest_max": 365,
     "season": [
@@ -1373,6 +1445,7 @@
     "category": "root",
     "en": "Beetroot",
     "ja": "ビーツ",
+    "propagation": "seed",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
     "season": [
@@ -1392,6 +1465,7 @@
     "category": "legume",
     "en": "Soybean",
     "ja": "大豆",
+    "propagation": "seed",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 120,
     "season": [
@@ -1410,6 +1484,7 @@
     "category": "legume",
     "en": "Edamame",
     "ja": "枝豆",
+    "propagation": "seed",
     "days_to_harvest_min": 65,
     "days_to_harvest_max": 90,
     "season": [
@@ -1428,6 +1503,7 @@
     "category": "legume",
     "en": "Azuki Bean",
     "ja": "小豆",
+    "propagation": "seed",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -1446,6 +1522,7 @@
     "category": "legume",
     "en": "Peanut",
     "ja": "落花生",
+    "propagation": "seed",
     "days_to_harvest_min": 100,
     "days_to_harvest_max": 150,
     "season": [
@@ -1464,6 +1541,7 @@
     "category": "legume",
     "en": "Broad Bean",
     "ja": "そら豆",
+    "propagation": "seed",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 100,
     "season": [
@@ -1483,6 +1561,7 @@
     "category": "legume",
     "en": "Pea",
     "ja": "えんどう豆",
+    "propagation": "seed",
     "days_to_harvest_min": 55,
     "days_to_harvest_max": 70,
     "season": [
@@ -1503,6 +1582,7 @@
     "category": "legume",
     "en": "Lentil",
     "ja": "レンズ豆",
+    "propagation": "seed",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 110,
     "season": [
@@ -1521,6 +1601,7 @@
     "category": "herb",
     "en": "Basil",
     "ja": "バジル",
+    "propagation": "both",
     "days_to_harvest_min": 50,
     "days_to_harvest_max": 75,
     "days_seed_to_seedling_min": 20,
@@ -1542,6 +1623,7 @@
     "category": "herb",
     "en": "Parsley",
     "ja": "パセリ",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 80,
     "days_seed_to_seedling_min": 30,
@@ -1563,6 +1645,7 @@
     "category": "herb",
     "en": "Cilantro",
     "ja": "パクチー",
+    "propagation": "seed",
     "days_to_harvest_min": 45,
     "days_to_harvest_max": 70,
     "season": [
@@ -1582,6 +1665,7 @@
     "category": "herb",
     "en": "Dill",
     "ja": "ディル",
+    "propagation": "seed",
     "days_to_harvest_min": 40,
     "days_to_harvest_max": 60,
     "season": [
@@ -1601,6 +1685,7 @@
     "category": "herb",
     "en": "Mint",
     "ja": "ミント",
+    "propagation": "seedling",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "season": [
@@ -1620,6 +1705,7 @@
     "category": "herb",
     "en": "Rosemary",
     "ja": "ローズマリー",
+    "propagation": "both",
     "days_to_harvest_min": 80,
     "days_to_harvest_max": 120,
     "days_seed_to_seedling_min": 60,
@@ -1642,6 +1728,7 @@
     "category": "herb",
     "en": "Thyme",
     "ja": "タイム",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 40,
@@ -1664,6 +1751,7 @@
     "category": "herb",
     "en": "Oregano",
     "ja": "オレガノ",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 40,
@@ -1685,6 +1773,7 @@
     "category": "herb",
     "en": "Sage",
     "ja": "セージ",
+    "propagation": "both",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 90,
     "days_seed_to_seedling_min": 40,
@@ -1707,6 +1796,7 @@
     "category": "herb",
     "en": "Lavender",
     "ja": "ラベンダー",
+    "propagation": "both",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "days_seed_to_seedling_min": 60,
@@ -1728,6 +1818,7 @@
     "category": "herb",
     "en": "Lemongrass",
     "ja": "レモングラス",
+    "propagation": "seedling",
     "days_to_harvest_min": 75,
     "days_to_harvest_max": 100,
     "season": [
@@ -1746,6 +1837,7 @@
     "category": "other",
     "en": "Shiitake Mushroom",
     "ja": "しいたけ",
+    "propagation": "seedling",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 180,
     "season": [
@@ -1763,6 +1855,7 @@
     "category": "other",
     "en": "Enoki Mushroom",
     "ja": "えのき",
+    "propagation": "seedling",
     "days_to_harvest_min": 30,
     "days_to_harvest_max": 60,
     "season": [
@@ -1780,6 +1873,7 @@
     "category": "other",
     "en": "Maitake Mushroom",
     "ja": "まいたけ",
+    "propagation": "seedling",
     "days_to_harvest_min": 60,
     "days_to_harvest_max": 120,
     "season": [
@@ -1796,6 +1890,7 @@
     "category": "other",
     "en": "Bamboo Shoot",
     "ja": "たけのこ",
+    "propagation": "seedling",
     "days_to_harvest_min": 14,
     "days_to_harvest_max": 21,
     "season": [
@@ -1811,7 +1906,8 @@
     "emoji": "🍵",
     "category": "other",
     "en": "Tea",
-    "ja": "茶"
+    "ja": "茶",
+    "propagation": "seedling"
   },
   {
     "id": "sunflower",
@@ -1819,6 +1915,7 @@
     "category": "other",
     "en": "Sunflower",
     "ja": "ひまわり",
+    "propagation": "seed",
     "days_to_harvest_min": 70,
     "days_to_harvest_max": 100,
     "season": [
@@ -1838,6 +1935,7 @@
     "category": "other",
     "en": "Sesame",
     "ja": "ごま",
+    "propagation": "seed",
     "days_to_harvest_min": 90,
     "days_to_harvest_max": 120,
     "season": [
@@ -1856,6 +1954,7 @@
     "category": "other",
     "en": "Konjac",
     "ja": "こんにゃく",
+    "propagation": "seedling",
     "days_to_harvest_min": 180,
     "days_to_harvest_max": 270,
     "season": [
@@ -1873,6 +1972,7 @@
     "emoji": "🌱",
     "category": "other",
     "en": "Other",
-    "ja": "その他"
+    "ja": "その他",
+    "propagation": "seedling"
   }
 ]
