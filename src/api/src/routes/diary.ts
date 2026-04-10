@@ -147,6 +147,13 @@ async function loadAndAuthorizeEntry(
 /**
  * Bridge diary planting/harvesting entries to bed crop dates (#273 M1).
  * Non-blocking: bed update failure is logged but does not fail the diary operation.
+ *
+ * Auth note (#313): This function calls dynamoRepo.updateBed() directly,
+ * bypassing the assertBedWriteAccess role check. This is intentional — the
+ * bed update is a system-initiated side effect of a valid diary entry, not a
+ * direct user action. Staff can create planting diary entries, which triggers
+ * this bridge to update bed.planted_at even though staff cannot edit beds
+ * directly via PATCH /beds/:bedId.
  */
 async function syncBedDatesFromDiary(
   category: string,
