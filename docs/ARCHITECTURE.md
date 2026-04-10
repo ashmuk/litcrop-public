@@ -291,7 +291,7 @@ Standard HTTP status codes: 401 (unauthorized — API Gateway), 400 (validation)
 | Tag | `IMG#{imageId}` | `TAG#{createdAt}#{tagId}` | tag (enum), note |
 | **Conversation** | `CONV#{conversationId}` | `#HISTORY` | messages[] (JSON array), user_id, farm_id, created_at, updated_at, **TTL** (24h) |
 | **User Profile** | `USER#{userId}` | `#PROFILE` | display_name, preferred_role, created_at |
-| **Farm Member** (user→farm) | `USER#{userId}` | `FARM_MEMBER#{farmId}` | farm_id, role (admin/manager/observer), joined_at |
+| **Farm Member** (user→farm) | `USER#{userId}` | `FARM_MEMBER#{farmId}` | farm_id, role (admin/owner/staff), joined_at |
 | **Farm Member** (farm→user) | `FARM#{farmId}` | `MEMBER#{userId}` | user_id, role, joined_at |
 
 > **Data model evolution**: Phase D (v0.13) flattened Field→Bed→Plot (4 levels) to Farm→Bed (2 levels) per ADR-20260322. Phase B (v0.11) added multi-farm membership with roles. The `FARM_MEMBER` entity is stored as a dual record (user→farm and farm→user) for efficient bidirectional queries.
@@ -390,12 +390,52 @@ All DynamoDB records include `user_id` (Cognito `sub`):
 - API Gateway rejects unauthenticated requests with `401 Unauthorized`
 - Accessing another user's resources returns `404 Not Found` (not `403`, to avoid leaking resource existence)
 
+### Authorization — Role-Based Access Control (RBAC)
+
+Two layers of authorization operate after JWT authentication:
+
+**Layer 1 — System Admin (`isAdmin`)**
+- Derived from `ADMIN_EMAILS` environment variable (comma-separated email list)
+- Checked in `authMiddleware` on every request
+- Grants: admin dashboard, cross-farm visibility, user account deletion
+- `assertFarmAccess()` creates a synthetic `admin` farm membership for isAdmin users
+
+**Layer 2 — Farm Role (`FarmRole`)**
+- Stored per-user per-farm in DynamoDB (`FARM_MEMBER#` / `MEMBER#` records)
+- Three values: `admin | owner | staff`
+- `admin` = system admin's synthetic farm role (not directly assignable)
+- `owner` = farm creator or promoted member
+- `staff` = default role on join request approval
+
+**Authorization helper:** `assertFarmAccess(farmId, userId, requiredRoles?)` in `_helpers.ts`
+- Verifies farm membership and role in one call
+- Returns `404` for both missing farm AND insufficient role (prevents enumeration)
+- When `requiredRoles` is omitted, any farm member is allowed (read access)
+
+**Authorization Matrix (canonical reference — see also `docs/REQUIREMENTS-313.md`):**
+
+| Capability | Admin | Owner | Staff |
+|---|---|---|---|
+| **Read** (farms, beds, diary, images, devices, weather) | ✅ | ✅ | ✅ |
+| **Diary** (create, edit/delete own) | ✅ | ✅ | ✅ |
+| **Media** (upload images, tag health status) | ✅ | ✅ | ✅ |
+| **Diary** (edit/delete others' entries) | ✅ | ✅ | ❌ |
+| **Bed management** (assign crop, edit status) | ✅ | ✅ | ❌ |
+| **Farm management** (settings, members, devices) | ✅ | ✅ | ❌ |
+| **Admin dashboard** (all farms, user deletion, notifications) | ✅ | ❌ | ❌ |
+
+**Design constraints:**
+- Conservative default: `getLocalFarmRole()` returns `'staff'` when cache is empty (hide write controls until role is confirmed)
+- `admin` role is system-assigned only via `ADMIN_EMAILS` — POST `/members` rejects `admin` role value
+- Synthetic admin membership must NOT be used for write authorization in new endpoints — route guards must explicitly include `'admin'` in their `requiredRoles` array
+
 ### Security Measures
 
 | Measure | Implementation | Purpose |
 |---------|---------------|---------|
 | Authentication | Cognito User Pools + JWT | Verify user identity |
-| Authorization | API Gateway JWT Authorizer | Reject unauthenticated requests at the gateway |
+| Gateway auth | API Gateway JWT Authorizer | Reject unauthenticated requests at the gateway |
+| RBAC | `assertFarmAccess()` + `FarmRole` checks | Role-based write restrictions per farm |
 | Per-user isolation | `user_id` filter on all DynamoDB queries | Prevent cross-user data access |
 | HTTPS only | API Gateway enforces TLS | Encrypt data in transit |
 | Signed URLs | S3 presigned URLs (15-min expiry) | Prevent direct/permanent image access |
