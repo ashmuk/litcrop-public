@@ -211,6 +211,10 @@ export default function BedDetail() {
       expected_harvest: bed?.expected_harvest ?? '',
       notes: bed?.notes ?? '',
     });
+    // Reconcile plantMethod with the loaded crop's propagation. For 'both'
+    // crops we leave the current state — we can't infer the original method.
+    const propagation = getCropPropagation(bed?.crop_type ?? '');
+    if (propagation !== 'both') setPlantMethod(propagation);
     setEditing(true);
   }
 

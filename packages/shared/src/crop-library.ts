@@ -42,8 +42,9 @@ export function getCropMeta(cropId: string): CropEntry | undefined {
 }
 
 /**
- * Get the propagation method for a crop. Defaults to 'both' when the crop
- * is unknown or the field is missing (safest fallback — shows both options).
+ * Get the propagation method for a crop.
+ * Returns 'both' for unknown crops (free-text entries) — safest fallback
+ * that shows both seed and seedling options in the UI.
  */
 export function getCropPropagation(cropId: string): CropPropagation {
   return CROP_MAP.get(cropId)?.propagation ?? 'both';

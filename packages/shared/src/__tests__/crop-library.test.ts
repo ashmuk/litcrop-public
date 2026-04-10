@@ -57,9 +57,11 @@ describe('CROPS data', () => {
     }
   });
 
-  it('propagation=both crops all have days_seed_to_seedling data', () => {
+  it('propagation=both crops with harvest data have days_seed_to_seedling data', () => {
+    // Exception: "other" placeholder has no harvest data at all, propagation=both
+    // is a UI hint (show both options for free-text crops).
     for (const c of CROPS) {
-      if (c.propagation === 'both') {
+      if (c.propagation === 'both' && c.days_to_harvest_max != null) {
         expect(c.days_seed_to_seedling_max).toBeGreaterThan(0);
       }
     }
@@ -213,6 +215,11 @@ describe('getCropPropagation', () => {
     expect(getCropPropagation('tomato')).toBe('both');
     expect(getCropPropagation('cabbage')).toBe('both');
     expect(getCropPropagation('cucumber')).toBe('both');
+  });
+
+  it('returns "both" for the "other" placeholder crop', () => {
+    // Free-text crops under "other" should allow both seed and seedling
+    expect(getCropPropagation('other')).toBe('both');
   });
 
   it('returns "both" as safe default for unknown crops', () => {
