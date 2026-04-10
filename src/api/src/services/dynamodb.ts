@@ -1561,8 +1561,8 @@ export class DynamoRepository {
     deviceId: string,
     health: {
       battery_level?: number | null;
-      wifi_signal_dbm?: number;
-      storage_status?: string;
+      wifi_signal_dbm?: number | null;
+      storage_status?: StorageStatus;
       capabilities?: DeviceCapabilities;
     },
   ): Promise<void> {
