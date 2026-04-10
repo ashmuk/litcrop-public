@@ -63,7 +63,7 @@ export function isWriteRole(role: FarmRole): boolean {
  * Call from page-level effects to prevent stale localStorage.
  */
 export async function refreshFarmRoleCache(): Promise<FarmRole> {
-  const { getMyFarms } = await import('../lib/api');
+  const { getMyFarms } = await import('./api');
   const farms = await getMyFarms();
   setLocalFarmList(farms);
   return getLocalFarmRole();

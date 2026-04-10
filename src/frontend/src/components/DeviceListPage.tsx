@@ -20,7 +20,7 @@ import {
   type DeviceListItemResponse,
 } from '../lib/api';
 import { t } from '../i18n/i18n';
-import { useLocalFarmId, isWriteRole, refreshFarmRoleCache } from '../lib/hooks';
+import { useLocalFarmId, getLocalFarmRole, isWriteRole, refreshFarmRoleCache } from '../lib/hooks';
 import { showToast } from './Toast';
 import { formatRelativeTime } from '../lib/format';
 import DeviceRegisterForm from './DeviceRegisterForm';
@@ -243,7 +243,7 @@ export default function DeviceListPage({ farmId }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);
-  const [canEdit, setCanEdit] = useState(false);
+  const [canEdit, setCanEdit] = useState(isWriteRole(getLocalFarmRole()));
 
   useEffect(() => {
     let cancelled = false;

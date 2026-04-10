@@ -28,7 +28,7 @@ import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib
 import { getCropName } from '../lib/crops';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 import { getCurrentUser } from '../lib/auth';
-import { isWriteRole, getCachedIsAdmin, refreshFarmRoleCache } from '../lib/hooks';
+import { getLocalFarmRole, isWriteRole, getCachedIsAdmin, refreshFarmRoleCache } from '../lib/hooks';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -209,7 +209,7 @@ export default function DiaryPage() {
   // Auth context for ownership-based access control
   const currentUser = getCurrentUser();
   const isAdmin = getCachedIsAdmin();
-  const [canWrite, setCanWrite] = useState(isAdmin);
+  const [canWrite, setCanWrite] = useState(isAdmin || isWriteRole(getLocalFarmRole()));
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntryResponse | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
