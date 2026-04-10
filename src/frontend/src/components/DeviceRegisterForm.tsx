@@ -241,8 +241,21 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
                 <button
                   style="display:block;margin-top:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-primary);color:white;border:none;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-family:inherit;cursor:pointer;width:100%"
                   onClick={() => {
+                    // Derive API base from server-generated config_poll_url (#341).
+                    // Pattern: https://host/api/v1/devices/<id>/config → https://host
+                    // Strict match — abort with user-visible error if the URL format
+                    // changes, rather than silently writing a broken .env.
+                    const match = result.config_poll_url.match(/^(https?:\/\/[^/]+)\/api\/v1\/devices\//);
+                    if (!match) {
+                      showToast(t('device.env_download_failed_bad_url'), 'error');
+                      return;
+                    }
+                    const apiBase = match[1];
+
                     const content = [
                       `export LITCROP_DEVICE_ID=${result.device_id}`,
+                      `export LITCROP_BED_ID=${bedId}`,
+                      `export LITCROP_API_BASE_URL=${apiBase}`,
                       `export LITCROP_API_KEY=${result.device_api_key}`,
                       `export LITCROP_CONFIG_URL=${result.config_poll_url}`,
                       `export LITCROP_REFRESH_TOKEN=${refreshToken || 'PASTE_YOUR_TOKEN_HERE'}`,

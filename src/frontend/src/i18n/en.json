@@ -660,6 +660,7 @@
     "tier_banner_3": "Sensor-equipped — motion capture coming soon",
     "tier_banner_unknown": "Device hasn't reported capabilities yet. Class will be detected after first heartbeat.",
     "config_modal_title": "Configure",
+    "env_download_failed_bad_url": "Unable to generate config file — unexpected API URL format. Please contact support.",
     "tier_info_cta": "About device classes",
     "tier_info_title": "About device classes",
     "tier_info_footer": "Class is detected automatically from the capabilities your Pi reports on first heartbeat. You can declare optional hardware during install.sh.",

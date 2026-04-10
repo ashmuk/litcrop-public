@@ -17,6 +17,9 @@ set -euo pipefail
 LITCROP_DIR="${HOME}/litcrop"
 ENV_FILE="${LITCROP_DIR}/.env"
 HARDWARE_CONF="${LITCROP_DIR}/hardware.conf"
+AUTH_TOKEN_FILE="${LITCROP_DIR}/.auth-token"         # sidecar — refreshed JWT (#341)
+REFRESH_FAIL_FILE="${LITCROP_DIR}/.refresh-failures" # sidecar — counter (#341)
+MAX_REFRESH_FAILURES=3
 IMAGES_DIR="${LITCROP_DIR}/images"
 LOG_DIR="${LITCROP_DIR}/logs"
 LOG_FILE="${LOG_DIR}/capture.log"
@@ -29,7 +32,10 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Safe key=value parser — only accepts known keys, no arbitrary code execution
+# Safe key=value parser — only accepts known keys, no arbitrary code execution.
+# Accepts LITCROP_*-prefixed keys (from the web UI download) and maps them to
+# the internal unprefixed variable names capture.sh uses. Also accepts the
+# unprefixed names directly for backward-compat with hand-edited configs. (#341)
 while IFS='=' read -r key value; do
     [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
     # Strip 'export ' prefix if present
@@ -39,19 +45,40 @@ while IFS='=' read -r key value; do
     value="${value%\"}"
     value="${value#\"}"
     case "$key" in
-        DEVICE_ID|BED_ID|API_BASE_URL|AUTH_TOKEN|NODE_ID|TRIGGER|\
-        CAPTURE_WIDTH|CAPTURE_HEIGHT|JPEG_QUALITY|INTERVAL_SECONDS|\
-        MAX_RETRY|REFRESH_TOKEN|COGNITO_CLIENT_ID|AWS_REGION)
+        LITCROP_DEVICE_ID)         export DEVICE_ID="$value" ;;
+        LITCROP_BED_ID)            export BED_ID="$value" ;;
+        LITCROP_API_BASE_URL)      export API_BASE_URL="$value" ;;
+        LITCROP_API_KEY)           export DEVICE_API_KEY="$value" ;;
+        LITCROP_REFRESH_TOKEN)     export REFRESH_TOKEN="$value" ;;
+        LITCROP_COGNITO_CLIENT_ID) export COGNITO_CLIENT_ID="$value" ;;
+        LITCROP_COGNITO_REGION)    export AWS_REGION="$value" ;;
+        LITCROP_CONFIG_URL)        ;;  # intentionally ignored — capture.sh builds URLs from API_BASE_URL
+        # Backward-compat: accept legacy unprefixed keys
+        DEVICE_ID|BED_ID|API_BASE_URL|DEVICE_API_KEY|AUTH_TOKEN|\
+        NODE_ID|TRIGGER|CAPTURE_WIDTH|CAPTURE_HEIGHT|JPEG_QUALITY|\
+        INTERVAL_SECONDS|MAX_RETRY|REFRESH_TOKEN|COGNITO_CLIENT_ID|AWS_REGION)
             export "$key=$value"
             ;;
     esac
 done < "$ENV_FILE"
 
-# ── Validate required vars ──────────────────────────────────────
+# ── Load cached AUTH_TOKEN from sidecar (if present) ────────────
 
-for var in DEVICE_ID BED_ID API_BASE_URL AUTH_TOKEN; do
+if [ -f "$AUTH_TOKEN_FILE" ]; then
+    AUTH_TOKEN=$(cat "$AUTH_TOKEN_FILE")
+    export AUTH_TOKEN
+fi
+
+# ── Validate required vars ──────────────────────────────────────
+# AUTH_TOKEN is NOT required here — it's fetched on-demand via refresh_token()
+# on first run. DEVICE_API_KEY is required: the heartbeat/config-poll endpoints
+# use dual-auth (JWT + X-Device-Key) and the latter is the device-scoped secret.
+
+for var in DEVICE_ID BED_ID API_BASE_URL DEVICE_API_KEY REFRESH_TOKEN; do
     if [ -z "${!var:-}" ]; then
-        echo "[ERROR] ${var} is required. Check ${ENV_FILE}" >&2
+        echo "[ERROR] ${var} is required." >&2
+        echo "[HINT]  Re-download your .env from the LitCrop web UI → Devices → Setup." >&2
+        echo "[HINT]  Or for legacy manual configs, add: export LITCROP_${var}=..." >&2
         exit 1
     fi
 done
@@ -97,6 +124,14 @@ rotate_log() {
 }
 
 # ── Token refresh ───────────────────────────────────────────────
+#
+# Writes refreshed JWT to $AUTH_TOKEN_FILE (sidecar), not the .env — keeps
+# the downloaded .env immutable and avoids fragile awk rewrites. (#341)
+#
+# Tracks consecutive failures in $REFRESH_FAIL_FILE. After $MAX_REFRESH_FAILURES
+# consecutive failures (typically: REFRESH_TOKEN expired past 30-day window),
+# exits with code 2 and asks the user to re-register. Prevents an infinite
+# cron-driven refresh loop against Cognito.
 
 refresh_token() {
     if [ -z "${REFRESH_TOKEN:-}" ] || [ -z "${COGNITO_CLIENT_ID:-}" ]; then
@@ -113,7 +148,10 @@ refresh_token() {
         curl -s -X POST "$endpoint" \
         -H "Content-Type: application/x-amz-json-1.1" \
         -H "X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth" \
-        --data-binary @- --connect-timeout 10 --max-time 15 2>/dev/null) || return 1
+        --data-binary @- --connect-timeout 10 --max-time 15 2>/dev/null) || {
+            _record_refresh_failure
+            return 1
+        }
 
     # Use IdToken (not AccessToken) — API Gateway JWT authorizer checks the
     # `aud` claim which only exists in Cognito ID tokens.
@@ -122,16 +160,33 @@ refresh_token() {
 
     if [ -n "$new_token" ]; then
         AUTH_TOKEN="$new_token"
-        # Update .env file with new token (awk avoids sed delimiter issues with JWTs)
-        awk -v token="$new_token" '{
-            if ($0 ~ /^export AUTH_TOKEN=/) print "export AUTH_TOKEN=\"" token "\""
-            else print
-        }' "$ENV_FILE" > "${ENV_FILE}.tmp" && mv "${ENV_FILE}.tmp" "$ENV_FILE"
+        export AUTH_TOKEN
+        # Write to sidecar atomically, tight mode
+        (umask 077; printf '%s' "$new_token" > "${AUTH_TOKEN_FILE}.tmp")
+        mv "${AUTH_TOKEN_FILE}.tmp" "$AUTH_TOKEN_FILE"
+        chmod 600 "$AUTH_TOKEN_FILE"
+        # Reset failure counter on success
+        rm -f "$REFRESH_FAIL_FILE"
         log "[AUTH] Token refreshed"
     else
-        log "[AUTH] Token refresh failed"
+        _record_refresh_failure
         return 1
     fi
+}
+
+_record_refresh_failure() {
+    local fail_count=0
+    [ -f "$REFRESH_FAIL_FILE" ] && fail_count=$(cat "$REFRESH_FAIL_FILE" 2>/dev/null || echo 0)
+    fail_count=$((fail_count + 1))
+    echo "$fail_count" > "$REFRESH_FAIL_FILE"
+
+    if [ "$fail_count" -ge "$MAX_REFRESH_FAILURES" ]; then
+        log "[AUTH] Refresh failed ${fail_count}x — device needs re-registration"
+        log "[AUTH] Fix: re-register device in LitCrop web UI, download fresh .env,"
+        log "[AUTH]      then run: rm $REFRESH_FAIL_FILE $AUTH_TOKEN_FILE"
+        exit 2
+    fi
+    log "[AUTH] Token refresh failed (${fail_count}/${MAX_REFRESH_FAILURES})"
 }
 
 # ── Config polling ──────────────────────────────────────────────
@@ -139,9 +194,12 @@ refresh_token() {
 poll_config() {
     local config_url="${API_BASE_URL}/api/v1/devices/${DEVICE_ID}/config"
 
+    # Device endpoints use dual-auth: JWT (for user scope) + X-Device-Key
+    # (for device scope). Both headers required. (#341)
     local curl_cfg
     curl_cfg=$(mktemp); chmod 600 "$curl_cfg"
-    printf 'header = "Authorization: Bearer %s"\n' "$AUTH_TOKEN" > "$curl_cfg"
+    printf 'header = "Authorization: Bearer %s"\nheader = "X-Device-Key: %s"\n' \
+        "$AUTH_TOKEN" "$DEVICE_API_KEY" > "$curl_cfg"
 
     local response
     response=$(curl -s -w "\n%{http_code}" \
@@ -325,10 +383,12 @@ send_heartbeat() {
 JSON
 )
 
-    # Use -K config file to keep token out of process list
+    # Dual-auth: JWT + X-Device-Key (#341). Use -K config file to keep
+    # secrets out of the process list.
     local hb_cfg
     hb_cfg=$(mktemp); chmod 600 "$hb_cfg"
-    printf 'header = "Authorization: Bearer %s"\nheader = "Content-Type: application/json"\n' "$AUTH_TOKEN" > "$hb_cfg"
+    printf 'header = "Authorization: Bearer %s"\nheader = "X-Device-Key: %s"\nheader = "Content-Type: application/json"\n' \
+        "$AUTH_TOKEN" "$DEVICE_API_KEY" > "$hb_cfg"
 
     echo "$payload" | curl -s -o /dev/null \
         -K "$hb_cfg" \

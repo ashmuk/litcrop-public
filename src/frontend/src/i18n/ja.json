@@ -660,6 +660,7 @@
     "tier_banner_3": "センサー対応 — モーション撮影は今後対応予定",
     "tier_banner_unknown": "デバイスがまだ機能を報告していません。最初のハートビート後にクラスが判定されます。",
     "config_modal_title": "設定",
+    "env_download_failed_bad_url": "設定ファイルを生成できません — APIのURL形式が想定と異なります。サポートまでご連絡ください。",
     "tier_info_cta": "デバイスクラスについて",
     "tier_info_title": "デバイスクラスについて",
     "tier_info_footer": "クラスは、Piが最初のハートビートで報告した機能から自動判定されます。install.sh 実行時にオプションのハードウェアを申告できます。",
