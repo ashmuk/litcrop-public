@@ -4,7 +4,7 @@
  * Reads bedId from the URL query string at runtime (?id=<bedId>).
  */
 
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
 import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
@@ -213,12 +213,23 @@ export default function BedDetail() {
     setEditing(true);
   }
 
-  function handlePlantMethodChange(method: PlantMethod) {
-    setPlantMethod(method);
-    if (cropForm.planted_at && cropForm.crop_type) {
-      setCropForm((f) => ({ ...f, expected_harvest: estimateHarvestDate(f.planted_at, f.crop_type, method) ?? f.expected_harvest }));
+  // Recalculate harvest date when plantMethod toggles (seed ↔ seedling).
+  // Skip the initial mount so editing an existing bed doesn't overwrite
+  // the stored expected_harvest on first render.
+  const plantMethodMounted = useRef(false);
+  useEffect(() => {
+    if (!plantMethodMounted.current) {
+      plantMethodMounted.current = true;
+      return;
     }
-  }
+    if (!editing) return;
+    setCropForm((f) => {
+      if (!f.planted_at || !f.crop_type) return f;
+      const harvest = estimateHarvestDate(f.planted_at, f.crop_type, plantMethod);
+      if (!harvest || harvest === f.expected_harvest) return f;
+      return { ...f, expected_harvest: harvest };
+    });
+  }, [plantMethod]);
 
   async function handleSaveCrop() {
     setSaving(true);
@@ -374,11 +385,11 @@ export default function BedDetail() {
             <label class="form-label">{t('bed.plant_method')}</label>
             <div style="display:flex;gap:var(--space-3)">
               <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => handlePlantMethodChange('seed')} />
+                <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => setPlantMethod('seed')} />
                 🫘 {t('diary.categories.seeding')}
               </label>
               <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => handlePlantMethodChange('seedling')} />
+                <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => setPlantMethod('seedling')} />
                 🌱 {t('diary.categories.planting')}
               </label>
             </div>
