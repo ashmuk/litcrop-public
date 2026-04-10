@@ -89,6 +89,32 @@ describe('Beta-5 Contract Tests', () => {
       expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
     });
 
+    it('DeviceHeartbeatRequestSchema accepts null wifi_signal_dbm (#337)', () => {
+      // capture.sh sends null when iwconfig is unavailable or returns non-numeric
+      const data = { battery_level: 85, wifi_signal_dbm: null, storage_status: 'ok' };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
+    it('DeviceHeartbeatRequestSchema accepts null battery_level (#337)', () => {
+      // Devices without a battery HAT report null battery_level
+      const data = { battery_level: null, wifi_signal_dbm: -42, storage_status: 'ok' };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
+    it('DeviceHeartbeatRequestSchema accepts capabilities payload (#337)', () => {
+      const data = {
+        battery_level: null,
+        wifi_signal_dbm: null,
+        storage_status: 'ok',
+        capabilities: {
+          has_battery_sensor: false,
+          has_pir_sensor: false,
+          resolutions: ['1920x1080', '1280x720'],
+        },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
     it('RegisterDeviceRequestSchema accepts valid registration', () => {
       const data = { node_name: 'Test Cam', bed_id: 'bed-a1' };
       expect(RegisterDeviceRequestSchema.safeParse(data).success).toBe(true);

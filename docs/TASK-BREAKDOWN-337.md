@@ -184,7 +184,7 @@ heartbeat_payload=$(jq -n \
 
 **Tasks:**
 1. Create `TierBadge` component with size prop and color-coded styling
-2. Add i18n keys: `device.class_1`, `device.class_2`, `device.class_3`, `device.class_pending`
+2. Add i18n keys: `device.class_1`, `device.class_2`, `device.class_3`, `device.class_unknown`
 3. Use existing badge CSS tokens (consistent with existing status badges)
 
 **Acceptance:** Component renders all 4 states correctly; visible in isolation.

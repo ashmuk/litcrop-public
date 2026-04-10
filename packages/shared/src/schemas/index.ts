@@ -474,7 +474,7 @@ export const UpdateDeviceRequestSchema = z.object({
 /** POST /api/v1/devices/:deviceId/heartbeat — request body */
 export const DeviceHeartbeatRequestSchema = z.object({
   battery_level: z.number().int().min(0).max(100).nullable().optional(),
-  wifi_signal_dbm: z.number().min(-120).max(0).optional(),
+  wifi_signal_dbm: z.number().min(-120).max(0).nullable().optional(),
   storage_status: StorageStatusSchema.optional(),
   capabilities: DeviceCapabilitiesSchema.optional(),
 });

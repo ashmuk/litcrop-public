@@ -104,11 +104,14 @@ Enhance `install.sh` to ask the user about hardware during interactive setup (co
 Does this device have a battery HAT? [y/N]
 Does this device have a PIR motion sensor? [y/N]
 ```
-Store answers in `~/litcrop/.env`:
+Store answers in `~/litcrop/hardware.conf` (separate from `.env` — see note below):
 ```
 HAS_BATTERY_SENSOR=1
 HAS_PIR_SENSOR=0
 ```
+
+**Implementation note:** During implementation we chose to write to a dedicated `~/litcrop/hardware.conf` file (mode 600) rather than appending to `.env`. Rationale: `.env` is downloaded fresh from the web UI on credential rotation; mixing hardware flags in would risk wiping them on every `.env` refresh. `hardware.conf` is set once at install and survives independently.
+
 - Priority: **HIGH** — blocks FR-6 (capture.sh reads these flags)
 
 ### FR-6: capture.sh Capability Reporting
@@ -255,7 +258,7 @@ When Phase 2 ships functional tier-specific config, the following schema changes
 
 1. **Derive tier from capabilities** — no `device_class` field in storage. Single source of truth = `DeviceCapabilities`.
 2. **PIR without battery → Class 3** — PIR is the discriminator. Battery is assumed present on any Pi.
-3. **install.sh uses interactive Y/N prompts** — written to `~/litcrop/.env` as `HAS_BATTERY_SENSOR=1` / `HAS_PIR_SENSOR=1`. Flag-based fallback (`install.sh --has-battery --has-pir`) for unattended installs is optional.
+3. **install.sh uses interactive Y/N prompts** — written to `~/litcrop/hardware.conf` (not `.env`, per implementation choice — see FR-5 note) as `HAS_BATTERY_SENSOR=1` / `HAS_PIR_SENSOR=1`. Flag-based fallback (`install.sh --has-battery --has-pir`) for unattended installs is optional.
 4. **Class 3 default trigger_type stays `scheduled`** — motion trigger UI radio already exists (gated by `hasPirSensor`). Actual motion-triggered capture logic is Phase 2.
 
 ## 12. Next Steps
