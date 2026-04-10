@@ -49,6 +49,15 @@ function formatHour(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', hour12: false });
 }
 
+/** Format an ISO 8601 datetime as HH:MM (drops year/month/day). */
+function formatTimeOnly(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 function formatWeekday(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString(undefined, {
     weekday: 'short',
@@ -251,7 +260,10 @@ export default function WeatherView({ farmId }: Props) {
               style="display:flex;justify-content:space-between;margin-top:var(--space-3);font-size:var(--font-size-sm);color:var(--color-gray-700)"
             >
               <span>↑ {formatTemp(today.high)}  ↓ {formatTemp(today.low)}</span>
-              <span>🌅 {today.sunrise} &nbsp; 🌇 {today.sunset}</span>
+              <span style="display:inline-flex;align-items:center;gap:var(--space-2)">
+                <span title={tl('weather.sunrise')}>🌅 {formatTimeOnly(today.sunrise)}</span>
+                <span title={tl('weather.sunset')}>🌇 {formatTimeOnly(today.sunset)}</span>
+              </span>
             </div>
           </div>
 
