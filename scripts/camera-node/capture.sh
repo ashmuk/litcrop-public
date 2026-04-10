@@ -16,6 +16,7 @@ set -euo pipefail
 
 LITCROP_DIR="${HOME}/litcrop"
 ENV_FILE="${LITCROP_DIR}/.env"
+HARDWARE_CONF="${LITCROP_DIR}/hardware.conf"
 IMAGES_DIR="${LITCROP_DIR}/images"
 LOG_DIR="${LITCROP_DIR}/logs"
 LOG_FILE="${LOG_DIR}/capture.log"
@@ -55,13 +56,29 @@ for var in DEVICE_ID BED_ID API_BASE_URL AUTH_TOKEN; do
     fi
 done
 
-# Defaults for optional vars
+## Defaults for optional vars
 CAPTURE_WIDTH="${CAPTURE_WIDTH:-1920}"
 CAPTURE_HEIGHT="${CAPTURE_HEIGHT:-1080}"
 JPEG_QUALITY="${JPEG_QUALITY:-75}"
 NODE_ID="${NODE_ID:-${DEVICE_ID}}"
 TRIGGER="${TRIGGER:-scheduled}"
 MAX_RETRY="${MAX_RETRY:-3}"
+
+# ── Load hardware.conf (device tier flags — #337) ───────────────
+
+HAS_BATTERY_SENSOR=0
+HAS_PIR_SENSOR=0
+if [ -f "$HARDWARE_CONF" ]; then
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+        key="${key// /}"
+        case "$key" in
+            HAS_BATTERY_SENSOR|HAS_PIR_SENSOR)
+                export "$key=$value"
+                ;;
+        esac
+    done < "$HARDWARE_CONF"
+fi
 
 # ── Logging ─────────────────────────────────────────────────────
 
@@ -261,31 +278,52 @@ send_heartbeat() {
     local heartbeat_url="${API_BASE_URL}/api/v1/devices/${DEVICE_ID}/heartbeat"
 
     # WiFi signal strength
-    local wifi_dbm="null"
+    local wifi_signal_dbm="null"
     if command -v iwconfig &>/dev/null; then
-        wifi_dbm=$(iwconfig wlan0 2>/dev/null | grep -oP '(?<=Signal level=)-?\d+' || echo "null")
+        wifi_signal_dbm=$(iwconfig wlan0 2>/dev/null | grep -oP '(?<=Signal level=)-?\d+' || echo "null")
     fi
 
     # Storage status
-    local storage="ok"
+    local storage_status="ok"
     local usage_pct
     usage_pct=$(df -h / | awk 'NR==2 {print $5+0}')
     if [ "$usage_pct" -gt 90 ]; then
-        storage="full"
+        storage_status="full"
     elif [ "$usage_pct" -gt 80 ]; then
-        storage="low"
+        storage_status="low"
     fi
 
     # Battery (UPS HAT if connected) — validate numeric
-    local battery="null"
+    local battery_level="null"
     local raw_battery
     raw_battery=$(cat /sys/class/power_supply/*/capacity 2>/dev/null | head -1 || echo "")
-    [[ "$raw_battery" =~ ^[0-9]+$ ]] && battery="$raw_battery"
+    [[ "$raw_battery" =~ ^[0-9]+$ ]] && battery_level="$raw_battery"
 
-    # Validate wifi_dbm is numeric
-    [[ ! "$wifi_dbm" =~ ^-?[0-9]+$ ]] && wifi_dbm="null"
+    # Validate wifi_signal_dbm is numeric
+    [[ ! "$wifi_signal_dbm" =~ ^-?[0-9]+$ ]] && wifi_signal_dbm="null"
 
-    local payload="{\"wifi_dbm\":${wifi_dbm},\"storage\":\"${storage}\",\"battery_pct\":${battery}}"
+    # Tier capabilities — derived from hardware.conf (#337)
+    local has_battery_sensor="false"
+    local has_pir_sensor="false"
+    [ "$HAS_BATTERY_SENSOR" = "1" ] && has_battery_sensor="true"
+    [ "$HAS_PIR_SENSOR" = "1" ] && has_pir_sensor="true"
+
+    # Heartbeat payload — keys match DeviceHeartbeatRequestSchema
+    # (Beta-5 had a typo bug: battery_pct/wifi_dbm/storage — silently dropped. Fixed in #337.)
+    local payload
+    payload=$(cat <<JSON
+{
+  "battery_level": ${battery_level},
+  "wifi_signal_dbm": ${wifi_signal_dbm},
+  "storage_status": "${storage_status}",
+  "capabilities": {
+    "has_battery_sensor": ${has_battery_sensor},
+    "has_pir_sensor": ${has_pir_sensor},
+    "resolutions": ["1920x1080", "1280x720"]
+  }
+}
+JSON
+)
 
     # Use -K config file to keep token out of process list
     local hb_cfg
