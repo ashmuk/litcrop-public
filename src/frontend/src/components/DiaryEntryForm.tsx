@@ -472,13 +472,15 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
               </select>
             </div>
 
-            {/* Smart default hint (#287) */}
-            {entryType === 'reserved' && category === 'planting' && bedId && (() => {
+            {/* Smart default hint (#287) — covers both planting and seeding (#313) */}
+            {entryType === 'reserved' && (category === 'planting' || category === 'seeding') && bedId && (() => {
               const bed = beds.find((b) => b.id === bedId);
               if (!bed?.crop_type) return null;
               // Use bed's planted_at if available (more accurate), otherwise fall back to diary entry date
               const plantingDate = bed.planted_at ?? date;
-              const harvestDate = estimateHarvestDate(plantingDate, bed.crop_type);
+              // For seeding category, include nursery days in the estimate
+              const plantMethod = category === 'seeding' ? 'seed' : 'seedling';
+              const harvestDate = estimateHarvestDate(plantingDate, bed.crop_type, plantMethod);
               if (!harvestDate) return null;
               return (
                 <div class="diary-smart-hint">

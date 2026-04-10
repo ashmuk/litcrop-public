@@ -4,11 +4,12 @@
  * Reads bedId from the URL query string at runtime (?id=<bedId>).
  */
 
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
 import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
 import { getCropDisplay } from '../lib/crops';
+import { CATEGORY_META } from '../lib/diary';
 import { estimateHarvestDate, getCropPropagation } from '@litcrop/shared';
 import type { PlantMethod } from '@litcrop/shared';
 import { getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError } from '../lib/api';
@@ -213,23 +214,49 @@ export default function BedDetail() {
     setEditing(true);
   }
 
-  // Recalculate harvest date when plantMethod toggles (seed ↔ seedling).
-  // Skip the initial mount so editing an existing bed doesn't overwrite
-  // the stored expected_harvest on first render.
-  const plantMethodMounted = useRef(false);
-  useEffect(() => {
-    if (!plantMethodMounted.current) {
-      plantMethodMounted.current = true;
-      return;
-    }
-    if (!editing) return;
+  /** Update plantMethod and recalculate expected_harvest in a single batch. */
+  function applyPlantMethod(method: PlantMethod): void {
+    setPlantMethod(method);
     setCropForm((f) => {
       if (!f.planted_at || !f.crop_type) return f;
-      const harvest = estimateHarvestDate(f.planted_at, f.crop_type, plantMethod);
+      const harvest = estimateHarvestDate(f.planted_at, f.crop_type, method);
       if (!harvest || harvest === f.expected_harvest) return f;
       return { ...f, expected_harvest: harvest };
     });
-  }, [plantMethod]);
+  }
+
+  /** Render the plant-method form group — adaptive per crop propagation. */
+  function renderPlantMethodField() {
+    const propagation = getCropPropagation(cropForm.crop_type);
+    if (propagation === 'both') {
+      return (
+        <div class="form-group">
+          <label class="form-label">{t('bed.plant_method')}</label>
+          <div style="display:flex;gap:var(--space-3)">
+            <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
+              <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => applyPlantMethod('seed')} />
+              {CATEGORY_META.seeding.icon} {t('diary.categories.seeding')}
+            </label>
+            <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
+              <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => applyPlantMethod('seedling')} />
+              {CATEGORY_META.planting.icon} {t('diary.categories.planting')}
+            </label>
+          </div>
+        </div>
+      );
+    }
+    // Single-method crop: show static label instead of toggle
+    const meta = propagation === 'seed' ? CATEGORY_META.seeding : CATEGORY_META.planting;
+    const labelKey = propagation === 'seed' ? 'diary.categories.seeding' : 'diary.categories.planting';
+    return (
+      <div class="form-group">
+        <label class="form-label">{t('bed.plant_method')}</label>
+        <div style="display:flex;align-items:center;gap:var(--space-1);color:var(--color-gray-600);font-size:var(--font-size-sm)">
+          {meta.icon} {t(labelKey)}
+        </div>
+      </div>
+    );
+  }
 
   async function handleSaveCrop() {
     setSaving(true);
@@ -374,11 +401,13 @@ export default function BedDetail() {
                 const nextMethod: PlantMethod =
                   propagation === 'both' ? plantMethod : propagation;
                 if (nextMethod !== plantMethod) setPlantMethod(nextMethod);
-                const next = { ...cropForm, crop_type: v };
-                if (next.planted_at) {
-                  next.expected_harvest = estimateHarvestDate(next.planted_at, v, nextMethod) ?? next.expected_harvest;
-                }
-                setCropForm(next);
+                setCropForm((f) => {
+                  const next = { ...f, crop_type: v };
+                  if (next.planted_at) {
+                    next.expected_harvest = estimateHarvestDate(next.planted_at, v, nextMethod) ?? next.expected_harvest;
+                  }
+                  return next;
+                });
               }}
             />
           </div>
@@ -386,37 +415,7 @@ export default function BedDetail() {
             <label class="form-label" for="crop-variety">{t('plot.crop_variety')}</label>
             <input id="crop-variety" type="text" class="form-input" value={cropForm.crop_variety} onInput={(e) => setCropForm({ ...cropForm, crop_variety: (e.target as HTMLInputElement).value })} placeholder="e.g. Cherry, Roma" />
           </div>
-          {(() => {
-            const propagation = getCropPropagation(cropForm.crop_type);
-            if (propagation === 'both') {
-              return (
-                <div class="form-group">
-                  <label class="form-label">{t('bed.plant_method')}</label>
-                  <div style="display:flex;gap:var(--space-3)">
-                    <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                      <input type="radio" name="plant-method" value="seed" checked={plantMethod === 'seed'} onChange={() => setPlantMethod('seed')} />
-                      🫘 {t('diary.categories.seeding')}
-                    </label>
-                    <label style="display:flex;align-items:center;gap:var(--space-1);cursor:pointer">
-                      <input type="radio" name="plant-method" value="seedling" checked={plantMethod === 'seedling'} onChange={() => setPlantMethod('seedling')} />
-                      🌱 {t('diary.categories.planting')}
-                    </label>
-                  </div>
-                </div>
-              );
-            }
-            // Single-method crop: show static label instead of toggle
-            const icon = propagation === 'seed' ? '🫘' : '🌱';
-            const labelKey = propagation === 'seed' ? 'diary.categories.seeding' : 'diary.categories.planting';
-            return (
-              <div class="form-group">
-                <label class="form-label">{t('bed.plant_method')}</label>
-                <div style="display:flex;align-items:center;gap:var(--space-1);color:var(--color-gray-600);font-size:var(--font-size-sm)">
-                  {icon} {t(labelKey)}
-                </div>
-              </div>
-            );
-          })()}
+          {renderPlantMethodField()}
           <div class="form-group">
             <label class="form-label" for="planted-at">{plantMethod === 'seed' ? t('bed.seeding_date') : t('plot.planted')}</label>
             <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => {
