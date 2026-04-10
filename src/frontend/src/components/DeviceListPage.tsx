@@ -21,6 +21,8 @@ import {
 } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { useLocalFarmId, getLocalFarmRole, isWriteRole, refreshFarmRoleCache } from '../lib/hooks';
+import { getDeviceClass } from '@litcrop/shared';
+import TierBadge from './TierBadge';
 import { showToast } from './Toast';
 import { formatRelativeTime } from '../lib/format';
 import DeviceRegisterForm from './DeviceRegisterForm';
@@ -110,23 +112,26 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
       aria-label={`${device.node_name}, status: ${device.status}`}
       style="background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"
     >
-      {/* Header: name + status dot */}
-      <div class="device-card__header" style="display:flex;align-items:center;justify-content:space-between">
-        <div class="device-card__name-group" style="display:flex;align-items:center;gap:var(--space-2)">
+      {/* Header: name + tier badge + status dot */}
+      <div class="device-card__header" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)">
+        <div class="device-card__name-group" style="display:flex;align-items:center;gap:var(--space-2);min-width:0;flex:1">
           <span class="device-card__icon" style="font-size:20px" aria-hidden="true">📷</span>
           <span
             class="device-card__name"
-            style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-gray-900)"
+            style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
           >
             {device.node_name}
           </span>
         </div>
-        <span
-          class={`status-dot ${statusDotClass(device.status)}`}
-          style={`width:12px;height:12px;border-radius:50%;flex-shrink:0;${statusDotStyle(device.status)}`}
-          aria-hidden="true"
-          title={device.status}
-        />
+        <div style="display:flex;align-items:center;gap:var(--space-2);flex-shrink:0">
+          <TierBadge deviceClass={getDeviceClass(device.capabilities)} size="sm" />
+          <span
+            class={`status-dot ${statusDotClass(device.status)}`}
+            style={`width:12px;height:12px;border-radius:50%;${statusDotStyle(device.status)}`}
+            aria-hidden="true"
+            title={device.status}
+          />
+        </div>
       </div>
 
       {/* Bed assignment */}
