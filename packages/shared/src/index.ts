@@ -164,6 +164,8 @@ export {
 export type { CropEntry } from './crop-library';
 export { CROPS as CROP_LIBRARY, CROP_MAP as CROP_LIBRARY_MAP, getCropMeta, estimateHarvestDate, getCropPropagation } from './crop-library';
 export type { CropPropagation } from './crop-library';
+export { getDeviceClass } from './devices';
+export type { DeviceClass } from './devices';
 
 // Timezone utilities
 export { getTimezoneOffsetFromCoords } from './timezone';
