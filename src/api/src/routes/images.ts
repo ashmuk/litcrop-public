@@ -33,8 +33,8 @@ async function assertImageOwnership(image: Image, userId: string, isAdmin?: bool
   }
 }
 
-/** Verify caller has admin or manager role for the farm containing this image (write operations). */
-async function assertImageWriteAccess(image: Image, userId: string): Promise<Bed> {
+/** Verify caller is a farm member for the farm containing this image (all roles can tag). */
+async function assertImageMediaAccess(image: Image, userId: string): Promise<Bed> {
   let bed: Bed;
   try {
     bed = await dynamoRepo.getBedById(image.bed_id);
@@ -45,7 +45,7 @@ async function assertImageWriteAccess(image: Image, userId: string): Promise<Bed
     throw new ServiceUnavailableError('Storage service unavailable');
   }
   try {
-    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner']);
+    await assertFarmAccess(bed.farm_id, userId);
   } catch (err) {
     if (err instanceof NotFoundError) {
       throw new NotFoundError(`Image not found: ${image.id}`);
@@ -133,7 +133,7 @@ router.post('/:imageId/tags', async (c) => {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 
-  const bed = await assertImageWriteAccess(image, userId);
+  const bed = await assertImageMediaAccess(image, userId);
 
   const tag = await dynamoRepo.createTag(
     imageId,

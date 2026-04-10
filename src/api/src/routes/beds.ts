@@ -246,7 +246,7 @@ router.post('/:bedId/images', async (c) => {
   const { bedId } = c.req.param();
   const { userId, userEmail } = getAuthContext(c);
 
-  // Verify bed exists and caller has write access (admin/manager only)
+  // Verify bed exists and caller is a farm member (all roles can upload images)
   let bed: Bed;
   try {
     bed = await dynamoRepo.getBedById(bedId);
@@ -254,7 +254,7 @@ router.post('/:bedId/images', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
-  await assertBedWriteAccess(bed, userId);
+  await assertBedAccess(bed, userId);
 
   // Parse multipart form data
   const formData = await c.req.parseBody();

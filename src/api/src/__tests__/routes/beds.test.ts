@@ -424,6 +424,40 @@ describe('POST /api/v1/beds/:bedId/images', () => {
     expect(res.status).toBe(400);
   });
 
+  it('staff can upload images → 201', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      ...membershipFixture,
+      role: 'staff' as const,
+    });
+    const { uploadImage } = await import('../../services/s3');
+    vi.mocked(uploadImage).mockResolvedValue('farms/f0/beds/bd0/staff-img.jpg');
+    vi.mocked(dynamoRepo.createImage).mockResolvedValue({
+      id: 'staff-img-id',
+      bed_id: BED_ID,
+      node_id: 'node-01',
+      captured_at: '2026-03-20T10:00:00.000Z',
+      uploaded_at: '2026-03-20T10:01:00.000Z',
+      storage_key: 'farms/f0/beds/bd0/staff-img.jpg',
+      trigger: 'scheduled',
+      content_type: 'image/jpeg',
+      size_bytes: 256,
+    });
+
+    const formData = new FormData();
+    formData.append('image', makeJpegBlob(), 'test.jpg');
+    formData.append('captured_at', '2026-03-20T10:00:00.000Z');
+    formData.append('node_id', 'node-01');
+    formData.append('trigger', 'scheduled');
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData,
+    });
+    expect(res.status).toBe(201);
+  });
+
   it('returns 404 when bed not found', async () => {
     vi.mocked(dynamoRepo.getBedById).mockRejectedValue(new NotFoundError('Bed not found'));
 

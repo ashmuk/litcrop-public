@@ -208,7 +208,7 @@ describe('POST /api/v1/images/:imageId/tags', () => {
     }
   });
 
-  it('observer cannot POST tag → 404', async () => {
+  it('staff can POST tag → 201', async () => {
     vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
     vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
       user_id: TEST_USER_ID,
@@ -216,12 +216,13 @@ describe('POST /api/v1/images/:imageId/tags', () => {
       role: 'staff' as const,
       joined_at: '2026-03-17T00:00:00.000Z',
     });
+    vi.mocked(dynamoRepo.createTag).mockResolvedValue(tagFixture);
 
     const res = await app.request(`/api/v1/images/${IMAGE_ID}/tags`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ tag: 'healthy' }),
     });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(201);
   });
 });
