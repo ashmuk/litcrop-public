@@ -194,6 +194,9 @@
     "loading": "Loading image…",
     "error": "Image could not be loaded"
   },
+  "modal": {
+    "close": "Close"
+  },
   "weather_conditions": {
     "clear_sky": "Clear Sky",
     "mainly_clear": "Mainly Clear",
@@ -655,7 +658,30 @@
     "tier_banner_1": "Basic camera — scheduled capture only",
     "tier_banner_2": "Power-managed — battery monitoring enabled",
     "tier_banner_3": "Sensor-equipped — motion capture coming soon",
-    "tier_banner_unknown": "Device hasn't reported capabilities yet. Class will be detected after first heartbeat."
+    "tier_banner_unknown": "Device hasn't reported capabilities yet. Class will be detected after first heartbeat.",
+    "config_modal_title": "Configure",
+    "tier_info_cta": "About device classes",
+    "tier_info_title": "About device classes",
+    "tier_info_footer": "Class is detected automatically from the capabilities your Pi reports on first heartbeat. You can declare optional hardware during install.sh.",
+    "tier_info_col_hardware": "Hardware",
+    "tier_info_col_does": "Does",
+    "tier_info_col_cant": "Can't",
+    "tier_info_1_subtitle": "Basic",
+    "tier_info_1_hw": "Raspberry Pi + camera",
+    "tier_info_1_does": "Scheduled capture at your interval, WiFi & storage reporting",
+    "tier_info_1_cant": "No battery level, no motion triggers",
+    "tier_info_2_subtitle": "Power-managed",
+    "tier_info_2_hw": "Class 1 + battery HAT (e.g. PiSugar)",
+    "tier_info_2_does": "Everything Class 1 does + live battery level",
+    "tier_info_2_cant": "No motion triggers",
+    "tier_info_3_subtitle": "Sensor-equipped",
+    "tier_info_3_hw": "Class 2 + PIR motion sensor",
+    "tier_info_3_does": "Everything Class 2 does + motion-triggered capture (Phase 2)",
+    "tier_info_3_cant": "—",
+    "tier_info_unknown_subtitle": "Detecting…",
+    "tier_info_unknown_hw": "Unknown — device hasn't checked in",
+    "tier_info_unknown_does": "Class is detected from the first heartbeat",
+    "tier_info_unknown_cant": "Run install.sh on your Pi to trigger detection"
   },
   "diary": {
     "title": "Farm Diary",

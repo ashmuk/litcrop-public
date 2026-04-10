@@ -194,6 +194,9 @@
     "loading": "画像を読み込み中…",
     "error": "画像を読み込めませんでした"
   },
+  "modal": {
+    "close": "閉じる"
+  },
   "weather_conditions": {
     "clear_sky": "快晴",
     "mainly_clear": "晴れ",
@@ -655,7 +658,30 @@
     "tier_banner_1": "基本カメラ — 定時撮影のみ",
     "tier_banner_2": "電源管理対応 — バッテリー監視有効",
     "tier_banner_3": "センサー対応 — モーション撮影は今後対応予定",
-    "tier_banner_unknown": "デバイスがまだ機能を報告していません。最初のハートビート後にクラスが判定されます。"
+    "tier_banner_unknown": "デバイスがまだ機能を報告していません。最初のハートビート後にクラスが判定されます。",
+    "config_modal_title": "設定",
+    "tier_info_cta": "デバイスクラスについて",
+    "tier_info_title": "デバイスクラスについて",
+    "tier_info_footer": "クラスは、Piが最初のハートビートで報告した機能から自動判定されます。install.sh 実行時にオプションのハードウェアを申告できます。",
+    "tier_info_col_hardware": "ハードウェア",
+    "tier_info_col_does": "できること",
+    "tier_info_col_cant": "できないこと",
+    "tier_info_1_subtitle": "ベーシック",
+    "tier_info_1_hw": "Raspberry Pi + カメラ",
+    "tier_info_1_does": "指定した間隔での定時撮影、WiFi・ストレージの状態報告",
+    "tier_info_1_cant": "バッテリー残量なし、モーション検知なし",
+    "tier_info_2_subtitle": "電源管理対応",
+    "tier_info_2_hw": "クラス1 + バッテリーHAT（例：PiSugar）",
+    "tier_info_2_does": "クラス1のすべて + バッテリー残量のリアルタイム表示",
+    "tier_info_2_cant": "モーション検知なし",
+    "tier_info_3_subtitle": "センサー対応",
+    "tier_info_3_hw": "クラス2 + PIRモーションセンサー",
+    "tier_info_3_does": "クラス2のすべて + モーション検知撮影（Phase 2）",
+    "tier_info_3_cant": "—",
+    "tier_info_unknown_subtitle": "判定中…",
+    "tier_info_unknown_hw": "不明 — デバイスが未接続です",
+    "tier_info_unknown_does": "最初のハートビートでクラスを判定します",
+    "tier_info_unknown_cant": "Piで install.sh を実行して検出を開始してください"
   },
   "diary": {
     "title": "農園日誌",

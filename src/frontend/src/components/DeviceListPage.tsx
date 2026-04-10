@@ -27,6 +27,8 @@ import { showToast } from './Toast';
 import { formatRelativeTime } from '../lib/format';
 import DeviceRegisterForm from './DeviceRegisterForm';
 import DeviceConfigForm from './DeviceConfigForm';
+import Modal from './Modal';
+import TierInfoModal from './TierInfoModal';
 import type { DeviceRegistrationResult } from '../lib/api';
 
 export interface Props {
@@ -246,6 +248,7 @@ export default function DeviceListPage({ farmId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [tierInfoOpen, setTierInfoOpen] = useState(false);
 
   const effectiveFarmId = useLocalFarmId(farmId);
   const [canEdit, setCanEdit] = useState(isWriteRole(getLocalFarmRole()));
@@ -299,14 +302,23 @@ export default function DeviceListPage({ farmId }: Props) {
     setSelectedDeviceId(deviceId);
   }
 
+  // Re-fetch the device list after a save so the modal can close cleanly
+  // without a full page reload (which would defeat the modal close animation).
+  // canEdit is independent of device saves — only role changes affect it —
+  // so we do not need to refresh the role cache here.
+  async function refreshDevices() {
+    try {
+      const res = await getDevices(effectiveFarmId);
+      setDevices(res.devices);
+    } catch {
+      // Non-fatal: stale list will reconcile on next navigation.
+    }
+  }
+
   function handleRegisterSuccess(result: DeviceRegistrationResult) {
     setShowRegister(false);
-    // Re-fetch device list to include the newly registered device
-    getDevices(effectiveFarmId)
-      .then((res) => setDevices(res.devices))
-      .catch(() => { /* non-fatal; device will appear on next reload */ });
+    refreshDevices();
     showToast(t('device.registered_success'), 'success');
-    // Silence unused-variable lint for result — caller may need it later
     void result;
   }
 
@@ -395,15 +407,25 @@ export default function DeviceListPage({ farmId }: Props) {
     <div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div class="section-heading">{t('device.title')}</div>
-        {canEdit && (
+        <div style="display:flex;align-items:center;gap:var(--space-2)">
           <button
-            style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-full);background-color:var(--color-primary);color:white;font-size:20px;border:none;cursor:pointer"
-            aria-label={t('device.empty_cta')}
-            onClick={() => setShowRegister(true)}
+            type="button"
+            onClick={() => setTierInfoOpen(true)}
+            aria-label={t('device.tier_info_cta')}
+            style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--color-surface);color:var(--color-primary);font-size:16px;font-weight:var(--font-weight-semibold);border:1px solid var(--color-gray-300);cursor:pointer;line-height:1"
           >
-            +
+            ?
           </button>
-        )}
+          {canEdit && (
+            <button
+              style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--radius-full);background-color:var(--color-primary);color:white;font-size:20px;border:none;cursor:pointer"
+              aria-label={t('device.empty_cta')}
+              onClick={() => setShowRegister(true)}
+            >
+              +
+            </button>
+          )}
+        </div>
       </div>
       {devices.map((device) => (
         <DeviceCard
@@ -415,18 +437,33 @@ export default function DeviceListPage({ farmId }: Props) {
           onDelete={handleDelete}
         />
       ))}
-      {selectedDeviceId && (() => {
-        const selectedDevice = devices.find(d => d.device_id === selectedDeviceId);
-        if (!selectedDevice) return null;
+      {(() => {
+        const selectedDevice = selectedDeviceId
+          ? devices.find(d => d.device_id === selectedDeviceId)
+          : null;
         return (
-          <DeviceConfigForm
-            farmId={effectiveFarmId}
-            device={selectedDevice}
-            onSave={() => { setSelectedDeviceId(null); window.location.reload(); }}
-            onCancel={() => setSelectedDeviceId(null)}
-          />
+          <Modal
+            open={!!selectedDevice}
+            onClose={() => setSelectedDeviceId(null)}
+            title={selectedDevice ? `${t('device.config_modal_title')}: ${selectedDevice.node_name}` : ''}
+            size="md"
+          >
+            {selectedDevice && (
+              <DeviceConfigForm
+                farmId={effectiveFarmId}
+                device={selectedDevice}
+                onSave={() => {
+                  setSelectedDeviceId(null);
+                  refreshDevices();
+                }}
+                onCancel={() => setSelectedDeviceId(null)}
+              />
+            )}
+          </Modal>
         );
       })()}
+
+      <TierInfoModal open={tierInfoOpen} onClose={() => setTierInfoOpen(false)} />
     </div>
   );
 }

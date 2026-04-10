@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LitCrop Beta-11 — Batch A Mockup (#343 + #344)</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: var(--color-background);
+      font-family: var(--font-family);
+      color: var(--color-gray-900);
+      margin: 0;
+      padding: var(--space-6) var(--space-4);
+    }
+
+    h1 { font-size: var(--font-size-2xl); margin: 0 0 var(--space-2); }
+    h2 {
+      font-size: var(--font-size-lg);
+      margin: var(--space-6) 0 var(--space-3);
+      color: var(--color-gray-700);
+    }
+    .subtitle { color: var(--color-gray-500); margin: 0 0 var(--space-6); }
+
+    .stage {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    /* ── Phone frame ────────────────────────────────────────── */
+    .phone {
+      width: 390px;
+      max-width: 100%;
+      margin: 0 auto;
+      background: var(--color-background);
+      border: 8px solid var(--color-gray-900);
+      border-radius: 32px;
+      overflow: hidden;
+      position: relative;
+      min-height: 740px;
+    }
+
+    .phone__header {
+      background: var(--color-surface);
+      padding: var(--space-4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--color-gray-300);
+    }
+    .phone__title { font-weight: var(--font-weight-semibold); }
+    .phone__actions { display: flex; gap: var(--space-2); }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--color-gray-300);
+      background: var(--color-surface);
+      color: var(--color-primary);
+      font-size: 16px;
+      font-weight: var(--font-weight-semibold);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn--primary {
+      background: var(--color-primary);
+      color: var(--color-white);
+      border-color: var(--color-primary);
+      font-size: 20px;
+    }
+
+    .phone__body {
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    /* ── Device card (simplified from real) ──────────────── */
+    .device-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .device-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .device-card__name {
+      font-weight: var(--font-weight-semibold);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .device-card__badges { display: flex; align-items: center; gap: var(--space-2); }
+
+    .status-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--color-status-healthy);
+    }
+
+    /* ── Tier badges — mirror TIER_PRESENTATION ──────────── */
+    .tier-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      line-height: 1.4;
+    }
+    .tier-badge--1 { background: var(--color-gray-100); color: var(--color-gray-700); }
+    .tier-badge--2 { background: var(--color-primary-light); color: var(--color-primary-dark); }
+    .tier-badge--3 { background: var(--color-status-healthy-bg); color: var(--color-status-healthy); }
+    .tier-badge--unknown { background: var(--color-status-no-data-bg); color: var(--color-status-no-data); }
+
+    .health-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-2);
+    }
+    .health-cell {
+      background: var(--color-gray-100);
+      border-radius: var(--radius-md);
+      padding: var(--space-2);
+      text-align: center;
+      font-size: var(--font-size-xs);
+    }
+    .health-cell__icon { display: block; font-size: 16px; margin-bottom: 2px; }
+    .health-cell__label { color: var(--color-gray-500); font-size: 10px; }
+
+    .card-actions {
+      display: flex;
+      gap: var(--space-2);
+    }
+    .btn-ghost {
+      flex: 1;
+      height: 40px;
+      padding: 0 var(--space-3);
+      background: var(--color-surface);
+      color: var(--color-primary);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      font-weight: var(--font-weight-semibold);
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+    }
+
+    /* ── Modal primitive ────────────────────────────────── */
+    .modal-scrim {
+      position: absolute;
+      inset: 0;
+      background: var(--color-overlay);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      z-index: 10;
+    }
+    .modal-scrim--nested { z-index: 20; background: rgba(0,0,0,0.6); }
+
+    .modal {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 420px;
+      max-height: calc(100% - 32px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+    .modal__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-gray-300);
+    }
+    .modal__title {
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+    }
+    .modal__close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--color-gray-700);
+      font-size: 22px;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+    }
+    .modal__close:hover { background: var(--color-gray-100); }
+    .modal__body {
+      padding: var(--space-4);
+      overflow-y: auto;
+    }
+
+    /* ── Tier info table — desktop ───────────────────────── */
+    .tier-info-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--font-size-sm);
+    }
+    .tier-info-table th,
+    .tier-info-table td {
+      text-align: left;
+      padding: var(--space-2);
+      border-bottom: 1px solid var(--color-gray-100);
+      vertical-align: top;
+    }
+    .tier-info-table th {
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    /* ── Tier info — mobile stacked layout ────────────── */
+    .tier-info-cards { display: flex; flex-direction: column; gap: var(--space-3); }
+    .tier-info-card {
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .tier-info-card__head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-weight: var(--font-weight-semibold);
+    }
+    .tier-info-card__row {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: var(--space-2);
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-700);
+    }
+    .tier-info-card__label {
+      color: var(--color-gray-500);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+    .tier-info-footer {
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-gray-100);
+      font-size: var(--font-size-xs);
+      color: var(--color-gray-500);
+      line-height: var(--line-height-relaxed);
+    }
+
+    /* ── DeviceConfigForm inside modal ──────────────────── */
+    .config-form { display: flex; flex-direction: column; gap: var(--space-3); }
+    .config-form__tier-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .config-form__banner {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-sm);
+      background: var(--color-primary-light);
+      color: var(--color-gray-700);
+    }
+    .config-form__field { display: flex; flex-direction: column; gap: var(--space-1); }
+    .config-form__field label {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-gray-700);
+    }
+    .config-form__field .input {
+      height: 38px;
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-sm);
+      padding: 0 var(--space-3);
+      font-size: var(--font-size-sm);
+    }
+    .config-form__actions {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: flex-end;
+      margin-top: var(--space-2);
+    }
+    .btn-primary {
+      height: 40px;
+      padding: 0 var(--space-4);
+      background: var(--color-primary);
+      color: var(--color-white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: var(--font-weight-semibold);
+      cursor: pointer;
+    }
+    .btn-secondary {
+      height: 40px;
+      padding: 0 var(--space-4);
+      background: var(--color-surface);
+      color: var(--color-primary);
+      border: 1px solid var(--color-gray-300);
+      border-radius: var(--radius-md);
+      font-weight: var(--font-weight-semibold);
+      cursor: pointer;
+    }
+
+    .caption {
+      max-width: 390px;
+      margin: var(--space-3) auto 0;
+      text-align: center;
+      font-size: var(--font-size-sm);
+      color: var(--color-gray-500);
+      font-style: italic;
+    }
+
+    .legend {
+      max-width: 720px;
+      margin: var(--space-6) auto 0;
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border-left: 4px solid var(--color-primary);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      line-height: var(--line-height-relaxed);
+    }
+    .legend h3 {
+      margin: 0 0 var(--space-2);
+      font-size: var(--font-size-base);
+      color: var(--color-primary);
+    }
+    .legend ul { margin: 0; padding-left: var(--space-4); }
+  </style>
+</head>
+<body>
+
+  <div class="stage">
+    <header>
+      <h1>Batch A — Device UX Modals</h1>
+      <p class="subtitle">
+        Mockup for #343 (tier class explanation pane) and #344 (device config modal wrap) — Beta-11 post-deploy polish.
+      </p>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 1 — DeviceListPage with new header info button      -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2>① DeviceListPage — header gains an info (?) button next to +Add</h2>
+    <div class="phone">
+      <div class="phone__header">
+        <div class="phone__title">Cameras</div>
+        <div class="phone__actions">
+          <button class="icon-btn" aria-label="About device classes">?</button>
+          <button class="icon-btn icon-btn--primary" aria-label="Register device">+</button>
+        </div>
+      </div>
+      <div class="phone__body">
+
+        <article class="device-card">
+          <div class="device-card__header">
+            <div class="device-card__name">
+              <span aria-hidden="true">📷</span>
+              Greenhouse North
+            </div>
+            <div class="device-card__badges">
+              <span class="tier-badge tier-badge--2">Class 2</span>
+              <span class="status-dot" aria-label="online"></span>
+            </div>
+          </div>
+          <div style="font-size:var(--font-size-sm);color:var(--color-gray-700)">Bed: Tomato Row A</div>
+          <div style="font-size:var(--font-size-sm);color:var(--color-gray-500)">Last seen: 3 min ago</div>
+          <div class="health-grid">
+            <div class="health-cell">
+              <span class="health-cell__icon">🔋</span>
+              <div><strong>82%</strong></div>
+              <div class="health-cell__label">Battery</div>
+            </div>
+            <div class="health-cell">
+              <span class="health-cell__icon">📶</span>
+              <div><strong>-54 dBm</strong></div>
+              <div class="health-cell__label">WiFi</div>
+            </div>
+            <div class="health-cell">
+              <span class="health-cell__icon">💾</span>
+              <div><strong>OK</strong></div>
+              <div class="health-cell__label">Storage</div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-ghost">Configure</button>
+            <button class="btn-ghost">Test Shot</button>
+          </div>
+        </article>
+
+        <article class="device-card">
+          <div class="device-card__header">
+            <div class="device-card__name">
+              <span aria-hidden="true">📷</span>
+              Field South
+            </div>
+            <div class="device-card__badges">
+              <span class="tier-badge tier-badge--unknown">Pending</span>
+              <span class="status-dot" style="background:var(--color-gray-300)" aria-label="inactive"></span>
+            </div>
+          </div>
+          <div style="font-size:var(--font-size-sm);color:var(--color-gray-500)">Never seen — run install.sh on your Pi</div>
+        </article>
+
+      </div>
+    </div>
+    <div class="caption">
+      New: the <strong>?</strong> button on the top bar opens the tier info modal.
+      The <strong>+</strong> button (existing) remains untouched.
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 2 — TierInfoModal open (card-stack mobile layout)   -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2>② TierInfoModal — 4-row capability reference (mobile layout)</h2>
+    <div class="phone">
+      <div class="phone__header">
+        <div class="phone__title">Cameras</div>
+        <div class="phone__actions">
+          <button class="icon-btn" aria-label="About device classes">?</button>
+          <button class="icon-btn icon-btn--primary" aria-label="Register device">+</button>
+        </div>
+      </div>
+      <div class="phone__body" style="opacity:0.35">
+        <article class="device-card">
+          <div class="device-card__header">
+            <div class="device-card__name">Greenhouse North</div>
+            <div class="device-card__badges">
+              <span class="tier-badge tier-badge--2">Class 2</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Modal overlay -->
+      <div class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="tier-info-title">
+        <div class="modal">
+          <div class="modal__header">
+            <div class="modal__title" id="tier-info-title">About device classes</div>
+            <button class="modal__close" aria-label="Close">×</button>
+          </div>
+          <div class="modal__body">
+            <div class="tier-info-cards">
+              <!-- Class 1 -->
+              <div class="tier-info-card">
+                <div class="tier-info-card__head">
+                  <span class="tier-badge tier-badge--1">Class 1</span>
+                  <span style="color:var(--color-gray-500);font-weight:var(--font-weight-regular);font-size:var(--font-size-xs)">Basic</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Hardware</span>
+                  <span>Raspberry Pi + camera</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Does</span>
+                  <span>Scheduled capture at your interval + WiFi/storage reporting</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Can't</span>
+                  <span>No battery level, no motion triggers</span>
+                </div>
+              </div>
+
+              <!-- Class 2 -->
+              <div class="tier-info-card">
+                <div class="tier-info-card__head">
+                  <span class="tier-badge tier-badge--2">Class 2</span>
+                  <span style="color:var(--color-gray-500);font-weight:var(--font-weight-regular);font-size:var(--font-size-xs)">Power-managed</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Hardware</span>
+                  <span>Class 1 + battery HAT (e.g. PiSugar)</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Does</span>
+                  <span>Everything Class 1 does + live battery level</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Can't</span>
+                  <span>No motion triggers</span>
+                </div>
+              </div>
+
+              <!-- Class 3 -->
+              <div class="tier-info-card">
+                <div class="tier-info-card__head">
+                  <span class="tier-badge tier-badge--3">Class 3</span>
+                  <span style="color:var(--color-gray-500);font-weight:var(--font-weight-regular);font-size:var(--font-size-xs)">Sensor-equipped</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Hardware</span>
+                  <span>Class 2 + PIR motion sensor</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Does</span>
+                  <span>Everything Class 2 does + motion-triggered capture (Phase 2)</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Can't</span>
+                  <span>—</span>
+                </div>
+              </div>
+
+              <!-- Pending -->
+              <div class="tier-info-card">
+                <div class="tier-info-card__head">
+                  <span class="tier-badge tier-badge--unknown">Pending</span>
+                  <span style="color:var(--color-gray-500);font-weight:var(--font-weight-regular);font-size:var(--font-size-xs)">Detecting…</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Hardware</span>
+                  <span>Unknown — device hasn't checked in</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Does</span>
+                  <span>Class is detected from the first heartbeat</span>
+                </div>
+                <div class="tier-info-card__row">
+                  <span class="tier-info-card__label">Can't</span>
+                  <span>Run install.sh on your Pi to trigger detection</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="tier-info-footer">
+              Class is detected automatically from the capabilities your Pi reports on first heartbeat.
+              You can declare optional hardware (battery HAT, PIR sensor) during <code>install.sh</code>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="caption">
+      Card-stack layout — avoids 4-column table overflow at 390px width.
+      Row colors mirror <code>TIER_PRESENTATION</code> so users recognize continuity with the per-device badge.
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- SCREEN 3 — DeviceConfigForm wrapped in Modal (#344)         -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2>③ DeviceConfigForm wrapped in Modal — fixes #344</h2>
+    <div class="phone">
+      <div class="phone__header">
+        <div class="phone__title">Cameras</div>
+        <div class="phone__actions">
+          <button class="icon-btn" aria-label="About device classes">?</button>
+          <button class="icon-btn icon-btn--primary" aria-label="Register device">+</button>
+        </div>
+      </div>
+      <div class="phone__body" style="opacity:0.35">
+        <article class="device-card">
+          <div class="device-card__header">
+            <div class="device-card__name">Greenhouse North</div>
+            <div class="device-card__badges">
+              <span class="tier-badge tier-badge--2">Class 2</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="config-title">
+        <div class="modal">
+          <div class="modal__header">
+            <div class="modal__title" id="config-title">Configure: Greenhouse North</div>
+            <button class="modal__close" aria-label="Close">×</button>
+          </div>
+          <div class="modal__body">
+            <form class="config-form" onsubmit="event.preventDefault()">
+              <div class="config-form__tier-row">
+                <span class="tier-badge tier-badge--2">Class 2</span>
+                <button type="button" class="icon-btn" style="width:28px;height:28px;font-size:13px" aria-label="About device classes">?</button>
+              </div>
+              <div class="config-form__banner">Power-managed — battery monitoring enabled</div>
+
+              <div class="config-form__field">
+                <label for="c-name">Device name</label>
+                <input id="c-name" class="input" value="Greenhouse North">
+              </div>
+              <div class="config-form__field">
+                <label for="c-bed">Assigned bed</label>
+                <select id="c-bed" class="input"><option>Tomato Row A</option></select>
+              </div>
+              <div class="config-form__field">
+                <label for="c-int">Capture interval</label>
+                <select id="c-int" class="input"><option>30 min</option></select>
+              </div>
+
+              <div class="config-form__actions">
+                <button type="button" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="caption">
+      The config form now appears centered over the list instead of rendering at the bottom of the page.
+      Backdrop click / × button / Escape key all dismiss. An info (?) button sits next to the tier badge
+      so the explanation modal is reachable from inside the config too (nested modal case — see S-2 in REVIEW-FINDINGS).
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- LEGEND                                                     -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div class="legend">
+      <h3>What changes in code</h3>
+      <ul>
+        <li><strong>New:</strong> <code>Modal.tsx</code> — reusable primitive (portal, scroll-lock, Escape, focus-trap, focus restoration).</li>
+        <li><strong>New:</strong> <code>TierInfoModal.tsx</code> — content-only component; wraps Modal.</li>
+        <li><strong>Modified:</strong> <code>DeviceListPage.tsx</code> — adds header <kbd>?</kbd> button; wraps <code>DeviceConfigForm</code> in <code>Modal</code> instead of rendering at bottom of page.</li>
+        <li><strong>Modified:</strong> <code>DeviceConfigForm.tsx</code> — adds small <kbd>?</kbd> button next to <code>TierBadge</code>.</li>
+        <li><strong>Modified:</strong> <code>en.json</code> + <code>ja.json</code> — 16 new keys (tier info table copy, modal titles, close button label).</li>
+        <li><strong>Not touched:</strong> <code>Lightbox.tsx</code>, <code>TIER_PRESENTATION</code>, <code>getDeviceClass()</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+</body>
+</html>

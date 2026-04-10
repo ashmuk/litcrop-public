@@ -21,6 +21,7 @@ import type { DeviceListItemResponse } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import TierBadge, { TIER_PRESENTATION } from './TierBadge';
+import TierInfoModal from './TierInfoModal';
 
 export interface Props {
   farmId: string;
@@ -54,6 +55,7 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
   const [saving, setSaving] = useState(false);
   const [deregistering, setDeregistering] = useState(false);
   const [confirmDeregister, setConfirmDeregister] = useState(false);
+  const [tierInfoOpen, setTierInfoOpen] = useState(false);
 
   const hasPirSensor = device.capabilities?.has_pir_sensor ?? false;
   const deviceClass: DeviceClass = getDeviceClass(device.capabilities);
@@ -121,7 +123,7 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
   // ── Deregister confirm dialog ────────────────────────────────────
   if (confirmDeregister) {
     return (
-      <div style="display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-4)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-4)">
         <div
           style="background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"
         >
@@ -158,12 +160,20 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
   return (
     <form
       onSubmit={handleSave}
-      style="display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-4)"
+      style="display:flex;flex-direction:column;gap:var(--space-4)"
     >
       {/* Tier badge + informational banner */}
       <div style="display:flex;flex-direction:column;gap:var(--space-2)">
         <div style="display:flex;align-items:center;gap:var(--space-2)">
           <TierBadge deviceClass={deviceClass} size="md" />
+          <button
+            type="button"
+            onClick={() => setTierInfoOpen(true)}
+            aria-label={t('device.tier_info_cta')}
+            style="width:28px;height:28px;border-radius:50%;border:1px solid var(--color-gray-300);background:var(--color-surface);color:var(--color-primary);font-size:13px;font-weight:var(--font-weight-semibold);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1"
+          >
+            ?
+          </button>
         </div>
         <div
           role="note"
@@ -172,6 +182,8 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
           {t(tierBannerKey)}
         </div>
       </div>
+
+      <TierInfoModal open={tierInfoOpen} onClose={() => setTierInfoOpen(false)} />
 
       {/* Device Name */}
       <div style="display:flex;flex-direction:column;gap:var(--space-1)">
