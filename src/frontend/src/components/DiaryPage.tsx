@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'preact/hooks';
-import { getDiaryEntries, getBeds, updateBed, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
+import { getDiaryEntries, getBeds, updateBed, deleteDiaryEntry, getMyFarms, type DiaryEntryResponse } from '../lib/api';
 import type { FarmBedItem } from '@litcrop/shared';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
@@ -28,7 +28,7 @@ import { CATEGORY_META, CATEGORY_KEYS, BED_FILTER_NONE, getLocale } from '../lib
 import { getCropName } from '../lib/crops';
 import { formatCurrency, groupByDate, toDateString } from '../lib/diary-utils';
 import { getCurrentUser } from '../lib/auth';
-import { getLocalFarmRole, getCachedIsAdmin } from '../lib/hooks';
+import { getLocalFarmRole, getCachedIsAdmin, setLocalFarmList } from '../lib/hooks';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -208,10 +208,11 @@ export default function DiaryPage() {
 
   // Auth context for ownership-based access control
   const currentUser = getCurrentUser();
-  const farmRole = getLocalFarmRole();
   const isAdmin = getCachedIsAdmin();
-  // Admin/owner can edit all entries; staff can only edit own
-  const canWrite = isAdmin || farmRole === 'admin' || farmRole === 'owner';
+  const [canWrite, setCanWrite] = useState(() => {
+    const role = getLocalFarmRole();
+    return isAdmin || role === 'admin' || role === 'owner';
+  });
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DiaryEntryResponse | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -247,6 +248,13 @@ export default function DiaryPage() {
 
     // If no farmId stored, stop loading — show empty state
     if (!storedFarmId) setLoading(false);
+
+    // Refresh role cache from API to prevent stale localStorage
+    getMyFarms().then((farms) => {
+      setLocalFarmList(farms);
+      const role = getLocalFarmRole();
+      setCanWrite(isAdmin || role === 'admin' || role === 'owner');
+    }).catch(() => {});
   }, []);
 
   // Fetch entries for list view

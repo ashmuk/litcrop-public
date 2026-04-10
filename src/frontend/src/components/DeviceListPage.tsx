@@ -17,10 +17,11 @@ import {
   getDevices,
   deleteDevice,
   requestTestShot,
+  getMyFarms,
   type DeviceListItemResponse,
 } from '../lib/api';
 import { t } from '../i18n/i18n';
-import { useLocalFarmId, getLocalFarmRole } from '../lib/hooks';
+import { useLocalFarmId, getLocalFarmRole, setLocalFarmList } from '../lib/hooks';
 import { showToast } from './Toast';
 import { formatRelativeTime } from '../lib/format';
 import DeviceRegisterForm from './DeviceRegisterForm';
@@ -243,8 +244,10 @@ export default function DeviceListPage({ farmId }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   const effectiveFarmId = useLocalFarmId(farmId);
-  const farmRole = getLocalFarmRole();
-  const canEdit = farmRole === 'admin' || farmRole === 'owner';
+  const [canEdit, setCanEdit] = useState(() => {
+    const role = getLocalFarmRole();
+    return role === 'admin' || role === 'owner';
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -253,8 +256,17 @@ export default function DeviceListPage({ farmId }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const result = await getDevices(effectiveFarmId);
-        if (!cancelled) setDevices(result.devices);
+        const [result, farms] = await Promise.all([
+          getDevices(effectiveFarmId),
+          getMyFarms().catch(() => null),
+        ]);
+        if (cancelled) return;
+        if (farms) {
+          setLocalFarmList(farms);
+          const role = getLocalFarmRole();
+          setCanEdit(role === 'admin' || role === 'owner');
+        }
+        setDevices(result.devices);
       } catch {
         if (!cancelled) setError(t('device.error_loading'));
       } finally {
