@@ -647,7 +647,15 @@
     "guide_step3_title": "このページで確認",
     "guide_step3_desc": "バッテリー、WiFi、ストレージの値がPiから取得されます。",
     "guide_verify_before": "オフライン",
-    "guide_verify_after": "オンライン"
+    "guide_verify_after": "オンライン",
+    "class_1": "クラス1",
+    "class_2": "クラス2",
+    "class_3": "クラス3",
+    "class_pending": "判定中",
+    "tier_banner_1": "基本カメラ — 定時撮影のみ",
+    "tier_banner_2": "電源管理対応 — バッテリー監視有効",
+    "tier_banner_3": "センサー対応 — モーション撮影は今後対応予定",
+    "tier_banner_unknown": "デバイスがまだ機能を報告していません。最初のハートビート後にクラスが判定されます。"
   },
   "diary": {
     "title": "農園日誌",

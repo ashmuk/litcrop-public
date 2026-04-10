@@ -647,7 +647,15 @@
     "guide_step3_title": "Check this page",
     "guide_step3_desc": "Battery, WiFi, and Storage will show real values from your Pi.",
     "guide_verify_before": "Offline",
-    "guide_verify_after": "Online"
+    "guide_verify_after": "Online",
+    "class_1": "Class 1",
+    "class_2": "Class 2",
+    "class_3": "Class 3",
+    "class_pending": "Pending",
+    "tier_banner_1": "Basic camera — scheduled capture only",
+    "tier_banner_2": "Power-managed — battery monitoring enabled",
+    "tier_banner_3": "Sensor-equipped — motion capture coming soon",
+    "tier_banner_unknown": "Device hasn't reported capabilities yet. Class will be detected after first heartbeat."
   },
   "diary": {
     "title": "Farm Diary",
