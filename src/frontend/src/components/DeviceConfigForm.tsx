@@ -14,10 +14,13 @@
 
 import { useState, useEffect } from 'preact/hooks';
 import type { FarmBedItem } from '@litcrop/shared';
+import { getDeviceClass } from '@litcrop/shared';
+import type { DeviceClass } from '@litcrop/shared';
 import { getBeds, updateDevice, deleteDevice } from '../lib/api';
 import type { DeviceListItemResponse } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
+import TierBadge from './TierBadge';
 
 export interface Props {
   farmId: string;
@@ -53,6 +56,7 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
   const [confirmDeregister, setConfirmDeregister] = useState(false);
 
   const hasPirSensor = device.capabilities?.has_pir_sensor ?? false;
+  const deviceClass: DeviceClass = getDeviceClass(device.capabilities);
 
   const availableResolutions: string[] =
     device.capabilities?.resolutions?.length
@@ -149,11 +153,35 @@ export default function DeviceConfigForm({ farmId, device, onSave, onCancel }: P
   }
 
   // ── Main form ────────────────────────────────────────────────────
+  const tierBannerKey =
+    deviceClass === 'unknown' ? 'device.tier_banner_unknown' : `device.tier_banner_${deviceClass}`;
+  const tierBannerColor =
+    deviceClass === 'unknown'
+      ? 'var(--color-warning-light, #fef3c7)'
+      : deviceClass === 3
+        ? 'var(--color-success-light, #dcfce7)'
+        : deviceClass === 2
+          ? 'var(--color-primary-light)'
+          : 'var(--color-gray-100)';
+
   return (
     <form
       onSubmit={handleSave}
       style="display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-4)"
     >
+      {/* Tier badge + informational banner */}
+      <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+        <div style="display:flex;align-items:center;gap:var(--space-2)">
+          <TierBadge deviceClass={deviceClass} size="md" />
+        </div>
+        <div
+          role="note"
+          style={`padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);font-size:var(--font-size-sm);background:${tierBannerColor};color:var(--color-gray-700)`}
+        >
+          {t(tierBannerKey)}
+        </div>
+      </div>
+
       {/* Device Name */}
       <div style="display:flex;flex-direction:column;gap:var(--space-1)">
         <label
