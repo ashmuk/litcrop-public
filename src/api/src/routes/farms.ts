@@ -648,6 +648,9 @@ router.post('/:farmId/members', async (c) => {
   if (!parsedRole.success) {
     throw new ValidationError(`Invalid 'role': must be one of ${FarmRoleSchema.options.join(', ')}`);
   }
+  if (parsedRole.data === 'admin') {
+    throw new ValidationError("Cannot assign 'admin' role — admin is system-assigned only");
+  }
 
   // Free plan: check target user's membership count (excluding demo farm)
   if (farmId !== DEMO_FARM_ID) {

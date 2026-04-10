@@ -397,6 +397,20 @@ describe('POST /api/v1/farms/:farmId/members', () => {
     expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('returns 400 when role is admin (system-assigned only)', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ user_id: NEW_USER_ID, role: 'admin' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toContain('admin');
+  });
+
   it('returns 400 when target user is at membership limit', async () => {
     vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
     vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(3);
