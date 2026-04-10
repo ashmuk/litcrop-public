@@ -53,6 +53,22 @@ export function getLocalFarmRole(): FarmRole {
   return match?.role ?? 'staff';
 }
 
+/** Check if a farm role has write permissions (admin or owner). */
+export function isWriteRole(role: FarmRole): boolean {
+  return role === 'admin' || role === 'owner';
+}
+
+/**
+ * Refresh farm list cache from API and return the current role.
+ * Call from page-level effects to prevent stale localStorage.
+ */
+export async function refreshFarmRoleCache(): Promise<FarmRole> {
+  const { getMyFarms } = await import('../lib/api');
+  const farms = await getMyFarms();
+  setLocalFarmList(farms);
+  return getLocalFarmRole();
+}
+
 // ── Admin cache ───────────────────────────────────────────────────
 
 const LS_IS_ADMIN = 'litcrop-isAdmin';
