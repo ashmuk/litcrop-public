@@ -25,7 +25,7 @@ export interface Props {
 const { variant = 'animated', class: className = '' } = Astro.props;
 ---
 
-<div class:list={['litcrop-hero', variant, className]} data-testid="litcrop-hero">
+<div class:list={['litcrop-hero', variant, className]} data-testid="litcrop-hero-morph">
   <svg viewBox="0 0 720 720" preserveAspectRatio="xMidYMid slice"
        role="img"
        aria-label="LitCrop — farming scenery morphs into the brand wordmark"
@@ -263,6 +263,10 @@ const { variant = 'animated', class: className = '' } = Astro.props;
 
   /* ---------- trees ---------- */
   .litcrop-hero :global(.tree-pop) {
+    /* transform-box: fill-box is required for SVG <g> transform-origin
+       to resolve against the element's own box on Firefox/Safari;
+       without it, rotation pivots at the SVG viewport (0, 0) */
+    transform-box: fill-box;
     transform-origin: center bottom;
     animation: litcrop-sway 4.6s ease-in-out infinite;
   }

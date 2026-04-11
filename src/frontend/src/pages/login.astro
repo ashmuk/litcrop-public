@@ -15,9 +15,9 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
 
 <AuthLayout title="Log in" variant="hero">
   <div class="login-split">
-    <aside class="login-hero-wrap" aria-hidden="true">
+    <div class="login-hero-wrap" aria-hidden="true">
       <LitCropWordmarkMorph variant="animated" />
-    </aside>
+    </div>
     <section class="login-form-panel">
       <div class="login-card">
         <h1 class="login-title">Welcome back</h1>
@@ -43,7 +43,6 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
   }
 
   .login-hero-wrap {
-    background: var(--color-primary-light);
     aspect-ratio: 1 / 1;
     max-height: 56vh;
     overflow: hidden;
