@@ -281,34 +281,49 @@
       </div>
     </div>
 
-    <h2>Letter-to-motif narrative <span style="font-size:12px; color:var(--color-motion); letter-spacing:0.08em; text-transform:uppercase;">rev 2</span></h2>
+    <h2>Letter-to-motif narrative <span style="font-size:12px; color:var(--color-motion); letter-spacing:0.08em; text-transform:uppercase;">rev 3</span></h2>
     <div class="narrative">
-      The wordmark encodes a full day + growth cycle: <b>water → person → hoe → sun → seedling → fruit → harvest</b>.
-      The animation now has <b>two phases</b>: scenery motifs stage in, then crossfade to a clean typographic <b>LitCrop</b> wordmark.
+      The animation now has <b>three phases</b>:
+      <ol style="margin:6px 0 10px 0; padding-left:22px;">
+        <li><b>Scenery draws in</b> — mountains, field, trees, farmhouse</li>
+        <li><b>Motif wordmark</b> — seven natural-object letters stage in (staggered)</li>
+        <li><b>Final brand lockup</b> — motifs fade out, scenery dims to 30%, and a <b>crop sprout icon + typographic "LitCrop"</b> fades in centered with proper browser kerning</li>
+      </ol>
       <table>
         <tr><th>Letter</th><th>Motif</th><th>Role</th><th>Stroke color</th></tr>
         <tr><td>L</td><td>Waterfall + pool</td><td>Life source</td><td>Info Blue</td></tr>
         <tr><td>i</td><td>Standing person</td><td>Planter</td><td>Forest Ink</td></tr>
-        <tr><td>t</td><td>Hoe / tool with grip</td><td>Preparation · <em>was seedling</em></td><td>Wheat Amber</td></tr>
-        <tr><td>C</td><td>Sun arc with rays</td><td>Energy · <em>was crop leaf</em></td><td>Motion Sienna</td></tr>
-        <tr><td>r</td><td>Seedling + unfurling leaf</td><td>Early growth · <em>was rising sun</em></td><td>Sage</td></tr>
-        <tr><td>o</td><td>Round ripe fruit + stem</td><td>Ripening · proposed</td><td>Terracotta</td></tr>
-        <tr><td>p</td><td>Wheat bowing its head</td><td>Harvest · refined</td><td>Wheat Amber</td></tr>
+        <tr><td>t</td><td>Hoe / tool with grip</td><td>Preparation</td><td>Wheat Amber</td></tr>
+        <tr><td>C</td><td>Sun arc with rays</td><td>Energy</td><td>Motion Sienna</td></tr>
+        <tr><td>r</td><td>Seedling + unfurling leaf</td><td>Early growth</td><td>Sage</td></tr>
+        <tr><td>o</td><td>Water drop (teardrop) · <em>rev 3 change</em></td><td>Nourishment · rhymes with L</td><td>Info Blue</td></tr>
+        <tr><td>p</td><td>Wheat bowing its head</td><td>Harvest</td><td>Wheat Amber</td></tr>
       </table>
+      <p style="margin:12px 0 4px; font-size:13px;"><b>Rev 4 additions</b>:</p>
+      <ul style="margin: 4px 0 0 0; padding-left:22px; font-size:13px;">
+        <li><b>Italic tagline</b> added: <em>"Little, Light and Lit, then Enlight"</em> — Georgia serif, centered in the middle air-space (y=388), fades in with the scenery and dims with it at the reveal</li>
+        <li><b>Dramatic snow-capped mountain</b> — m3 now has a sharp apex at y=70 (was y=230 in rev 3), formed with straight-line segments for a peaked silhouette. Snow cap is a short gray zigzag tracing the upper peak, plus 5 small horizontal snow-drift ticks on the upper slopes. m2 also gets moderate peaks for more depth.</li>
+      </ul>
+      <p style="margin:12px 0 4px; font-size:13px;"><b>Rev 3 baseline</b>:</p>
+      <ul style="margin: 4px 0 0 0; padding-left:22px; font-size:13px;">
+        <li>Waterfall removed from left-middle scenery (L=waterfall still in motif layer)</li>
+        <li>"o" motif: ripe fruit → water drop</li>
+        <li>Per-letter chars → single browser-kerned <code>&lt;text&gt;</code> wordmark</li>
+        <li>Crop sprout icon added to the left of the final wordmark</li>
+        <li>Scenery dims to 30% during the final reveal</li>
+      </ul>
     </div>
 
-    <h2>What to look at <span style="font-size:12px; color:var(--color-motion); letter-spacing:0.08em; text-transform:uppercase;">rev 2</span></h2>
+    <h2>What to look at <span style="font-size:12px; color:var(--color-motion); letter-spacing:0.08em; text-transform:uppercase;">rev 4</span></h2>
     <div class="checklist">
-      <b>Focus your review on (rev 2 changes):</b>
+      <b>Focus your review on (rev 4 changes):</b>
       <ul>
-        <li><b>Motif→character transition</b> — does the crossfade from the scenery-motif wordmark to the typographic "LitCrop" read as a "logo reveal"? Press <b>↻ replay</b> in the hero top-right to re-watch.</li>
-        <li><b>Revised motifs</b>: does <b>t = hoe</b> read as a tool? Does <b>C = sun</b> look like a sun arc vs. a crop leaf? Does <b>r = seedling</b> sprout correctly?</li>
-        <li><b>"o" proposal</b> — I chose a <b>round ripe fruit with stem</b> (terracotta, tomato-like). Alternatives: moon, water basin, flower bloom, harvest basket. Tell me if this isn't right.</li>
-        <li><b>p = bowing wheat</b> — does the bowl droop in a way that reads as "wheat bent under its own weight"? This is the hardest glyph because a normal lowercase p bowl goes up, not down.</li>
-        <li><b>Simplified waterfall</b> — reduced from 3 water curves + 2 dashed overlays to 1 solid + 1 dashed. Is it still recognisable as a waterfall?</li>
-        <li><b>Mobile = scaled desktop</b> — same two trees + farmhouse + scenery, just in the phone column. Confirm the scaling works.</li>
-        <li><b>Typographic wordmark style</b> — the final "LitCrop" uses system sans-serif (Inter / Helvetica) bold. Would a serif (Georgia) or slab serif feel more "earthy"?</li>
-        <li><b>Reduced-motion fallback</b> — toggle macOS "Reduce motion" and reload. Final state should show the typographic wordmark, not the motifs.</li>
+        <li><b>Dramatic snow-capped mountain</b> — m3 now spikes up to y=70 with a sharp apex, snow-cap zigzag, and 5 snow-drift tick marks on the upper slopes. Does it read as "high mountain with snow"? Too dramatic? Not dramatic enough?</li>
+        <li><b>Italic tagline</b> — <em>"Little, Light and Lit, then Enlight"</em> in Georgia serif italic at 27px, centered in the middle air-space between mountains and flow lines. Font-size right? Color too faded (gray-500)? Position too high/low?</li>
+        <li><b>Tagline dims with scenery</b> — at the final reveal, the tagline dims to 30% along with the rest of the scenery. Visible enough at 30%, or should the tagline stay at full opacity during the reveal?</li>
+        <li><b>Mountain snow style</b> — snow is shown via (a) a gray zigzag tracing the upper peak and (b) small horizontal tick marks. Works, or should snow be drawn differently (e.g., small triangles, dotted texture, filled region)?</li>
+        <li><b>Final brand lockup</b> — crop sprout icon + "LitCrop" wordmark still the same as rev 3. Unchanged unless you flag it.</li>
+        <li><b>Reduced-motion fallback</b> — toggle OS "Reduce motion" and reload. You should see the final state: dimmed scenery + tagline + brand lockup, no animation.</li>
       </ul>
     </div>
 

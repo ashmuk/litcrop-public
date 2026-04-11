@@ -3,11 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LitCrop Login — Mobile Mockup (#335 · rev 2)</title>
+<title>LitCrop Login — Mobile Mockup (#335 · rev 3)</title>
 <style>
-  /* ============================================================
-     Earthy palette — copied verbatim from user-provided tokens
-     ============================================================ */
   :root {
     --color-primary:          #6B7F5E;
     --color-primary-dark:     #4A5A3F;
@@ -46,7 +43,6 @@
     padding: 24px 12px;
   }
 
-  /* Phone frame — simulates the 480px mobile column */
   .phone-frame {
     width: 480px;
     max-width: 100%;
@@ -71,8 +67,6 @@
   .hero {
     position: relative;
     width: 100%;
-    /* Use the same 720×720 viewBox as desktop, just scale it to fit
-       the 480px phone column via CSS. Same scenery, same animation. */
     aspect-ratio: 1 / 1;
     background:
       radial-gradient(ellipse 600px 300px at 50% 15%, rgba(255,255,255,.5), transparent 60%),
@@ -94,7 +88,6 @@
     z-index: 5;
   }
 
-  /* Line art strokes */
   .ink       { fill: none; stroke: var(--color-gray-900); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
   .thin      { stroke-width: 1.8; }
   .water     { stroke: var(--color-info-blue); }
@@ -104,21 +97,21 @@
   .terracotta{ stroke: var(--color-terracotta); }
 
   /* ============================================================
-     Animation — identical to desktop
+     Animation (shared with desktop)
      ============================================================ */
   .mountain {
     stroke-dasharray: 1800;
     stroke-dashoffset: 1800;
-    animation: draw 2.6s ease forwards;
+    animation: draw 2.2s ease forwards;
   }
   .m1 { animation-delay: 0.1s; }
-  .m2 { animation-delay: 0.45s; }
-  .m3 { animation-delay: 0.80s; }
+  .m2 { animation-delay: 0.40s; }
+  .m3 { animation-delay: 0.70s; }
 
   .field {
     stroke-dasharray: 1400;
     stroke-dashoffset: 1400;
-    animation: draw 2.2s ease forwards 1.1s;
+    animation: draw 2.0s ease forwards 0.9s;
   }
 
   .flow {
@@ -133,59 +126,64 @@
   }
   .tree-pop.delay1 { animation-delay: 0.9s; }
 
-  .letter-motif {
-    opacity: 0;
-    transform: translateY(18px);
-    animation: motifIn 0.85s cubic-bezier(.2,.8,.3,1) forwards,
-               motifOut 0.6s ease forwards;
-    transform-origin: center bottom;
-  }
-  .letter-char {
-    opacity: 0;
-    transform: translateY(10px) scale(0.92);
-    animation: charIn 0.75s cubic-bezier(.2,.8,.3,1) forwards;
+  .scenery {
+    animation: sceneryDim 1.1s cubic-bezier(.2,.8,.3,1) forwards 3.9s;
     transform-origin: center center;
   }
 
-  .motif-L { animation-delay: 1.55s, 4.30s; }
-  .motif-i { animation-delay: 1.77s, 4.45s; }
-  .motif-t { animation-delay: 1.99s, 4.60s; }
-  .motif-C { animation-delay: 2.21s, 4.75s; }
-  .motif-r { animation-delay: 2.43s, 4.90s; }
-  .motif-o { animation-delay: 2.65s, 5.05s; }
-  .motif-p { animation-delay: 2.87s, 5.20s; }
+  .letter-motif {
+    opacity: 0;
+    transform: translateY(18px);
+    animation: motifIn 0.8s cubic-bezier(.2,.8,.3,1) forwards,
+               motifOut 0.65s ease forwards;
+    transform-origin: center bottom;
+  }
 
-  .char-L { animation-delay: 4.50s; }
-  .char-i { animation-delay: 4.65s; }
-  .char-t { animation-delay: 4.80s; }
-  .char-C { animation-delay: 4.95s; }
-  .char-r { animation-delay: 5.10s; }
-  .char-o { animation-delay: 5.25s; }
-  .char-p { animation-delay: 5.40s; }
+  .motif-L { animation-delay: 1.40s, 3.40s; }
+  .motif-i { animation-delay: 1.56s, 3.50s; }
+  .motif-t { animation-delay: 1.72s, 3.60s; }
+  .motif-C { animation-delay: 1.88s, 3.70s; }
+  .motif-r { animation-delay: 2.04s, 3.80s; }
+  .motif-o { animation-delay: 2.20s, 3.90s; }
+  .motif-p { animation-delay: 2.36s, 4.00s; }
+
+  .wordmark-final {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+    animation: finalIn 1.0s cubic-bezier(.2,.8,.3,1) forwards 3.95s;
+    transform-origin: center center;
+  }
 
   .waterfall-stream {
     stroke-dasharray: 6 8;
     animation: fall 1.4s linear infinite;
   }
 
-  @keyframes draw      { to { stroke-dashoffset: 0; } }
-  @keyframes drift     { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -300; } }
-  @keyframes fall      { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -28; } }
-  @keyframes motifIn   { to { opacity: 1; transform: translateY(0); } }
-  @keyframes motifOut  { from { opacity: 1; } to { opacity: 0; transform: translateY(-6px) scale(0.94); } }
-  @keyframes charIn    { to { opacity: 1; transform: translateY(0) scale(1); } }
-  @keyframes sway      { 0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+  /* Conceptual tagline — fades in with scenery, dims with it at reveal */
+  .tagline {
+    opacity: 0;
+    animation: taglineIn 1.2s ease forwards 1.4s;
+  }
+  @keyframes taglineIn { to { opacity: 1; } }
+
+  @keyframes draw        { to { stroke-dashoffset: 0; } }
+  @keyframes drift       { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -300; } }
+  @keyframes fall        { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -28; } }
+  @keyframes motifIn     { to { opacity: 1; transform: translateY(0); } }
+  @keyframes motifOut    { from { opacity: 1; } to { opacity: 0; transform: translateY(-6px) scale(0.94); } }
+  @keyframes finalIn     { to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes sceneryDim  { to { opacity: 0.3; } }
+  @keyframes sway        { 0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
 
   @media (prefers-reduced-motion: reduce) {
-    .mountain, .field { animation: none !important; stroke-dashoffset: 0 !important; }
-    .letter-motif { animation: none !important; opacity: 0 !important; }
-    .letter-char { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .mountain, .field    { animation: none !important; stroke-dashoffset: 0 !important; }
+    .letter-motif        { animation: none !important; opacity: 0 !important; }
+    .scenery             { animation: none !important; opacity: 0.3 !important; }
+    .wordmark-final      { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .tagline             { animation: none !important; opacity: 1 !important; }
     .flow, .waterfall-stream, .tree-pop { animation: none !important; }
   }
 
-  /* ============================================================
-     Auth card
-     ============================================================ */
   .auth-card {
     padding: 20px 24px 28px;
   }
@@ -254,76 +252,87 @@
 </style>
 </head>
 <body>
-  <div class="poc-banner">PoC Mockup · rev 2 · #335</div>
+  <div class="poc-banner">PoC Mockup · rev 3 · #335</div>
 
   <div>
     <div class="phone-frame">
       <div class="device-label">Mobile · 480px column · earthy theme</div>
 
-      <!-- ============================================================
-           HERO — IDENTICAL SVG as desktop (720×720 viewBox scaled to 480px)
-           Same two trees, same farmhouse, same motifs and wordmark.
-           ============================================================ -->
       <div class="hero">
         <button class="replay-btn" onclick="location.reload()">↻ replay</button>
 
         <svg viewBox="0 0 720 720" preserveAspectRatio="xMidYMid slice"
-             role="img" aria-label="LitCrop — scenery morphs into the wordmark">
+             role="img" aria-label="LitCrop — scenery morphs into the brand lockup">
 
-          <!-- SKY: three mountain ridgelines -->
-          <path class="ink thin mountain m1"       d="M0 150 C60 110, 110 145, 180 105 S300 140, 380 95 S500 135, 590 90 S680 120, 720 100"/>
-          <path class="ink thin sage mountain m2"  d="M0 190 C80 170, 140 215, 230 175 S360 205, 470 160 S600 195, 720 170"/>
-          <path class="ink thin amber mountain m3" d="M0 230 C100 220, 170 185, 260 215 S390 230, 500 195 S650 215, 720 210"/>
+          <!-- SCENERY (dims to 30% at reveal) -->
+          <g class="scenery">
 
-          <!-- WATERFALL — simplified to 1 solid + 1 dashed -->
-          <g>
-            <path class="ink mountain m2" d="M120 220 L120 240 L195 240 L195 220"/>
-            <path class="ink water mountain m2" stroke-width="3.2" d="M158 240 C160 290, 164 340, 158 400"/>
-            <path class="ink thin water waterfall-stream" d="M158 245 L158 405"/>
-            <path class="ink thin water" d="M130 410 Q 158 402, 186 410"/>
+            <!-- rev 4: dramatic snow-capped mountain with varying heights -->
+            <path class="ink thin mountain m1" d="M0 195 C90 180, 160 205, 250 190 S400 205, 520 180 S660 195, 720 190"/>
+            <path class="ink thin sage mountain m2" d="M0 215 L70 170 L150 195 L240 145 L340 170 L440 135 L540 170 L640 140 L720 175"/>
+            <path class="ink mountain m3" stroke-width="2.8" d="M0 290 L90 250 L170 190 L240 145 L320 70 L395 140 L475 180 L555 230 L640 260 L720 275"/>
+            <!-- snow cap -->
+            <path class="ink thin mountain m3" stroke="#857A6E" stroke-width="2" d="M262 145 L290 110 L320 70 L350 115 L385 150"/>
+            <!-- snow drift ticks -->
+            <path class="ink thin mountain m3" d="M278 128 L288 128"/>
+            <path class="ink thin mountain m3" d="M302 100 L312 100"/>
+            <path class="ink thin mountain m3" d="M328 82 L338 82"/>
+            <path class="ink thin mountain m3" d="M346 102 L356 102"/>
+            <path class="ink thin mountain m3" d="M362 125 L372 125"/>
+
+            <!-- CONCEPTUAL TAGLINE — rev 4 -->
+            <text class="tagline"
+                  x="360" y="388"
+                  text-anchor="middle"
+                  font-family="Georgia, 'Times New Roman', serif"
+                  font-style="italic"
+                  font-size="27"
+                  fill="var(--color-gray-500)">Little, Light and Lit, then Enlight</text>
+
+            <!-- mid flow lines -->
+            <path class="ink thin water flow"          d="M-20 440 C80 420, 180 460, 280 430 S440 460, 560 430 S720 440, 740 430"/>
+            <path class="ink thin sienna flow reverse" d="M-20 475 C120 490, 220 455, 340 480 S500 490, 620 465 S720 475, 740 470"/>
+
+            <!-- field horizon -->
+            <path class="ink field" d="M40 500 L700 500"/>
+            <path class="ink thin field" d="M40 510 C90 504, 130 518, 180 506 S260 514, 320 506 S420 516, 500 506 S600 516, 680 506"/>
+
+            <!-- LEFT TREE -->
+            <g class="tree-pop">
+              <path class="ink sage" d="M250 495 L250 430"/>
+              <path class="ink sage" d="M250 430 L220 458 L238 458 L212 478 L232 478 L205 500 L300 500 L272 478 L292 478 L266 458 L282 458 Z"/>
+            </g>
+
+            <!-- CENTER-RIGHT TREE -->
+            <g class="tree-pop delay1">
+              <path class="ink sage" d="M395 498 L395 418"/>
+              <path class="ink sage" d="M395 418 L358 454 L376 454 L344 478 L368 478 L340 500 L450 500 L422 478 L445 478 L413 454 L432 454 Z"/>
+            </g>
+
+            <!-- FARMHOUSE -->
+            <g>
+              <path class="ink mountain m3" d="M540 500 L540 460 L590 460 L590 500 Z"/>
+              <path class="ink mountain m3" d="M530 460 L565 435 L600 460 Z"/>
+              <path class="ink thin mountain m3" d="M556 500 L556 478 L574 478 L574 500"/>
+              <path class="ink thin mountain m3" d="M578 470 L586 470 L586 478 L578 478 Z"/>
+              <path class="ink thin mountain m3" d="M580 445 L580 432 L588 432 L588 445"/>
+            </g>
+
+            <!-- crop rows -->
+            <g>
+              <path class="ink thin sage mountain m3" d="M460 488 L460 498"/>
+              <path class="ink thin sage mountain m3" d="M475 488 L475 498"/>
+              <path class="ink thin sage mountain m3" d="M490 488 L490 498"/>
+              <path class="ink thin sage mountain m3" d="M505 488 L505 498"/>
+              <path class="ink thin sage mountain m3" d="M520 488 L520 498"/>
+            </g>
+
+            <path class="ink thin" opacity="0.2" d="M70 695 L640 695"/>
+
           </g>
+          <!-- /scenery -->
 
-          <!-- MID FLOW — 2 lines -->
-          <path class="ink thin water flow"          d="M-20 440 C80 420, 180 460, 280 430 S440 460, 560 430 S720 440, 740 430"/>
-          <path class="ink thin sienna flow reverse" d="M-20 475 C120 490, 220 455, 340 480 S500 490, 620 465 S720 475, 740 470"/>
-
-          <!-- field horizon -->
-          <path class="ink field" d="M40 500 L700 500"/>
-          <path class="ink thin field" d="M40 510 C90 504, 130 518, 180 506 S260 514, 320 506 S420 516, 500 506 S600 516, 680 506"/>
-
-          <!-- LEFT TREE -->
-          <g class="tree-pop">
-            <path class="ink sage" d="M250 495 L250 430"/>
-            <path class="ink sage" d="M250 430 L220 458 L238 458 L212 478 L232 478 L205 500 L300 500 L272 478 L292 478 L266 458 L282 458 Z"/>
-          </g>
-
-          <!-- CENTER-RIGHT TREE -->
-          <g class="tree-pop delay1">
-            <path class="ink sage" d="M395 498 L395 418"/>
-            <path class="ink sage" d="M395 418 L358 454 L376 454 L344 478 L368 478 L340 500 L450 500 L422 478 L445 478 L413 454 L432 454 Z"/>
-          </g>
-
-          <!-- FARMHOUSE -->
-          <g>
-            <path class="ink mountain m3" d="M540 500 L540 460 L590 460 L590 500 Z"/>
-            <path class="ink mountain m3" d="M530 460 L565 435 L600 460 Z"/>
-            <path class="ink thin mountain m3" d="M556 500 L556 478 L574 478 L574 500"/>
-            <path class="ink thin mountain m3" d="M578 470 L586 470 L586 478 L578 478 Z"/>
-            <path class="ink thin mountain m3" d="M580 445 L580 432 L588 432 L588 445"/>
-          </g>
-
-          <!-- crop rows -->
-          <g>
-            <path class="ink thin sage mountain m3" d="M460 488 L460 498"/>
-            <path class="ink thin sage mountain m3" d="M475 488 L475 498"/>
-            <path class="ink thin sage mountain m3" d="M490 488 L490 498"/>
-            <path class="ink thin sage mountain m3" d="M505 488 L505 498"/>
-            <path class="ink thin sage mountain m3" d="M520 488 L520 498"/>
-          </g>
-
-          <path class="ink thin" opacity="0.2" d="M70 695 L640 695"/>
-
-          <!-- =================== MOTIF WORDMARK =================== -->
+          <!-- ================= MOTIF WORDMARK ================= -->
 
           <!-- L = waterfall + pool -->
           <g class="letter-motif motif-L">
@@ -364,12 +373,15 @@
             <circle fill="var(--color-primary)" stroke="none" cx="436" cy="590" r="2.8"/>
           </g>
 
-          <!-- o = round fruit -->
+          <!-- o = WATER DROP (rev 3) -->
           <g class="letter-motif motif-o">
-            <circle class="ink terracotta" stroke-width="3.8" cx="495" cy="630" r="28" fill="none"/>
-            <path class="ink thin sage" d="M495 600 Q 498 592, 502 588"/>
-            <path class="ink thin sage" d="M498 592 Q 506 588, 510 594"/>
-            <path class="ink thin terracotta" d="M480 616 Q 484 608, 492 608"/>
+            <path class="ink water" stroke-width="3.8"
+                  d="M 495 592
+                     Q 468 618, 472 640
+                     Q 476 662, 495 662
+                     Q 514 662, 518 640
+                     Q 522 618, 495 592 Z"/>
+            <path class="ink thin water" d="M 485 622 Q 482 634, 486 644"/>
           </g>
 
           <!-- p = wheat bowing -->
@@ -384,24 +396,33 @@
             <circle fill="var(--color-amber)" stroke="none" cx="568" cy="640" r="2.2"/>
           </g>
 
-          <!-- =================== CHARACTER WORDMARK =================== -->
-          <g font-family="-apple-system, 'Inter', 'Helvetica Neue', Helvetica, sans-serif"
-             font-weight="800" font-size="120" fill="var(--color-gray-900)" letter-spacing="-4">
-            <text class="letter-char char-L" x="58"  y="670">L</text>
-            <text class="letter-char char-i" x="168" y="670">i</text>
-            <text class="letter-char char-t" x="206" y="670">t</text>
-            <text class="letter-char char-C" x="268" y="670">C</text>
-            <text class="letter-char char-r" x="378" y="670">r</text>
-            <text class="letter-char char-o" x="448" y="670">o</text>
-            <text class="letter-char char-p" x="528" y="670">p</text>
+          <!-- ================= FINAL BRAND LOCKUP ================= -->
+          <g class="wordmark-final">
+
+            <!-- CROP SPROUT ICON -->
+            <g class="crop-icon">
+              <path class="ink sage" stroke-width="3"   d="M 88 668 Q 135 660, 180 668"/>
+              <path class="ink sage" stroke-width="4"   d="M 134 598 L 134 666"/>
+              <path class="ink sage" stroke-width="3.4" d="M 134 628 Q 102 614, 88 632 Q 98 650, 128 642"/>
+              <path class="ink sage" stroke-width="3.4" d="M 134 618 Q 168 606, 182 624 Q 174 644, 142 636"/>
+              <circle fill="var(--color-primary)" stroke="none" cx="134" cy="594" r="4"/>
+              <path class="ink thin sage" d="M 130 598 Q 134 591, 138 598"/>
+            </g>
+
+            <!-- TYPOGRAPHIC WORDMARK — single text, browser-kerned -->
+            <text x="218" y="672"
+                  font-family="-apple-system, 'Inter', 'Helvetica Neue', Helvetica, sans-serif"
+                  font-weight="800"
+                  font-size="120"
+                  letter-spacing="-4"
+                  fill="var(--color-gray-900)">LitCrop</text>
+
           </g>
 
         </svg>
       </div>
 
-      <!-- ============================================================
-           AUTH CARD — stacked below hero
-           ============================================================ -->
+      <!-- AUTH CARD — stacked below hero -->
       <div class="auth-card">
         <p class="brand-title">Welcome back</p>
         <p class="brand-sub">Sign in to manage your farm</p>
@@ -426,10 +447,11 @@
     </div>
 
     <p class="page-note">
-      Mobile viewport. Same scenery as desktop (two trees + farmhouse + waterfall),
-      scaled to the 480px phone column. Animation plays ~5.5s: scenery draws in →
-      motifs (<b>water · person · hoe · sun · seedling · fruit · bowing wheat</b>) →
-      motifs crossfade to the typographic <b>LitCrop</b> wordmark. Form stacks below.
+      Mobile viewport · rev 4. Same SVG as desktop, scaled to 480px. Now with dramatic
+      snow-capped peak and italic tagline <b>"Little, Light and Lit, then Enlight"</b>
+      in the middle air-space. Animation: scenery+tagline draws in → motifs stage in →
+      motifs fade out, scenery+tagline dim to 30%, final brand lockup (<b>crop icon + LitCrop</b>)
+      fades in centered.
     </p>
   </div>
 </body>
