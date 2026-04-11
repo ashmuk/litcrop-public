@@ -13,53 +13,72 @@ export interface Props {
   title?: string;
   /** Page-level heading shown inside the auth card. If omitted, card renders without a title. */
   cardTitle?: string;
+  /**
+   * Layout variant.
+   *   "default" — standard auth-page + auth-logo + auth-card shell (signup, reset, verify)
+   *   "hero"    — bare shell; the page owns the full layout (#335 login hero)
+   */
+  variant?: 'default' | 'hero';
 }
 
 const {
   title = 'LitCrop',
   cardTitle,
+  variant = 'default',
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="earthy" class="auth-route">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1B6B3A" />
+    <meta name="theme-color" content="#6B7F5E" />
     <meta name="generator" content={Astro.generator} />
     <title>{title} — LitCrop</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Restore theme before first paint -->
+    <!-- Auth routes force the earthy theme for brand consistency (#335).
+         Locale preference is still restored from localStorage. -->
     <script is:inline>
       (function() {
-        var theme = localStorage.getItem('litcrop-theme');
+        var root = document.documentElement;
+        root.setAttribute('data-theme', 'earthy');
         var locale = localStorage.getItem('litcrop-locale');
-        if (theme) document.documentElement.setAttribute('data-theme', theme);
-        if (locale) {
-          document.documentElement.setAttribute('data-locale', locale);
-          document.documentElement.setAttribute('lang', locale === 'ja' ? 'ja' : 'en');
+        if (locale === 'en' || locale === 'ja') {
+          root.setAttribute('data-locale', locale);
+          root.setAttribute('lang', locale);
         }
       })();
     </script>
   </head>
-  <body>
-    <main class="auth-page" role="main">
-      <!-- Brand logo block -->
-      <div class="auth-logo" aria-label="LitCrop">
-        <div class="auth-logo__icon" aria-hidden="true">🌾</div>
-        <div class="auth-logo__name">LitCrop</div>
-      </div>
+  <body class="auth-layout-body">
+    {variant === 'hero' ? (
+      <slot />
+    ) : (
+      <main class="auth-page" role="main">
+        <!-- Auth card -->
+        <div class="auth-card">
+          {cardTitle && (
+            <h1 class="auth-card__title">{cardTitle}</h1>
+          )}
+          <slot />
+        </div>
 
-      <!-- Auth card -->
-      <div class="auth-card">
-        {cardTitle && (
-          <h1 class="auth-card__title">{cardTitle}</h1>
-        )}
-        <slot />
-      </div>
-
-      <!-- Toast container rendered by each page if needed -->
-    </main>
+        <!-- Toast container rendered by each page if needed -->
+      </main>
+    )}
   </body>
 </html>
+
+<style is:global>
+  /* #335 — Override the 480px body cap for auth routes only.
+     global.css:37 sets `body { max-width: 480px }` for the mobile-first app
+     column. Auth routes need the full viewport to render the login hero
+     on desktop. This rule restores full width; mobile still naturally
+     renders in a phone column because nothing forces it wider.
+     Reverts to the app default on authenticated routes (different layout). */
+  html.auth-route body.auth-layout-body {
+    max-width: none;
+    margin: 0;
+  }
+</style>
