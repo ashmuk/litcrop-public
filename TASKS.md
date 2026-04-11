@@ -13,6 +13,7 @@ All four sprint issues shipped to production via PR #347. See Recently Closed.
 
 ## Beta-12: AI Strategy
 
+- [#335](https://github.com/ashmuk/litcrop/issues/335) **design(frontend): polished login page design with mascot pet animation** `step:design` `area:frontend` `type:feature` `size:M` — **first item to tackle** (moved from Pre-PROD)
 - [#278](https://github.com/ashmuk/litcrop/issues/278) **design(ai): define AI context pipeline — how platform content feeds AI assist** `type:feature` `size:L` `status:deferred` — ADR before implementation
 - [#333](https://github.com/ashmuk/litcrop/issues/333) **design(ai): evaluate BYOK approach for AI assistant enablement** `step:design` `type:feature` `size:M` `status:deferred` — depends on #278, #281
 - [#183](https://github.com/ashmuk/litcrop/issues/183) **D-06: AI chat accessible on all pages (not just Farm Setup)** `area:frontend` `type:feature` `size:M` `status:queued` — PENDING, needs #278 first
@@ -29,7 +30,6 @@ All four sprint issues shipped to production via PR #347. See Recently Closed.
 - [#280](https://github.com/ashmuk/litcrop/issues/280) **feat(frontend): release notes, what's new, disclaimer, and report bug pages** `area:frontend` `type:feature` `size:M`
 - [#281](https://github.com/ashmuk/litcrop/issues/281) **design(platform): free vs paid tier concept — monetization strategy** `step:design` `type:feature` `size:M` `priority:high` `status:queued` — prerequisite for Pre-PROD
 - [#334](https://github.com/ashmuk/litcrop/issues/334) **design(infra): capacity analysis and scalability review — users, data, images, durability** `step:design` `area:infra` `type:docs` `size:L` `priority:high` `status:queued`
-- [#335](https://github.com/ashmuk/litcrop/issues/335) **design(frontend): polished login page design with mascot pet animation** `step:design` `area:frontend` `type:feature` `size:M` — RC/GA scope
 
 ---
 
