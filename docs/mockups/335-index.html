@@ -299,10 +299,18 @@
         <tr><td>o</td><td>Water drop (teardrop) · <em>rev 3 change</em></td><td>Nourishment · rhymes with L</td><td>Info Blue</td></tr>
         <tr><td>p</td><td>Wheat bowing its head</td><td>Harvest</td><td>Wheat Amber</td></tr>
       </table>
-      <p style="margin:12px 0 4px; font-size:13px;"><b>Rev 4 additions</b>:</p>
+      <p style="margin:12px 0 4px; font-size:13px;"><b>Rev 8 changes</b>:</p>
       <ul style="margin: 4px 0 0 0; padding-left:22px; font-size:13px;">
-        <li><b>Italic tagline</b> added: <em>"Little, Light and Lit, then Enlight"</em> — Georgia serif, centered in the middle air-space (y=388), fades in with the scenery and dims with it at the reveal</li>
-        <li><b>Dramatic snow-capped mountain</b> — m3 now has a sharp apex at y=70 (was y=230 in rev 3), formed with straight-line segments for a peaked silhouette. Snow cap is a short gray zigzag tracing the upper peak, plus 5 small horizontal snow-drift ticks on the upper slopes. m2 also gets moderate peaks for more depth.</li>
+        <li><b>White farthest ridge removed</b> — m1 is gone. The scene now has 3 mountain layers instead of 4. Sky area above y=70 is empty (breathing room for the tagline).</li>
+        <li><b>Light blue ridge kept jagged</b> — m2 is now the farthest layer, unchanged from rev 7 (sharp L-command peaks).</li>
+        <li><b>Brown + sage smoothed</b> — m3 and m4 now use smooth <code>C</code>/<code>S</code> cubic Bezier curves matching the <code>destination-earth-mockup.html</code> style. Thin uniform strokes (1.7 / 1.8). Mixed treatment creates receding-softness depth: sharp far ridge, rolling near ridges — unexpectedly naturalistic.</li>
+        <li><b>Tagline weight explicit</b> — <code>font-weight="400"</code> added to prevent any OS synthetic-bold inheritance on Brush Script MT. Visual weight is inherent to the brush font, but the <code>font-weight</code> attribute is now unambiguously normal.</li>
+        <li><b>Draw-in timing shifted</b> — m2 at 0.10s, m3 at 0.35s, m4 at 0.60s (compensates for m1's removal).</li>
+      </ul>
+      <p style="margin:12px 0 4px; font-size:13px;"><b>Rev 4</b>:</p>
+      <ul style="margin: 4px 0 0 0; padding-left:22px; font-size:13px;">
+        <li>Italic tagline <em>"Little, Light and Lit, then Enlight"</em> centered in middle air-space</li>
+        <li>Dramatic mountain peak (superseded by rev 5's 4-layer approach)</li>
       </ul>
       <p style="margin:12px 0 4px; font-size:13px;"><b>Rev 3 baseline</b>:</p>
       <ul style="margin: 4px 0 0 0; padding-left:22px; font-size:13px;">
@@ -314,16 +322,15 @@
       </ul>
     </div>
 
-    <h2>What to look at <span style="font-size:12px; color:var(--color-motion); letter-spacing:0.08em; text-transform:uppercase;">rev 4</span></h2>
+    <h2>What to look at <span style="font-size:12px; color:var(--color-motion); letter-spacing:0.08em; text-transform:uppercase;">rev 8</span></h2>
     <div class="checklist">
-      <b>Focus your review on (rev 4 changes):</b>
+      <b>Focus your review on (rev 8 changes):</b>
       <ul>
-        <li><b>Dramatic snow-capped mountain</b> — m3 now spikes up to y=70 with a sharp apex, snow-cap zigzag, and 5 snow-drift tick marks on the upper slopes. Does it read as "high mountain with snow"? Too dramatic? Not dramatic enough?</li>
-        <li><b>Italic tagline</b> — <em>"Little, Light and Lit, then Enlight"</em> in Georgia serif italic at 27px, centered in the middle air-space between mountains and flow lines. Font-size right? Color too faded (gray-500)? Position too high/low?</li>
-        <li><b>Tagline dims with scenery</b> — at the final reveal, the tagline dims to 30% along with the rest of the scenery. Visible enough at 30%, or should the tagline stay at full opacity during the reveal?</li>
-        <li><b>Mountain snow style</b> — snow is shown via (a) a gray zigzag tracing the upper peak and (b) small horizontal tick marks. Works, or should snow be drawn differently (e.g., small triangles, dotted texture, filled region)?</li>
-        <li><b>Final brand lockup</b> — crop sprout icon + "LitCrop" wordmark still the same as rev 3. Unchanged unless you flag it.</li>
-        <li><b>Reduced-motion fallback</b> — toggle OS "Reduce motion" and reload. You should see the final state: dimmed scenery + tagline + brand lockup, no animation.</li>
+        <li><b>Mountain range now 3 layers</b> — blue (jagged, farthest), brown (smooth), sage (smooth, nearest). Does the mixed treatment — sharp distant + rolling near — read naturally, or does it look inconsistent?</li>
+        <li><b>Empty sky above y=70</b> — with the white ridge gone, there's ~70px of open cream sky at the top. Too empty? Or does it give the tagline breathing room?</li>
+        <li><b>Brown + sage smoothness</b> — the new Bezier curves use 4–5 undulations across the width, matching the <code>destination-earth-mockup.html</code> ridge density. Feels right, or do they need more/fewer peaks?</li>
+        <li><b>Tagline weight</b> — explicit <code>font-weight="400"</code> now set. If it still looks too heavy, the font itself (Brush Script MT) is intrinsically thick — options to try: swap to <code>Apple Chancery</code> (Mac thin script), <code>Lucida Handwriting</code> (Windows), or italic Georgia.</li>
+        <li><b>Rest unchanged</b> — scenery (trees, farmhouse, crop rows, flow lines), motif wordmark, final brand lockup, wordmark font (Inter 800), scenery dim at reveal — all unchanged.</li>
       </ul>
     </div>
 

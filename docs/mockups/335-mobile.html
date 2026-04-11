@@ -103,10 +103,14 @@
     stroke-dasharray: 1800;
     stroke-dashoffset: 1800;
     animation: draw 2.2s ease forwards;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
-  .m1 { animation-delay: 0.1s; }
-  .m2 { animation-delay: 0.40s; }
-  .m3 { animation-delay: 0.70s; }
+  /* m1 removed in rev 8 */
+  .m2 { animation-delay: 0.10s; }
+  .m3 { animation-delay: 0.35s; }
+  .m4 { animation-delay: 0.60s; }
 
   .field {
     stroke-dasharray: 1400;
@@ -267,26 +271,21 @@
           <!-- SCENERY (dims to 30% at reveal) -->
           <g class="scenery">
 
-            <!-- rev 4: dramatic snow-capped mountain with varying heights -->
-            <path class="ink thin mountain m1" d="M0 195 C90 180, 160 205, 250 190 S400 205, 520 180 S660 195, 720 190"/>
-            <path class="ink thin sage mountain m2" d="M0 215 L70 170 L150 195 L240 145 L340 170 L440 135 L540 170 L640 140 L720 175"/>
-            <path class="ink mountain m3" stroke-width="2.8" d="M0 290 L90 250 L170 190 L240 145 L320 70 L395 140 L475 180 L555 230 L640 260 L720 275"/>
-            <!-- snow cap -->
-            <path class="ink thin mountain m3" stroke="#857A6E" stroke-width="2" d="M262 145 L290 110 L320 70 L350 115 L385 150"/>
-            <!-- snow drift ticks -->
-            <path class="ink thin mountain m3" d="M278 128 L288 128"/>
-            <path class="ink thin mountain m3" d="M302 100 L312 100"/>
-            <path class="ink thin mountain m3" d="M328 82 L338 82"/>
-            <path class="ink thin mountain m3" d="M346 102 L356 102"/>
-            <path class="ink thin mountain m3" d="M362 125 L372 125"/>
+            <!-- rev 8: m1 white removed, blue kept jagged, brown+sage smoothed -->
+            <path class="mountain m2" stroke="#8FA8BF" stroke-width="1.7" opacity="0.95"
+                  d="M0 170 L 60 150 L 130 115 L 205 85 L 275 70 L 345 108 L 410 88 L 480 70 L 550 95 L 620 130 L 690 155 L 720 152"/>
+            <path class="mountain m3" stroke="#8F6B48" stroke-width="1.7" opacity="0.9"
+                  d="M0 210 C60 180, 130 220, 200 185 S310 220, 400 175 S500 215, 590 180 S700 200, 720 190"/>
+            <path class="mountain m4" stroke="#6B7F5E" stroke-width="1.8" opacity="0.82"
+                  d="M0 260 C80 230, 160 265, 240 220 S350 255, 440 205 S540 240, 630 205 S710 225, 720 215"/>
 
-            <!-- CONCEPTUAL TAGLINE — rev 4 -->
+            <!-- CONCEPTUAL TAGLINE — centered in the empty space (y=350) -->
             <text class="tagline"
-                  x="360" y="388"
+                  x="360" y="350"
                   text-anchor="middle"
-                  font-family="Georgia, 'Times New Roman', serif"
-                  font-style="italic"
-                  font-size="27"
+                  font-family="'Brush Script MT', 'Snell Roundhand', 'Segoe Script', cursive"
+                  font-weight="400"
+                  font-size="36"
                   fill="var(--color-gray-500)">Little, Light and Lit, then Enlight</text>
 
             <!-- mid flow lines -->
@@ -409,7 +408,7 @@
               <path class="ink thin sage" d="M 130 598 Q 134 591, 138 598"/>
             </g>
 
-            <!-- TYPOGRAPHIC WORDMARK — single text, browser-kerned -->
+            <!-- TYPOGRAPHIC WORDMARK — rev 6: reverted to Inter sans-serif 800 -->
             <text x="218" y="672"
                   font-family="-apple-system, 'Inter', 'Helvetica Neue', Helvetica, sans-serif"
                   font-weight="800"
@@ -447,11 +446,9 @@
     </div>
 
     <p class="page-note">
-      Mobile viewport · rev 4. Same SVG as desktop, scaled to 480px. Now with dramatic
-      snow-capped peak and italic tagline <b>"Little, Light and Lit, then Enlight"</b>
-      in the middle air-space. Animation: scenery+tagline draws in → motifs stage in →
-      motifs fade out, scenery+tagline dim to 30%, final brand lockup (<b>crop icon + LitCrop</b>)
-      fades in centered.
+      Mobile viewport · rev 8. Same SVG as desktop. White farthest ridge removed;
+      blue ridge kept jagged; brown and sage ridges smoothed to Bezier curves.
+      Tagline in brush-script cursive at normal weight.
     </p>
   </div>
 </body>
