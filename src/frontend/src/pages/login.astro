@@ -21,6 +21,7 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
     <section class="login-form-panel">
       <div class="login-card">
         <h1 class="login-title">Welcome back</h1>
+        <p class="login-version">v0.51</p>
         <p class="login-sub">Sign in to manage your farm</p>
         <LoginForm client:load />
       </div>
@@ -66,12 +67,30 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
     border: var(--border-default);
   }
 
+  /* Mobile default: hide title + subtitle so the hero animation takes the space.
+     Version number (.login-version) stays visible on both mobile and desktop. */
+  .login-title,
+  .login-sub {
+    display: none;
+  }
+
   .login-title {
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-bold);
     color: var(--color-text);
-    margin: 0 0 6px;
+    margin: 0 0 2px;
     letter-spacing: -0.01em;
+  }
+
+  /* Version label — manually updated on each release.
+     Future: consider build-time injection via Astro env or a generated constants file. */
+  .login-version {
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-500);
+    text-align: right;
+    margin: 0 0 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.02em;
   }
 
   .login-sub {
@@ -94,6 +113,13 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
     }
     .login-form-panel {
       padding: 48px 40px;
+    }
+    .login-title,
+    .login-sub {
+      display: block;
+    }
+    .login-version {
+      margin: 0 0 10px;
     }
   }
 
