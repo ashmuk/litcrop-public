@@ -43,21 +43,29 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
   }
 
   .login-hero-wrap {
-    /* 1/1 aspect + 42vh cap. On tall mobile viewports the cap binds
-       (430×391 on iPhone 16 Pro Max), giving ~19px symmetric clipping
-       that keeps most of the line art visible while still fitting the
-       form below without scroll. Desktop (≥769px) overrides below. */
+    /* 1/1 aspect, natural size (56vh cap doesn't bind on modern phones).
+       Full line art visible — no clipping. Form pulls up into this via
+       negative margin on .login-form-panel. Desktop (≥769px) below. */
     aspect-ratio: 1 / 1;
-    max-height: 42vh;
+    max-height: 56vh;
     overflow: hidden;
+  }
+
+  /* Hide the in-SVG tagline ("Little, Light and Lit, then Enlight") on
+     mobile — the pull-up form card replaces it at the visual center. */
+  .login-hero-wrap :global(.tagline) {
+    display: none;
   }
 
   .login-form-panel {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 20px 20px 24px;
-    background: var(--color-background);
+    padding: 0 16px 32px;
+    margin-top: -100px;
+    position: relative;
+    z-index: 2;
+    background: transparent;
   }
 
   .login-card {
@@ -102,8 +110,14 @@ import LitCropWordmarkMorph from '../components/brand/LitCropWordmarkMorph.astro
       height: 100vh;
       border-right: 1px solid var(--color-gray-300);
     }
+    .login-hero-wrap :global(.tagline) {
+      display: block;
+    }
     .login-form-panel {
       padding: 48px 40px;
+      margin-top: 0;
+      align-items: center;
+      background: var(--color-background);
     }
     .login-title,
     .login-sub {
