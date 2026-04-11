@@ -1,0 +1,354 @@
+---
+/**
+ * LitCropWordmarkMorph — #335 brand hero
+ *
+ * Animated line-art scene that morphs into the typographic "LitCrop"
+ * wordmark. Canonical visual source: docs/mockups/335-desktop.html (rev 9,
+ * committed at fd58414). Architecture: docs/DESIGNS-335.md.
+ *
+ * Zero JS. Pure SVG + scoped CSS keyframes. No Preact island needed.
+ * Reduced-motion respected via scoped media query.
+ */
+
+export interface Props {
+  /**
+   * Animation variant.
+   *   "animated" — plays the 5s scenery → motif → final-lockup sequence (default)
+   *   "static"   — renders only the final held state (splash, 404, README preview)
+   */
+  variant?: 'animated' | 'static';
+
+  /** Optional wrapper class for layout control (height, border, etc.) */
+  class?: string;
+}
+
+const { variant = 'animated', class: className = '' } = Astro.props;
+---
+
+<div class:list={['litcrop-hero', variant, className]} data-testid="litcrop-hero">
+  <svg viewBox="0 0 720 720" preserveAspectRatio="xMidYMid slice"
+       role="img"
+       aria-label="LitCrop — farming scenery morphs into the brand wordmark"
+       data-testid="litcrop-hero-svg">
+
+    <!-- SCENERY (dims to 30% during final reveal) -->
+    <g class="scenery" data-testid="litcrop-hero-scenery">
+
+      <!-- 3-layer mountain ridges — jagged blue farthest, smooth brown + sage nearer -->
+      <path class="mountain m2" stroke="#8FA8BF" stroke-width="1.7" opacity="0.95"
+            d="M0 170 L 60 150 L 130 115 L 205 85 L 275 70 L 345 108 L 410 88 L 480 70 L 550 95 L 620 130 L 690 155 L 720 152"/>
+      <path class="mountain m3" stroke="#8F6B48" stroke-width="1.7" opacity="0.9"
+            d="M0 210 C60 180, 130 220, 200 185 S310 220, 400 175 S500 215, 590 180 S700 200, 720 190"/>
+      <path class="mountain m4" stroke="#6B7F5E" stroke-width="1.8" opacity="0.82"
+            d="M0 260 C80 230, 160 265, 240 220 S350 255, 440 205 S540 240, 630 205 S710 225, 720 215"/>
+
+      <!-- Conceptual tagline — brush-script cursive, centered in mid air-space -->
+      <text class="tagline"
+            x="360" y="350"
+            text-anchor="middle"
+            font-family="'Brush Script MT', 'Snell Roundhand', 'Segoe Script', cursive"
+            font-weight="400"
+            font-size="36"
+            fill="var(--color-gray-500)">Little, Light and Lit, then Enlight</text>
+
+      <!-- Mid flow lines (ambient drift) -->
+      <path class="ink thin water flow"          d="M-20 440 C80 420, 180 460, 280 430 S440 460, 560 430 S720 440, 740 430"/>
+      <path class="ink thin sienna flow reverse" d="M-20 475 C120 490, 220 455, 340 480 S500 490, 620 465 S720 475, 740 470"/>
+
+      <!-- Field horizon -->
+      <path class="ink field" d="M40 500 L700 500"/>
+      <path class="ink thin field" d="M40 510 C90 504, 130 518, 180 506 S260 514, 320 506 S420 516, 500 506 S600 516, 680 506"/>
+
+      <!-- Left tree -->
+      <g class="tree-pop">
+        <path class="ink sage" d="M250 495 L250 430"/>
+        <path class="ink sage" d="M250 430 L220 458 L238 458 L212 478 L232 478 L205 500 L300 500 L272 478 L292 478 L266 458 L282 458 Z"/>
+      </g>
+
+      <!-- Center-right tree -->
+      <g class="tree-pop delay1">
+        <path class="ink sage" d="M395 498 L395 418"/>
+        <path class="ink sage" d="M395 418 L358 454 L376 454 L344 478 L368 478 L340 500 L450 500 L422 478 L445 478 L413 454 L432 454 Z"/>
+      </g>
+
+      <!-- Farmhouse -->
+      <g>
+        <path class="ink mountain m3" d="M540 500 L540 460 L590 460 L590 500 Z"/>
+        <path class="ink mountain m3" d="M530 460 L565 435 L600 460 Z"/>
+        <path class="ink thin mountain m3" d="M556 500 L556 478 L574 478 L574 500"/>
+        <path class="ink thin mountain m3" d="M578 470 L586 470 L586 478 L578 478 Z"/>
+        <path class="ink thin mountain m3" d="M580 445 L580 432 L588 432 L588 445"/>
+      </g>
+
+      <!-- Crop rows -->
+      <g>
+        <path class="ink thin sage mountain m3" d="M460 488 L460 498"/>
+        <path class="ink thin sage mountain m3" d="M475 488 L475 498"/>
+        <path class="ink thin sage mountain m3" d="M490 488 L490 498"/>
+        <path class="ink thin sage mountain m3" d="M505 488 L505 498"/>
+        <path class="ink thin sage mountain m3" d="M520 488 L520 498"/>
+      </g>
+
+      <!-- Subtle ground line beneath wordmark area -->
+      <path class="ink thin" opacity="0.2" d="M70 695 L640 695"/>
+
+    </g>
+    <!-- /scenery -->
+
+    <!-- MOTIF WORDMARK — 7 letters stage in, then fade out for the final reveal -->
+    <g class="wordmark-motifs" aria-hidden="true" data-testid="litcrop-hero-motifs">
+
+      <!-- L = waterfall + pool -->
+      <g class="letter-motif motif-L">
+        <path class="ink water" stroke-width="4.2" d="M90 560 L90 660"/>
+        <path class="ink water" stroke-width="4.2" d="M90 660 L160 660"/>
+        <path class="ink thin water waterfall-stream" d="M98 565 L98 655"/>
+        <path class="ink thin water" d="M92 668 Q 115 672, 140 668 Q 155 666, 160 668"/>
+      </g>
+
+      <!-- i = standing person -->
+      <g class="letter-motif motif-i">
+        <circle fill="var(--color-gray-900)" stroke="none" cx="188" cy="572" r="6.5"/>
+        <path class="ink" stroke-width="4.2" d="M188 588 L188 660"/>
+        <path class="ink thin" d="M172 608 L188 596 L204 608"/>
+      </g>
+
+      <!-- t = hoe / tool -->
+      <g class="letter-motif motif-t">
+        <path class="ink amber" stroke-width="4.4" d="M245 548 L245 660"/>
+        <path class="ink amber" stroke-width="3.6" d="M222 586 L268 586"/>
+        <path class="ink thin amber" d="M245 660 Q 235 666, 228 660"/>
+        <path class="ink thin amber" d="M245 660 Q 255 666, 262 660"/>
+        <path class="ink thin amber" d="M240 586 L240 596 M250 586 L250 596"/>
+      </g>
+
+      <!-- C = sun arc -->
+      <g class="letter-motif motif-C">
+        <path class="ink sienna" stroke-width="4.2" d="M358 576 Q 294 618, 358 660"/>
+        <path class="ink thin sienna" d="M290 598 L280 594"/>
+        <path class="ink thin sienna" d="M282 620 L270 620"/>
+        <path class="ink thin sienna" d="M290 642 L280 646"/>
+      </g>
+
+      <!-- r = seedling -->
+      <g class="letter-motif motif-r">
+        <path class="ink sage" stroke-width="4" d="M408 595 L408 660"/>
+        <path class="ink sage" stroke-width="3.4" d="M408 595 Q 430 580, 446 596 Q 440 608, 428 606"/>
+        <circle fill="var(--color-primary)" stroke="none" cx="436" cy="590" r="2.8"/>
+      </g>
+
+      <!-- o = water drop (teardrop) -->
+      <g class="letter-motif motif-o">
+        <path class="ink water" stroke-width="3.8"
+              d="M 495 592 Q 468 618, 472 640 Q 476 662, 495 662 Q 514 662, 518 640 Q 522 618, 495 592 Z"/>
+        <path class="ink thin water" d="M 485 622 Q 482 634, 486 644"/>
+      </g>
+
+      <!-- p = wheat bowing -->
+      <g class="letter-motif motif-p">
+        <path class="ink amber" stroke-width="4" d="M555 598 L555 700"/>
+        <path class="ink amber" stroke-width="3.6" d="M555 598 Q 600 596, 608 626 Q 606 656, 580 660 Q 562 660, 555 648"/>
+        <circle fill="var(--hero-amber)" stroke="none" cx="572" cy="612" r="2.2"/>
+        <circle fill="var(--hero-amber)" stroke="none" cx="586" cy="616" r="2.2"/>
+        <circle fill="var(--hero-amber)" stroke="none" cx="595" cy="628" r="2.2"/>
+        <circle fill="var(--hero-amber)" stroke="none" cx="593" cy="644" r="2.2"/>
+        <circle fill="var(--hero-amber)" stroke="none" cx="580" cy="652" r="2.2"/>
+        <circle fill="var(--hero-amber)" stroke="none" cx="568" cy="640" r="2.2"/>
+      </g>
+
+    </g>
+
+    <!-- FINAL BRAND LOCKUP — crop icon + typographic wordmark -->
+    <g class="wordmark-final" data-testid="litcrop-hero-final">
+
+      <!-- Crop sprout icon (two leaves + soil line + bud) -->
+      <g class="crop-icon" aria-hidden="true" data-testid="litcrop-hero-icon">
+        <path class="ink sage" stroke-width="3" d="M 88 668 Q 135 660, 180 668"/>
+        <path class="ink sage" stroke-width="4" d="M 134 598 L 134 666"/>
+        <path class="ink sage" stroke-width="3.4" d="M 134 628 Q 102 614, 88 632 Q 98 650, 128 642"/>
+        <path class="ink sage" stroke-width="3.4" d="M 134 618 Q 168 606, 182 624 Q 174 644, 142 636"/>
+        <circle fill="var(--color-primary)" stroke="none" cx="134" cy="594" r="4"/>
+        <path class="ink thin sage" d="M 130 598 Q 134 591, 138 598"/>
+      </g>
+
+      <!-- Typographic LitCrop wordmark (Inter 800) -->
+      <text x="218" y="672"
+            font-family="-apple-system, 'Inter', 'Helvetica Neue', Helvetica, sans-serif"
+            font-weight="800"
+            font-size="120"
+            letter-spacing="-4"
+            fill="var(--color-gray-900)"
+            data-testid="litcrop-hero-text">LitCrop</text>
+
+    </g>
+
+  </svg>
+</div>
+
+<style>
+  /* ============================================================
+     LitCropWordmarkMorph — scoped component styles
+     Canonical mockup: docs/mockups/335-desktop.html (fd58414)
+     Design ref: docs/DESIGNS-335.md
+     ============================================================ */
+
+  /* Component-local color aliases that bind to the earthy theme tokens.
+     The mockup used --color-info-blue / --color-amber / --color-terracotta
+     which don't exist in tokens.css. The real equivalents are exported by
+     the [data-theme="earthy"] block in src/styles/tokens.css. */
+  .litcrop-hero {
+    --hero-water:      var(--color-info, #5E7F9B);
+    --hero-amber:      var(--color-status-slow-growth, #B89B5E);
+    --hero-sienna:     var(--color-motion, #C07842);
+    --hero-terracotta: var(--color-status-issue, #B85C4A);
+
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background:
+      radial-gradient(ellipse 900px 500px at 30% 10%, rgba(255, 255, 255, .55), transparent 60%),
+      linear-gradient(180deg, #F5F0E6 0%, var(--color-primary-light, #F0EDE4) 100%);
+    overflow: hidden;
+  }
+
+  .litcrop-hero svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ---------- line art base ---------- */
+  .litcrop-hero :global(.ink) {
+    fill: none;
+    stroke: var(--color-gray-900, #3B3530);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .litcrop-hero :global(.thin)       { stroke-width: 1.8; }
+  .litcrop-hero :global(.water)      { stroke: var(--hero-water); }
+  .litcrop-hero :global(.sage)       { stroke: var(--color-primary, #6B7F5E); }
+  .litcrop-hero :global(.amber)      { stroke: var(--hero-amber); }
+  .litcrop-hero :global(.sienna)     { stroke: var(--hero-sienna); }
+  .litcrop-hero :global(.terracotta) { stroke: var(--hero-terracotta); }
+
+  /* ---------- mountain draw-in ---------- */
+  .litcrop-hero :global(.mountain) {
+    stroke-dasharray: 1800;
+    stroke-dashoffset: 1800;
+    animation: litcrop-draw 2.2s ease forwards;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .litcrop-hero :global(.m2) { animation-delay: 0.10s; }
+  .litcrop-hero :global(.m3) { animation-delay: 0.35s; }
+  .litcrop-hero :global(.m4) { animation-delay: 0.60s; }
+
+  .litcrop-hero :global(.field) {
+    stroke-dasharray: 1400;
+    stroke-dashoffset: 1400;
+    animation: litcrop-draw 2.0s ease forwards 0.9s;
+  }
+
+  /* ---------- flow lines (ambient drift) ---------- */
+  .litcrop-hero :global(.flow) {
+    stroke-dasharray: 16 14;
+    animation: litcrop-drift 12s linear infinite;
+  }
+  .litcrop-hero :global(.flow.reverse) {
+    animation-direction: reverse;
+    animation-duration: 15s;
+  }
+
+  /* ---------- trees ---------- */
+  .litcrop-hero :global(.tree-pop) {
+    transform-origin: center bottom;
+    animation: litcrop-sway 4.6s ease-in-out infinite;
+  }
+  .litcrop-hero :global(.tree-pop.delay1) { animation-delay: 0.9s; }
+
+  /* ---------- waterfall stream (inner dash on the L motif) ---------- */
+  .litcrop-hero :global(.waterfall-stream) {
+    stroke-dasharray: 6 8;
+    animation: litcrop-fall 1.4s linear infinite;
+  }
+
+  /* ---------- scenery dim at reveal ---------- */
+  .litcrop-hero :global(.scenery) {
+    animation: litcrop-scenery-dim 1.1s cubic-bezier(.2,.8,.3,1) forwards 3.9s;
+    transform-origin: center center;
+  }
+
+  /* ---------- motif wordmark (compound in + out animation) ---------- */
+  .litcrop-hero :global(.letter-motif) {
+    opacity: 0;
+    transform: translateY(18px);
+    animation:
+      litcrop-motif-in  0.8s cubic-bezier(.2,.8,.3,1) forwards,
+      litcrop-motif-out 0.65s ease forwards;
+    transform-origin: center bottom;
+  }
+  .litcrop-hero :global(.motif-L) { animation-delay: 1.40s, 3.40s; }
+  .litcrop-hero :global(.motif-i) { animation-delay: 1.56s, 3.50s; }
+  .litcrop-hero :global(.motif-t) { animation-delay: 1.72s, 3.60s; }
+  .litcrop-hero :global(.motif-C) { animation-delay: 1.88s, 3.70s; }
+  .litcrop-hero :global(.motif-r) { animation-delay: 2.04s, 3.80s; }
+  .litcrop-hero :global(.motif-o) { animation-delay: 2.20s, 3.90s; }
+  .litcrop-hero :global(.motif-p) { animation-delay: 2.36s, 4.00s; }
+
+  /* ---------- final brand lockup ---------- */
+  .litcrop-hero :global(.wordmark-final) {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+    animation: litcrop-final-in 1.0s cubic-bezier(.2,.8,.3,1) forwards 3.95s;
+    transform-origin: center center;
+  }
+
+  /* ---------- tagline ---------- */
+  .litcrop-hero :global(.tagline) {
+    opacity: 0;
+    animation: litcrop-tagline-in 1.2s ease forwards 1.4s;
+  }
+
+  /* ============================================================
+     Static variant — jump to the final held state immediately
+     ============================================================ */
+  .litcrop-hero.static :global(.scenery)       { opacity: 0.3 !important; animation: none !important; }
+  .litcrop-hero.static :global(.letter-motif)  { opacity: 0 !important;   animation: none !important; }
+  .litcrop-hero.static :global(.wordmark-final){ opacity: 1 !important; transform: none !important; animation: none !important; }
+  .litcrop-hero.static :global(.tagline)       { opacity: 1 !important;   animation: none !important; }
+  .litcrop-hero.static :global(.mountain),
+  .litcrop-hero.static :global(.field)         { stroke-dashoffset: 0 !important; animation: none !important; }
+  .litcrop-hero.static :global(.flow),
+  .litcrop-hero.static :global(.waterfall-stream),
+  .litcrop-hero.static :global(.tree-pop)      { animation: none !important; }
+
+  /* ============================================================
+     Reduced motion — jump to final state, no animation
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    .litcrop-hero :global(.mountain),
+    .litcrop-hero :global(.field)          { animation: none !important; stroke-dashoffset: 0 !important; }
+    .litcrop-hero :global(.letter-motif)   { animation: none !important; opacity: 0 !important; }
+    .litcrop-hero :global(.scenery)        { animation: none !important; opacity: 0.3 !important; }
+    .litcrop-hero :global(.wordmark-final) { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .litcrop-hero :global(.tagline)        { animation: none !important; opacity: 1 !important; }
+    .litcrop-hero :global(.flow),
+    .litcrop-hero :global(.waterfall-stream),
+    .litcrop-hero :global(.tree-pop)       { animation: none !important; }
+  }
+
+  /* ============================================================
+     Keyframes — prefixed with litcrop- to avoid global collisions
+     ============================================================ */
+  @keyframes litcrop-draw         { to { stroke-dashoffset: 0; } }
+  @keyframes litcrop-drift        { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -300; } }
+  @keyframes litcrop-fall         { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -28; } }
+  @keyframes litcrop-motif-in     { to { opacity: 1; transform: translateY(0); } }
+  @keyframes litcrop-motif-out    { from { opacity: 1; } to { opacity: 0; transform: translateY(-6px) scale(0.94); } }
+  @keyframes litcrop-final-in     { to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes litcrop-scenery-dim  { to { opacity: 0.3; } }
+  @keyframes litcrop-sway         { 0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+  @keyframes litcrop-tagline-in   { to { opacity: 1; } }
+</style>
