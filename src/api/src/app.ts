@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
 import { AppError, InternalError } from './errors';
 import { authMiddleware } from './middleware/auth';
 import farmsRouter from './routes/farms';
@@ -49,10 +48,6 @@ app.use(
   }),
 );
 
-// ── Logger ───────────────────────────────────────────────────────
-
-app.use('*', logger());
-
 // ── Request ID ───────────────────────────────────────────────────
 
 app.use('*', async (c, next) => {
@@ -60,6 +55,22 @@ app.use('*', async (c, next) => {
   c.set('requestId' as never, requestId);
   await next();
   c.res.headers.set('X-Request-Id', requestId);
+});
+
+// ── Structured JSON Logger ───────────────────────────────────────
+
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  const requestId = c.res.headers.get('X-Request-Id') ?? '-';
+  console.log(JSON.stringify({
+    requestId,
+    method: c.req.method,
+    path: c.req.path,
+    status: c.res.status,
+    ms,
+  }));
 });
 
 // ── Content-Type validation for mutation routes ───────────────────
@@ -107,9 +118,10 @@ app.onError((err, c) => {
     return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON in request body' } }, 400);
   }
 
-  // Unknown error — log and return generic 500
+  // Unknown error — structured log and return generic 500
   const internal = new InternalError();
-  console.error('[unhandled]', err);
+  const reqId = c.res.headers.get('X-Request-Id') ?? '-';
+  console.error(JSON.stringify({ level: 'error', requestId: reqId, error: String(err) }));
   return c.json(
     { error: { code: internal.code, message: internal.message } },
     500,

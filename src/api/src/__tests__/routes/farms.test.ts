@@ -882,9 +882,7 @@ describe('farm.created event emission', () => {
       body: JSON.stringify({ name: 'Test Farm', location_text: 'Test Location', latitude: 36.0, longitude: 138.0 }),
     });
 
-    await new Promise((r) => setTimeout(r, 20));
-
-    expect(listener).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
     const event = listener.mock.calls[0][0] as AppEventMap['farm.created'];
     expect(event.type).toBe('farm.created');
     expect(event.payload.farm_name).toBe('Test Farm');
@@ -907,9 +905,7 @@ describe('farm.deleted event emission', () => {
       headers: authHeaders(),
     });
 
-    await new Promise((r) => setTimeout(r, 20));
-
-    expect(listener).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
     const event = listener.mock.calls[0][0] as AppEventMap['farm.deleted'];
     expect(event.type).toBe('farm.deleted');
     expect(event.payload.farm_id).toBe(FARM_ID);
@@ -943,9 +939,7 @@ describe('join_request events emission', () => {
       body: JSON.stringify({}),
     });
 
-    await new Promise((r) => setTimeout(r, 20));
-
-    expect(listener).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
     const event = listener.mock.calls[0][0] as AppEventMap['join_request.submitted'];
     expect(event.type).toBe('join_request.submitted');
     expect(event.payload.farm_id).toBe(FARM_ID);
@@ -967,9 +961,7 @@ describe('join_request events emission', () => {
       body: JSON.stringify({ action: 'approve' }),
     });
 
-    await new Promise((r) => setTimeout(r, 20));
-
-    expect(listener).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
     const event = listener.mock.calls[0][0] as AppEventMap['join_request.approved'];
     expect(event.type).toBe('join_request.approved');
     expect(event.payload.farm_id).toBe(FARM_ID);
@@ -991,9 +983,7 @@ describe('join_request events emission', () => {
       body: JSON.stringify({ action: 'reject' }),
     });
 
-    await new Promise((r) => setTimeout(r, 20));
-
-    expect(listener).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
     const event = listener.mock.calls[0][0] as AppEventMap['join_request.rejected'];
     expect(event.type).toBe('join_request.rejected');
     expect(event.payload.target_user_id).toBe(targetUserId);
