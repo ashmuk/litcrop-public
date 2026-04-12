@@ -1,4 +1,4 @@
-import type { Farm, Bed, Image, Tag, DiaryEntry } from '@litcrop/shared';
+import type { Farm, Bed, Image, Tag } from '@litcrop/shared';
 import { TEST_USER_ID } from '../helpers/auth';
 
 // ── IDs ─────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ export const tagFixture: Tag = {
   id: TAG_ID,
   image_id: IMAGE_ID,
   tag: 'healthy',
-  note: null as unknown as undefined,
+  note: undefined,
   created_at: '2026-03-20T11:00:00.000Z',
 };
 

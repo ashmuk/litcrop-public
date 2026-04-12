@@ -9,16 +9,11 @@ import {
 } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import {
-  THEME_OPTIONS,
-  LOCALE_OPTIONS,
   DEFAULT_THEME,
   DEFAULT_LOCALE,
-  isValidLatLng,
   FarmRoleSchema,
   CreateFarmRequestSchema,
   UpdateFarmRequestSchema,
-  MIN_GRID_SIZE,
-  MAX_GRID_SIZE,
   DEMO_FARM_ID,
   FREE_PLAN_MAX_MEMBERSHIPS,
   FREE_PLAN_MAX_OWNED_FARMS,
@@ -38,8 +33,6 @@ function isConditionalCheckFailed(err: unknown): boolean {
 function isTransactionCanceled(err: unknown): boolean {
   return err instanceof Error && err.name === 'TransactionCanceledException';
 }
-
-// Validation helper imported from _helpers.ts (parseBody)
 
 function farmToResponse(farm: Farm) {
   return {
@@ -397,28 +390,25 @@ router.post('/', async (c) => {
   }
 
   const body = await c.req.json<Record<string, unknown>>();
-
-  parseBody(CreateFarmRequestSchema, body);
+  const validated = parseBody(CreateFarmRequestSchema, body);
 
   const farmId = crypto.randomUUID();
-  const gridRows = typeof body['grid_rows'] === 'number' ? body['grid_rows'] : 1;
-  const gridCols = typeof body['grid_cols'] === 'number' ? body['grid_cols'] : 1;
 
   let farm: Farm;
   try {
     farm = await dynamoRepo.createFarm(farmId, userId, {
-      name: (body['name'] as string).trim(),
-      location_text: (body['location_text'] as string).trim(),
-      description: body['description'] as string | undefined,
-      latitude: body['latitude'] as number | undefined,
-      longitude: body['longitude'] as number | undefined,
-      elevation_m: body['elevation_m'] as number | undefined,
+      name: validated.name,
+      location_text: validated.location_text,
+      description: validated.description ?? undefined,
+      latitude: validated.latitude ?? undefined,
+      longitude: validated.longitude ?? undefined,
+      elevation_m: validated.elevation_m ?? undefined,
       climate_zone: undefined,
-      locale: (body['locale'] as Farm['locale']) ?? DEFAULT_LOCALE,
-      theme: (body['theme'] as Farm['theme']) ?? DEFAULT_THEME,
-      grid_rows: gridRows as number,
-      grid_cols: gridCols as number,
-      default_currency: (body['default_currency'] as Farm['default_currency']) ?? 'JPY',
+      locale: validated.locale ?? DEFAULT_LOCALE,
+      theme: validated.theme ?? DEFAULT_THEME,
+      grid_rows: validated.grid_rows ?? 1,
+      grid_cols: validated.grid_cols ?? 1,
+      default_currency: validated.default_currency ?? 'JPY',
     });
   } catch (err) {
     if (isConditionalCheckFailed(err) || isTransactionCanceled(err)) {
@@ -447,21 +437,14 @@ router.patch('/:farmId', async (c) => {
   const { farm: oldFarm } = await assertFarmAccess(farmId, userId, ['admin', 'owner']);
 
   const body = await c.req.json<Record<string, unknown>>();
-
-  parseBody(UpdateFarmRequestSchema, body);
+  const validated = parseBody(UpdateFarmRequestSchema, body);
 
   const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>> = {};
-  if (body['name'] !== undefined) updates['name'] = (body['name'] as string).trim();
-  if (body['description'] !== undefined) updates['description'] = body['description'] as string | undefined;
-  if (body['location_text'] !== undefined) updates['location_text'] = (body['location_text'] as string).trim();
-  if (body['latitude'] !== undefined) updates['latitude'] = body['latitude'] as number;
-  if (body['longitude'] !== undefined) updates['longitude'] = body['longitude'] as number;
-  if (body['elevation_m'] !== undefined) updates['elevation_m'] = body['elevation_m'] as number;
-  if (body['locale'] !== undefined) updates['locale'] = body['locale'] as Farm['locale'];
-  if (body['theme'] !== undefined) updates['theme'] = body['theme'] as Farm['theme'];
-  if (body['grid_rows'] !== undefined) updates['grid_rows'] = body['grid_rows'] as number;
-  if (body['grid_cols'] !== undefined) updates['grid_cols'] = body['grid_cols'] as number;
-  if (body['default_currency'] !== undefined) updates['default_currency'] = body['default_currency'] as Farm['default_currency'];
+  for (const [key, value] of Object.entries(validated)) {
+    if (value !== undefined) {
+      (updates as Record<string, unknown>)[key] = value;
+    }
+  }
 
   try {
     await dynamoRepo.updateFarm(farmId, updates);

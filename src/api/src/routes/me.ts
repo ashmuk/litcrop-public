@@ -71,7 +71,7 @@ router.patch('/profile', async (c) => {
       timestamp: new Date().toISOString(),
       actor_id: userId,
       actor_email: actorEmail,
-      payload: { changed_fields: Object.keys(parsed.data) },
+      payload: { changed_fields: Object.keys(data) },
     });
   }
 
