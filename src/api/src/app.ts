@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { AppError, InternalError } from './errors';
 import { authMiddleware } from './middleware/auth';
 import farmsRouter from './routes/farms';
+import farmMembersRouter from './routes/farm-members';
 import bedsRouter from './routes/beds';
 import plotsRouter from './routes/plots';
 import imagesRouter from './routes/images';
@@ -155,8 +156,11 @@ app.get('/health', (c) => c.json({ status: 'ok', service: 'litcrop-api' }));
 app.get('/api/v1/health', (c) => c.json({ status: 'ok', service: 'litcrop-api' }));
 app.get('/api/v1', (c) => c.json({ version: '1', status: 'ok' }));
 
-// GET|POST|PATCH /api/v1/farms/...  (includes /:farmId/beds)
+// GET|POST|PATCH|DELETE /api/v1/farms (CRUD + beds listing)
 app.route('/api/v1/farms', farmsRouter);
+
+// Discoverable farms, join requests, members CRUD, leave farm
+app.route('/api/v1/farms', farmMembersRouter);
 
 // GET /api/v1/farms/:farmId/weather
 app.route('/api/v1/farms', weatherRouter);

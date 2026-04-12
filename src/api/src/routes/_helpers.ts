@@ -4,6 +4,14 @@ import { dynamoRepo } from '../services/dynamodb';
 import { NotFoundError, ServiceUnavailableError, ValidationError } from '../errors';
 import type { Farm, FarmMember, FarmRole, Image } from '@litcrop/shared';
 
+export function isConditionalCheckFailed(err: unknown): boolean {
+  return err instanceof Error && err.name === 'ConditionalCheckFailedException';
+}
+
+export function isTransactionCanceled(err: unknown): boolean {
+  return err instanceof Error && err.name === 'TransactionCanceledException';
+}
+
 export function parseBody<T>(schema: ZodSchema<T>, body: unknown): T {
   try {
     return schema.parse(body);
