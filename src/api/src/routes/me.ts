@@ -3,6 +3,7 @@ import { dynamoRepo, type UserSettings, DEFAULT_SETTINGS } from '../services/dyn
 import { ValidationError, PayloadTooLargeError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcrop/shared';
+import { parseBody } from './_helpers';
 import type { DeleteAccountSummary } from '../services/dynamodb';
 import { appEvents } from '../services/events';
 import { DEFAULT_NOTIFICATION_PREFS } from '../services/notification';
@@ -36,16 +37,13 @@ router.get('/profile', async (c) => {
 router.patch('/profile', async (c) => {
   const { userId } = getAuthContext(c);
   const body = await c.req.json();
-  const parsed = UpdateProfileRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid profile data', { issues: parsed.error.issues });
-  }
+  const data = parseBody(UpdateProfileRequestSchema, body);
 
   // Check if this is the first-time profile creation (user.signup event)
   const existingProfile = await dynamoRepo.getUserProfile(userId).catch(() => null);
   const isFirstCreation = existingProfile === null;
 
-  const profile = await dynamoRepo.upsertUserProfile(userId, parsed.data);
+  const profile = await dynamoRepo.upsertUserProfile(userId, data);
 
   // Derive email from the auth context — decoded from JWT in middleware
   const authHeader = c.req.header('Authorization') ?? '';
@@ -92,11 +90,8 @@ router.get('/settings', async (c) => {
 router.patch('/settings', async (c) => {
   const { userId } = getAuthContext(c);
   const body = await c.req.json();
-  const parsed = UpdateSettingsRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid settings data', { issues: parsed.error.issues });
-  }
-  const settings = await dynamoRepo.upsertUserSettings(userId, parsed.data);
+  const data = parseBody(UpdateSettingsRequestSchema, body);
+  const settings = await dynamoRepo.upsertUserSettings(userId, data);
   return c.json(settings);
 });
 

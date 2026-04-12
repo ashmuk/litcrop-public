@@ -19,7 +19,7 @@ import { hash } from 'bcryptjs';
 import { dynamoRepo } from '../services/dynamodb';
 import { getAuthContext } from '../middleware/auth';
 import { verifyDeviceKey } from '../middleware/device-auth';
-import { assertFarmAccess } from './_helpers';
+import { assertFarmAccess, parseBody } from './_helpers';
 import { ValidationError, ConflictError, NotFoundError } from '../errors';
 import { appEvents } from '../services/events';
 import {
@@ -52,10 +52,7 @@ farmDevicesRouter.post('/:farmId/devices', async (c) => {
   await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   const body = await c.req.json();
-  const parsed = RegisterDeviceRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid device data', { issues: parsed.error.issues });
-  }
+  const parsed = parseBody(RegisterDeviceRequestSchema, body);
 
   // Check device limit
   const count = await dynamoRepo.countDevicesForFarm(farmId);
@@ -64,14 +61,14 @@ farmDevicesRouter.post('/:farmId/devices', async (c) => {
   }
 
   // Verify bed exists in this farm
-  const bed = await dynamoRepo.getBedById(parsed.data.bed_id);
+  const bed = await dynamoRepo.getBedById(parsed.bed_id);
   if (!bed || bed.farm_id !== farmId) {
     throw new ValidationError('Bed not found in this farm');
   }
 
   // Check bed doesn't already have a device
   const existing = await dynamoRepo.getDevicesForFarm(farmId);
-  if (existing.some(d => d.bed_id === parsed.data.bed_id)) {
+  if (existing.some(d => d.bed_id === parsed.bed_id)) {
     throw new ConflictError('This bed already has a device assigned');
   }
 
@@ -81,8 +78,8 @@ farmDevicesRouter.post('/:farmId/devices', async (c) => {
   const keyHash = await hash(rawKey, BCRYPT_SALT_ROUNDS);
 
   await dynamoRepo.createDevice(farmId, deviceId, {
-    bed_id: parsed.data.bed_id,
-    node_name: parsed.data.node_name,
+    bed_id: parsed.bed_id,
+    node_name: parsed.node_name,
     device_api_key_hash: keyHash,
     ...DEVICE_DEFAULTS,
   });
@@ -95,13 +92,13 @@ farmDevicesRouter.post('/:farmId/devices', async (c) => {
     timestamp: new Date().toISOString(),
     actor_id: userId,
     actor_email: userEmail,
-    payload: { farm_id: farmId, device_id: deviceId, node_name: parsed.data.node_name, bed_id: parsed.data.bed_id },
+    payload: { farm_id: farmId, device_id: deviceId, node_name: parsed.node_name, bed_id: parsed.bed_id },
   });
 
   return c.json({
     device_id: deviceId,
-    node_name: parsed.data.node_name,
-    bed_id: parsed.data.bed_id,
+    node_name: parsed.node_name,
+    bed_id: parsed.bed_id,
     device_api_key: rawKey,
     config_poll_url: `${apiBaseUrl}/devices/${deviceId}/config`,
     created_at: new Date().toISOString(),
@@ -136,27 +133,24 @@ farmDevicesRouter.patch('/:farmId/devices/:deviceId', async (c) => {
   await assertFarmAccess(farmId, userId, ['admin', 'owner'], isAdmin);
 
   const body = await c.req.json();
-  const parsed = UpdateDeviceRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid device config', { issues: parsed.error.issues });
-  }
+  const parsed = parseBody(UpdateDeviceRequestSchema, body);
 
   // Flatten active_window for DynamoDB storage
-  const updates: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.active_window) {
-    updates['active_window_start'] = parsed.data.active_window.start;
-    updates['active_window_end'] = parsed.data.active_window.end;
+  const updates: Record<string, unknown> = { ...parsed };
+  if (parsed.active_window) {
+    updates['active_window_start'] = parsed.active_window.start;
+    updates['active_window_end'] = parsed.active_window.end;
     delete updates['active_window'];
   }
 
   // If changing bed, verify it exists and isn't taken
-  if (parsed.data.bed_id) {
-    const bed = await dynamoRepo.getBedById(parsed.data.bed_id);
+  if (parsed.bed_id) {
+    const bed = await dynamoRepo.getBedById(parsed.bed_id);
     if (!bed || bed.farm_id !== farmId) {
       throw new ValidationError('Bed not found in this farm');
     }
     const existing = await dynamoRepo.getDevicesForFarm(farmId);
-    if (existing.some(d => d.bed_id === parsed.data.bed_id && d.device_id !== deviceId)) {
+    if (existing.some(d => d.bed_id === parsed.bed_id && d.device_id !== deviceId)) {
       throw new ConflictError('This bed already has a device assigned');
     }
   }
@@ -168,7 +162,7 @@ farmDevicesRouter.patch('/:farmId/devices/:deviceId', async (c) => {
     timestamp: new Date().toISOString(),
     actor_id: userId,
     actor_email: userEmail,
-    payload: { farm_id: farmId, device_id: deviceId, changes: Object.keys(parsed.data) },
+    payload: { farm_id: farmId, device_id: deviceId, changes: Object.keys(parsed) },
   });
 
   return c.json(device);
@@ -271,12 +265,9 @@ deviceRouter.post('/:deviceId/heartbeat', async (c) => {
   }
 
   const body = await c.req.json();
-  const parsed = DeviceHeartbeatRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid heartbeat data', { issues: parsed.error.issues });
-  }
+  const parsed = parseBody(DeviceHeartbeatRequestSchema, body);
 
-  await dynamoRepo.updateDeviceHeartbeat(device.farm_id, deviceId, parsed.data);
+  await dynamoRepo.updateDeviceHeartbeat(device.farm_id, deviceId, parsed);
 
   return c.json({ acknowledged: true });
 });

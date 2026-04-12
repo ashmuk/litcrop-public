@@ -1,7 +1,20 @@
+import { ZodError, type ZodSchema } from 'zod';
 import { getSignedThumbnailUrl, getSignedImageUrl } from '../services/s3';
 import { dynamoRepo } from '../services/dynamodb';
-import { NotFoundError, ServiceUnavailableError } from '../errors';
+import { NotFoundError, ServiceUnavailableError, ValidationError } from '../errors';
 import type { Farm, FarmMember, FarmRole, Image } from '@litcrop/shared';
+
+export function parseBody<T>(schema: ZodSchema<T>, body: unknown): T {
+  try {
+    return schema.parse(body);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      const messages = err.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+      throw new ValidationError(messages[0], { errors: messages });
+    }
+    throw err;
+  }
+}
 
 /**
  * Assert userId has membership access to the farm.

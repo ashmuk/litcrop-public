@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { ZodError, type ZodSchema } from 'zod';
 import { dynamoRepo } from '../services/dynamodb';
 import { getSignedAvatarUrls } from '../services/s3';
 import {
@@ -25,7 +24,7 @@ import {
   FREE_PLAN_MAX_OWNED_FARMS,
 } from '@litcrop/shared';
 import type { Farm, Bed, FarmRole } from '@litcrop/shared';
-import { makeLatestImage, assertFarmAccess } from './_helpers';
+import { makeLatestImage, assertFarmAccess, parseBody } from './_helpers';
 import { appEvents } from '../services/events';
 
 const router = new Hono();
@@ -40,17 +39,7 @@ function isTransactionCanceled(err: unknown): boolean {
   return err instanceof Error && err.name === 'TransactionCanceledException';
 }
 
-function validateWithSchema<T>(schema: ZodSchema<T>, body: unknown): T {
-  try {
-    return schema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      const messages = err.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
-      throw new ValidationError(messages[0], { errors: messages });
-    }
-    throw err;
-  }
-}
+// Validation helper imported from _helpers.ts (parseBody)
 
 function farmToResponse(farm: Farm) {
   return {
@@ -409,7 +398,7 @@ router.post('/', async (c) => {
 
   const body = await c.req.json<Record<string, unknown>>();
 
-  validateWithSchema(CreateFarmRequestSchema, body);
+  parseBody(CreateFarmRequestSchema, body);
 
   const farmId = crypto.randomUUID();
   const gridRows = typeof body['grid_rows'] === 'number' ? body['grid_rows'] : 1;
@@ -459,7 +448,7 @@ router.patch('/:farmId', async (c) => {
 
   const body = await c.req.json<Record<string, unknown>>();
 
-  validateWithSchema(UpdateFarmRequestSchema, body);
+  parseBody(UpdateFarmRequestSchema, body);
 
   const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>> = {};
   if (body['name'] !== undefined) updates['name'] = (body['name'] as string).trim();

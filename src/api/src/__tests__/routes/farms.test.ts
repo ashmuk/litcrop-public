@@ -1,4 +1,5 @@
 import { TEST_USER_ID, authHeaders, makeAuthHeaders } from '../helpers/auth';
+import { FARM_ID, BED_ID } from '../fixtures';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Set ADMIN_EMAILS before auth module loads (ADMIN_EMAILS_SET is cached at module level)
@@ -45,9 +46,6 @@ vi.mock('../../services/s3', () => ({
   getSignedImageUrl: vi.fn(),
   uploadImage: vi.fn(),
 }));
-
-const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
-const BED_ID = 'bd000000-0000-0000-0000-000000000001';
 
 const farmFixture = {
   id: FARM_ID,

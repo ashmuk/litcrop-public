@@ -21,7 +21,7 @@ import {
   UpdateBedRequestSchema,
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
-import { makeBedDetailImage, assertFarmAccess } from './_helpers';
+import { makeBedDetailImage, assertFarmAccess, parseBody } from './_helpers';
 import { appEvents } from '../services/events';
 
 const router = new Hono();
@@ -110,15 +110,11 @@ router.patch('/:bedId', async (c) => {
   await assertBedWriteAccess(bed, userId);
 
   const body = await c.req.json<Record<string, unknown>>();
-  const parsed = UpdateBedRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    throw new ValidationError(firstIssue.message, { errors: parsed.error.issues });
-  }
+  const validated = parseBody(UpdateBedRequestSchema, body);
 
   // Pass through null values (to trigger DynamoDB REMOVE) and non-null values (SET)
   const updates: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(parsed.data)) {
+  for (const [key, value] of Object.entries(validated)) {
     if (value !== undefined) {
       updates[key] = value;
     }

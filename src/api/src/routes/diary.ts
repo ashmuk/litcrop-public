@@ -13,7 +13,7 @@ import { Hono } from 'hono';
 import { randomUUID } from 'crypto';
 import { dynamoRepo } from '../services/dynamodb';
 import { getAuthContext } from '../middleware/auth';
-import { assertFarmAccess } from './_helpers';
+import { assertFarmAccess, parseBody } from './_helpers';
 import { ValidationError, NotFoundError, ServiceUnavailableError } from '../errors';
 import { appEvents } from '../services/events';
 import {
@@ -197,12 +197,9 @@ diaryRouter.post('/:farmId/diary', async (c) => {
   await assertFarmAccess(farmId, userId, undefined, isAdmin);
 
   const body = await c.req.json<Record<string, unknown>>();
-  const parsed = CreateDiaryEntrySchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid diary entry data', { issues: parsed.error.issues });
-  }
+  const parsed = parseBody(CreateDiaryEntrySchema, body);
 
-  const { bed_id, photo_ids } = parsed.data;
+  const { bed_id, photo_ids } = parsed;
 
   if (bed_id) {
     let bed;
@@ -244,9 +241,9 @@ diaryRouter.post('/:farmId/diary', async (c) => {
   let entry: DiaryEntry;
   try {
     entry = await dynamoRepo.createDiaryEntry(farmId, entryId, {
-      ...parsed.data,
-      bed_id: parsed.data.bed_id ?? null,
-      time_spent_minutes: parsed.data.time_spent_minutes ?? null,
+      ...parsed,
+      bed_id: parsed.bed_id ?? null,
+      time_spent_minutes: parsed.time_spent_minutes ?? null,
       created_by: userId,
     });
   } catch (err) {
@@ -288,12 +285,9 @@ diaryRouter.get('/:farmId/diary', async (c) => {
     cursor: c.req.query('cursor'),
   };
 
-  const parsedQuery = DiaryListQuerySchema.safeParse(rawQuery);
-  if (!parsedQuery.success) {
-    throw new ValidationError('Invalid query parameters', { issues: parsedQuery.error.issues });
-  }
+  const parsedQuery = parseBody(DiaryListQuerySchema, rawQuery);
 
-  const { category, limit, cursor } = parsedQuery.data;
+  const { category, limit, cursor } = parsedQuery;
 
   // Default date range: 30 days back → 1 year ahead (includes future reserved entries)
   const now = new Date();
@@ -304,8 +298,8 @@ diaryRouter.get('/:farmId/diary', async (c) => {
   const defaultFrom = thirtyDaysAgo.toISOString().slice(0, 10);
   const defaultTo = oneYearAhead.toISOString().slice(0, 10);
 
-  const from = parsedQuery.data.from ?? defaultFrom;
-  const to = parsedQuery.data.to ?? defaultTo;
+  const from = parsedQuery.from ?? defaultFrom;
+  const to = parsedQuery.to ?? defaultTo;
 
   let result: { items: DiaryEntry[]; nextCursor: string | null };
   try {
@@ -364,15 +358,12 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
   const entry = await loadAndAuthorizeEntry(farmId, entryId, userId, isAdmin, membership, true);
 
   const body = await c.req.json<Record<string, unknown>>();
-  const parsed = UpdateDiaryEntrySchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ValidationError('Invalid diary entry data', { issues: parsed.error.issues });
-  }
+  const parsed = parseBody(UpdateDiaryEntrySchema, body);
 
-  if (parsed.data.bed_id !== undefined && parsed.data.bed_id !== null) {
+  if (parsed.bed_id !== undefined && parsed.bed_id !== null) {
     let bed;
     try {
-      bed = await dynamoRepo.getBedById(parsed.data.bed_id);
+      bed = await dynamoRepo.getBedById(parsed.bed_id);
     } catch (err) {
       if (err instanceof NotFoundError) {
         throw new ValidationError('Bed not found in this farm');
@@ -386,7 +377,7 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
 
   let updated: DiaryEntry;
   try {
-    updated = await dynamoRepo.updateDiaryEntry(farmId, entryId, entry.date, parsed.data);
+    updated = await dynamoRepo.updateDiaryEntry(farmId, entryId, entry.date, parsed);
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
@@ -400,7 +391,7 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
     payload: {
       farm_id: farmId,
       entry_id: entryId,
-      changed_fields: Object.keys(parsed.data),
+      changed_fields: Object.keys(parsed),
     },
   });
 
