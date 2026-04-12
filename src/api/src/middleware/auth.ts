@@ -39,10 +39,7 @@ export interface AuthContext {
  * Read auth context from Hono context variables set by authMiddleware.
  * Uses `as never` to avoid threading generic type params through all routes.
  */
-// Cached at module level — env var never changes during Lambda lifecycle
-const ADMIN_EMAILS_SET: Set<string> = new Set(
-  (process.env['ADMIN_EMAILS'] ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
-);
+import { ADMIN_EMAILS_SET } from '../config';
 
 export function getAuthContext(c: Context): AuthContext {
   const userEmail = c.get('userEmail' as never) as string;

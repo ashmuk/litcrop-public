@@ -11,10 +11,7 @@ import { appEvents, type AppEventType, type AppEventMap } from './events';
 
 const SES_FROM_EMAIL = process.env['SES_FROM_EMAIL'] ?? '';
 const SES_REGION = process.env['SES_REGION'] ?? process.env['AWS_REGION'] ?? 'ap-northeast-1';
-const ADMIN_EMAILS: string[] = (process.env['ADMIN_EMAILS'] ?? '')
-  .split(',')
-  .map((e) => e.trim())
-  .filter(Boolean);
+import { ADMIN_EMAILS_LIST as ADMIN_EMAILS } from '../config';
 
 const ENABLED = SES_FROM_EMAIL.length > 0 && ADMIN_EMAILS.length > 0;
 
