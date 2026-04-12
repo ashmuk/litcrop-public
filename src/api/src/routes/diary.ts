@@ -216,7 +216,7 @@ diaryRouter.post('/:farmId/diary', async (c) => {
     }
   }
 
-  if (photo_ids.length > 0) {
+  if (photo_ids && photo_ids.length > 0) {
     await Promise.all(photo_ids.map(async (imageId) => {
       let image;
       try {
@@ -242,6 +242,9 @@ diaryRouter.post('/:farmId/diary', async (c) => {
   try {
     entry = await dynamoRepo.createDiaryEntry(farmId, entryId, {
       ...parsed,
+      entry_type: parsed.entry_type ?? 'actual',
+      photo_ids: parsed.photo_ids ?? [],
+      costs: parsed.costs ?? [],
       bed_id: parsed.bed_id ?? null,
       time_spent_minutes: parsed.time_spent_minutes ?? null,
       created_by: userId,
