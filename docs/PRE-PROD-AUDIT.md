@@ -382,6 +382,49 @@ developer-managed). For production, change to `RETAIN` to preserve audit trail o
 | F-25 | Global throttle exists (100 req/s); per-user rate limiting on chat exists; Cognito throttles login | Partially resolved |
 | F-11 | Playwright E2E requires infrastructure setup — separate PR | Backlog |
 
+## P2 Fix Log
+
+| Finding | Fix Applied | Date |
+|---------|-------------|------|
+| F-10 | Structured JSON logging (replaced Hono logger) | 2026-04-12 |
+| F-13 | Flaky setTimeout → vi.waitFor() in 5 event tests | 2026-04-12 |
+| F-31 | ErrorBoundary component for Preact islands | 2026-04-12 |
+| F-30 | False positive: thumbnail alt="" correct per WCAG (decorative) | 2026-04-12 |
+| F-33 | False positive: JSX auto-escapes text nodes | 2026-04-12 |
+| F-36 | Resolved by F-35: $5 budget alert covers free tier overages | 2026-04-12 |
+
+### P2 Remaining
+
+| Finding | Description | Effort | Blocker |
+|---------|-------------|--------|---------|
+| F-17 | Zod migration for farms.ts (manual → schema validation) | M | 15+ test files need error message rewrites |
+| F-18 | Upgrade AWS SDK v3.10xx → latest | M | None |
+| F-08 | Dev/staging environment separation | L | Infra design needed |
+| F-09 | Incident runbooks | M | Documentation task |
+| F-12 | Security/perf/a11y test categories | L | Playwright setup (F-11) |
+| F-14 | Centralize test fixtures | M | None |
+| F-15 | Split dynamodb.ts (1879 LOC) into domain repos | L | None |
+| F-16 | Refactor farms.ts (809 LOC) to thin controller | L | Depends on F-17 |
+| F-26 | Application-level caching for farm/bed queries | M | Design needed |
+| F-28 | Optimize getStats for scale (beyond cache) | M | Partially done by F-24 |
+| F-37 | Backfill #337 architecture docs | S | Documentation task |
+
+## P3 Fix Log
+
+| Finding | Fix Applied | Date |
+|---------|-------------|------|
+| F-19 | Centralized ADMIN_EMAILS into shared config module | 2026-04-12 |
+
+### P3 Remaining
+
+| Finding | Description | Effort | Blocker |
+|---------|-------------|--------|---------|
+| F-20 | Deduplicate validation patterns | M | Blocked by F-17 |
+| F-27 | DynamoDB DAX or materialized views | L | Overkill for MVP scale |
+| F-29 | WebP/AVIF image format support | M | Image pipeline redesign |
+| F-32 | Uniform empty states across all entities | M | UI design per component |
+| F-34 | Loading states for all async operations | S | UI polish |
+
 ---
 
 > Audit performed using `.agent/prompts/review/project_review_master_prompt.md` framework.

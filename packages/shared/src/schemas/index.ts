@@ -84,6 +84,25 @@ export const FarmResponseSchema = FarmBaseSchema.extend({
 /** POST /api/v1/farms and PATCH /api/v1/farms/:farmId */
 export const FarmWriteResponseSchema = FarmBaseSchema;
 
+// ── Farm request schemas (input validation) ──────────────────────
+
+const FarmFieldsSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().max(500).nullable().optional(),
+  location_text: z.string().trim().min(1).max(200),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  elevation_m: z.number().min(0).max(9000).nullable().optional(),
+  locale: LocaleSchema.optional(),
+  theme: ThemeSchema.optional(),
+  grid_rows: z.number().int().min(1).max(5).optional(),
+  grid_cols: z.number().int().min(1).max(5).optional(),
+  default_currency: CurrencySchema.optional(),
+});
+
+export const CreateFarmRequestSchema = FarmFieldsSchema;
+export const UpdateFarmRequestSchema = FarmFieldsSchema.partial();
+
 /** FarmMember — represents a user's membership in a farm */
 export const FarmMemberSchema = z.object({
   user_id: z.string(),

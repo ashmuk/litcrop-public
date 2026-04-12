@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { ZodError, type ZodSchema } from 'zod';
 import { dynamoRepo } from '../services/dynamodb';
 import { getSignedAvatarUrls } from '../services/s3';
 import {
@@ -15,6 +16,8 @@ import {
   DEFAULT_LOCALE,
   isValidLatLng,
   FarmRoleSchema,
+  CreateFarmRequestSchema,
+  UpdateFarmRequestSchema,
   MIN_GRID_SIZE,
   MAX_GRID_SIZE,
   DEMO_FARM_ID,
@@ -37,97 +40,15 @@ function isTransactionCanceled(err: unknown): boolean {
   return err instanceof Error && err.name === 'TransactionCanceledException';
 }
 
-/** Validate farm create/update fields. Throws ValidationError on failure. */
-function validateFarmFields(body: Record<string, unknown>, required?: string[]) {
-  const errors: string[] = [];
-
-  const name = body['name'];
-  if (required?.includes('name') && (name === undefined || name === null)) {
-    errors.push('Missing required field: name');
-  } else if (name !== undefined && name !== null) {
-    if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 100) {
-      errors.push("Invalid value for 'name': must be 1-100 characters");
+function validateWithSchema<T>(schema: ZodSchema<T>, body: unknown): T {
+  try {
+    return schema.parse(body);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      const messages = err.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+      throw new ValidationError(messages[0], { errors: messages });
     }
-  }
-
-  const location_text = body['location_text'];
-  if (required?.includes('location_text') && (location_text === undefined || location_text === null)) {
-    errors.push('Missing required field: location_text');
-  } else if (location_text !== undefined && location_text !== null) {
-    if (typeof location_text !== 'string' || location_text.trim().length === 0 || location_text.trim().length > 200) {
-      errors.push("Invalid value for 'location_text': must be 1-200 characters");
-    }
-  }
-
-  const latitude = body['latitude'];
-  if (required?.includes('latitude') && (latitude === undefined || latitude === null)) {
-    errors.push('Missing required field: latitude');
-  } else if (latitude !== undefined && latitude !== null) {
-    if (typeof latitude !== 'number' || !isValidLatLng(latitude, 0)) {
-      errors.push('Latitude must be between -90 and 90');
-    }
-  }
-
-  const longitude = body['longitude'];
-  if (required?.includes('longitude') && (longitude === undefined || longitude === null)) {
-    errors.push('Missing required field: longitude');
-  } else if (longitude !== undefined && longitude !== null) {
-    if (typeof longitude !== 'number' || !isValidLatLng(0, longitude)) {
-      errors.push('Longitude must be between -180 and 180');
-    }
-  }
-
-  const elevation_m = body['elevation_m'];
-  if (elevation_m !== undefined && elevation_m !== null) {
-    if (typeof elevation_m !== 'number' || elevation_m < 0 || elevation_m > 9000) {
-      errors.push("Invalid value for 'elevation_m': must be between 0 and 9000");
-    }
-  }
-
-  const locale = body['locale'];
-  if (locale !== undefined && locale !== null) {
-    if (!(LOCALE_OPTIONS as readonly unknown[]).includes(locale)) {
-      errors.push(`Invalid value for 'locale': must be one of ${LOCALE_OPTIONS.join(', ')}`);
-    }
-  }
-
-  const theme = body['theme'];
-  if (theme !== undefined && theme !== null) {
-    if (!(THEME_OPTIONS as readonly unknown[]).includes(theme)) {
-      errors.push(`Invalid value for 'theme': must be one of ${THEME_OPTIONS.join(', ')}`);
-    }
-  }
-
-  const description = body['description'];
-  if (description !== undefined && description !== null) {
-    if (typeof description !== 'string' || description.length > 500) {
-      errors.push("Invalid value for 'description': max 500 characters");
-    }
-  }
-
-  const grid_rows = body['grid_rows'];
-  if (grid_rows !== undefined && grid_rows !== null) {
-    if (typeof grid_rows !== 'number' || !Number.isInteger(grid_rows) || grid_rows < MIN_GRID_SIZE || grid_rows > MAX_GRID_SIZE) {
-      errors.push(`Invalid value for 'grid_rows': must be an integer between ${MIN_GRID_SIZE} and ${MAX_GRID_SIZE}`);
-    }
-  }
-
-  const grid_cols = body['grid_cols'];
-  if (grid_cols !== undefined && grid_cols !== null) {
-    if (typeof grid_cols !== 'number' || !Number.isInteger(grid_cols) || grid_cols < MIN_GRID_SIZE || grid_cols > MAX_GRID_SIZE) {
-      errors.push(`Invalid value for 'grid_cols': must be an integer between ${MIN_GRID_SIZE} and ${MAX_GRID_SIZE}`);
-    }
-  }
-
-  const default_currency = body['default_currency'];
-  if (default_currency !== undefined && default_currency !== null) {
-    if (default_currency !== 'JPY' && default_currency !== 'USD') {
-      errors.push("Invalid value for 'default_currency': must be 'JPY' or 'USD'");
-    }
-  }
-
-  if (errors.length > 0) {
-    throw new ValidationError(errors[0], { errors });
+    throw err;
   }
 }
 
@@ -488,7 +409,7 @@ router.post('/', async (c) => {
 
   const body = await c.req.json<Record<string, unknown>>();
 
-  validateFarmFields(body, ['name', 'location_text']);
+  validateWithSchema(CreateFarmRequestSchema, body);
 
   const farmId = crypto.randomUUID();
   const gridRows = typeof body['grid_rows'] === 'number' ? body['grid_rows'] : 1;
@@ -538,7 +459,7 @@ router.patch('/:farmId', async (c) => {
 
   const body = await c.req.json<Record<string, unknown>>();
 
-  validateFarmFields(body);
+  validateWithSchema(UpdateFarmRequestSchema, body);
 
   const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>> = {};
   if (body['name'] !== undefined) updates['name'] = (body['name'] as string).trim();

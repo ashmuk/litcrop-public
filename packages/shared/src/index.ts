@@ -125,6 +125,8 @@ export {
   FarmBedSchema,
   FarmResponseSchema,
   FarmWriteResponseSchema,
+  CreateFarmRequestSchema,
+  UpdateFarmRequestSchema,
   FarmBedItemSchema,
   FarmBedsResponseSchema,
   BedDetailResponseSchema,
