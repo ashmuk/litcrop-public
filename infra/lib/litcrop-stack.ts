@@ -100,6 +100,26 @@ export class LitCropStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // ── Shared Logs Bucket (Pre-PROD F-01/F-02/F-03) ───────────────────────
+    // Central destination for CloudFront, API Gateway, and S3 access logs.
+    // 30-day lifecycle keeps storage costs bounded per CON-256-02.
+
+    const logsBucket = new s3.Bucket(this, 'LogsBucket', {
+      bucketName: 'litcrop-mvp-logs',
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      versioned: false,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      objectOwnership: s3.ObjectOwnership.OBJECT_WRITER,
+      lifecycleRules: [
+        {
+          id: 'expire-logs-30d',
+          expiration: cdk.Duration.days(30),
+        },
+      ],
+    });
+
     // ── T-CDK-03: S3 Bucket Constructs ────────────────────────────────────────
     // 3 buckets: images (lifecycle policies), static (CloudFront), thumbnails
 
@@ -110,6 +130,8 @@ export class LitCropStack extends cdk.Stack {
       versioned: false,
       removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve images on stack delete
       autoDeleteObjects: false,
+      serverAccessLogsBucket: logsBucket,
+      serverAccessLogsPrefix: 's3-images/',
       // ADR-004: lifecycle — Standard → IA 30d → Glacier 90d
       lifecycleRules: [
         {
@@ -135,6 +157,8 @@ export class LitCropStack extends cdk.Stack {
       versioned: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      serverAccessLogsBucket: logsBucket,
+      serverAccessLogsPrefix: 's3-static/',
     });
 
     const thumbnailsBucket = new s3.Bucket(this, 'ThumbnailsBucket', {
@@ -144,6 +168,8 @@ export class LitCropStack extends cdk.Stack {
       versioned: false,
       removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve thumbnails on stack delete
       autoDeleteObjects: false,
+      serverAccessLogsBucket: logsBucket,
+      serverAccessLogsPrefix: 's3-thumbnails/',
     });
 
     // ── T-CDK-06: CloudFront Distribution with S3 OAI ─────────────────────────
@@ -232,7 +258,9 @@ function handler(event) {
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200, // H-06: exclude expensive regions, keep Asia
       comment: 'LitCrop static frontend — Astro SSG',
-      enableLogging: false, // MVP: deferred to Production
+      enableLogging: true,
+      logBucket: logsBucket,
+      logFilePrefix: 'cloudfront/',
     });
 
     // ── SSM Parameters ────────────────────────────────────────────────────────
@@ -495,6 +523,29 @@ function handler(event) {
       ThrottlingRateLimit: 100,
     });
 
+    // ── F-02: API Gateway Access Logging ──────────────────────────────────────
+    const apiAccessLog = new logs.LogGroup(this, 'ApiAccessLog', {
+      logGroupName: '/litcrop/api-gateway-access',
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    defaultStage.addPropertyOverride('AccessLogSettings', {
+      DestinationArn: apiAccessLog.logGroupArn,
+      Format: JSON.stringify({
+        requestId: '$context.requestId',
+        ip: '$context.identity.sourceIp',
+        requestTime: '$context.requestTime',
+        httpMethod: '$context.httpMethod',
+        routeKey: '$context.routeKey',
+        status: '$context.status',
+        protocol: '$context.protocol',
+        responseLength: '$context.responseLength',
+        integrationLatency: '$context.integrationLatency',
+        errorMessage: '$context.error.message',
+      }),
+    });
+
     // ── H-05: CloudWatch Alarms + SNS Notifications ────────────────────────
     // SNS topic for alarm notifications — email subscription via env var
     const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
@@ -621,7 +672,7 @@ function handler(event) {
     NagSuppressions.addStackSuppressions(this, [
       {
         id: 'AwsSolutions-S1',
-        reason: 'MVP: S3 server access logging deferred to Production',
+        reason: 'Logs bucket does not log itself (circular); all other buckets log to litcrop-mvp-logs',
       },
       {
         id: 'AwsSolutions-S10',
@@ -637,7 +688,7 @@ function handler(event) {
       },
       {
         id: 'AwsSolutions-CFR3',
-        reason: 'MVP: CloudFront access logging deferred to Production',
+        reason: 'CloudFront access logging enabled; logs to litcrop-mvp-logs/cloudfront/',
       },
       {
         id: 'AwsSolutions-CFR4',
@@ -645,7 +696,7 @@ function handler(event) {
       },
       {
         id: 'AwsSolutions-APIG1',
-        reason: 'MVP: API Gateway access logging deferred to Production; Lambda structured logs via Hono cover MVP observability',
+        reason: 'API Gateway access logging enabled to CloudWatch; structured JSON format with requestId, ip, status, latency, errorMessage',
       },
       {
         id: 'AwsSolutions-APIG4',

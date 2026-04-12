@@ -148,6 +148,9 @@ node_modules/
 
 # Astro
 src/frontend/.astro/
+
+# CDK
+cdk.out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

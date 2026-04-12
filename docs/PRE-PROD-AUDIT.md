@@ -310,7 +310,7 @@
 
 | Gate | Status | Condition |
 |------|--------|-----------|
-| Observability | **BLOCK** | Fix F-01, F-02, F-03 |
+| Observability | **PASS** | F-01, F-02, F-03 fixed (logs bucket + CloudWatch) |
 | Security | **CONDITIONAL** | Fix F-21, F-23, F-25 |
 | Test Coverage | **CONDITIONAL** | Add E2E golden paths (F-11) |
 | Performance | **CONDITIONAL** | Fix getStats scans (F-24) |
@@ -319,7 +319,48 @@
 | Legal | **PASS** | All MIT/Apache deps |
 | UX | **PASS** | Minor gaps only |
 
-**Verdict: Fix P0 items (2-3 hours) to unblock production. P1 items (3-4 days) recommended before GA.**
+**Verdict: P0 items resolved. P1 items (3-4 days) recommended before GA.**
+
+---
+
+## Production Resource Migration Note
+
+> **IMPORTANT for #239**: All AWS resources use hardcoded `litcrop-mvp-*` names.
+> When creating production-labeled resources, the following must be renamed:
+
+| Resource | Current Name | Production Name (TBD) |
+|----------|-------------|----------------------|
+| S3 (images) | `litcrop-mvp-images` | `litcrop-prod-images` |
+| S3 (static) | `litcrop-mvp-static` | `litcrop-prod-static` |
+| S3 (thumbnails) | `litcrop-mvp-thumbnails` | `litcrop-prod-thumbnails` |
+| S3 (logs) | `litcrop-mvp-logs` | `litcrop-prod-logs` |
+| DynamoDB | `litcrop-mvp` | `litcrop-prod` |
+| Cognito | `litcrop-mvp-users` | `litcrop-prod-users` |
+| Lambda (API) | `litcrop-api` | `litcrop-api` (or parameterized) |
+| Lambda (thumb) | `litcrop-thumb` | `litcrop-thumb` (or parameterized) |
+| API Gateway | `litcrop-mvp-api` | `litcrop-prod-api` |
+| CloudFront | (auto-generated) | Custom domain (#238) |
+| CloudWatch logs | `/litcrop/api-gateway-access` | `/litcrop/prod/api-gateway-access` |
+| SNS topic | `litcrop-alarms` | `litcrop-prod-alarms` |
+
+**Recommendation**: Parameterize resource names via CDK context or environment variable
+(`const env = this.node.tryGetContext('env') ?? 'mvp'`) to avoid a global find-replace.
+This is tracked as part of #239 (production-labeled AWS resources).
+
+**Logs bucket note**: `removalPolicy: DESTROY` is appropriate for MVP (30-day lifecycle,
+developer-managed). For production, change to `RETAIN` to preserve audit trail on stack operations.
+
+---
+
+## P0 Fix Log
+
+| Finding | Fix Applied | Date |
+|---------|-------------|------|
+| F-01 | CloudFront logging → `litcrop-mvp-logs/cloudfront/` | 2026-04-12 |
+| F-02 | API GW logging → CloudWatch `/litcrop/api-gateway-access` (JSON) | 2026-04-12 |
+| F-03 | S3 logging on 3 buckets → `litcrop-mvp-logs/s3-{images,static,thumbnails}/` | 2026-04-12 |
+| F-38 | PROJECT.yaml stage 6 → 5 | 2026-04-12 |
+| M-04 | `.gitignore` added `cdk.out/` | 2026-04-12 |
 
 ---
 
