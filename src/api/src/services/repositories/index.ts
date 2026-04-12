@@ -8,5 +8,4 @@ export * from './devices';
 export * from './diary';
 export * from './conversation';
 export * from './join-requests';
-export * from './account';
 export * from './notifications';

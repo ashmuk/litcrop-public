@@ -1,6 +1,6 @@
 import { GetCommand, QueryCommand, TransactWriteCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 import type { FarmRole, FarmMember } from '@litcrop/shared';
-import { DDB_KEY_PREFIXES, DEMO_FARM_ID } from '@litcrop/shared';
+import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { ddb, TABLE_NAME, pk, sk } from './_infrastructure';
 import { itemToFarmMember, buildMembershipItems } from './_mappers';
 

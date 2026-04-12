@@ -13,6 +13,7 @@ import * as devices from './repositories/devices';
 import * as diary from './repositories/diary';
 import * as conversation from './repositories/conversation';
 import * as joinRequests from './repositories/join-requests';
+// account.deleteAccount is implemented inline (needs this.* for test spies)
 import * as notifications from './repositories/notifications';
 
 // Re-export types for backward compatibility
