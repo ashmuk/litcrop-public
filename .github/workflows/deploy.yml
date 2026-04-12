@@ -102,12 +102,12 @@ jobs:
           fi
           echo "PASS: API /health → 200"
 
-          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${API_URL}/api/v1" || echo "000")
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${API_URL}/api/v1/health" || echo "000")
           if [ "$status" != "200" ]; then
-            echo "FAIL: API /api/v1 returned $status"
+            echo "FAIL: API /api/v1/health returned $status"
             exit 1
           fi
-          echo "PASS: API /api/v1 → 200"
+          echo "PASS: API /api/v1/health → 200"
 
           if [ -n "$FRONTEND_URL" ]; then
             status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$FRONTEND_URL" || echo "000")
