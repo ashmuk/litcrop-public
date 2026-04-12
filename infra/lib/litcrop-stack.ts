@@ -127,7 +127,7 @@ export class LitCropStack extends cdk.Stack {
       bucketName: 'litcrop-mvp-images',
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
-      versioned: false,
+      versioned: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN, // S10: preserve images on stack delete
       autoDeleteObjects: false,
       serverAccessLogsBucket: logsBucket,
@@ -146,6 +146,10 @@ export class LitCropStack extends cdk.Stack {
               transitionAfter: cdk.Duration.days(90),
             },
           ],
+        },
+        {
+          id: 'expire-noncurrent-versions',
+          noncurrentVersionExpiration: cdk.Duration.days(30),
         },
       ],
     });
@@ -285,7 +289,8 @@ function handler(event) {
 
     const apiLambda = new NodejsFunction(this, 'ApiLambda', {
       functionName: 'litcrop-api',
-      description: 'LitCrop MVP API — Hono router (11+ endpoints)',
+      description: 'LitCrop MVP API — Hono router',
+      currentVersionOptions: { removalPolicy: cdk.RemovalPolicy.RETAIN },
       entry: path.join(__dirname, '../../src/api/src/handler.ts'),
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -341,6 +346,12 @@ function handler(event) {
         SES_REGION: process.env['SES_REGION'] ?? 'ap-northeast-1',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
+    });
+
+    // F-04: Lambda alias for safe rollback — point API Gateway to alias, not $LATEST
+    const apiLambdaAlias = new lambda.Alias(this, 'ApiLambdaLive', {
+      aliasName: 'live',
+      version: apiLambda.currentVersion,
     });
 
     // Grant API Lambda permissions
@@ -435,7 +446,7 @@ function handler(event) {
     // HTTP API (v2) — cheaper than REST API, native JWT authorizer support
     // CORS configured here; Hono also validates (defense in depth)
 
-    const lambdaIntegration = new HttpLambdaIntegration('ApiIntegration', apiLambda);
+    const lambdaIntegration = new HttpLambdaIntegration('ApiIntegration', apiLambdaAlias);
 
     const httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
       apiName: 'litcrop-mvp-api',
@@ -571,7 +582,7 @@ function handler(event) {
     const lambdaErrorAlarm = new cloudwatch.Alarm(this, 'ApiLambdaErrorAlarm', {
       alarmName: 'litcrop-api-lambda-errors',
       alarmDescription: 'API Lambda recorded at least 1 error in 5 minutes',
-      metric: apiLambda.metricErrors({
+      metric: apiLambdaAlias.metricErrors({
         period: cdk.Duration.minutes(5),
         statistic: 'Sum',
       }),
@@ -620,6 +631,41 @@ function handler(event) {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
     attachAlarmActions(dynamoThrottleAlarm);
+
+    // ── F-35: AWS Budget Alert ($5 monthly ceiling) ─────────────────────────
+    if (!alarmEmail) {
+      console.warn('[CDK] ALARM_EMAIL not set — budget alert will NOT be created');
+    }
+    if (alarmEmail) {
+      new cdk.aws_budgets.CfnBudget(this, 'MonthlyCostBudget', {
+        budget: {
+          budgetName: 'litcrop-monthly-cost',
+          budgetType: 'COST',
+          timeUnit: 'MONTHLY',
+          budgetLimit: { amount: 5, unit: 'USD' },
+        },
+        notificationsWithSubscribers: [
+          {
+            notification: {
+              notificationType: 'ACTUAL',
+              comparisonOperator: 'GREATER_THAN',
+              threshold: 80,
+              thresholdType: 'PERCENTAGE',
+            },
+            subscribers: [{ subscriptionType: 'EMAIL', address: alarmEmail }],
+          },
+          {
+            notification: {
+              notificationType: 'ACTUAL',
+              comparisonOperator: 'GREATER_THAN',
+              threshold: 100,
+              thresholdType: 'PERCENTAGE',
+            },
+            subscribers: [{ subscriptionType: 'EMAIL', address: alarmEmail }],
+          },
+        ],
+      });
+    }
 
     // ── CloudFormation Outputs ────────────────────────────────────────────────
 

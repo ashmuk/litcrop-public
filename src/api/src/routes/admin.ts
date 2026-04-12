@@ -138,6 +138,9 @@ router.get('/activity', async (c) => {
   const userId = c.req.query('user_id');
   const farmId = c.req.query('farm_id');
   const q = c.req.query('q');
+  if (q && q.length > 500) {
+    throw new ValidationError('q must be 500 characters or fewer');
+  }
   const cursor = c.req.query('cursor');
   const limitRaw = c.req.query('limit');
 

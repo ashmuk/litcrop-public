@@ -5,6 +5,7 @@ import {
   GetCommand,
   QueryCommand,
   PutCommand,
+  ScanCommand,
   UpdateCommand,
   TransactWriteCommand,
   BatchWriteCommand,
@@ -741,6 +742,63 @@ describe('deleteAccount', () => {
     expect(summary.join_requests_deleted).toBe(0);
     expect(summary.profile_deleted).toBe(true);
     expect(summary.settings_deleted).toBe(true);
+  });
+});
+
+// ── getStats (cached) ─────────────────────────────────────────────
+
+describe('getStats', () => {
+  it('returns cached stats when cache is fresh', async () => {
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        PK: 'STATS#GLOBAL', SK: '#COUNTS',
+        farms: 5, users: 10, beds: 20,
+        computed_at: new Date().toISOString(),
+      },
+    });
+
+    const result = await repo.getStats();
+    expect(result).toEqual({ farms: 5, users: 10, beds: 20 });
+    expect(ddbMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  it('falls back to scan when cache is stale', async () => {
+    const staleDate = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        PK: 'STATS#GLOBAL', SK: '#COUNTS',
+        farms: 1, users: 1, beds: 1,
+        computed_at: staleDate,
+      },
+    });
+    ddbMock.on(ScanCommand).resolves({ Count: 3 });
+    ddbMock.on(PutCommand).resolves({});
+
+    const result = await repo.getStats();
+    expect(result).toEqual({ farms: 3, users: 3, beds: 3 });
+    expect(ddbMock.commandCalls(ScanCommand).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('falls back to scan when cache item is missing', async () => {
+    ddbMock.on(GetCommand).resolves({});
+    ddbMock.on(ScanCommand).resolves({ Count: 7 });
+    ddbMock.on(PutCommand).resolves({});
+
+    const result = await repo.getStats();
+    expect(result).toEqual({ farms: 7, users: 7, beds: 7 });
+  });
+
+  it('still returns stats when cache write fails', async () => {
+    ddbMock.on(GetCommand).resolves({});
+    ddbMock.on(ScanCommand).resolves({ Count: 2 });
+    ddbMock.on(PutCommand).rejects(new Error('write throttled'));
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await repo.getStats();
+    expect(result).toEqual({ farms: 2, users: 2, beds: 2 });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[getStats]'), expect.any(Error));
+    warn.mockRestore();
   });
 });
 

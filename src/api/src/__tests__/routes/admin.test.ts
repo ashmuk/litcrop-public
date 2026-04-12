@@ -271,6 +271,19 @@ describe('GET /api/v1/admin/activity', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when q exceeds 500 characters', async () => {
+    const longQ = 'x'.repeat(501);
+    const res = await app.request(`/api/v1/admin/activity?q=${longQ}`, { headers: adminHeaders() });
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts q at exactly 500 characters', async () => {
+    vi.mocked(queryActivities).mockResolvedValue({ activities: [], next_cursor: undefined });
+    const okQ = 'x'.repeat(500);
+    const res = await app.request(`/api/v1/admin/activity?q=${okQ}`, { headers: adminHeaders() });
+    expect(res.status).toBe(200);
+  });
+
   it('returns 403 for non-admin user', async () => {
     const res = await app.request('/api/v1/admin/activity', { headers: authHeaders() });
     expect(res.status).toBe(403);

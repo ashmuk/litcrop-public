@@ -362,6 +362,26 @@ developer-managed). For production, change to `RETAIN` to preserve audit trail o
 | F-38 | PROJECT.yaml stage 6 → 5 | 2026-04-12 |
 | M-04 | `.gitignore` added `cdk.out/` | 2026-04-12 |
 
+## P1 Fix Log
+
+| Finding | Fix Applied | Date |
+|---------|-------------|------|
+| F-04 | Lambda alias (`live`) + `currentVersionOptions` for rollback | 2026-04-12 |
+| F-06 | Post-deploy smoke test in deploy.yml (API health + frontend) | 2026-04-12 |
+| F-07 | Images bucket `versioned: true` + 30-day noncurrent expiry | 2026-04-12 |
+| F-23 | Admin search `q` param max 500 chars + 2 tests | 2026-04-12 |
+| F-24 | getStats() DynamoDB cache (5-min TTL, scan fallback) + 4 tests | 2026-04-12 |
+| F-35 | AWS Budget alert ($5/mo, 80%+100% thresholds) | 2026-04-12 |
+| F-05 | Resolved by P0: structured JSON API GW logs → CloudWatch Insights | 2026-04-12 |
+
+### P1 Deferred
+
+| Finding | Reason | Tracked |
+|---------|--------|---------|
+| F-21 | CSP `unsafe-inline` required by Astro `<script is:inline>` — needs nonce-based CSP with SSR or CF Function | CON-256-04 |
+| F-25 | Global throttle exists (100 req/s); per-user rate limiting on chat exists; Cognito throttles login | Partially resolved |
+| F-11 | Playwright E2E requires infrastructure setup — separate PR | Backlog |
+
 ---
 
 > Audit performed using `.agent/prompts/review/project_review_master_prompt.md` framework.

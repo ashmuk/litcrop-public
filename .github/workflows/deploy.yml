@@ -62,6 +62,7 @@ jobs:
         working-directory: infra
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
+          ALARM_EMAIL: ${{ vars.ALARM_EMAIL }}
           SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL }}
           SES_REGION: ${{ vars.SES_REGION }}
 
@@ -87,6 +88,36 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "$CLOUDFRONT_DIST_ID" \
             --paths "/*"
+
+      - name: Post-deploy smoke test
+        env:
+          API_URL: ${{ vars.PUBLIC_API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: |
+          echo "Running smoke tests..."
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${API_URL}/health" || echo "000")
+          if [ "$status" != "200" ]; then
+            echo "FAIL: API health check returned $status"
+            exit 1
+          fi
+          echo "PASS: API /health → 200"
+
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${API_URL}/api/v1" || echo "000")
+          if [ "$status" != "200" ]; then
+            echo "FAIL: API /api/v1 returned $status"
+            exit 1
+          fi
+          echo "PASS: API /api/v1 → 200"
+
+          if [ -n "$FRONTEND_URL" ]; then
+            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$FRONTEND_URL" || echo "000")
+            if [ "$status" != "200" ]; then
+              echo "WARN: Frontend returned $status (may still be propagating)"
+            else
+              echo "PASS: Frontend → 200"
+            fi
+          fi
+          echo "Smoke tests complete."
 
       - name: Deployment summary
         env:

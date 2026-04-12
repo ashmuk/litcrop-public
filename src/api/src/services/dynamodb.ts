@@ -950,6 +950,23 @@ export class DynamoRepository {
    * Uses paginated scans with Select:COUNT — acceptable at MVP scale.
    */
   async getStats(): Promise<{ farms: number; users: number; beds: number }> {
+    const CACHE_KEY = { PK: 'STATS#GLOBAL', SK: '#COUNTS' };
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+
+    const cached = await ddb.send(
+      new GetCommand({ TableName: TABLE_NAME, Key: CACHE_KEY }),
+    );
+    if (cached.Item && typeof cached.Item['computed_at'] === 'string') {
+      const age = Date.now() - new Date(cached.Item['computed_at']).getTime();
+      if (age < CACHE_TTL_MS) {
+        return {
+          farms: (cached.Item['farms'] as number) ?? 0,
+          users: (cached.Item['users'] as number) ?? 0,
+          beds: (cached.Item['beds'] as number) ?? 0,
+        };
+      }
+    }
+
     const countScan = async (
       filterExpr: string,
       exprValues: Record<string, string>,
@@ -977,6 +994,12 @@ export class DynamoRepository {
       countScan('begins_with(PK, :p) AND SK = :s', { ':p': 'USER#', ':s': '#PROFILE' }),
       countScan('begins_with(SK, :s)', { ':s': 'BED#' }),
     ]);
+
+    // Cache result (fire-and-forget)
+    ddb.send(new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { ...CACHE_KEY, farms, users, beds, computed_at: new Date().toISOString() },
+    })).catch((err) => console.warn('[getStats] cache write failed:', err));
 
     return { farms, users, beds };
   }
