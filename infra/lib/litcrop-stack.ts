@@ -21,16 +21,54 @@ import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-al
 import { HttpJwtAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 
+interface LitCropStackProps extends cdk.StackProps {
+  envName: 'mvp' | 'prod';
+}
+
 export class LitCropStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: LitCropStackProps) {
     super(scope, id, props);
+    const { envName } = props;
+
+    // ── Environment-aware resource naming ────────────────────────────
+    // Staging (envName='mvp'): keeps exact current names to avoid CloudFormation replacements
+    // Production (envName='prod'): uses litcrop-prod-* pattern for new resources
+    const prefix = `litcrop-${envName}`;  // litcrop-mvp or litcrop-prod
+    // Staging resources that predate the prefix convention use bare "litcrop-*" names.
+    // Production always uses "litcrop-prod-*". Helper keeps the ternaries in one place.
+    const bare = envName === 'mvp' ? 'litcrop' : 'litcrop-prod';
+    const names = {
+      // Resources that already use litcrop-{env}-* pattern
+      cognitoPool: `${prefix}-users`,
+      cognitoClient: `${prefix}-web`,
+      dynamoTable: prefix,
+      s3Images: `${prefix}-images`,
+      s3Static: `${prefix}-static`,
+      s3Thumbnails: `${prefix}-thumbnails`,
+      s3Logs: `${prefix}-logs`,
+      apiGateway: `${prefix}-api`,
+      // Resources with bare names in staging (no "mvp" infix)
+      lambdaApi: `${bare}-api`,
+      lambdaThumb: `${bare}-thumb`,
+      cfFunction: `${bare}-url-rewrite`,
+      headersPolicy: `${bare}-security-headers`,
+      snsAlarms: `${bare}-alarms`,
+      snsDisplay: envName === 'mvp' ? 'LitCrop Alerts' : 'LitCrop Prod Alerts',
+      logGroup: envName === 'mvp' ? '/litcrop/api-gateway-access' : '/litcrop/prod/api-gateway-access',
+      alarmLambdaErrors: `${bare}-api-lambda-errors`,
+      alarm5xx: `${bare}-api-5xx`,
+      alarmDynamoThrottle: `${bare}-dynamo-throttle`,
+      budgetName: 'litcrop-monthly-cost',     // shared (account-level, staging only)
+      // Display label for descriptions — preserves current 'MVP' casing for zero-diff
+      label: envName === 'mvp' ? 'MVP' : 'Production',
+    };
 
     // ── T-CDK-07: Cognito User Pool + App Client ──────────────────────────────
     // FR-11.1–11.3: User registration, login, password policy
     // FR-11.11: Password policy (8+ chars, mixed case + number)
 
     const userPool = new cognito.UserPool(this, 'UserPool', {
-      userPoolName: 'litcrop-mvp-users',
+      userPoolName: names.cognitoPool,
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       autoVerify: { email: true },
@@ -50,7 +88,7 @@ export class LitCropStack extends cdk.Stack {
 
     const userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
       userPool,
-      userPoolClientName: 'litcrop-mvp-web',
+      userPoolClientName: names.cognitoClient,
       generateSecret: false, // Frontend SPA — no client secret
       authFlows: {
         userPassword: true,
@@ -75,7 +113,7 @@ export class LitCropStack extends cdk.Stack {
     // TTL attribute for conversation history expiry (Phase 3)
 
     const table = new dynamodb.Table(this, 'Table', {
-      tableName: 'litcrop-mvp',
+      tableName: names.dynamoTable,
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -105,7 +143,7 @@ export class LitCropStack extends cdk.Stack {
     // 30-day lifecycle keeps storage costs bounded per CON-256-02.
 
     const logsBucket = new s3.Bucket(this, 'LogsBucket', {
-      bucketName: 'litcrop-mvp-logs',
+      bucketName: names.s3Logs,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: false,
@@ -124,7 +162,7 @@ export class LitCropStack extends cdk.Stack {
     // 3 buckets: images (lifecycle policies), static (CloudFront), thumbnails
 
     const imagesBucket = new s3.Bucket(this, 'ImagesBucket', {
-      bucketName: 'litcrop-mvp-images',
+      bucketName: names.s3Images,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: true,
@@ -155,7 +193,7 @@ export class LitCropStack extends cdk.Stack {
     });
 
     const staticBucket = new s3.Bucket(this, 'StaticBucket', {
-      bucketName: 'litcrop-mvp-static',
+      bucketName: names.s3Static,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: false,
@@ -166,7 +204,7 @@ export class LitCropStack extends cdk.Stack {
     });
 
     const thumbnailsBucket = new s3.Bucket(this, 'ThumbnailsBucket', {
-      bucketName: 'litcrop-mvp-thumbnails',
+      bucketName: names.s3Thumbnails,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: false,
@@ -187,7 +225,7 @@ export class LitCropStack extends cdk.Stack {
     // Without this, S3 returns 403 for directory paths and CloudFront's error fallback
     // serves /index.html (the root page) instead of the intended sub-page.
     const rewriteFunction = new cloudfront.Function(this, 'UrlRewriteFunction', {
-      functionName: 'litcrop-url-rewrite',
+      functionName: names.cfFunction,
       comment: 'Append index.html to directory paths for Astro SSG',
       code: cloudfront.FunctionCode.fromInline(`
 function handler(event) {
@@ -208,7 +246,7 @@ function handler(event) {
 
     // ── H-03: Security Response Headers (CSP, HSTS, X-Frame-Options) ────────
     const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'SecurityHeaders', {
-      responseHeadersPolicyName: 'litcrop-security-headers',
+      responseHeadersPolicyName: names.headersPolicy,
       securityHeadersBehavior: {
         contentSecurityPolicy: {
           contentSecurityPolicy: [
@@ -261,14 +299,16 @@ function handler(event) {
       })),
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200, // H-06: exclude expensive regions, keep Asia
-      comment: 'LitCrop static frontend — Astro SSG',
+      comment: `LitCrop ${names.label} static frontend — Astro SSG`,
       enableLogging: true,
       logBucket: logsBucket,
       logFilePrefix: 'cloudfront/',
     });
 
     // ── SSM Parameters ────────────────────────────────────────────────────────
-    // LLM API key stored as SecureString; reference resolved at deploy time
+    // LLM API key stored as SecureString; reference resolved at deploy time.
+    // Intentionally shared across environments (same Anthropic key for stg+prod).
+    // For multi-account: split to /litcrop/${envName}/llm-api-key.
 
     const llmApiKeyParam = ssm.StringParameter.fromSecureStringParameterAttributes(
       this,
@@ -288,8 +328,8 @@ function handler(event) {
     // Matches existing esbuild.config.mjs: CJS format, node22 target, @aws-sdk external
 
     const apiLambda = new NodejsFunction(this, 'ApiLambda', {
-      functionName: 'litcrop-api',
-      description: 'LitCrop MVP API — Hono router',
+      functionName: names.lambdaApi,
+      description: `LitCrop ${names.label} API — Hono router`,
       currentVersionOptions: { removalPolicy: cdk.RemovalPolicy.RETAIN },
       entry: path.join(__dirname, '../../src/api/src/handler.ts'),
       handler: 'handler',
@@ -395,8 +435,8 @@ function handler(event) {
 
     // Thumbnail Lambda — Phase 4: full sharp-based thumbnail generation
     const thumbnailLambda = new NodejsFunction(this, 'ThumbnailLambda', {
-      functionName: 'litcrop-thumb',
-      description: 'LitCrop MVP — thumbnail generator (300x300 center-crop)',
+      functionName: names.lambdaThumb,
+      description: `LitCrop ${names.label} — thumbnail generator (300x300 center-crop)`,
       entry: path.join(__dirname, '../../src/thumbnail/handler.ts'),
       depsLockFilePath: path.join(__dirname, '../../src/thumbnail/package-lock.json'),
       handler: 'handler',
@@ -449,8 +489,8 @@ function handler(event) {
     const lambdaIntegration = new HttpLambdaIntegration('ApiIntegration', apiLambdaAlias);
 
     const httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
-      apiName: 'litcrop-mvp-api',
-      description: 'LitCrop MVP HTTP API',
+      apiName: names.apiGateway,
+      description: `LitCrop ${names.label} HTTP API`,
       corsPreflight: {
         allowOrigins: [
           'http://localhost:4321',
@@ -536,7 +576,7 @@ function handler(event) {
 
     // ── F-02: API Gateway Access Logging ──────────────────────────────────────
     const apiAccessLog = new logs.LogGroup(this, 'ApiAccessLog', {
-      logGroupName: '/litcrop/api-gateway-access',
+      logGroupName: names.logGroup,
       retention: logs.RetentionDays.ONE_MONTH,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -560,8 +600,8 @@ function handler(event) {
     // ── H-05: CloudWatch Alarms + SNS Notifications ────────────────────────
     // SNS topic for alarm notifications — email subscription via env var
     const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
-      topicName: 'litcrop-alarms',
-      displayName: 'LitCrop Alerts',
+      topicName: names.snsAlarms,
+      displayName: names.snsDisplay,
     });
 
     // Subscribe admin email if provided (empty string → no subscription)
@@ -580,7 +620,7 @@ function handler(event) {
 
     // Alarm 1: API Lambda error rate > 1% (5-minute evaluation)
     const lambdaErrorAlarm = new cloudwatch.Alarm(this, 'ApiLambdaErrorAlarm', {
-      alarmName: 'litcrop-api-lambda-errors',
+      alarmName: names.alarmLambdaErrors,
       alarmDescription: 'API Lambda recorded at least 1 error in 5 minutes',
       metric: apiLambdaAlias.metricErrors({
         period: cdk.Duration.minutes(5),
@@ -595,7 +635,7 @@ function handler(event) {
 
     // Alarm 2: API Gateway 5xx count > 5 in 5 minutes
     const api5xxAlarm = new cloudwatch.Alarm(this, 'Api5xxAlarm', {
-      alarmName: 'litcrop-api-5xx',
+      alarmName: names.alarm5xx,
       alarmDescription: 'API Gateway 5xx errors exceed 5 in 5 minutes',
       metric: new cloudwatch.Metric({
         namespace: 'AWS/ApiGateway',
@@ -613,7 +653,7 @@ function handler(event) {
 
     // Alarm 3: DynamoDB throttled requests > 0
     const dynamoThrottleAlarm = new cloudwatch.Alarm(this, 'DynamoThrottleAlarm', {
-      alarmName: 'litcrop-dynamo-throttle',
+      alarmName: names.alarmDynamoThrottle,
       alarmDescription: 'DynamoDB read/write throttling detected',
       metric: table.metricThrottledRequestsForOperations({
         operations: [
@@ -636,10 +676,10 @@ function handler(event) {
     if (!alarmEmail) {
       console.warn('[CDK] ALARM_EMAIL not set — budget alert will NOT be created');
     }
-    if (alarmEmail) {
+    if (alarmEmail && envName === 'mvp') {
       new cdk.aws_budgets.CfnBudget(this, 'MonthlyCostBudget', {
         budget: {
-          budgetName: 'litcrop-monthly-cost',
+          budgetName: names.budgetName,
           budgetType: 'COST',
           timeUnit: 'MONTHLY',
           budgetLimit: { amount: 5, unit: 'USD' },
@@ -709,6 +749,11 @@ function handler(event) {
       description: 'S3 thumbnails bucket name',
     });
 
+    new cdk.CfnOutput(this, 'EnvironmentName', {
+      value: envName,
+      description: 'Deployment environment (mvp=staging, prod=production)',
+    });
+
     // ── CDK-Nag Security Checks ───────────────────────────────────────────────
     // Validates stack against AWS Solutions security rules (FR-14.7)
     // Suppressions document accepted MVP deviations with explicit justification
@@ -718,7 +763,7 @@ function handler(event) {
     NagSuppressions.addStackSuppressions(this, [
       {
         id: 'AwsSolutions-S1',
-        reason: 'Logs bucket does not log itself (circular); all other buckets log to litcrop-mvp-logs',
+        reason: `Logs bucket does not log itself (circular); all other buckets log to ${names.s3Logs}`,
       },
       {
         id: 'AwsSolutions-S10',
@@ -734,7 +779,7 @@ function handler(event) {
       },
       {
         id: 'AwsSolutions-CFR3',
-        reason: 'CloudFront access logging enabled; logs to litcrop-mvp-logs/cloudfront/',
+        reason: `CloudFront access logging enabled; logs to ${names.s3Logs}/cloudfront/`,
       },
       {
         id: 'AwsSolutions-CFR4',
