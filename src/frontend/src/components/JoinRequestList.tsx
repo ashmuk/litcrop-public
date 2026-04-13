@@ -46,7 +46,14 @@ export default function JoinRequestList({ farmId, onMemberAdded }: Props) {
     return <div class="skeleton" style="height:40px;border-radius:var(--radius-sm);margin-top:var(--space-2)" />;
   }
 
-  if (requests.length === 0) return null;
+  if (requests.length === 0) {
+    return (
+      <div class="empty-state" style="padding:var(--space-4)">
+        <span class="empty-state__icon">📬</span>
+        <p class="empty-state__heading">{t('join_requests.empty')}</p>
+      </div>
+    );
+  }
 
   return (
     <div style="margin-top:var(--space-3);padding-top:var(--space-2);border-top:var(--border-default)">

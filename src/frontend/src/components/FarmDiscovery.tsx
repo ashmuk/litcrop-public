@@ -56,8 +56,9 @@ export default function FarmDiscovery() {
       </h3>
 
       {farms.length === 0 ? (
-        <div style="color:var(--color-gray-500);font-size:var(--font-size-sm)">
-          {t('discovery.no_farms')}
+        <div class="empty-state">
+          <span class="empty-state__icon">🌾</span>
+          <p class="empty-state__heading">{t('discovery.no_farms')}</p>
         </div>
       ) : (
         <div style="display:flex;flex-direction:column;gap:var(--space-2)">

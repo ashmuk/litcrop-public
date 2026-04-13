@@ -591,8 +591,9 @@ function ActivityPanel({
         </div>
       )}
       {!isLoading && !hasError && activities !== null && activities.length === 0 && (
-        <div style="color:var(--color-gray-500);text-align:center;padding:var(--space-6)">
-          <div>{t('admin.activity_empty')}</div>
+        <div class="empty-state">
+          <span class="empty-state__icon">📋</span>
+          <p class="empty-state__heading">{t('admin.activity_empty')}</p>
           <button
             onClick={onResetFilters}
             style="margin-top:var(--space-2);font-size:var(--font-size-sm);color:var(--color-primary);background:none;border:none;cursor:pointer;text-decoration:underline"

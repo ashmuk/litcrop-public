@@ -210,7 +210,11 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
   if (!hasActive && !hasDone) {
     return (
       <div class="gantt">
-        <div class="gantt__empty">{t('gantt.empty')}</div>
+        <div class="empty-state">
+          <span class="empty-state__icon">📊</span>
+          <p class="empty-state__heading">{t('gantt.empty')}</p>
+          <p class="empty-state__body">Add crop dates to beds to see them here.</p>
+        </div>
       </div>
     );
   }
