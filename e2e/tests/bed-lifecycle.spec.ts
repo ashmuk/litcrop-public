@@ -31,8 +31,8 @@ const API_BED_DETAIL_EMPTY = API_BEDS[1];
 
 test.describe('Bed Lifecycle', () => {
   test.beforeEach(async ({ authenticatedPage, mockApi }) => {
-    // Seed localStorage with active farm
-    await authenticatedPage.evaluate((id) => {
+    // Seed localStorage with active farm (addInitScript runs before page scripts)
+    await authenticatedPage.addInitScript((id) => {
       localStorage.setItem('litcrop-farmId', id);
       localStorage.setItem('litcrop-farmName', 'E2E Test Farm');
       // Set owner role so the edit button is visible

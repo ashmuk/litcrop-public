@@ -24,8 +24,8 @@ import {
 
 test.describe('Farm Overview', () => {
   test.beforeEach(async ({ authenticatedPage, mockApi }) => {
-    // Seed farmId in localStorage before navigation
-    await authenticatedPage.evaluate((id) => {
+    // Seed farmId in localStorage before navigation (addInitScript runs before page scripts)
+    await authenticatedPage.addInitScript((id) => {
       localStorage.setItem('litcrop-farmId', id);
       localStorage.setItem('litcrop-farmName', 'E2E Test Farm');
     }, FARM_ID);
@@ -87,7 +87,7 @@ test.describe('Farm Overview', () => {
 test.describe('Farm Creation', () => {
   test.beforeEach(async ({ authenticatedPage, mockApi }) => {
     // Clear farmId so the app treats this user as having no farm
-    await authenticatedPage.evaluate(() => {
+    await authenticatedPage.addInitScript(() => {
       localStorage.removeItem('litcrop-farmId');
       localStorage.removeItem('litcrop-farmName');
     });

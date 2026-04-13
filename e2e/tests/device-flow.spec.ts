@@ -37,8 +37,8 @@ const REGISTRATION_RESULT = {
 
 test.describe('Device Management', () => {
   test.beforeEach(async ({ authenticatedPage, mockApi }) => {
-    // Seed localStorage with active farm and owner role
-    await authenticatedPage.evaluate((id) => {
+    // Seed localStorage with active farm and owner role (addInitScript runs before page scripts)
+    await authenticatedPage.addInitScript((id) => {
       localStorage.setItem('litcrop-farmId', id);
       localStorage.setItem('litcrop-farmName', 'E2E Test Farm');
       localStorage.setItem(

@@ -111,7 +111,7 @@ describe('PATCH /api/v1/me/settings', () => {
   });
 
   it('syncs all registration preferences in one call (locale + temp_unit + theme)', async () => {
-    const synced = { ...settingsFixture, locale: 'ja', temp_unit: 'F', theme: 'earthy' };
+    const synced = { ...settingsFixture, locale: 'ja' as const, temp_unit: 'F' as const, theme: 'earthy' as const };
     mockRepo.upsertUserSettings.mockResolvedValue(synced);
     const res = await app.request('/api/v1/me/settings', {
       method: 'PATCH',
