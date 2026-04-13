@@ -123,7 +123,9 @@ router.post('/notifications/test', async (c) => {
   lastTestEmailAt = now;
 
   const testResult = await sendTestEmail();
-  return c.json(testResult, testResult.success ? 200 : 500);
+  // Return 200 even on failure — the response body has { success, error } for diagnostics.
+  // 500 should be reserved for unexpected crashes, not "SES not configured".
+  return c.json(testResult);
 });
 
 // ── GET /api/v1/admin/activity ────────────────────────────────────

@@ -409,9 +409,10 @@ describe('POST /api/v1/admin/notifications/test', () => {
       headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: '{}',
     });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['success']).toBe(false);
+    expect(body['error']).toBe('SES_FROM_EMAIL not set');
   });
 
   it('unauthenticated gets 401', async () => {
