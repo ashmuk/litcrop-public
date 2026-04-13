@@ -201,10 +201,10 @@
   --color-background:       #F0EDE4;
 
   --color-status-healthy:     #5A7D4F; /* sage green — darkened for contrast */
-  --color-status-slow-growth: #B89B5E; /* warm amber / wheat */
-  --color-status-issue:       #B85C4A; /* terracotta red */
-  --color-status-animal:      #C07842; /* burnt sienna */
-  --color-status-no-data:     #8A7F73; /* warm gray */
+  --color-status-slow-growth: #806B33; /* warm amber — WCAG AA: 4.99:1 on surface */
+  --color-status-issue:       #9A4A3A; /* terracotta red — WCAG AA: 5.95:1 on surface */
+  --color-status-animal:      #9A5F34; /* burnt sienna — WCAG AA: 5.00:1 on surface */
+  --color-status-no-data:     #706559; /* warm gray — WCAG AA: 5.50:1 on surface */
 
   --color-status-healthy-bg:     #ECF0E8;
   --color-status-slow-growth-bg: #F5F0E0;
@@ -215,9 +215,9 @@
   --color-motion:    #C07842;
   --color-motion-bg: #F5EDE4;
 
-  --color-error:   #B85C4A;
+  --color-error:   #9A4A3A;
   --color-success: #5A7D4F;
-  --color-info:    #5E7F9B;
+  --color-info:    #4D6B84; /* WCAG AA: 5.42:1 on surface */
 
   --border-default: 1px solid #C9BFB3;
   --shadow-sm:  0 1px 2px rgba(59, 53, 48, 0.08);

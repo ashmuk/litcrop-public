@@ -170,7 +170,7 @@ export default function ResetPasswordForm() {
 
   function StepDots() {
     return (
-      <div class="step-indicator" aria-label={`Step ${step} of 2`}>
+      <div class="step-indicator" role="group" aria-label={`Step ${step} of 2`}>
         {([1, 2] as const).map((s) => (
           <div
             key={s}

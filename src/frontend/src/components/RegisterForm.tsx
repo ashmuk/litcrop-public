@@ -262,7 +262,7 @@ export default function RegisterForm() {
 
   function StepDots() {
     return (
-      <div class="step-indicator" role="progressbar" aria-label={`Step ${step} of 3`} aria-valuenow={step} aria-valuemin={1} aria-valuemax={3}>
+      <div class="step-indicator" role="group" aria-label={`Step ${step} of 3`}>
         {([1, 2, 3] as Step[]).map((s) => (
           <div
             key={s}
