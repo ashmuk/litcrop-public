@@ -88,11 +88,12 @@ test.describe('Diary Page', () => {
     await expect(entries).toHaveCount(TEST_DIARY_ENTRIES.length);
   });
 
-  test('diary entries show category and description text', async ({ authenticatedPage }) => {
+  test('diary entries show description text from at least one entry', async ({ authenticatedPage }) => {
     await authenticatedPage.waitForSelector('.diary-entry', { timeout: 8_000 });
-    // The first entry in TEST_DIARY_ENTRIES has category 'planting'
-    const firstEntry = authenticatedPage.locator('.diary-entry').first();
-    await expect(firstEntry).toContainText(TEST_DIARY_ENTRIES[0].description);
+    // Entries are sorted by date DESC — last entry (harvesting) appears first
+    const lastEntry = TEST_DIARY_ENTRIES[TEST_DIARY_ENTRIES.length - 1];
+    const allEntries = authenticatedPage.locator('.diary-entry');
+    await expect(allEntries.first()).toContainText(lastEntry.description);
   });
 
   test('clicking Add Entry opens the diary bottom sheet form', async ({ authenticatedPage }) => {
@@ -145,8 +146,8 @@ test.describe('Diary Page', () => {
   });
 
   test('calendar view toggle switches to calendar layout', async ({ authenticatedPage }) => {
-    // The calendar toggle button has aria-pressed and is in .diary-header__toggle
-    const calBtn = authenticatedPage.locator('button[aria-pressed]');
+    // Select the Calendar button specifically by its title attribute
+    const calBtn = authenticatedPage.locator('button[title="Calendar"]');
     await expect(calBtn).toBeVisible({ timeout: 5_000 });
     await calBtn.click();
 
