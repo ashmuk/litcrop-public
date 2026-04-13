@@ -7,6 +7,9 @@
 # Does NOT require sudo for the core setup.
 #
 # Usage:
+#   curl -sL https://litcrop.com/install.sh | bash
+#
+#   Or from GitHub:
 #   curl -sL https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/install.sh | bash
 #
 #   Or manually:
@@ -18,6 +21,13 @@
 # ──────────────────────────────────────────────────────────────────
 
 set -euo pipefail
+
+# Detect if running interactively (stdin is a TTY) vs piped from curl
+if [ -t 0 ]; then
+  INTERACTIVE=1
+else
+  INTERACTIVE=0
+fi
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -104,8 +114,13 @@ CRON_LINE="*/30 5-20 * * * ${LITCROP_DIR}/capture.sh >> ${LITCROP_DIR}/logs/capt
 if crontab -l 2>/dev/null | grep -qF "capture.sh"; then
     warn "Cron job already exists — skipping"
 else
-    read -rp "Set up cron job for scheduled capture every 30 min (5am-8pm)? [Y/n] " setup_cron
-    setup_cron="${setup_cron:-Y}"
+    if [ "$INTERACTIVE" = 1 ]; then
+      read -rp "Set up cron job for scheduled capture every 30 min (5am-8pm)? [Y/n] " setup_cron
+      setup_cron="${setup_cron:-Y}"
+    else
+      setup_cron="Y"
+      info "Non-interactive mode: auto-enabling cron job"
+    fi
     if [[ "$setup_cron" =~ ^[Yy]$ ]]; then
         (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
         info "Cron job added: every 30 minutes, 5am-8pm"
@@ -125,13 +140,19 @@ echo "  • Battery HAT → Class 2 (Power-managed)"
 echo "  • PIR sensor  → Class 3 (Sensor-equipped)"
 echo ""
 
-read -rp "Does this device have a battery HAT? [y/N] " battery_answer
 HAS_BATTERY_SENSOR=0
-[[ "$battery_answer" =~ ^[yY]$ ]] && HAS_BATTERY_SENSOR=1
-
-read -rp "Does this device have a PIR motion sensor? [y/N] " pir_answer
 HAS_PIR_SENSOR=0
-[[ "$pir_answer" =~ ^[yY]$ ]] && HAS_PIR_SENSOR=1
+
+if [ "$INTERACTIVE" = 1 ]; then
+  read -rp "Does this device have a battery HAT? [y/N] " battery_answer
+  [[ "$battery_answer" =~ ^[yY]$ ]] && HAS_BATTERY_SENSOR=1
+
+  read -rp "Does this device have a PIR motion sensor? [y/N] " pir_answer
+  [[ "$pir_answer" =~ ^[yY]$ ]] && HAS_PIR_SENSOR=1
+else
+  info "Non-interactive mode: defaulting to Class 1 (no battery HAT, no PIR)"
+  info "Re-run install.sh manually to configure hardware: bash ~/litcrop/install.sh"
+fi
 
 # Write hardware flags to a dedicated file (not .env — keeps credentials
 # separate from hardware config, so .env can be overwritten safely)

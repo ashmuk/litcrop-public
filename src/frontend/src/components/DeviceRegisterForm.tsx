@@ -225,7 +225,7 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
           <div style="font-size:var(--font-size-xs);color:var(--color-gray-500)">{t('device.refresh_token_hint')}</div>
         </div>
 
-        {/* Setup guide — simplified 3-step flow */}
+        {/* Setup guide — 4-step flow */}
         <div style="background:var(--color-gray-100);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
           <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--space-3)">
             {t('device.setup_guide_title')}
@@ -276,27 +276,40 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
               </div>
             </div>
 
-            {/* Step 2: Copy to Pi + Test */}
+            {/* Step 2: Install on Pi */}
             <div style="display:flex;gap:var(--space-2)">
               <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--color-primary);color:white;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);flex-shrink:0">2</span>
               <div style="flex:1">
                 <div style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">{t('device.guide_step2_title')}</div>
                 <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">{t('device.guide_step2_desc')}</div>
-                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-2);border:var(--border-default);display:flex;flex-direction:column;gap:var(--space-1)">
-                  <div style="color:var(--color-gray-500)"># {t('device.guide_step2_copy')}</div>
-                  <div>scp litcrop-{result.device_id}.env pi@raspberrypi.local:~/.litcrop.env</div>
-                  <div style="color:var(--color-gray-500);margin-top:var(--space-1)"># {t('device.guide_step2_test')}</div>
-                  <div>source ~/.litcrop.env && ./test-device-heartbeat.sh</div>
+                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-2);border:var(--border-default)">
+                  <div>{t('device.guide_step2_command')}</div>
                 </div>
                 <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">{t('device.guide_step2_hint')}</div>
               </div>
             </div>
 
-            {/* Step 3: Verify */}
+            {/* Step 3: Copy config to Pi + Test */}
             <div style="display:flex;gap:var(--space-2)">
               <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--color-primary);color:white;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);flex-shrink:0">3</span>
               <div style="flex:1">
                 <div style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">{t('device.guide_step3_title')}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">{t('device.guide_step3_desc')}</div>
+                <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-2);font-family:monospace;font-size:var(--font-size-xs);margin-top:var(--space-2);border:var(--border-default);display:flex;flex-direction:column;gap:var(--space-1)">
+                  <div style="color:var(--color-gray-500)"># {t('device.guide_step3_copy')}</div>
+                  <div>scp litcrop-{result.device_id}.env pi@raspberrypi.local:~/litcrop/.env</div>
+                  <div style="color:var(--color-gray-500);margin-top:var(--space-1)"># {t('device.guide_step3_test')}</div>
+                  <div>cd ~/litcrop && source .env && bash capture.sh</div>
+                </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">{t('device.guide_step3_hint')}</div>
+              </div>
+            </div>
+
+            {/* Step 4: Verify */}
+            <div style="display:flex;gap:var(--space-2)">
+              <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--color-primary);color:white;font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);flex-shrink:0">4</span>
+              <div style="flex:1">
+                <div style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900)">{t('device.guide_step4_title')}</div>
                 <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);padding:var(--space-2);background:var(--color-surface);border-radius:var(--radius-md);border:var(--border-default)">
                   <span>&#x1F534;</span>
                   <span style="color:var(--color-gray-500)">{t('device.guide_verify_before')}</span>
@@ -304,7 +317,7 @@ export default function DeviceRegisterForm({ farmId, onSuccess, onCancel }: Prop
                   <span>&#x1F7E2;</span>
                   <span style="font-weight:var(--font-weight-semibold)">{t('device.guide_verify_after')}</span>
                 </div>
-                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">{t('device.guide_step3_desc')}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:var(--space-1)">{t('device.guide_step4_desc')}</div>
               </div>
             </div>
 
