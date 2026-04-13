@@ -14,14 +14,19 @@ import { showToast } from './Toast';
 export default function FarmDiscovery() {
   const [farms, setFarms] = useState<DiscoverableFarmItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [requesting, setRequesting] = useState<string | null>(null);
 
-  useEffect(() => {
+  function loadFarms() {
+    setError(false);
+    setLoading(true);
     getDiscoverableFarms()
       .then(setFarms)
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadFarms(); }, []);
 
   async function handleJoin(farmId: string) {
     setRequesting(farmId);
@@ -55,7 +60,15 @@ export default function FarmDiscovery() {
         🔍 {t('discovery.title')}
       </h3>
 
-      {farms.length === 0 ? (
+      {error ? (
+        <div class="empty-state">
+          <span class="empty-state__icon">⚠️</span>
+          <p class="empty-state__heading">{t('discovery.error')}</p>
+          <button class="btn-primary" style="margin-top:var(--space-2);font-size:var(--font-size-sm)" onClick={loadFarms}>
+            {t('buttons.retry')}
+          </button>
+        </div>
+      ) : farms.length === 0 ? (
         <div class="empty-state">
           <span class="empty-state__icon">🌾</span>
           <p class="empty-state__heading">{t('discovery.no_farms')}</p>

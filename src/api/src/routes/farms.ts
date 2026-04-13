@@ -103,6 +103,42 @@ router.get('/', async (c) => {
   return c.json({ data: farms.filter((f): f is NonNullable<typeof f> => f !== null) });
 });
 
+// ── GET /api/v1/farms/discoverable ──────────────────────────────
+// Must be BEFORE /:farmId — Hono matches /:farmId first otherwise.
+
+router.get('/discoverable', async (c) => {
+  const { userId } = getAuthContext(c);
+
+  try {
+    const farms = await dynamoRepo.getDiscoverableFarms();
+    const memberships = await dynamoRepo.getFarmsForUser(userId);
+    const memberFarmIds = new Set(memberships.map((m) => m.farm_id));
+
+    const data = await Promise.all(
+      farms
+        .filter((f) => !memberFarmIds.has(f.id))
+        .map(async (farm) => {
+          const members = await dynamoRepo.getFarmMembers(farm.id);
+          const pendingRequest = await dynamoRepo.getJoinRequest(farm.id, userId);
+          return {
+            id: farm.id,
+            name: farm.name,
+            description: farm.description ?? null,
+            location_text: farm.location_text,
+            latitude: farm.latitude ?? null,
+            longitude: farm.longitude ?? null,
+            member_count: members.length,
+            has_pending_request: pendingRequest?.status === 'pending',
+          };
+        }),
+    );
+
+    return c.json({ data });
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+});
+
 // ── GET /api/v1/farms/:farmId ────────────────────────────────────
 
 router.get('/:farmId', async (c) => {

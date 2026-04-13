@@ -10,9 +10,10 @@ import { getFarm, getBeds, getWeather } from '../lib/api';
 import { t } from '../i18n/i18n';
 import { STATUS_CSS, STATUS_ICONS } from '../lib/status';
 import { getCropDisplay, getCropName } from '../lib/crops';
-import { useLocalFarmId, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
+import { useLocalFarmId, useLocalFarmList, formatTemp, LS_FARM_ID, LS_FARM_NAME } from '../lib/hooks';
 import { translateCondition, conditionToEmoji, formatRelativeTime } from '../lib/format';
 import { displaySrc, hasImageSrc } from '../lib/image';
+import FarmDiscovery from './FarmDiscovery';
 
 // Most critical first
 const STATUS_SEVERITY: Record<BedStatus, number> = {
@@ -81,6 +82,9 @@ export default function FarmOverview({ farmId }: Props) {
     return () => { cancelled = true; };
   }, [effectiveFarmId]);
 
+  // Must be called before any early returns — React hooks cannot be conditional
+  const cachedFarms = useLocalFarmList();
+
   if (loading) {
     return (
       <>
@@ -93,6 +97,22 @@ export default function FarmOverview({ farmId }: Props) {
           {[0, 1, 2, 3].map((i) => <div key={i} class="skeleton skeleton-tile" />)}
         </div>
       </>
+    );
+  }
+
+  // Staff user with no farms — show discovery instead of generic error
+  const hasFarms = cachedFarms.length > 0;
+
+  if (error && !hasFarms) {
+    return (
+      <div style="padding:var(--space-4)">
+        <div class="empty-state">
+          <span class="empty-state__icon">🌾</span>
+          <p class="empty-state__heading">{t('profile.no_farms')}</p>
+          <p class="empty-state__body">{t('farm.join_hint')}</p>
+        </div>
+        <FarmDiscovery />
+      </div>
     );
   }
 

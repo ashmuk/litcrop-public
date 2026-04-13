@@ -53,6 +53,7 @@
     "no_beds_body": "Create a farm with a bed grid to start monitoring your crops.",
     "error_loading": "Could not load farm data",
     "error_body": "Check your connection and try again.",
+    "join_hint": "Browse available farms below and request to join one.",
     "loading": "Loading farm data…",
     "refreshed": "Farm data refreshed"
   },
@@ -346,7 +347,8 @@
     "pending": "Pending",
     "members": "members",
     "request_sent": "Join request sent!",
-    "already_requested": "Already requested"
+    "already_requested": "Already requested",
+    "error": "Could not load available farms. Please try again."
   },
   "join_requests": {
     "title": "Join Requests",

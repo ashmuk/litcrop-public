@@ -39,11 +39,13 @@ vi.mock('../../services/dynamodb', () => ({
     rejectJoinRequest: vi.fn(),
     createBedsForPositions: vi.fn(),
     updateMemberRole: vi.fn(),
+    getDiscoverableFarms: vi.fn(),
   },
 }));
 
 vi.mock('../../services/s3', () => ({
   getSignedImageUrl: vi.fn(),
+  getSignedAvatarUrls: vi.fn().mockResolvedValue({ original: null, thumb: null }),
   uploadImage: vi.fn(),
 }));
 
@@ -1141,5 +1143,71 @@ describe('PATCH /api/v1/farms/:farmId — add coordinates (#277)', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['location_text']).toBe('Kawagoe, Saitama');
+  });
+});
+
+// ── GET /api/v1/farms/discoverable ──────────────────────────────
+
+describe('GET /api/v1/farms/discoverable', () => {
+  const otherFarm = {
+    ...farmFixture,
+    id: 'other-farm-001',
+    user_id: 'other-user-sub',
+    name: 'Neighbor Farm',
+  };
+
+  it('returns discoverable farms excluding those user already belongs to', async () => {
+    vi.mocked(dynamoRepo.getDiscoverableFarms).mockResolvedValue([farmFixture, otherFarm]);
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([
+      { user_id: TEST_USER_ID, farm_id: FARM_ID, role: 'staff', joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
+
+    const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ id: string; name: string }> };
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe('other-farm-001');
+    expect(body.data[0].name).toBe('Neighbor Farm');
+  });
+
+  it('returns empty array when user is member of all farms', async () => {
+    vi.mocked(dynamoRepo.getDiscoverableFarms).mockResolvedValue([farmFixture]);
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([
+      { user_id: TEST_USER_ID, farm_id: FARM_ID, role: 'staff', joined_at: '2026-03-17T00:00:00.000Z' },
+    ]);
+
+    const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: unknown[] };
+    expect(body.data).toHaveLength(0);
+  });
+
+  it('includes has_pending_request flag when user has pending join request', async () => {
+    vi.mocked(dynamoRepo.getDiscoverableFarms).mockResolvedValue([otherFarm]);
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue({
+      status: 'pending',
+      requested_at: '2026-04-13T00:00:00.000Z',
+      display_name: 'Test',
+    });
+
+    const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ has_pending_request: boolean }> };
+    expect(body.data[0].has_pending_request).toBe(true);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const res = await app.request('/api/v1/farms/discoverable');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 503 when storage fails', async () => {
+    vi.mocked(dynamoRepo.getDiscoverableFarms).mockRejectedValue(new Error('DDB timeout'));
+    const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
+    expect(res.status).toBe(503);
   });
 });
