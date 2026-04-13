@@ -556,7 +556,13 @@ export default function RegisterForm() {
       <div style="display:flex;gap:var(--space-3)">
         <div class="form-group" style="flex:1">
           <label class="form-label" for="reg-locale">{t('auth.register.language')}</label>
-          <select id="reg-locale" class="form-input" value={regLocale} onChange={(e) => setRegLocale((e.target as HTMLSelectElement).value as 'en' | 'ja')}>
+          <select id="reg-locale" class="form-input" value={regLocale} onChange={(e) => {
+            const next = (e.target as HTMLSelectElement).value as 'en' | 'ja';
+            setRegLocale(next);
+            try { localStorage.setItem('litcrop-locale', next); } catch {}
+            document.documentElement.setAttribute('data-locale', next);
+            document.documentElement.setAttribute('lang', next);
+          }}>
             <option value="en">English</option>
             <option value="ja">日本語</option>
           </select>
