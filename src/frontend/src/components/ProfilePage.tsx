@@ -1100,8 +1100,6 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <DeleteAccountSection farms={farms} />
-
         {/* Legal & Info section (#280) */}
         <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md)">
           <h3 style="font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-3);color:var(--color-text)">
@@ -1122,6 +1120,8 @@ export default function ProfilePage() {
             </a>
           </div>
         </div>
+
+        <DeleteAccountSection farms={farms} />
 
         {/* Version footer */}
         <p style={{ textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 'var(--font-size-xs)', padding: 'var(--space-6) 0 var(--space-4)' }}>
