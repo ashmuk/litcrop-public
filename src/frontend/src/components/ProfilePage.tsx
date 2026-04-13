@@ -1102,6 +1102,27 @@ export default function ProfilePage() {
 
         <DeleteAccountSection farms={farms} />
 
+        {/* Legal & Info section (#280) */}
+        <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md)">
+          <h3 style="font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-3);color:var(--color-text)">
+            {t('legal.section_legal')}
+          </h3>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <a href="/terms" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+              {t('legal.terms')}
+            </a>
+            <a href="/privacy" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+              {t('legal.privacy')}
+            </a>
+            <a href="/whats-new" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+              {t('legal.whats_new')}
+            </a>
+            <a href="/report-bug" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+              {t('legal.report_bug')}
+            </a>
+          </div>
+        </div>
+
         {/* Version footer */}
         <p style={{ textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 'var(--font-size-xs)', padding: 'var(--space-6) 0 var(--space-4)' }}>
           LitCrop {__APP_VERSION__}

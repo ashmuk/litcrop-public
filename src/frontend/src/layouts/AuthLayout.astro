@@ -63,7 +63,14 @@ const {
           <slot />
         </div>
 
-        <!-- Toast container rendered by each page if needed -->
+        <!-- Legal footer links (#280) -->
+        <footer class="auth-footer" style="text-align:center;padding:var(--space-4) 0 var(--space-6);font-size:var(--font-size-xs)">
+          <div style="display:flex;justify-content:center;gap:var(--space-4);flex-wrap:wrap">
+            <a href="/terms" style="color:var(--color-gray-400);text-decoration:none">Terms</a>
+            <a href="/privacy" style="color:var(--color-gray-400);text-decoration:none">Privacy</a>
+            <a href="/whats-new" style="color:var(--color-gray-400);text-decoration:none">What's New</a>
+          </div>
+        </footer>
       </main>
     )}
   </body>
