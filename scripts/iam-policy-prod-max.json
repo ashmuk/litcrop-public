@@ -122,7 +122,10 @@
         "ssm:GetParameter",
         "ssm:GetParameters"
       ],
-      "Resource": "arn:aws:ssm:ap-northeast-1:<AWS_ACCOUNT_ID>:parameter/litcrop/*"
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-1:<AWS_ACCOUNT_ID>:parameter/litcrop/*",
+        "arn:aws:ssm:ap-northeast-1:<AWS_ACCOUNT_ID>:parameter/cdk-bootstrap/*"
+      ]
     },
     {
       "Sid": "SES",
