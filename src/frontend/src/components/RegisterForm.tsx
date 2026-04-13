@@ -262,7 +262,7 @@ export default function RegisterForm() {
 
   function StepDots() {
     return (
-      <div class="step-indicator" aria-label={`Step ${step} of 3`}>
+      <div class="step-indicator" role="progressbar" aria-label={`Step ${step} of 3`} aria-valuenow={step} aria-valuemin={1} aria-valuemax={3}>
         {([1, 2, 3] as Step[]).map((s) => (
           <div
             key={s}
@@ -546,15 +546,15 @@ export default function RegisterForm() {
 
       <div style="display:flex;gap:var(--space-3)">
         <div class="form-group" style="flex:1">
-          <label class="form-label">{t('auth.register.language')}</label>
-          <select class="form-input" value={regLocale} onChange={(e) => setRegLocale((e.target as HTMLSelectElement).value as 'en' | 'ja')}>
+          <label class="form-label" for="reg-locale">{t('auth.register.language')}</label>
+          <select id="reg-locale" class="form-input" value={regLocale} onChange={(e) => setRegLocale((e.target as HTMLSelectElement).value as 'en' | 'ja')}>
             <option value="en">English</option>
             <option value="ja">日本語</option>
           </select>
         </div>
         <div class="form-group" style="flex:1">
-          <label class="form-label">{t('auth.register.temp_unit')}</label>
-          <select class="form-input" value={regTempUnit} onChange={(e) => setRegTempUnit((e.target as HTMLSelectElement).value as 'C' | 'F')}>
+          <label class="form-label" for="reg-temp-unit">{t('auth.register.temp_unit')}</label>
+          <select id="reg-temp-unit" class="form-input" value={regTempUnit} onChange={(e) => setRegTempUnit((e.target as HTMLSelectElement).value as 'C' | 'F')}>
             <option value="C">°C</option>
             <option value="F">°F</option>
           </select>

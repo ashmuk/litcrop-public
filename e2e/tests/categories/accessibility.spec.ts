@@ -20,33 +20,32 @@ import {
 } from '../../fixtures/mock-data';
 
 test.describe('Accessibility', () => {
-  // Known pre-existing a11y issues tracked for separate fix:
-  // - color-contrast: earthy theme primary (#6b7f5e) on surface (#fdfbf7) = 4.21 (needs 4.5:1)
-  // - aria-prohibited-attr: step-indicator div uses aria-label without a role
-  // - select-name: locale/temp selects in RegisterForm missing labels
-  const KNOWN_VIOLATIONS = ['color-contrast', 'aria-prohibited-attr', 'select-name'];
+  // All previously excluded violations now fixed:
+  // - color-contrast: earthy primary darkened #6B7F5E → #5A6D4F (5.44:1)
+  // - aria-prohibited-attr: step-indicator has role="progressbar"
+  // - select-name: locale/temp selects have for/id label association
 
   // 1. Login page ──────────────────────────────────────────────────
-  test('login page passes WCAG 2.1 AA axe-core audit (excluding known issues)', async ({ page }) => {
+  test('login page passes WCAG 2.1 AA axe-core audit', async ({ page }) => {
     await page.goto('/login');
     await page.waitForLoadState('domcontentloaded');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa'])
-      .disableRules(KNOWN_VIOLATIONS)
+
       .analyze();
 
     expect(results.violations).toHaveLength(0);
   });
 
   // 2. Register page ───────────────────────────────────────────────
-  test('register page passes WCAG 2.1 AA axe-core audit (excluding known issues)', async ({ page }) => {
+  test('register page passes WCAG 2.1 AA axe-core audit', async ({ page }) => {
     await page.goto('/register');
     await page.waitForLoadState('domcontentloaded');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa'])
-      .disableRules(KNOWN_VIOLATIONS)
+
       .analyze();
 
     expect(results.violations).toHaveLength(0);
@@ -67,7 +66,7 @@ test.describe('Accessibility', () => {
 
     const results = await new AxeBuilder({ page: authenticatedPage })
       .withTags(['wcag2a', 'wcag2aa'])
-      .disableRules(KNOWN_VIOLATIONS)
+
       .analyze();
 
     expect(results.violations).toHaveLength(0);
@@ -86,7 +85,7 @@ test.describe('Accessibility', () => {
 
     const results = await new AxeBuilder({ page: authenticatedPage })
       .withTags(['wcag2a', 'wcag2aa'])
-      .disableRules(KNOWN_VIOLATIONS)
+
       .analyze();
 
     expect(results.violations).toHaveLength(0);

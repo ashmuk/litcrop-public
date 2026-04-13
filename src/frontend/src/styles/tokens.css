@@ -185,13 +185,13 @@
       Warm browns, terracotta, olive
    ---------------------------------------------------------- */
 [data-theme="earthy"] {
-  --color-primary:          #6B7F5E; /* sage green */
+  --color-primary:          #5A6D4F; /* sage green — WCAG AA: 5.44:1 on surface, 5.62:1 for white-on-primary */
   --color-primary-dark:     #4A5A3F;
   --color-primary-light:    #F0EDE4;
 
   --color-gray-900:         #3B3530;
   --color-gray-700:         #5E5549;
-  --color-gray-500:         #857A6E;
+  --color-gray-500:         #786D5E; /* warm gray — WCAG AA: 4.90:1 on surface */
   --color-gray-300:         #C9BFB3;
   --color-gray-100:         #F5F0EA;
   --color-white:            #FDFBF7;
@@ -200,7 +200,7 @@
   --color-surface-elevated: #FFFFFF;
   --color-background:       #F0EDE4;
 
-  --color-status-healthy:     #6B8F5E; /* sage green */
+  --color-status-healthy:     #5A7D4F; /* sage green — darkened for contrast */
   --color-status-slow-growth: #B89B5E; /* warm amber / wheat */
   --color-status-issue:       #B85C4A; /* terracotta red */
   --color-status-animal:      #C07842; /* burnt sienna */
@@ -216,7 +216,7 @@
   --color-motion-bg: #F5EDE4;
 
   --color-error:   #B85C4A;
-  --color-success: #6B8F5E;
+  --color-success: #5A7D4F;
   --color-info:    #5E7F9B;
 
   --border-default: 1px solid #C9BFB3;
@@ -224,7 +224,7 @@
   --shadow-md:  0 2px 8px rgba(59, 53, 48, 0.10);
   --shadow-lg:  0 4px 16px rgba(59, 53, 48, 0.14);
 
-  --focus-ring: 0 0 0 3px rgba(107, 127, 94, 0.4);
+  --focus-ring: 0 0 0 3px rgba(90, 109, 79, 0.4);
 }
 
 /* ----------------------------------------------------------
