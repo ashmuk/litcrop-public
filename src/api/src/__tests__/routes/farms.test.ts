@@ -238,6 +238,64 @@ describe('POST /api/v1/farms', () => {
     const body = await res.json() as { error: { code: string } };
     expect(body.error.code).toBe('VALIDATION_ERROR');
   });
+  it('returns 400 when staff user with zero farms attempts to create a farm', async () => {
+    // Staff has no farms
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    // Profile says preferred_role = 'staff'
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Staff User',
+      preferred_role: 'staff' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'Staff Farm', location_text: 'Tokyo', latitude: 35.68, longitude: 139.69 }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toContain('Staff accounts cannot create farms');
+  });
+
+  it('allows owner-role user with zero farms to create a farm', async () => {
+    // Owner has no farms yet (first farm creation)
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Owner User',
+      preferred_role: 'owner' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+    vi.mocked(dynamoRepo.createFarm).mockResolvedValue({
+      ...farmFixture,
+      name: 'Owner Farm',
+    });
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: 'Owner Farm', location_text: 'Tokyo', latitude: 35.68, longitude: 139.69 }),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it('allows admin user to create a farm regardless of preferred_role', async () => {
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.createFarm).mockResolvedValue({
+      ...farmFixture,
+      name: 'Admin Farm',
+    });
+
+    const res = await app.request('/api/v1/farms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...makeAuthHeaders(ADMIN_USER_ID, ADMIN_EMAIL) },
+      body: JSON.stringify({ name: 'Admin Farm', location_text: 'Tokyo', latitude: 35.68, longitude: 139.69 }),
+    });
+    expect(res.status).toBe(201);
+  });
 });
 
 // ── PATCH /api/v1/farms/:farmId ───────────────────────────────────
