@@ -16,6 +16,9 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sns_subs from 'aws-cdk-lib/aws-sns-subscriptions';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as apigwv2 from '@aws-cdk/aws-apigatewayv2-alpha';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { HttpJwtAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
@@ -23,12 +26,16 @@ import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 
 interface LitCropStackProps extends cdk.StackProps {
   envName: 'mvp' | 'prod';
+  /** Custom domain name for production (e.g., 'litcrop.com'). Omit for staging. */
+  domainName?: string;
+  /** Route 53 Hosted Zone ID for the custom domain. Required when domainName is set. */
+  hostedZoneId?: string;
 }
 
 export class LitCropStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: LitCropStackProps) {
     super(scope, id, props);
-    const { envName } = props;
+    const { envName, domainName, hostedZoneId } = props;
 
     // ── Environment-aware resource naming ────────────────────────────
     // Staging (envName='mvp'): keeps exact current names to avoid CloudFormation replacements
@@ -245,6 +252,18 @@ function handler(event) {
     });
 
     // ── H-03: Security Response Headers (CSP, HSTS, X-Frame-Options) ────────
+    // CSP connect-src: include custom domain if configured
+    const connectSrcDirectives = [
+      "'self'",
+      `https://*.execute-api.${this.region}.amazonaws.com`,
+      `https://cognito-idp.${this.region}.amazonaws.com`,
+      'https://api.open-meteo.com',
+      'https://nominatim.openstreetmap.org',
+    ];
+    if (domainName) {
+      connectSrcDirectives.push(`https://${domainName}`);
+    }
+
     const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'SecurityHeaders', {
       responseHeadersPolicyName: names.headersPolicy,
       securityHeadersBehavior: {
@@ -254,7 +273,7 @@ function handler(event) {
             "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
             "img-src 'self' data: blob: https:",
-            `connect-src 'self' https://*.execute-api.${this.region}.amazonaws.com https://cognito-idp.${this.region}.amazonaws.com https://api.open-meteo.com https://nominatim.openstreetmap.org`,
+            `connect-src ${connectSrcDirectives.join(' ')}`,
             "frame-ancestors 'none'",
           ].join('; '),
           override: true,
@@ -274,9 +293,51 @@ function handler(event) {
           override: true,
         },
       },
+      // ADR-023: Block search engine indexing for production (low-profile app)
+      ...(domainName ? {
+        customHeadersBehavior: {
+          customHeaders: [
+            {
+              header: 'X-Robots-Tag',
+              value: 'noindex, nofollow',
+              override: true,
+            },
+          ],
+        },
+      } : {}),
     });
 
+    // ── Custom Domain (production only, ADR-023) ─────────────────────────
+    // When domainName + hostedZoneId are provided, creates:
+    //   - ACM certificate (us-east-1, DNS-validated via Route 53)
+    //   - CloudFront alternate domain name
+    //   - Route 53 A + AAAA alias records
+    let domainCertificate: acm.ICertificate | undefined;
+    let hostedZone: route53.IHostedZone | undefined;
+
+    if (domainName && hostedZoneId) {
+      hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+        hostedZoneId,
+        zoneName: domainName,
+      });
+
+      // ACM certificate MUST be in us-east-1 for CloudFront.
+      // DnsValidatedCertificate creates a Lambda-backed custom resource that provisions
+      // the cert in us-east-1 regardless of the stack's region. Deprecated but still
+      // the simplest cross-region approach without splitting into a separate stack.
+      domainCertificate = new acm.DnsValidatedCertificate(this, 'SiteCertificate', {
+        domainName,
+        hostedZone,
+        region: 'us-east-1',
+      });
+    }
+
     const distribution = new cloudfront.Distribution(this, 'StaticDistribution', {
+      // Custom domain: attach certificate + alternate domain name (prod only)
+      ...(domainName && domainCertificate ? {
+        domainNames: [domainName],
+        certificate: domainCertificate,
+      } : {}),
       defaultBehavior: {
         origin: new origins.S3Origin(staticBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -304,6 +365,25 @@ function handler(event) {
       logBucket: logsBucket,
       logFilePrefix: 'cloudfront/',
     });
+
+    // ── Route 53 DNS records (production custom domain only) ──────────────
+    if (domainName && hostedZone) {
+      new route53.ARecord(this, 'SiteAliasRecord', {
+        zone: hostedZone,
+        recordName: domainName,
+        target: route53.RecordTarget.fromAlias(
+          new route53Targets.CloudFrontTarget(distribution),
+        ),
+      });
+
+      new route53.AaaaRecord(this, 'SiteAliasRecordV6', {
+        zone: hostedZone,
+        recordName: domainName,
+        target: route53.RecordTarget.fromAlias(
+          new route53Targets.CloudFrontTarget(distribution),
+        ),
+      });
+    }
 
     // ── SSM Parameters ────────────────────────────────────────────────────────
     // LLM API key stored as SecureString; reference resolved at deploy time.
@@ -496,6 +576,7 @@ function handler(event) {
           'http://localhost:4321',
           'http://localhost:3000',
           `https://${distribution.distributionDomainName}`,
+          ...(domainName ? [`https://${domainName}`] : []),
         ],
         allowMethods: [
           apigwv2.CorsHttpMethod.GET,
@@ -723,6 +804,13 @@ function handler(event) {
       value: `https://${distribution.distributionDomainName}`,
       description: 'CloudFront distribution URL (static frontend)',
     });
+
+    if (domainName) {
+      new cdk.CfnOutput(this, 'CustomDomainUrl', {
+        value: `https://${domainName}`,
+        description: 'Custom domain URL (production)',
+      });
+    }
 
     new cdk.CfnOutput(this, 'UserPoolId', {
       value: userPool.userPoolId,

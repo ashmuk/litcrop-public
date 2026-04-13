@@ -58,7 +58,7 @@ jobs:
         working-directory: infra
 
       - name: CDK deploy (production)
-        run: npx cdk deploy LitCropProd -c env=prod --require-approval never
+        run: npx cdk deploy LitCropProd -c env=prod -c domain=litcrop.com -c hostedZoneId=<HOSTED_ZONE_ID> --require-approval never
         working-directory: infra
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}

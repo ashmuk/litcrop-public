@@ -18,8 +18,14 @@ if (!envConfig) {
   throw new Error(`Unknown env "${envKey}". Use -c env=stg or -c env=prod`);
 }
 
+// Custom domain (production only): -c domain=litcrop.com -c hostedZoneId=Z05...
+const domainName = app.node.tryGetContext('domain') as string | undefined;
+const hostedZoneId = app.node.tryGetContext('hostedZoneId') as string | undefined;
+
 new LitCropStack(app, envConfig.stackId, {
   envName: envConfig.envName,
+  domainName,
+  hostedZoneId,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: 'ap-northeast-1',
