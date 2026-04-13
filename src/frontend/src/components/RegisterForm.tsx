@@ -89,6 +89,8 @@ export default function RegisterForm() {
     try { const s = localStorage.getItem('litcrop-locale'); return s === 'ja' ? 'ja' : 'en'; } catch { return 'en'; }
   });
   const [regTempUnit, setRegTempUnit] = useState<'C' | 'F'>('C');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState('');
 
   // Step 2 state
   const [code, setCode] = useState('');
@@ -194,6 +196,13 @@ export default function RegisterForm() {
       valid = false;
     } else {
       setConfirmError('');
+    }
+
+    if (!termsAccepted) {
+      setTermsError(t('legal.terms_required'));
+      valid = false;
+    } else {
+      setTermsError('');
     }
 
     if (!valid) return;
@@ -559,6 +568,27 @@ export default function RegisterForm() {
             <option value="F">°F</option>
           </select>
         </div>
+      </div>
+
+      {/* Terms & Privacy consent */}
+      <div class="form-group" style="margin-top:var(--space-2)">
+        <label style="display:flex;align-items:flex-start;gap:var(--space-2);cursor:pointer;font-size:var(--font-size-sm);color:var(--color-text)">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={(e) => { setTermsAccepted((e.target as HTMLInputElement).checked); setTermsError(''); }}
+            style="margin-top:3px;flex-shrink:0;width:18px;height:18px;accent-color:var(--color-primary)"
+          />
+          <span>
+            {t('legal.accept_terms').split(t('legal.terms'))[0]}
+            <a href="/terms" target="_blank" style="color:var(--color-primary)">{t('legal.terms')}</a>
+            {' & '}
+            <a href="/privacy" target="_blank" style="color:var(--color-primary)">{t('legal.privacy')}</a>
+          </span>
+        </label>
+        {termsError && (
+          <span class="form-error" style="margin-top:var(--space-1)"><span aria-hidden="true">⚠</span> {termsError}</span>
+        )}
       </div>
 
       <button
