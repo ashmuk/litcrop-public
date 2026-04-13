@@ -1,0 +1,12 @@
+---
+/**
+ * Terms of Service — #280
+ * Static legal page, no auth required.
+ */
+import AuthLayout from '../layouts/AuthLayout.astro';
+import LegalPage from '../components/LegalPage';
+---
+
+<AuthLayout title="Terms of Service">
+  <LegalPage page="terms" client:load />
+</AuthLayout>
