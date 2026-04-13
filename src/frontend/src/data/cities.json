@@ -75,6 +75,7 @@
   {"id":"jp-matsumoto","en":"Matsumoto","ja":"松本市","region":"Nagano","country":"JP","lat":36.24,"lng":137.97},
   {"id":"jp-ueda","en":"Ueda","ja":"上田市","region":"Nagano","country":"JP","lat":36.40,"lng":138.25},
   {"id":"jp-iida","en":"Iida","ja":"飯田市","region":"Nagano","country":"JP","lat":35.51,"lng":136.95},
+  {"id":"jp-chino","en":"Chino","ja":"茅野市","region":"Nagano","country":"JP","lat":36.00,"lng":138.16},
 
   {"id":"jp-gifu","en":"Gifu","ja":"岐阜市","region":"Gifu","country":"JP","lat":35.42,"lng":136.76},
   {"id":"jp-takayama","en":"Takayama","ja":"高山市","region":"Gifu","country":"JP","lat":36.14,"lng":137.25},

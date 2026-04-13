@@ -21,7 +21,7 @@ vi.mock('../../services/dynamodb', () => ({
     getNotificationPrefs: vi.fn(),
     upsertNotificationPrefs: vi.fn(),
   },
-  DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'system' },
+  DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'earthy' },
 }));
 
 vi.mock('../../services/s3', () => ({

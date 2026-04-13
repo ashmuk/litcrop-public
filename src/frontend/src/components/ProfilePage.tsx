@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Farm, FarmRole, Locale } from '@litcrop/shared';
-import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
+import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS, DEFAULT_THEME } from '@litcrop/shared';
 import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, deleteMyAccount, changeMemberRole } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
 import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
@@ -487,9 +487,24 @@ export default function ProfilePage() {
       if (storedUnit === 'C' || storedUnit === 'F') setTempUnit(storedUnit);
     } catch {}
 
+    // Sync pending settings from registration (locale + temp_unit + theme)
+    const pendingLocale = localStorage.getItem('litcrop-pendingLocale');
+    const pendingTempUnit = localStorage.getItem('litcrop-pendingTempUnit');
+    const hasPending = pendingLocale || pendingTempUnit;
+    const settingsToSync: Record<string, string> = {};
+    if (pendingLocale && isValidLocale(pendingLocale)) settingsToSync['locale'] = pendingLocale;
+    if (pendingTempUnit && (pendingTempUnit === 'C' || pendingTempUnit === 'F')) settingsToSync['temp_unit'] = pendingTempUnit;
+    if (hasPending) settingsToSync['theme'] = DEFAULT_THEME;
+    const pendingSettingsPromise = Object.keys(settingsToSync).length > 0
+      ? updateMySettings(settingsToSync).then(() => {
+          localStorage.removeItem('litcrop-pendingLocale');
+          localStorage.removeItem('litcrop-pendingTempUnit');
+        }).catch(() => {})
+      : Promise.resolve();
+
     // Sync settings from API (authoritative source after login clears localStorage)
     const initialLocale = document.documentElement.getAttribute('data-locale') || 'en';
-    getMySettings().then(s => {
+    pendingSettingsPromise.then(() => getMySettings()).then(s => {
       if (settingsDirty.current) return; // user changed a setting while fetch was in-flight
       if (s.locale && isValidLocale(s.locale)) {
         setLocale(s.locale);

@@ -30,5 +30,5 @@ export interface DeleteAccountSummary {
 export const DEFAULT_SETTINGS: Omit<UserSettings, 'updated_at'> = {
   locale: 'en',
   temp_unit: 'C',
-  theme: 'system',
+  theme: 'earthy',
 };

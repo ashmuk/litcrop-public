@@ -44,7 +44,7 @@ export const TRIGGER_TYPES: TriggerType[] = ['scheduled', 'motion'];
 // ── Theme Options ────────────────────────────────────────────────
 
 export const THEME_OPTIONS: Theme[] = ['light', 'dark', 'earthy', 'system'];
-export const DEFAULT_THEME: Theme = 'system';
+export const DEFAULT_THEME: Theme = 'earthy';
 
 // ── Locale Options ───────────────────────────────────────────────
 

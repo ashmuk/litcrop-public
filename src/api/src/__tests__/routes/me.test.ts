@@ -22,7 +22,7 @@ vi.mock('../../services/dynamodb', () => ({
     getNotificationPrefs: vi.fn(),
     upsertNotificationPrefs: vi.fn(),
   },
-  DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'system' },
+  DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'earthy' },
 }));
 
 vi.mock('../../services/s3', () => ({
@@ -74,7 +74,7 @@ describe('GET /api/v1/me/settings', () => {
     const res = await app.request('/api/v1/me/settings', { headers: authHeaders() });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ locale: 'en', temp_unit: 'C', theme: 'system', updated_at: '' });
+    expect(body).toEqual({ locale: 'en', temp_unit: 'C', theme: 'earthy', updated_at: '' });
   });
 });
 
@@ -108,6 +108,25 @@ describe('PATCH /api/v1/me/settings', () => {
     expect(body.theme).toBe('dark');
     expect(body.locale).toBe('ja');
     expect(mockRepo.upsertUserSettings).toHaveBeenCalledWith(TEST_USER_ID, { theme: 'dark', locale: 'ja' });
+  });
+
+  it('syncs all registration preferences in one call (locale + temp_unit + theme)', async () => {
+    const synced = { ...settingsFixture, locale: 'ja', temp_unit: 'F', theme: 'earthy' };
+    mockRepo.upsertUserSettings.mockResolvedValue(synced);
+    const res = await app.request('/api/v1/me/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ locale: 'ja', temp_unit: 'F', theme: 'earthy' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.locale).toBe('ja');
+    expect(body.temp_unit).toBe('F');
+    expect(body.theme).toBe('earthy');
+    expect(mockRepo.upsertUserSettings).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      { locale: 'ja', temp_unit: 'F', theme: 'earthy' },
+    );
   });
 
   it('returns 500 when upsert fails', async () => {

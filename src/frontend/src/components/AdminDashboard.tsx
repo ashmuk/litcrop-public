@@ -12,6 +12,7 @@ import type { AdminStatsResponse, AdminUserItem, AdminFarmItem, NotificationPref
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser } from '../lib/auth';
+import { getCachedIsAdmin } from '../lib/hooks';
 
 type AdminTab = 'system' | 'users' | 'farms' | 'activity' | 'notifications';
 
@@ -83,8 +84,13 @@ export default function AdminDashboard() {
   const [localPrefs, setLocalPrefs] = useState<Record<string, boolean>>(DEFAULT_PREFS);
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch stats on mount (also gates 403), then lazy-load the active tab's data
+  // Client-side admin gate + initial data fetch
   useEffect(() => {
+    if (!getCachedIsAdmin()) {
+      setForbidden(true);
+      setLoading(false);
+      return;
+    }
     getAdminStats()
       .then((data) => {
         setStats(data);

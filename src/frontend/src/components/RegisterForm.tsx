@@ -233,8 +233,8 @@ export default function RegisterForm() {
       try {
         localStorage.setItem('litcrop-pendingRole', role);
         localStorage.setItem('litcrop-pendingName', displayName.trim());
-        localStorage.setItem('litcrop-locale', regLocale);
-        localStorage.setItem('litcrop-temp-unit', regTempUnit);
+        localStorage.setItem('litcrop-pendingLocale', regLocale);
+        localStorage.setItem('litcrop-pendingTempUnit', regTempUnit);
       } catch {}
       setStep(3);
       // Auto-redirect to login after 2s
@@ -398,7 +398,7 @@ export default function RegisterForm() {
 
       <div class="form-group">
         <label class="form-label" for="reg-email">
-          {t('auth.email.label')}
+          {t('auth.email.label')} *
         </label>
         <input
           id="reg-email"

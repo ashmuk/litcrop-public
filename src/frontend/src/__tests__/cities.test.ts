@@ -59,6 +59,16 @@ describe('searchCities', () => {
     const results = searchCities('zzzzzzzzz');
     expect(results.length).toBe(0);
   });
+
+  it('finds Chino by EN name', () => {
+    const results = searchCities('Chino');
+    expect(results.some((c) => c.id === 'jp-chino')).toBe(true);
+  });
+
+  it('finds 茅野市 by JA name', () => {
+    const results = searchCities('茅野');
+    expect(results.some((c) => c.id === 'jp-chino')).toBe(true);
+  });
 });
 
 describe('getCityDisplay', () => {
