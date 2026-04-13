@@ -174,7 +174,7 @@ router.post('/:farmId/plots', async (c) => {
 // ── POST /api/v1/farms ───────────────────────────────────────────
 
 router.post('/', async (c) => {
-  const { userId, userEmail } = getAuthContext(c);
+  const { userId, userEmail, isAdmin } = getAuthContext(c);
 
   // Free plan: check owned farm count (admin role, excluding demo)
   let ownedCount: number;
@@ -183,6 +183,19 @@ router.post('/', async (c) => {
     ownedCount = farms.filter(f => f.farm_id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'owner')).length;
   } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  // Role check: staff cannot create farms (they join via Farm Discovery)
+  if (!isAdmin && ownedCount === 0) {
+    try {
+      const profile = await dynamoRepo.getUserProfile(userId);
+      if (profile?.preferred_role === 'staff') {
+        throw new ValidationError('Staff accounts cannot create farms. Use Farm Discovery to join an existing farm.');
+      }
+    } catch (err) {
+      if (err instanceof ValidationError) throw err;
+      // Profile lookup failure is non-fatal — allow farm creation (fail open)
+    }
   }
   if (ownedCount >= FREE_PLAN_MAX_OWNED_FARMS) {
     throw new ValidationError(`Free plan allows up to ${FREE_PLAN_MAX_OWNED_FARMS} farms`);

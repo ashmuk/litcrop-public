@@ -675,11 +675,10 @@ export default function ProfilePage() {
 
   // Determine if user should see farm creation UI
   // Show for: owners (by preferredRole), system admins, users with admin/owner farm roles,
-  // or users with zero farms (they need a way to get started regardless of role)
-  // Hide for: staff who already belong to at least one farm
+  // Staff users should never see "Add Farm" — they join farms via FarmDiscovery.
+  // Only owners, admins, or users who already own a farm can create new farms.
   const hasOwnerRole = farms.some((f) => f.role === 'admin' || f.role === 'owner');
-  const hasNoFarms = !loading && farms.length === 0;
-  const isStaffOnly = preferredRole !== 'owner' && !isSystemAdmin && !hasOwnerRole && !hasNoFarms;
+  const canCreateFarm = preferredRole === 'owner' || isSystemAdmin || hasOwnerRole;
 
   // Free plan: count owned farms (excluding demo), gate "New Farm" button
   const ownedCount = farms.filter(f => f.id !== DEMO_FARM_ID && (f.role === 'admin' || f.role === 'owner')).length;
@@ -978,7 +977,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {!isStaffOnly && (
+        {canCreateFarm && (
           <>
             <button
               class="btn-primary"
