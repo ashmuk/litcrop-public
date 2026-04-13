@@ -1,0 +1,149 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudFormation",
+      "Effect": "Allow",
+      "Action": "cloudformation:*",
+      "Resource": [
+        "arn:aws:cloudformation:ap-northeast-1:<AWS_ACCOUNT_ID>:stack/LitCropStack/*",
+        "arn:aws:cloudformation:ap-northeast-1:<AWS_ACCOUNT_ID>:stack/LitCropProd/*",
+        "arn:aws:cloudformation:ap-northeast-1:<AWS_ACCOUNT_ID>:stack/CDKToolkit/*"
+      ]
+    },
+    {
+      "Sid": "S3Buckets",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::litcrop-*",
+        "arn:aws:s3:::litcrop-*/*",
+        "arn:aws:s3:::cdk-*"
+      ]
+    },
+    {
+      "Sid": "DynamoDB",
+      "Effect": "Allow",
+      "Action": "dynamodb:*",
+      "Resource": [
+        "arn:aws:dynamodb:ap-northeast-1:<AWS_ACCOUNT_ID>:table/litcrop-*",
+        "arn:aws:dynamodb:ap-northeast-1:<AWS_ACCOUNT_ID>:table/litcrop-*/index/*"
+      ]
+    },
+    {
+      "Sid": "Lambda",
+      "Effect": "Allow",
+      "Action": "lambda:*",
+      "Resource": [
+        "arn:aws:lambda:ap-northeast-1:<AWS_ACCOUNT_ID>:function:litcrop-*",
+        "arn:aws:lambda:ap-northeast-1:<AWS_ACCOUNT_ID>:function:litcrop-*:*"
+      ]
+    },
+    {
+      "Sid": "LambdaEventSourceMapping",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateEventSourceMapping",
+        "lambda:DeleteEventSourceMapping",
+        "lambda:GetEventSourceMapping",
+        "lambda:UpdateEventSourceMapping"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "APIGateway",
+      "Effect": "Allow",
+      "Action": "apigateway:*",
+      "Resource": "arn:aws:apigateway:ap-northeast-1::/*"
+    },
+    {
+      "Sid": "CloudFront",
+      "Effect": "Allow",
+      "Action": "cloudfront:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "Cognito",
+      "Effect": "Allow",
+      "Action": "cognito-idp:*",
+      "Resource": "arn:aws:cognito-idp:ap-northeast-1:<AWS_ACCOUNT_ID>:userpool/*"
+    },
+    {
+      "Sid": "IAMRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:PassRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags"
+      ],
+      "Resource": [
+        "arn:aws:iam::<AWS_ACCOUNT_ID>:role/LitCrop*",
+        "arn:aws:iam::<AWS_ACCOUNT_ID>:role/cdk-*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": "logs:*",
+      "Resource": [
+        "arn:aws:logs:ap-northeast-1:<AWS_ACCOUNT_ID>:log-group:/litcrop/*",
+        "arn:aws:logs:ap-northeast-1:<AWS_ACCOUNT_ID>:log-group:/litcrop/*:*",
+        "arn:aws:logs:ap-northeast-1:<AWS_ACCOUNT_ID>:log-group:/aws/lambda/litcrop-*",
+        "arn:aws:logs:ap-northeast-1:<AWS_ACCOUNT_ID>:log-group:/aws/lambda/litcrop-*:*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchAlarms",
+      "Effect": "Allow",
+      "Action": "cloudwatch:*",
+      "Resource": "arn:aws:cloudwatch:ap-northeast-1:<AWS_ACCOUNT_ID>:alarm:litcrop-*"
+    },
+    {
+      "Sid": "SNS",
+      "Effect": "Allow",
+      "Action": "sns:*",
+      "Resource": "arn:aws:sns:ap-northeast-1:<AWS_ACCOUNT_ID>:litcrop-*"
+    },
+    {
+      "Sid": "SSM",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-1:<AWS_ACCOUNT_ID>:parameter/litcrop/*"
+    },
+    {
+      "Sid": "SES",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Budgets",
+      "Effect": "Allow",
+      "Action": "budgets:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "STSIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    }
+  ]
+}
