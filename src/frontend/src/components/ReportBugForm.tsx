@@ -36,7 +36,7 @@ export default function ReportBugForm() {
   return (
     <div style="max-width:640px;margin:0 auto;padding:var(--space-4) var(--space-4) var(--space-8)">
       <div style="margin-bottom:var(--space-4)">
-        <a href="/" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+        <a href="/profile/" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
           &larr; {t('legal.back_to_app')}
         </a>
       </div>
@@ -53,7 +53,7 @@ export default function ReportBugForm() {
         <div class="empty-state">
           <span class="empty-state__icon">&#x2705;</span>
           <p class="empty-state__heading">{t('legal.report_bug_success')}</p>
-          <a href="/" class="btn-primary" style="margin-top:var(--space-3);display:inline-block;text-decoration:none">
+          <a href="/profile/" class="btn-primary" style="margin-top:var(--space-3);display:inline-block;text-decoration:none">
             {t('legal.back_to_app')}
           </a>
         </div>
