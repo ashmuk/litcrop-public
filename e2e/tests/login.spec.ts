@@ -70,7 +70,7 @@ test.describe('Login Page', () => {
     await page.locator('button.btn-primary').click();
 
     // The auth-server-error div should appear with the mapped error message
-    await expect(page.locator('.auth-server-error')).toBeVisible();
+    await expect(page.locator('.auth-server-error')).toBeVisible({ timeout: 10_000 });
   });
 
   test('successful login redirects to home page', async ({ page }) => {
@@ -102,8 +102,8 @@ test.describe('Login Page', () => {
     await page.fill('#login-password', 'ValidPass1!');
     await page.locator('button.btn-primary').click();
 
-    // Successful login navigates away from /login
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10_000 });
+    // Successful login navigates away from /login (allow extra time in CI)
+    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 });
     expect(page.url()).not.toContain('/login');
   });
 

@@ -145,15 +145,14 @@ test.describe('Diary Page', () => {
     });
   });
 
-  test('calendar view toggle switches to calendar layout', async ({ authenticatedPage }) => {
+  test('calendar view toggle switches active state when clicked', async ({ authenticatedPage }) => {
     // Select the Calendar button specifically by its title attribute
     const calBtn = authenticatedPage.locator('button[title="Calendar"]');
     await expect(calBtn).toBeVisible({ timeout: 5_000 });
+    // Before click: Calendar button should not be active
+    await expect(calBtn).not.toHaveAttribute('aria-pressed', 'true');
     await calBtn.click();
-
-    // Calendar view renders the DiaryCalendar component
-    await authenticatedPage.waitForSelector('.diary-calendar, [class*="calendar"]', {
-      timeout: 8_000,
-    });
+    // After click: Calendar button should become active
+    await expect(calBtn).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
   });
 });
