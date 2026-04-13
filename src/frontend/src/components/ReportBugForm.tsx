@@ -36,7 +36,7 @@ export default function ReportBugForm() {
   return (
     <div style="max-width:640px;margin:0 auto;padding:var(--space-4) var(--space-4) var(--space-8)">
       <div style="margin-bottom:var(--space-4)">
-        <a href="/login" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+        <a href="/" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
           &larr; {t('legal.back_to_app')}
         </a>
       </div>
