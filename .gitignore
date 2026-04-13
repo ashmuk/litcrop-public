@@ -315,6 +315,11 @@ coverage/
 test-results/
 junit.xml
 
+# Playwright
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # =============================================================================
 # Miscellaneous
 # =============================================================================
