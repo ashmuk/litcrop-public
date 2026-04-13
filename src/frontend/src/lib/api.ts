@@ -659,3 +659,9 @@ export async function uploadProfilePicture(formData: FormData): Promise<ProfileP
 export async function deleteProfilePicture(): Promise<{ deleted: boolean }> {
   return request<{ deleted: boolean }>('DELETE', '/me/profile-picture');
 }
+
+// ── Bug Report (#280) ────────────────────────────────────────────
+
+export async function sendBugReport(description: string, steps: string): Promise<{ sent: boolean }> {
+  return request<{ sent: boolean }>('POST', '/me/bug-report', { description, steps });
+}

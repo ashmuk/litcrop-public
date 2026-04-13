@@ -252,5 +252,46 @@ function initNotificationSubscriptions(): void {
   console.log(`[notification] subscribed to ${NOTIFICATION_EVENT_TYPES.length} event types`);
 }
 
+/** Send a bug report email to all admins. Returns success status. */
+export async function sendBugReport(
+  reporterEmail: string,
+  description: string,
+  steps: string,
+): Promise<boolean> {
+  if (!ses || !ENABLED) return false;
+
+  const body = [
+    'Bug Report from LitCrop user',
+    '',
+    `Reporter: ${reporterEmail}`,
+    `Time: ${new Date().toISOString()}`,
+    '',
+    'Description:',
+    description,
+    '',
+    steps ? `Steps to reproduce:\n${steps}` : '',
+    '',
+    '--',
+    'LitCrop Bug Report',
+  ].join('\n');
+
+  try {
+    await ses.send(
+      new SendEmailCommand({
+        Source: SES_FROM_EMAIL,
+        Destination: { ToAddresses: ADMIN_EMAILS },
+        Message: {
+          Subject: { Data: `[LitCrop] Bug Report from ${reporterEmail}`, Charset: 'UTF-8' },
+          Body: { Text: { Data: body, Charset: 'UTF-8' } },
+        },
+      }),
+    );
+    return true;
+  } catch (err) {
+    console.error('[notification] sendBugReport failed:', err);
+    return false;
+  }
+}
+
 // Initialize subscriptions at module load time
 initNotificationSubscriptions();

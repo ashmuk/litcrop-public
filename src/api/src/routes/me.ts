@@ -6,7 +6,7 @@ import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcro
 import { parseBody } from './_helpers';
 import type { DeleteAccountSummary } from '../services/dynamodb';
 import { appEvents } from '../services/events';
-import { DEFAULT_NOTIFICATION_PREFS } from '../services/notification';
+import { DEFAULT_NOTIFICATION_PREFS, sendBugReport } from '../services/notification';
 import { uploadAvatar, deleteAvatar, getSignedAvatarUrls } from '../services/s3';
 
 const MAX_AVATAR_SIZE = 1024 * 1024; // 1MB
@@ -240,6 +240,27 @@ router.delete('/profile-picture', async (c) => {
   });
 
   return c.json({ deleted: true });
+});
+
+// POST /api/v1/me/bug-report — send bug report to admin (#280)
+router.post('/bug-report', async (c) => {
+  const { userEmail } = getAuthContext(c);
+  const body = (await c.req.json()) as { description?: string; steps?: string };
+
+  if (!body.description || body.description.trim().length === 0) {
+    throw new ValidationError('Description is required');
+  }
+  if (body.description.length > 5000) {
+    throw new ValidationError('Description must be under 5000 characters');
+  }
+
+  const sent = await sendBugReport(
+    userEmail,
+    body.description.trim(),
+    (body.steps ?? '').trim(),
+  );
+
+  return c.json({ sent });
 });
 
 export default router;

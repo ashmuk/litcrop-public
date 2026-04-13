@@ -1,0 +1,12 @@
+---
+/**
+ * Report Bug — #280
+ * Bug report form that sends to admin email via API.
+ */
+import AuthLayout from '../layouts/AuthLayout.astro';
+import ReportBugForm from '../components/ReportBugForm';
+---
+
+<AuthLayout title="Report a Bug">
+  <ReportBugForm client:load />
+</AuthLayout>
