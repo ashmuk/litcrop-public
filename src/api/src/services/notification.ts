@@ -5,7 +5,9 @@
  */
 
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import type { NotificationType } from '@litcrop/shared';
 import { appEvents, type AppEventType, type AppEventMap, type JoinRequestResolvedPayload, type MemberRoleChangedPayload } from './events';
+import { createNotification } from './repositories/notifications';
 
 // ── Config ──────────────────────────────────────────────────────
 
@@ -347,6 +349,62 @@ function initUserNotificationSubscriptions(): void {
   console.log(`[notification] subscribed to ${USER_NOTIFICATION_EVENT_TYPES.length} user notification event types`);
 }
 
+// ── In-app notification persistence (#391) ─────────────────────
+
+const EVENT_TO_NOTIF_TYPE: Partial<Record<AppEventType, NotificationType>> = {
+  'join_request.approved': 'join_approved',
+  'join_request.rejected': 'join_rejected',
+  'member.role_changed': 'role_changed',
+};
+
+/** Short in-app message (single line, no footer — distinct from email body). */
+function formatInAppMessage<T extends AppEventType>(event: AppEventMap[T]): string {
+  switch (event.type) {
+    case 'join_request.approved': {
+      const p = event.payload as JoinRequestResolvedPayload;
+      return `Your request to join "${p.farm_name}" has been approved.`;
+    }
+    case 'join_request.rejected': {
+      const p = event.payload as JoinRequestResolvedPayload;
+      return `Your request to join "${p.farm_name}" was not approved.`;
+    }
+    case 'member.role_changed': {
+      const p = event.payload as MemberRoleChangedPayload;
+      return `Your role in "${p.farm_name}" changed from ${p.old_role} to ${p.new_role}.`;
+    }
+    default:
+      return event.type;
+  }
+}
+
+function initInAppNotificationSubscriptions(): void {
+  for (const eventType of USER_NOTIFICATION_EVENT_TYPES) {
+    appEvents.on(eventType, (event) => {
+      const payload = event.payload as Record<string, unknown>;
+      const targetUserId = payload['target_user_id'] as string | undefined;
+      if (!targetUserId) return;
+
+      const notifType = EVENT_TO_NOTIF_TYPE[eventType];
+      if (!notifType) return;
+
+      const title = USER_EMAIL_SUBJECTS[eventType] ?? eventType;
+      const body = formatInAppMessage(event);
+
+      createNotification(targetUserId, {
+        type: notifType,
+        title,
+        body,
+        farm_id: payload['farm_id'] as string | undefined,
+        farm_name: payload['farm_name'] as string | undefined,
+      }).catch((err) => {
+        console.error(`[notification] failed to persist ${eventType} in-app notification:`, err);
+      });
+    });
+  }
+
+  console.log('[notification] subscribed to in-app notification persistence');
+}
+
 /** Send a bug report email to all admins. Returns success status. */
 export async function sendBugReport(
   reporterEmail: string,
@@ -391,3 +449,4 @@ export async function sendBugReport(
 // Initialize subscriptions at module load time
 initNotificationSubscriptions();
 initUserNotificationSubscriptions();
+initInAppNotificationSubscriptions();

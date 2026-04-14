@@ -243,4 +243,45 @@ router.post('/bug-report', async (c) => {
   return c.json({ sent });
 });
 
+// ── In-app Notifications (#391) ────────────────────────────────
+
+// GET /api/v1/me/notifications — recent notifications (newest first)
+router.get('/notifications', async (c) => {
+  const { userId } = getAuthContext(c);
+  const rawLimit = c.req.query('limit');
+  let limit = 20;
+  if (rawLimit !== undefined) {
+    const n = parseInt(rawLimit, 10);
+    if (isNaN(n) || n < 1 || n > 50) throw new ValidationError('limit must be an integer between 1 and 50');
+    limit = n;
+  }
+  const notifications = await dynamoRepo.getUserNotifications(userId, limit);
+  return c.json({ data: notifications });
+});
+
+// GET /api/v1/me/notifications/unread-count
+router.get('/notifications/unread-count', async (c) => {
+  const { userId } = getAuthContext(c);
+  const count = await dynamoRepo.getUnreadCount(userId);
+  return c.json({ count });
+});
+
+// PATCH /api/v1/me/notifications/:notifId/read — mark single as read
+router.patch('/notifications/:notifId/read', async (c) => {
+  const { userId } = getAuthContext(c);
+  const { notifId } = c.req.param();
+  const updated = await dynamoRepo.markAsRead(userId, notifId);
+  if (!updated) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Notification not found' } }, 404);
+  }
+  return c.json({ read: true });
+});
+
+// POST /api/v1/me/notifications/read-all — mark all as read
+router.post('/notifications/read-all', async (c) => {
+  const { userId } = getAuthContext(c);
+  const count = await dynamoRepo.markAllAsRead(userId);
+  return c.json({ marked: count });
+});
+
 export default router;

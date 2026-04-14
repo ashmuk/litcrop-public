@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mock @aws-sdk/client-ses ─────────────────────────────────────
 // Use vi.hoisted so mockSend is available inside vi.mock factory (hoisted before imports)
-const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
+const { mockSend, mockCreateNotification } = vi.hoisted(() => ({
+  mockSend: vi.fn(),
+  mockCreateNotification: vi.fn(),
+}));
 
 vi.mock('@aws-sdk/client-ses', () => {
   class MockSESClient {
@@ -18,6 +21,12 @@ vi.mock('@aws-sdk/client-ses', () => {
     SESClient: MockSESClient,
     SendEmailCommand: MockSendEmailCommand,
   };
+});
+
+// ── Mock repositories/notifications to intercept createNotification ─
+vi.mock('../../services/repositories/notifications', async (importOriginal) => {
+  const original = await importOriginal() as Record<string, unknown>;
+  return { ...original, createNotification: mockCreateNotification };
 });
 
 // ── Set env vars before importing notification service ───────────
@@ -301,5 +310,65 @@ describe('user-facing notifications (#391)', () => {
     const cmd = mockSend.mock.calls[0][0];
     expect(cmd.input.Message.Body.Text.Data).toContain('permissions have been updated');
     expect(cmd.input.Message.Body.Text.Data).not.toContain('manage members');
+  });
+});
+
+// ── In-app notification persistence (#391 Batch B) ─────────────
+
+describe('in-app notification persistence (#391 Batch B)', () => {
+  beforeEach(() => {
+    mockCreateNotification.mockReset();
+    mockCreateNotification.mockResolvedValue({ id: 'notif-mock' });
+  });
+
+  it('creates in-app notification on join_request.approved', async () => {
+    appEvents.emit('join_request.approved', makeEvent('join_request.approved', {
+      farm_id: 'farm-001',
+      farm_name: 'Green Acres',
+      target_user_id: 'user-002',
+      target_user_name: 'Alice',
+      target_user_email: 'alice@example.com',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockCreateNotification).toHaveBeenCalledOnce();
+    const [userId, data] = mockCreateNotification.mock.calls[0];
+    expect(userId).toBe('user-002');
+    expect(data.type).toBe('join_approved');
+    expect(data.farm_id).toBe('farm-001');
+    expect(data.body).toContain('Green Acres');
+    expect(data.body).not.toContain('--'); // no email footer
+  });
+
+  it('creates in-app notification on member.role_changed', async () => {
+    appEvents.emit('member.role_changed', makeEvent('member.role_changed', {
+      farm_id: 'farm-001',
+      farm_name: 'Green Acres',
+      target_user_id: 'user-003',
+      target_user_name: 'Bob',
+      target_user_email: 'bob@example.com',
+      old_role: 'staff',
+      new_role: 'owner',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockCreateNotification).toHaveBeenCalledOnce();
+    const [userId, data] = mockCreateNotification.mock.calls[0];
+    expect(userId).toBe('user-003');
+    expect(data.type).toBe('role_changed');
+    expect(data.body).toContain('staff');
+    expect(data.body).toContain('owner');
+  });
+
+  it('skips in-app notification when target_user_id is missing', async () => {
+    appEvents.emit('join_request.approved', makeEvent('join_request.approved', {
+      farm_id: 'farm-001',
+      farm_name: 'Test Farm',
+      // no target_user_id
+      target_user_name: 'Nobody',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockCreateNotification).not.toHaveBeenCalled();
   });
 });

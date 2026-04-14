@@ -116,6 +116,22 @@ export interface UserProfile {
   profile_picture_thumb_key?: string;
 }
 
+// ── In-app Notifications ─────────────────────────────────────────
+
+export type NotificationType = 'join_approved' | 'join_rejected' | 'role_changed';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  farm_id?: string;
+  farm_name?: string;
+  read: boolean;
+  created_at: string; // ISO 8601
+}
+
 // ── Device Management ────────────────────────────────────────────
 
 /** Device status — derived from last_seen_at vs capture_interval */

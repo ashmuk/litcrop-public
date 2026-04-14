@@ -112,7 +112,11 @@ export const DDB_KEY_PREFIXES = {
   ACTIVITY: 'ACTIVITY#',
   DEVICE: 'DEVICE#',
   DIARY: 'DIARY#',
+  NOTIF: 'NOTIF#',
 } as const;
+
+/** Notification TTL retention period in days */
+export const NOTIFICATION_TTL_DAYS = 90;
 
 /** Activity log TTL retention period in days */
 export const ACTIVITY_TTL_DAYS = 90;

@@ -151,6 +151,11 @@ export class DynamoRepository {
   // ── Notifications ──────────────────────────────────────────────
   getNotificationPrefs = notifications.getNotificationPrefs;
   upsertNotificationPrefs = notifications.upsertNotificationPrefs;
+  createNotification = notifications.createNotification;
+  getUserNotifications = notifications.getUserNotifications;
+  getUnreadCount = notifications.getUnreadCount;
+  markAsRead = notifications.markAsRead;
+  markAllAsRead = notifications.markAllAsRead;
 }
 
 export const dynamoRepo = new DynamoRepository();

@@ -21,6 +21,10 @@ vi.mock('../../services/dynamodb', () => ({
     deleteAccount: vi.fn(),
     getNotificationPrefs: vi.fn(),
     upsertNotificationPrefs: vi.fn(),
+    getUserNotifications: vi.fn(),
+    getUnreadCount: vi.fn(),
+    markAsRead: vi.fn(),
+    markAllAsRead: vi.fn(),
   },
   DEFAULT_SETTINGS: { locale: 'en', temp_unit: 'C', theme: 'earthy' },
 }));
@@ -430,5 +434,93 @@ describe('PATCH /api/v1/me/profile — email sync (#391)', () => {
     const body = await res.json();
     expect(body.email).toBeUndefined();
     expect(body.display_name).toBe('Updated');
+  });
+});
+
+// ── In-app Notifications (#391 Batch B) ────────────────────────
+
+const notifFixture = {
+  id: 'notif-001',
+  user_id: TEST_USER_ID,
+  type: 'join_approved' as const,
+  title: "You've been accepted!",
+  body: 'Your request to join "Green Acres" has been approved.',
+  farm_id: 'farm-001',
+  farm_name: 'Green Acres',
+  read: false,
+  created_at: '2026-04-14T00:00:00.000Z',
+};
+
+describe('GET /api/v1/me/notifications', () => {
+  it('returns notification list', async () => {
+    mockRepo.getUserNotifications.mockResolvedValue([notifFixture]);
+    const res = await app.request('/api/v1/me/notifications', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: unknown[] };
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]).toMatchObject({ id: 'notif-001', type: 'join_approved' });
+  });
+
+  it('rejects invalid limit query param with 400', async () => {
+    const res = await app.request('/api/v1/me/notifications?limit=abc', { headers: authHeaders() });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 401 without auth', async () => {
+    const res = await app.request('/api/v1/me/notifications');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /api/v1/me/notifications/unread-count', () => {
+  it('returns unread count', async () => {
+    mockRepo.getUnreadCount.mockResolvedValue(3);
+    const res = await app.request('/api/v1/me/notifications/unread-count', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { count: number };
+    expect(body.count).toBe(3);
+  });
+});
+
+describe('PATCH /api/v1/me/notifications/:notifId/read', () => {
+  it('marks notification as read (200)', async () => {
+    mockRepo.markAsRead.mockResolvedValue(true);
+    const res = await app.request('/api/v1/me/notifications/notif-001/read', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { read: boolean };
+    expect(body.read).toBe(true);
+  });
+
+  it('returns 404 when notification not found', async () => {
+    mockRepo.markAsRead.mockResolvedValue(false);
+    const res = await app.request('/api/v1/me/notifications/nonexistent/read', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /api/v1/me/notifications/read-all', () => {
+  it('marks all as read and returns count', async () => {
+    mockRepo.markAllAsRead.mockResolvedValue(5);
+    const res = await app.request('/api/v1/me/notifications/read-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { marked: number };
+    expect(body.marked).toBe(5);
+  });
+
+  it('returns 401 without auth', async () => {
+    const res = await app.request('/api/v1/me/notifications/read-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status).toBe(401);
   });
 });

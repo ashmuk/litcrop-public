@@ -39,6 +39,7 @@ export const sk = {
   joinRequest: (userId: string) => `${DDB_KEY_PREFIXES.JOIN_REQUEST}${userId}`,
   device: (deviceId: string) => `${DDB_KEY_PREFIXES.DEVICE}${deviceId}`,
   diary: (date: string, entryId: string) => `${DDB_KEY_PREFIXES.DIARY}${date}#${entryId}`,
+  notif: (createdAt: string, notifId: string) => `${DDB_KEY_PREFIXES.NOTIF}${createdAt}#${notifId}`,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────

@@ -33,6 +33,8 @@ export type {
   CostItem,
   DiaryEntry,
   DiaryEntryResponse,
+  NotificationType,
+  Notification,
 } from './types/domain';
 
 // API response/error types
@@ -96,6 +98,7 @@ export {
   CROP_TYPES,
   DDB_KEY_PREFIXES,
   ACTIVITY_TTL_DAYS,
+  NOTIFICATION_TTL_DAYS,
   ENV_ADMIN_EMAILS,
   DEVICE_STATUS_VALUES,
   STORAGE_STATUS_VALUES,
