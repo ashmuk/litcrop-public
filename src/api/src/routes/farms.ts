@@ -118,7 +118,7 @@ router.get('/discoverable', async (c) => {
     const data = await Promise.all(
       farms
         .filter((f) => !memberFarmIds.has(f.id))
-        .filter((f) => !f.visibility || f.visibility === 'public')
+        .filter((f) => f.visibility !== 'private')
         .map(async (farm) => {
           const members = await dynamoRepo.getFarmMembers(farm.id);
           const pendingRequest = await dynamoRepo.getJoinRequest(farm.id, userId);

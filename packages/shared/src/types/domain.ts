@@ -260,14 +260,3 @@ export interface DiaryEntryResponse extends DiaryEntry {
   cost_total: number;
   created_by_name: string | null;
 }
-
-export interface DiscoverableFarm {
-  id: string;
-  name: string;
-  description: string | null;
-  location_text: string;
-  latitude?: number;
-  longitude?: number;
-  member_count: number;
-  has_pending_request: boolean;
-}

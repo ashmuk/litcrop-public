@@ -107,11 +107,15 @@ function WhatsNewContent() {
         <h2 style="font-size:var(--font-size-md);font-weight:var(--font-weight-bold);margin-bottom:var(--space-4);color:var(--color-text)">
           {t('guide.getting_started')}
         </h2>
-        <GuideStep step={1} icon="🌱" title={t('guide.step1_title')} desc={t('guide.step1_desc')} />
-        <GuideStep step={2} icon="🌾" title={t('guide.step2_title')} desc={t('guide.step2_desc')} />
-        <GuideStep step={3} icon="📷" title={t('guide.step3_title')} desc={t('guide.step3_desc')} />
-        <GuideStep step={4} icon="📓" title={t('guide.step4_title')} desc={t('guide.step4_desc')} />
-        <GuideStep step={5} icon="📡" title={t('guide.step5_title')} desc={t('guide.step5_desc')} />
+        {[
+          { icon: '🌱', key: 'step1' },
+          { icon: '🌾', key: 'step2' },
+          { icon: '📷', key: 'step3' },
+          { icon: '📓', key: 'step4' },
+          { icon: '📡', key: 'step5' },
+        ].map(({ icon, key }, i) => (
+          <GuideStep key={key} step={i + 1} icon={icon} title={t(`guide.${key}_title`)} desc={t(`guide.${key}_desc`)} />
+        ))}
       </div>
 
       {/* Changelog (collapsible) */}
