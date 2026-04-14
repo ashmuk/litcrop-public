@@ -70,6 +70,17 @@ function WhatsNewContent() {
       </p>
 
       <VersionEntry
+        version="v0.94"
+        date="2026-04-14"
+        items={[
+          'User notifications: email on join approval/rejection and role changes',
+          'In-app notification system with DynamoDB persistence',
+          'Notification bell with unread badge in desktop and mobile navigation',
+        ]}
+        current
+      />
+
+      <VersionEntry
         version="v0.93"
         date="2026-04-13"
         items={[
@@ -80,7 +91,6 @@ function WhatsNewContent() {
           'Monetization strategy (ADR)',
           'Capacity analysis review',
         ]}
-        current
       />
 
       <VersionEntry
