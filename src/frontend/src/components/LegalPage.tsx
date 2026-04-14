@@ -62,85 +62,86 @@ function PrivacyContent() {
   );
 }
 
+function GuideStep({ step, icon, title, desc }: { step: number; icon: string; title: string; desc: string }) {
+  return (
+    <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4)">
+      <div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:var(--font-size-sm);font-weight:var(--font-weight-bold)">{step}</div>
+      <div>
+        <div style="font-weight:var(--font-weight-semibold);font-size:var(--font-size-sm);margin-bottom:2px">
+          <span aria-hidden="true">{icon} </span>{title}
+        </div>
+        <div style="font-size:var(--font-size-xs);color:var(--color-gray-600);line-height:1.5">{desc}</div>
+      </div>
+    </div>
+  );
+}
+
 function WhatsNewContent() {
   return (
     <>
-      <p style="font-size:var(--font-size-sm);color:var(--color-gray-500);margin-bottom:var(--space-5)">
-        {t('legal.whats_new_intro')}
-      </p>
+      {/* Platform Summary */}
+      <div style="margin-bottom:var(--space-6)">
+        <p style="font-size:var(--font-size-sm);color:var(--color-gray-700);line-height:1.7;margin-bottom:var(--space-3)">
+          {t('guide.summary')}
+        </p>
 
-      <VersionEntry
-        version="v0.95"
-        date="2026-04-14"
-        items={[
-          'Day-grouped image history with collapsible accordion',
-          'Timelapse source filtering (device/manual) and date range selector',
-          'Gap detection indicators on timelapse progress bar',
-          'Pilot mode: invitation code gate, notice banner, farm limit (2 max)',
-        ]}
-        current
-      />
+        {/* Key Features */}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)">
+          {[
+            { icon: '🌾', key: 'guide.feature_crops' },
+            { icon: '📓', key: 'guide.feature_diary' },
+            { icon: '📡', key: 'guide.feature_device' },
+            { icon: '📊', key: 'guide.feature_timelapse' },
+            { icon: '🔔', key: 'guide.feature_notifications' },
+            { icon: '⛅', key: 'guide.feature_weather' },
+          ].map(({ icon, key }) => (
+            <div key={key} style="font-size:var(--font-size-xs);color:var(--color-gray-700);padding:var(--space-2);background:var(--color-gray-50);border-radius:var(--radius-sm)">
+              <span aria-hidden="true">{icon} </span>{t(key)}
+            </div>
+          ))}
+        </div>
+      </div>
 
-      <VersionEntry
-        version="v0.94"
-        date="2026-04-14"
-        items={[
-          'User notifications: email on join approval/rejection and role changes',
-          'In-app notification system with DynamoDB persistence',
-          'Notification bell with unread badge in desktop and mobile navigation',
-        ]}
-      />
+      {/* Getting Started Guide */}
+      <div style="margin-bottom:var(--space-6)">
+        <h2 style="font-size:var(--font-size-md);font-weight:var(--font-weight-bold);margin-bottom:var(--space-4);color:var(--color-text)">
+          {t('guide.getting_started')}
+        </h2>
+        <GuideStep step={1} icon="🌱" title={t('guide.step1_title')} desc={t('guide.step1_desc')} />
+        <GuideStep step={2} icon="🌾" title={t('guide.step2_title')} desc={t('guide.step2_desc')} />
+        <GuideStep step={3} icon="📷" title={t('guide.step3_title')} desc={t('guide.step3_desc')} />
+        <GuideStep step={4} icon="📓" title={t('guide.step4_title')} desc={t('guide.step4_desc')} />
+        <GuideStep step={5} icon="📡" title={t('guide.step5_title')} desc={t('guide.step5_desc')} />
+      </div>
 
-      <VersionEntry
-        version="v0.93"
-        date="2026-04-13"
-        items={[
-          'Terms of Service and Privacy Policy pages',
-          'Privacy consent at registration',
-          'Bug report form',
-          'Staff farm discovery fix',
-          'Monetization strategy (ADR)',
-          'Capacity analysis review',
-        ]}
-      />
-
-      <VersionEntry
-        version="v0.92"
-        date="2026-04-13"
-        items={[
-          'WCAG 2.1 AA contrast compliance (earthy theme)',
-          'RegisterForm accessibility (role groups, select labels)',
-          'Staff farm creation guard',
-          '43 Playwright E2E tests',
-          'install.sh at litcrop.com',
-          'Production hotfixes (preferences sync, admin guard)',
-        ]}
-      />
-
-      <VersionEntry
-        version="v0.91"
-        date="2026-04-12"
-        items={[
-          'Custom domain litcrop.com',
-          'Uniform loading and empty states',
-          'Repository split (dynamodb.ts, farms.ts)',
-          'Incident runbooks and on-call procedures',
-          'Staging/production environment separation',
-          'Architecture documentation backfill',
-        ]}
-      />
-
-      <VersionEntry
-        version="v0.90"
-        date="2026-04-11"
-        items={[
-          'Production AWS resources and staging/prod split',
-          'Login page redesign with line-art hero',
-          'Mobile viewport optimizations',
-          'Device heartbeat auth fix',
-          'Device config form UX improvements',
-        ]}
-      />
+      {/* Changelog (collapsible) */}
+      <details style="margin-bottom:var(--space-4)">
+        <summary style="cursor:pointer;font-size:var(--font-size-md);font-weight:var(--font-weight-bold);color:var(--color-text);padding:var(--space-2) 0;user-select:none">
+          {t('guide.changelog')}
+        </summary>
+        <div style="margin-top:var(--space-3)">
+          <VersionEntry version="v0.95" date="2026-04-14" items={[
+            'Day-grouped image history with collapsible accordion',
+            'Timelapse source filtering and date range selector',
+            'Pilot mode: invitation code gate, notice banner, farm limit',
+          ]} current />
+          <VersionEntry version="v0.94" date="2026-04-14" items={[
+            'User notification system: email + in-app + bell',
+          ]} />
+          <VersionEntry version="v0.93" date="2026-04-13" items={[
+            'Terms of Service, Privacy Policy, bug report form',
+          ]} />
+          <VersionEntry version="v0.92" date="2026-04-13" items={[
+            'WCAG 2.1 AA compliance, E2E tests, production hotfixes',
+          ]} />
+          <VersionEntry version="v0.91" date="2026-04-12" items={[
+            'Custom domain litcrop.com, environment separation',
+          ]} />
+          <VersionEntry version="v0.90" date="2026-04-11" items={[
+            'Production AWS resources, login redesign, device auth fix',
+          ]} />
+        </div>
+      </details>
     </>
   );
 }

@@ -924,5 +924,26 @@
     "report_bug_success": "Bug report sent. Thank you!",
     "report_bug_error": "Failed to send report. Please try again.",
     "report_bug_empty": "Please describe the issue."
+  },
+  "guide": {
+    "summary": "LitCrop is a farm management platform for small-scale farmers. Track your crops from seed to harvest, monitor beds with camera devices, log daily activities in your farm diary, and review growth over time with timelapse playback.",
+    "feature_crops": "Crop tracking & bed grid",
+    "feature_diary": "Farm diary & work log",
+    "feature_device": "Camera device monitoring",
+    "feature_timelapse": "Timelapse playback",
+    "feature_notifications": "Join & role notifications",
+    "feature_weather": "Local weather data",
+    "getting_started": "Getting Started",
+    "step1_title": "Create your farm",
+    "step1_desc": "Set up your farm with a name and location. You'll start with a default bed grid that you can resize anytime.",
+    "step2_title": "Add your crops",
+    "step2_desc": "Select a bed in the grid and assign a crop. LitCrop will calculate your expected harvest date automatically.",
+    "step3_title": "Upload or capture photos",
+    "step3_desc": "Take a photo from your phone, or set up a Raspberry Pi camera for automatic scheduled captures.",
+    "step4_title": "Log your activities",
+    "step4_desc": "Use the Farm Diary to record watering, fertilizing, weeding, and harvest activities with dates and costs.",
+    "step5_title": "Review your progress",
+    "step5_desc": "Use timelapse playback to watch your crops grow over time. Filter by device or date range.",
+    "changelog": "Changelog"
   }
 }
