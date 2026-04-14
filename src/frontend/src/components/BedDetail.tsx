@@ -105,6 +105,7 @@ export default function BedDetail() {
   const [uploading, setUploading] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const autoExpandedRef = useRef(false);
   const [editing, setEditing] = useState(false);
   const [cropForm, setCropForm] = useState({
     crop_type: '',
@@ -167,11 +168,12 @@ export default function BedDetail() {
   }, [bedId]);
 
   useEffect(() => {
-    if (images.length > 0 && expandedDays.size === 0) {
+    if (!autoExpandedRef.current && images.length > 0) {
+      autoExpandedRef.current = true;
       const firstKey = toDateKey(images[0].captured_at);
       setExpandedDays(new Set([firstKey]));
     }
-  }, [images.length]); // only when images first load
+  }, [images.length]);
 
   function toggleDay(dateKey: string) {
     setExpandedDays(prev => {
@@ -593,6 +595,7 @@ export default function BedDetail() {
                   <button
                     type="button"
                     class="day-group__header"
+                    id={`day-header-${group.dateKey}`}
                     onClick={() => toggleDay(group.dateKey)}
                     aria-expanded={isOpen}
                     aria-controls={bodyId}

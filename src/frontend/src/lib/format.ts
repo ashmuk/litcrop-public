@@ -61,10 +61,13 @@ export function degreeToCardinal(degrees: number): string {
   return dirs[((Math.round(degrees / 45) % 8) + 8) % 8];
 }
 
-/** Extract the YYYY-MM-DD date key from an ISO timestamp or Date. */
+/** Extract the YYYY-MM-DD date key from an ISO timestamp or Date (local timezone). */
 export function toDateKey(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 /** Format a UTC date key as "Today", "Yesterday", or short date (e.g. "Apr 11") */

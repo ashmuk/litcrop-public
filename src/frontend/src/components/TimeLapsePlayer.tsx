@@ -278,17 +278,16 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
 
   useEffect(() => {
     if (allImagesRef.current.length === 0) return;
+    // Cancel active playback RAF and preload before recalculating
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    preloaderRef.current?.cancel();
     const filtered = filterByDateRange(filterBySource(allImagesRef.current, sourceFilter), dateRange);
     const grouped = groupByWeek(filtered);
     setWeeks(grouped);
     const latestComplete = grouped.findLastIndex(w => w.complete);
     setSelectedWeek(latestComplete >= 0 ? latestComplete : Math.max(0, grouped.length - 1));
     setCurrentIndex(0);
-    // Cancel any active preload since frames changed
-    preloaderRef.current?.cancel();
-    if (grouped.length > 0) {
-      setStatus('ready');
-    }
+    setStatus('ready');
   }, [sourceFilter, dateRange]);
 
   // ── Preload on week selection ───────────────────────────────
