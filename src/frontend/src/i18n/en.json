@@ -71,6 +71,11 @@
     "no_images": "No images yet",
     "no_images_body": "Take a photo of your crops to track their progress."
   },
+  "history": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "images_count": "{count} images"
+  },
   "weather": {
     "temperature": "Temperature",
     "humidity": "Humidity",
@@ -190,7 +195,16 @@
     "prev": "Previous frame",
     "next": "Next frame",
     "prev_week": "Previous week",
-    "next_week": "Next week"
+    "next_week": "Next week",
+    "source": "Source",
+    "source_all": "All",
+    "source_device": "Device",
+    "source_manual": "Manual",
+    "range": "Range",
+    "range_7d": "7 days",
+    "range_30d": "30 days",
+    "range_all": "All",
+    "no_match": "No images match current filters"
   },
   "lightbox": {
     "close": "Close",

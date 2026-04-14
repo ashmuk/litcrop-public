@@ -61,6 +61,22 @@ export function degreeToCardinal(degrees: number): string {
   return dirs[((Math.round(degrees / 45) % 8) + 8) % 8];
 }
 
+/** Extract the YYYY-MM-DD date key from an ISO timestamp or Date. */
+export function toDateKey(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toISOString().slice(0, 10);
+}
+
+/** Format a UTC date key as "Today", "Yesterday", or short date (e.g. "Apr 11") */
+export function formatDateLabel(dateKey: string): string {
+  const now = new Date();
+  const today = toDateKey(now);
+  const yesterday = toDateKey(new Date(now.getTime() - 86400000));
+  if (dateKey === today) return t('history.today');
+  if (dateKey === yesterday) return t('history.yesterday');
+  return formatDateShort(dateKey);
+}
+
 /** Format an ISO timestamp as a relative time string (e.g. '5m ago', '2h ago', '3d ago'). */
 export function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();

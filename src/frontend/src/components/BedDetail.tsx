@@ -17,9 +17,9 @@ import { getLocalFarmRole, refreshFarmRoleCache } from '../lib/hooks';
 import { LS_FARM_ID } from '../lib/hooks';
 import { showToast } from './Toast';
 import { t } from '../i18n/i18n';
-import { displaySrc, fullSrc } from '../lib/image';
+import { displaySrc, fullSrc, isManualUpload, MANUAL_NODE_ID } from '../lib/image';
 import { TAG_ICONS } from '../lib/status';
-import { formatDate, formatDateShort } from '../lib/format';
+import { formatDate, formatDateShort, formatDateLabel, toDateKey } from '../lib/format';
 import Lightbox from './Lightbox';
 import TimeLapsePlayer from './TimeLapsePlayer';
 
@@ -39,6 +39,35 @@ const TAG_THUMB_CSS: Record<TagValue, string> = {
 };
 
 const MAX_IMAGE_DIM = 4096;
+
+interface DayGroup {
+  dateKey: string;
+  label: string;
+  images: ImageListItem[];
+  deviceCount: number;
+  manualCount: number;
+}
+
+function groupByDay(images: ImageListItem[]): DayGroup[] {
+  const map = new Map<string, ImageListItem[]>();
+  for (const img of images) {
+    const key = toDateKey(img.captured_at);
+    const arr = map.get(key) ?? [];
+    arr.push(img);
+    map.set(key, arr);
+  }
+  // Already newest-first because images arrive newest-first from API
+  return Array.from(map, ([dateKey, imgs]) => {
+    const manualCount = imgs.filter(isManualUpload).length;
+    return {
+      dateKey,
+      label: formatDateLabel(dateKey),
+      images: imgs,
+      deviceCount: imgs.length - manualCount,
+      manualCount,
+    };
+  });
+}
 
 async function toJpegBlob(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -75,6 +104,7 @@ export default function BedDetail() {
   const [tagging, setTagging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
   const [cropForm, setCropForm] = useState({
     crop_type: '',
@@ -136,6 +166,22 @@ export default function BedDetail() {
     return () => { cancelled = true; };
   }, [bedId]);
 
+  useEffect(() => {
+    if (images.length > 0 && expandedDays.size === 0) {
+      const firstKey = toDateKey(images[0].captured_at);
+      setExpandedDays(new Set([firstKey]));
+    }
+  }, [images.length]); // only when images first load
+
+  function toggleDay(dateKey: string) {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dateKey)) next.delete(dateKey);
+      else next.add(dateKey);
+      return next;
+    });
+  }
+
   async function loadMoreImages() {
     if (!nextCursor || imagesLoading) return;
     setImagesLoading(true);
@@ -186,7 +232,7 @@ export default function BedDetail() {
       const formData = new FormData();
       formData.append('image', jpegBlob, 'photo.jpg');
       formData.append('captured_at', new Date().toISOString());
-      formData.append('node_id', 'phone-camera');
+      formData.append('node_id', MANUAL_NODE_ID);
       formData.append('trigger', 'scheduled');
       await uploadImage(bedId, formData);
       showToast(t('upload.success'), 'success');
@@ -351,6 +397,7 @@ export default function BedDetail() {
   }
 
   const cropLabel = getCropDisplay(bed.crop_type) || t('bed.no_crop');
+  const dayGroups = groupByDay(images);
 
   return (
     <>
@@ -538,28 +585,53 @@ export default function BedDetail() {
           </div>
         ) : (
           <>
-            <div class="thumb-grid">
-              {images.map((img) => (
-                <div
-                  key={img.id}
-                  class={`thumb-item${img.latest_tag ? ` thumb-item--tagged-${TAG_THUMB_CSS[img.latest_tag]}` : ''}`}
-                  onClick={() => setLightboxSrc(fullSrc(img))}
-                  style="cursor:pointer"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`View image from ${formatDateShort(img.captured_at)}`}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setLightboxSrc(fullSrc(img)); }}
-                >
-                  <img src={displaySrc(img)} alt="" loading="lazy" />
-                  <div class="thumb-item__date">{formatDateShort(img.captured_at)}</div>
-                  {img.trigger === 'motion' && (
-                    <div class="thumb-item__motion">
-                      <span class="badge-motion-sm">🏃</span>
+            {dayGroups.map((group) => {
+              const isOpen = expandedDays.has(group.dateKey);
+              const bodyId = `day-body-${group.dateKey}`;
+              return (
+                <div key={group.dateKey} class="day-group">
+                  <button
+                    type="button"
+                    class="day-group__header"
+                    onClick={() => toggleDay(group.dateKey)}
+                    aria-expanded={isOpen}
+                    aria-controls={bodyId}
+                  >
+                    <span class={`day-group__chevron${isOpen ? ' day-group__chevron--open' : ''}`} aria-hidden="true">&#9654;</span>
+                    <span class="day-group__label">{group.label}</span>
+                    <span class="day-group__meta">
+                      <span>{t('history.images_count').replace('{count}', String(group.images.length))}</span>
+                      {group.deviceCount > 0 && <span class="day-group__source">📷{group.deviceCount}</span>}
+                      {group.manualCount > 0 && <span class="day-group__source">📱{group.manualCount}</span>}
+                    </span>
+                  </button>
+                  <div id={bodyId} class={`day-group__body${isOpen ? ' day-group__body--open' : ''}`} role="region" aria-labelledby={`day-header-${group.dateKey}`}>
+                    <div class="thumb-grid">
+                      {group.images.map((img) => (
+                        <div
+                          key={img.id}
+                          class={`thumb-item${img.latest_tag ? ` thumb-item--tagged-${TAG_THUMB_CSS[img.latest_tag]}` : ''}`}
+                          onClick={() => setLightboxSrc(fullSrc(img))}
+                          style="cursor:pointer"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View image from ${formatDateShort(img.captured_at)}`}
+                          onKeyDown={(e) => { if (e.key === 'Enter') setLightboxSrc(fullSrc(img)); }}
+                        >
+                          <img src={displaySrc(img)} alt="" loading="lazy" />
+                          <div class="thumb-item__date">{formatDateShort(img.captured_at)}</div>
+                          {img.trigger === 'motion' && (
+                            <div class="thumb-item__motion">
+                              <span class="badge-motion-sm">🏃</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
             {nextCursor && (
               <div class="load-more">
                 <button

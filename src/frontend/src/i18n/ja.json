@@ -71,6 +71,11 @@
     "no_images": "まだ画像がありません",
     "no_images_body": "作物の写真を撮って成長を記録しましょう。"
   },
+  "history": {
+    "today": "今日",
+    "yesterday": "昨日",
+    "images_count": "{count}枚"
+  },
   "weather": {
     "temperature": "気温",
     "humidity": "湿度",
@@ -190,7 +195,16 @@
     "prev": "前のフレーム",
     "next": "次のフレーム",
     "prev_week": "前の週",
-    "next_week": "次の週"
+    "next_week": "次の週",
+    "source": "ソース",
+    "source_all": "すべて",
+    "source_device": "デバイス",
+    "source_manual": "手動",
+    "range": "期間",
+    "range_7d": "7日間",
+    "range_30d": "30日間",
+    "range_all": "すべて",
+    "no_match": "条件に一致する画像がありません"
   },
   "lightbox": {
     "close": "閉じる",

@@ -5,9 +5,21 @@
  * Lightbox: prefer full-size (higher quality) with thumbnail fallback.
  */
 
+/** Node ID assigned to phone-camera (manual) uploads. */
+export const MANUAL_NODE_ID = 'phone-camera';
+
 interface ImageUrls {
   thumbnail_url: string | null;
   url: string;
+}
+
+interface NodeInfo {
+  node_id: string;
+}
+
+/** Whether the image was a manual phone-camera upload. */
+export function isManualUpload(img: NodeInfo): boolean {
+  return img.node_id === MANUAL_NODE_ID;
 }
 
 /** Resolve the best URL for display (thumbnail preferred, full-size fallback). */

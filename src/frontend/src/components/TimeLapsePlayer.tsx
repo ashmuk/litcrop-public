@@ -12,8 +12,8 @@ import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import type { ImageListItem } from '@litcrop/shared';
 import { getImages } from '../lib/api';
 import { t } from '../i18n/i18n';
-import { formatDateShort, formatFrameTime } from '../lib/format';
-import { displaySrc, fullSrc } from '../lib/image';
+import { formatDateShort, formatFrameTime, toDateKey } from '../lib/format';
+import { displaySrc, fullSrc, isManualUpload } from '../lib/image';
 import Lightbox from './Lightbox';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -29,6 +29,8 @@ interface WeekGroup {
 
 type Speed = 0.5 | 1 | 2;
 type Status = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'error';
+type SourceFilter = 'all' | 'device' | 'manual';
+type DateRange = '7d' | '30d' | 'all';
 
 interface TimeLapsePlayerProps {
   bedId: string;
@@ -57,7 +59,7 @@ function groupByWeek(images: ImageListItem[]): WeekGroup[] {
   for (const img of images) {
     const d = new Date(img.captured_at);
     const monday = getWeekMonday(d);
-    const key = monday.toISOString().slice(0, 10);
+    const key = toDateKey(monday);
     const arr = map.get(key) ?? [];
     arr.push(img);
     map.set(key, arr);
@@ -72,7 +74,7 @@ function groupByWeek(images: ImageListItem[]): WeekGroup[] {
     weekEnd.setDate(weekEnd.getDate() + 6);
 
     // Check if 7 unique days are present
-    const uniqueDays = new Set(imgs.map(i => new Date(i.captured_at).toISOString().slice(0, 10)));
+    const uniqueDays = new Set(imgs.map(i => toDateKey(i.captured_at)));
 
     weeks.push({
       weekStart,
@@ -87,6 +89,27 @@ function groupByWeek(images: ImageListItem[]): WeekGroup[] {
   // Sort weeks oldest-first
   weeks.sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime());
   return weeks;
+}
+
+function filterBySource(images: ImageListItem[], filter: SourceFilter): ImageListItem[] {
+  if (filter === 'all') return images;
+  if (filter === 'device') return images.filter(i => !isManualUpload(i));
+  return images.filter(isManualUpload);
+}
+
+function filterByDateRange(images: ImageListItem[], range: DateRange): ImageListItem[] {
+  if (range === 'all') return images;
+  const cutoff = Date.now() - (range === '7d' ? 7 : 30) * 86400000;
+  return images.filter(i => new Date(i.captured_at).getTime() >= cutoff);
+}
+
+function detectGaps(images: ImageListItem[], thresholdMs = 7200000): number[] {
+  const gaps: number[] = [];
+  for (let i = 1; i < images.length; i++) {
+    const diff = new Date(images[i].captured_at).getTime() - new Date(images[i - 1].captured_at).getTime();
+    if (diff > thresholdMs) gaps.push(i);
+  }
+  return gaps;
 }
 
 /** Calculate time-proportional progress (0-100) */
@@ -175,6 +198,12 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
   const [preloadCount, setPreloadCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>(() => {
+    try { return (localStorage.getItem('tl-source') as SourceFilter) ?? 'all'; } catch { return 'all'; }
+  });
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    try { return (localStorage.getItem('tl-range') as DateRange) ?? 'all'; } catch { return 'all'; }
+  });
 
   const rafRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
@@ -182,9 +211,17 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
   const preloadedRef = useRef<boolean[]>([]);
   const statusRef = useRef<Status>('idle');
   const lastAnnouncedRef = useRef(0);
+  const allImagesRef = useRef<ImageListItem[]>([]);
   const [announcedTime, setAnnouncedTime] = useState('');
 
   useEffect(() => { statusRef.current = status; }, [status]);
+
+  useEffect(() => {
+    try { localStorage.setItem('tl-source', sourceFilter); } catch {}
+  }, [sourceFilter]);
+  useEffect(() => {
+    try { localStorage.setItem('tl-range', dateRange); } catch {}
+  }, [dateRange]);
 
   // Reduced motion preference
   const reducedMotion = typeof window !== 'undefined'
@@ -216,7 +253,9 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
           cursor = page.meta.next_cursor ?? undefined;
         }
 
-        const grouped = groupByWeek(allImages);
+        allImagesRef.current = allImages;
+        const filtered = filterByDateRange(filterBySource(allImages, sourceFilter), dateRange);
+        const grouped = groupByWeek(filtered);
         setWeeks(grouped);
 
         // Auto-select latest complete week, or latest if none complete
@@ -234,6 +273,23 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
     loadAll();
     return () => { cancelled = true; };
   }, [bedId, initialImages, initialCursor]);
+
+  // ── Re-filter when source or range changes ─────────────────
+
+  useEffect(() => {
+    if (allImagesRef.current.length === 0) return;
+    const filtered = filterByDateRange(filterBySource(allImagesRef.current, sourceFilter), dateRange);
+    const grouped = groupByWeek(filtered);
+    setWeeks(grouped);
+    const latestComplete = grouped.findLastIndex(w => w.complete);
+    setSelectedWeek(latestComplete >= 0 ? latestComplete : Math.max(0, grouped.length - 1));
+    setCurrentIndex(0);
+    // Cancel any active preload since frames changed
+    preloaderRef.current?.cancel();
+    if (grouped.length > 0) {
+      setStatus('ready');
+    }
+  }, [sourceFilter, dateRange]);
 
   // ── Preload on week selection ───────────────────────────────
 
@@ -374,7 +430,7 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
     );
   }
 
-  if (weeks.length === 0) return null;
+  if (weeks.length === 0 && status !== 'ready') return null;
 
   // Check if any complete weeks exist
   const hasCompleteWeeks = weeks.some(w => w.complete);
@@ -387,6 +443,8 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
     : 0;
 
   const uniqueDays = week?.uniqueDayCount ?? 0;
+  const currentWeekFrames = weeks[selectedWeek]?.images ?? [];
+  const gapIndices = detectGaps(currentWeekFrames);
 
   // ── Render: idle / ready ────────────────────────────────────
 
@@ -415,6 +473,42 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
         </button>
       </div>
 
+      {/* Filter bar (#394) */}
+      {status !== 'idle' && status !== 'loading' && (
+        <div class="timelapse__filter-bar">
+          <div class="timelapse__filter-row" role="radiogroup" aria-label={t('timelapse.source')}>
+            <span class="timelapse__filter-label">{t('timelapse.source')}:</span>
+            {(['all', 'device', 'manual'] as SourceFilter[]).map(f => (
+              <button
+                key={f}
+                type="button"
+                class={`timelapse__filter-chip${sourceFilter === f ? ' timelapse__filter-chip--active' : ''}`}
+                role="radio"
+                aria-checked={sourceFilter === f}
+                onClick={() => setSourceFilter(f)}
+              >
+                {t(`timelapse.source_${f}`)}
+              </button>
+            ))}
+          </div>
+          <div class="timelapse__filter-row" role="radiogroup" aria-label={t('timelapse.range')}>
+            <span class="timelapse__filter-label">{t('timelapse.range')}:</span>
+            {(['7d', '30d', 'all'] as DateRange[]).map(r => (
+              <button
+                key={r}
+                type="button"
+                class={`timelapse__filter-chip${dateRange === r ? ' timelapse__filter-chip--active' : ''}`}
+                role="radio"
+                aria-checked={dateRange === r}
+                onClick={() => setDateRange(r)}
+              >
+                {t(`timelapse.range_${r}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
       <div class="timelapse__summary">
         {week?.complete
@@ -425,6 +519,13 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
           <div style="margin-top:var(--space-1)">{t('timelapse.no_complete_weeks')}</div>
         )}
       </div>
+
+      {/* Empty filter result */}
+      {weeks.length === 0 && status === 'ready' && (
+        <div style="text-align:center;padding:var(--space-6);color:var(--color-gray-500)">
+          {t('timelapse.no_match')}
+        </div>
+      )}
 
       {/* Active playback view */}
       {isActive && currentFrame ? (
@@ -463,6 +564,11 @@ export default function TimeLapsePlayer({ bedId, cropType, initialImages, initia
             aria-label={`${t('timelapse.title')} progress`}
           >
             <div class="timelapse__progress-fill" style={{ width: `${progress}%` }} />
+            {/* Gap ticks */}
+            {currentWeekFrames && gapIndices.map(gi => {
+              const percent = (gi / currentWeekFrames.length) * 100;
+              return <span key={gi} class="timelapse__gap-tick" style={`left:${percent}%`} aria-hidden="true" />;
+            })}
           </div>
           <div class="timelapse__progress-labels">
             <span>{formatDateShort(week.weekStart)}</span>
