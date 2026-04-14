@@ -4,7 +4,7 @@
  * Reads bedId from the URL query string at runtime (?id=<bedId>).
  */
 
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
 import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
