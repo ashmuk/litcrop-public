@@ -7,7 +7,8 @@
     "manage": "Device",
     "layout": "Layout",
     "admin": "Admin",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "pilot_banner": "PILOT — Release candidate. Your feedback helps shape the product."
   },
   "page": {
     "weather": "⛅ Weather",
@@ -468,6 +469,12 @@
       "promo_invalid": "Invalid promotional code",
       "promo_valid": "Code accepted — Farm Owner role unlocked",
       "promo_hint": "Have a code? Enter it to unlock the Farm Owner role.",
+      "invite_title": "Invitation Required",
+      "invite_body": "LitCrop is currently in pilot. Enter your invitation code to create an account.",
+      "invite_label": "Invitation code",
+      "invite_placeholder": "Enter your invitation code",
+      "invite_button": "Continue",
+      "invite_invalid": "Invalid invitation code",
       "language": "Language",
       "temp_unit": "Temperature"
     },

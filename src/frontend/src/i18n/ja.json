@@ -7,7 +7,8 @@
     "manage": "デバイス",
     "layout": "レイアウト",
     "admin": "管理",
-    "notifications": "通知"
+    "notifications": "通知",
+    "pilot_banner": "パイロット版 — リリース候補です。フィードバックをお待ちしています。"
   },
   "page": {
     "weather": "⛅ 天気",
@@ -468,6 +469,12 @@
       "promo_invalid": "無効なプロモーションコード",
       "promo_valid": "コード承認 — 農園オーナーロールが選択可能になりました",
       "promo_hint": "コードをお持ちですか？入力して農園オーナーロールを有効にしてください。",
+      "invite_title": "招待コードが必要です",
+      "invite_body": "LitCropは現在パイロット版です。招待コードを入力してアカウントを作成してください。",
+      "invite_label": "招待コード",
+      "invite_placeholder": "招待コードを入力",
+      "invite_button": "続行",
+      "invite_invalid": "無効な招待コード",
       "language": "言語",
       "temp_unit": "温度単位"
     },

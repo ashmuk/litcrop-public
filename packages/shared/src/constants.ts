@@ -82,10 +82,14 @@ export const MAX_GRID_SIZE = 5;
 
 export const DEMO_FARM_ID = 'demo-farm';
 
+// ── Pilot Mode ─────────────────────────────────────────────────
+/** Set to false when graduating to GA. Controls invitation gate + pilot banner. */
+export const PILOT_MODE = true;
+
 // ── Free Plan Limits ────────────────────────────────────────────
 
 export const FREE_PLAN_MAX_OWNED_FARMS = 2;
-export const FREE_PLAN_MAX_MEMBERSHIPS = 3;
+export const FREE_PLAN_MAX_MEMBERSHIPS = 2;
 
 // ── Crop Types ──────────────────────────────────────────────────
 

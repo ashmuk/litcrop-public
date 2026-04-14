@@ -58,12 +58,19 @@ function mapConfirmError(err: unknown): string {
 
 const PROMO_CODE = 'LITCROP2026';
 
+// ── Pilot mode invitation gate ──────────────────────────────────
+
+import { PILOT_MODE } from '@litcrop/shared';
+
 // ── Component ─────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
 
 export default function RegisterForm() {
   const [step, setStep] = useState<Step>(1);
+  const [inviteVerified, setInviteVerified] = useState(!PILOT_MODE);
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteError, setInviteError] = useState('');
 
   // Step 1 state
   const [displayName, setDisplayName] = useState('');
@@ -283,7 +290,74 @@ export default function RegisterForm() {
     );
   }
 
+  function handleInviteSubmit(e: Event) {
+    e.preventDefault();
+    const trimmed = inviteCode.trim().toUpperCase();
+    if (trimmed === PROMO_CODE) {
+      setInviteVerified(true);
+      setInviteError('');
+      // Auto-fill promo code since invitation code = promo code during pilot
+      setPromoCode(trimmed);
+      setPromoValid(true);
+      setRole('owner');
+    } else {
+      setInviteError(t('auth.register.invite_invalid'));
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────
+
+  // Invitation gate (pilot mode only)
+  if (!inviteVerified) {
+    return (
+      <form onSubmit={handleInviteSubmit} noValidate>
+        <div style="text-align:center;margin-bottom:var(--space-5)">
+          <div style="font-size:28px;margin-bottom:var(--space-2)" aria-hidden="true">🔒</div>
+          <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);margin:0 0 var(--space-2)">
+            {t('auth.register.invite_title')}
+          </h2>
+          <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">
+            {t('auth.register.invite_body')}
+          </p>
+        </div>
+
+        {inviteError && (
+          <div class="auth-server-error" role="alert">
+            <span class="auth-server-error__icon" aria-hidden="true">⚠</span>
+            <span>{inviteError}</span>
+          </div>
+        )}
+
+        <div class="form-group">
+          <label class="form-label" for="invite-code">
+            {t('auth.register.invite_label')}
+          </label>
+          <input
+            id="invite-code"
+            type="text"
+            class={`form-input${inviteError ? ' form-input--error' : ''}`}
+            value={inviteCode}
+            onInput={(e) => { setInviteCode((e.target as HTMLInputElement).value); setInviteError(''); }}
+            placeholder={t('auth.register.invite_placeholder')}
+            autocomplete="off"
+            aria-describedby={inviteError ? 'invite-code-error' : undefined}
+            aria-invalid={inviteError ? 'true' : undefined}
+          />
+        </div>
+
+        <button type="submit" class="btn-primary" style="width:100%" disabled={!inviteCode.trim()}>
+          {t('auth.register.invite_button')}
+        </button>
+
+        <div class="auth-links">
+          <span>
+            {t('auth.have_account')}{' '}
+            <a href="/login">{t('auth.login_link')}</a>
+          </span>
+        </div>
+      </form>
+    );
+  }
 
   if (step === 3) {
     return (

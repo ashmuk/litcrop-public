@@ -61,6 +61,11 @@
     display: none !important;
   }
 
+  /* Pilot banner sits below fixed desktop nav */
+  .pilot-banner {
+    margin-top: 56px;
+  }
+
   /* Show desktop nav bar */
   .desktop-nav {
     display: flex !important;

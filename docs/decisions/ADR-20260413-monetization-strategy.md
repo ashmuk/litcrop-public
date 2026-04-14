@@ -13,7 +13,7 @@ LitCrop is approaching production readiness (v0.93, Pre-PROD phase). Before GA, 
 
 ### Current State
 - **AWS cost**: ~$1.18/month at 10 users — well within free tier eligibility
-- **Existing limits**: `FREE_PLAN_MAX_OWNED_FARMS = 2`, `FREE_PLAN_MAX_MEMBERSHIPS = 3`
+- **Existing limits**: `FREE_PLAN_MAX_OWNED_FARMS = 2`, `FREE_PLAN_MAX_MEMBERSHIPS = 2`
 - **AI features**: Claude Haiku chat (operator-funded, rate-limited)
 - **No payment infrastructure** exists — no Stripe, no billing system
 - **SES in sandbox** — email only to verified addresses
@@ -35,7 +35,7 @@ LitCrop is approaching production readiness (v0.93, Pre-PROD phase). Before GA, 
 | Feature | Limit |
 |---------|-------|
 | Owned farms | 2 |
-| Farm memberships (total) | 3 |
+| Farm memberships (total) | 2 |
 | Bed grid size | 8x8 (64 beds) max |
 | Image uploads | 500/month per farm |
 | Diary entries | Unlimited |
@@ -140,7 +140,7 @@ Rather than charging a subscription fee (which requires payment infrastructure),
 ```typescript
 // packages/shared/src/constants.ts
 export const FREE_PLAN_MAX_OWNED_FARMS = 2;        // existing
-export const FREE_PLAN_MAX_MEMBERSHIPS = 3;         // existing
+export const FREE_PLAN_MAX_MEMBERSHIPS = 2;         // existing
 export const FREE_PLAN_MAX_GRID_SIZE = 8;           // new — 8x8 max
 export const FREE_PLAN_MAX_IMAGES_PER_MONTH = 500;  // new — per farm
 export const FREE_PLAN_MAX_DEVICES = 2;             // new — per farm
