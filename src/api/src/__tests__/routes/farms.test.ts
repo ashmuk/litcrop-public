@@ -1259,4 +1259,134 @@ describe('GET /api/v1/farms/discoverable', () => {
     const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
     expect(res.status).toBe(503);
   });
+
+  it('excludes private farms from discoverable results', async () => {
+    const privateFarm = { ...otherFarm, id: 'private-farm-001', visibility: 'private' as const };
+    vi.mocked(dynamoRepo.getDiscoverableFarms).mockResolvedValue([otherFarm, privateFarm]);
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
+
+    const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ id: string }> };
+    expect(body.data.map((f) => f.id)).not.toContain('private-farm-001');
+    expect(body.data.map((f) => f.id)).toContain('other-farm-001');
+  });
+
+  it('includes farms with undefined visibility (backward compat — treated as public)', async () => {
+    const legacyFarm = { ...otherFarm, id: 'legacy-farm-001' }; // no visibility field
+    vi.mocked(dynamoRepo.getDiscoverableFarms).mockResolvedValue([legacyFarm]);
+    vi.mocked(dynamoRepo.getFarmsForUser).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([]);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
+
+    const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: Array<{ id: string }> };
+    expect(body.data.map((f) => f.id)).toContain('legacy-farm-001');
+  });
+});
+
+// ── POST /api/v1/farms/:farmId/join — visibility gate ───────────
+
+describe('POST /api/v1/farms/:farmId/join — visibility', () => {
+  it('returns 403 when farm is private', async () => {
+    const privateFarm = { ...farmFixture, visibility: 'private' as const };
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(privateFarm);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(403);
+    const body = await res.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe('FORBIDDEN');
+    expect(body.error.message).toContain('not accepting join requests');
+  });
+
+  it('allows join when farm is public', async () => {
+    const publicFarm = { ...farmFixture, visibility: 'public' as const };
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(publicFarm);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(null); // not already a member
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Alice', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.createJoinRequest).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it('allows join when farm has no visibility set (legacy — backward compat)', async () => {
+    // farmFixture has no visibility field → treated as public
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValueOnce(null);
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Alice', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.createJoinRequest).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(201);
+  });
+});
+
+// ── PATCH /api/v1/farms/:farmId — visibility field ──────────────
+
+describe('PATCH /api/v1/farms/:farmId — visibility', () => {
+  it('sets visibility to private → 200, response shows private', async () => {
+    vi.mocked(dynamoRepo.updateFarm).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, visibility: 'private' as const });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ visibility: 'private' }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['visibility']).toBe('private');
+    expect(vi.mocked(dynamoRepo.updateFarm)).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.objectContaining({ visibility: 'private' }),
+    );
+  });
+
+  it('sets visibility to public → 200, response shows public', async () => {
+    vi.mocked(dynamoRepo.updateFarm).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue({ ...farmFixture, visibility: 'public' as const });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ visibility: 'public' }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['visibility']).toBe('public');
+  });
+
+  it('returns 400 when visibility is an invalid value', async () => {
+    vi.mocked(dynamoRepo.getFarm).mockResolvedValue(farmFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ visibility: 'hidden' }),
+    });
+
+    expect(res.status).toBe(400);
+  });
 });

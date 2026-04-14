@@ -965,6 +965,27 @@ export default function ProfilePage() {
                           </div>
                         )}
                         {isAdmin && !isDemoFarm && (
+                          <div style="border-top:var(--border-default);padding-top:var(--space-2)">
+                            <div style="color:var(--color-gray-500);font-size:var(--font-size-xs);margin-bottom:var(--space-1)">{t('farm.visibility_label')}</div>
+                            <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--font-size-sm)">
+                              <input
+                                type="checkbox"
+                                checked={farm.visibility !== 'private'}
+                                onChange={async () => {
+                                  const next = farm.visibility === 'private' ? 'public' : 'private';
+                                  try {
+                                    await updateFarm(farm.id, { visibility: next });
+                                    refreshFarms();
+                                  } catch {
+                                    showToast(t('profile.save_error'), 'error');
+                                  }
+                                }}
+                              />
+                              <span>{farm.visibility === 'private' ? t('farm.visibility_private') : t('farm.visibility_public')}</span>
+                            </label>
+                          </div>
+                        )}
+                        {isAdmin && !isDemoFarm && (
                           <JoinRequestList farmId={farm.id} onMemberAdded={refreshFarms} />
                         )}
                       </>

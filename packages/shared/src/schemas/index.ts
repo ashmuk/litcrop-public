@@ -43,6 +43,8 @@ export const FarmRoleSchema = z.enum(['admin', 'owner', 'staff']);
 
 export const CurrencySchema = z.enum(['JPY', 'USD']);
 
+export const FarmVisibilitySchema = z.enum(['public', 'private']);
+
 /** farmToResponse() shape — base farm fields without beds */
 export const FarmBaseSchema = z.object({
   id: z.string(),
@@ -60,6 +62,7 @@ export const FarmBaseSchema = z.object({
   grid_cols: z.number().int().min(1).max(5),
   created_at: z.string(),
   default_currency: CurrencySchema.default('JPY'),
+  visibility: FarmVisibilitySchema.optional(),
 });
 
 /** Bed summary within GET /farms/:farmId response */
@@ -98,6 +101,7 @@ const FarmFieldsSchema = z.object({
   grid_rows: z.number().int().min(1).max(5).optional(),
   grid_cols: z.number().int().min(1).max(5).optional(),
   default_currency: CurrencySchema.optional(),
+  visibility: FarmVisibilitySchema.optional(),
 });
 
 export const CreateFarmRequestSchema = FarmFieldsSchema;

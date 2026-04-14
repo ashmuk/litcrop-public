@@ -40,6 +40,7 @@ function farmToResponse(farm: Farm) {
     grid_cols: farm.grid_cols,
     created_at: farm.created_at,
     default_currency: farm.default_currency,
+    visibility: farm.visibility ?? 'public',
   };
 }
 
@@ -117,6 +118,7 @@ router.get('/discoverable', async (c) => {
     const data = await Promise.all(
       farms
         .filter((f) => !memberFarmIds.has(f.id))
+        .filter((f) => !f.visibility || f.visibility === 'public')
         .map(async (farm) => {
           const members = await dynamoRepo.getFarmMembers(farm.id);
           const pendingRequest = await dynamoRepo.getJoinRequest(farm.id, userId);
@@ -257,6 +259,7 @@ router.post('/', async (c) => {
       grid_rows: validated.grid_rows ?? 1,
       grid_cols: validated.grid_cols ?? 1,
       default_currency: validated.default_currency ?? 'JPY',
+      visibility: validated.visibility ?? 'public',
     });
   } catch (err) {
     if (isConditionalCheckFailed(err) || isTransactionCanceled(err)) {
@@ -287,7 +290,7 @@ router.patch('/:farmId', async (c) => {
   const body = await c.req.json<Record<string, unknown>>();
   const validated = parseBody(UpdateFarmRequestSchema, body);
 
-  const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>> = {};
+  const updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency' | 'visibility'>> = {};
   for (const [key, value] of Object.entries(validated)) {
     if (value !== undefined) {
       (updates as Record<string, unknown>)[key] = value;

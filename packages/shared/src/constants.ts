@@ -136,3 +136,7 @@ export const MAX_CAPTURE_INTERVAL = 86400; // 24 hours
 
 /** S3 key prefix for profile picture avatars */
 export const S3_AVATAR_PREFIX = 'images/avatars/';
+
+// ── Farm Visibility (#403) ──────────────────────────────────────
+
+export const FARM_VISIBILITY_VALUES = ['public', 'private'] as const;

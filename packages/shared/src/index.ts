@@ -107,6 +107,7 @@ export {
   MIN_CAPTURE_INTERVAL,
   MAX_CAPTURE_INTERVAL,
   S3_AVATAR_PREFIX,
+  FARM_VISIBILITY_VALUES,
 } from './constants';
 
 // Config
@@ -164,6 +165,7 @@ export {
   DiaryListQuerySchema,
   DiaryEntryResponseSchema,
   DiaryListResponseSchema,
+  FarmVisibilitySchema,
 } from './schemas/index';
 
 // Crop library — shared types and data (#274)

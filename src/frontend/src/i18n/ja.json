@@ -57,7 +57,10 @@
     "error_body": "接続を確認して、もう一度お試しください。",
     "join_hint": "以下の利用可能なファームを閲覧して、参加をリクエストしてください。",
     "loading": "農園データを読み込み中…",
-    "refreshed": "農園データを更新しました"
+    "refreshed": "農園データを更新しました",
+    "visibility_label": "農園の公開設定",
+    "visibility_public": "公開 — 誰でも検索・参加リクエスト可能",
+    "visibility_private": "非公開 — 招待制"
   },
   "plot": {
     "tag_this": "この画像にタグを付ける：",

@@ -65,6 +65,7 @@ export interface Farm {
   grid_cols: number; // 1-5, bed grid dimensions
   created_at: string; // ISO 8601
   default_currency: 'JPY' | 'USD'; // Beta-10: default 'JPY' for existing farms
+  visibility?: 'public' | 'private'; // #403: default 'public' for backward compat
 }
 
 /** Bed — primary crop unit (replaces Field + Bed + Plot from PoC) */

@@ -86,7 +86,7 @@ export async function createFarm(
 
 export async function updateFarm(
   farmId: string,
-  updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency'>>,
+  updates: Partial<Pick<Farm, 'name' | 'description' | 'location_text' | 'latitude' | 'longitude' | 'elevation_m' | 'locale' | 'theme' | 'grid_rows' | 'grid_cols' | 'default_currency' | 'visibility'>>,
 ): Promise<void> {
   const expressions: string[] = [];
   const values: Record<string, unknown> = {};

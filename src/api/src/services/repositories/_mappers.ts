@@ -20,6 +20,7 @@ export function itemToFarm(item: Record<string, unknown>, farmId: string): Farm 
     grid_cols: (item['grid_cols'] as number) ?? 1,
     created_at: item['created_at'] as string,
     default_currency: (item['default_currency'] as Farm['default_currency']) ?? 'JPY',
+    visibility: (item['visibility'] as Farm['visibility']) ?? undefined,
   };
 }
 

@@ -19,6 +19,7 @@ export interface CreateFarmRequest {
   grid_rows?: number; // 1-5, default 1
   grid_cols?: number; // 1-5, default 1
   default_currency?: 'JPY' | 'USD'; // Beta-10: farm default currency for ROI
+  visibility?: 'public' | 'private'; // #403: default 'public'
 }
 
 /** PATCH /api/v1/farms/{farmId} — Update Farm */
@@ -35,6 +36,7 @@ export interface UpdateFarmRequest {
   grid_rows?: number; // 1-5
   grid_cols?: number; // 1-5
   default_currency?: 'JPY' | 'USD'; // Beta-10: farm default currency for ROI
+  visibility?: 'public' | 'private'; // #403: public/private toggle
 }
 
 /** PATCH /api/v1/beds/{bedId} — Assign/Update Crop */

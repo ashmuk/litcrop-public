@@ -57,7 +57,10 @@
     "error_body": "Check your connection and try again.",
     "join_hint": "Browse available farms below and request to join one.",
     "loading": "Loading farm data…",
-    "refreshed": "Farm data refreshed"
+    "refreshed": "Farm data refreshed",
+    "visibility_label": "Farm visibility",
+    "visibility_public": "Public — anyone can find and request to join",
+    "visibility_private": "Private — invitation only"
   },
   "plot": {
     "tag_this": "Tag this image:",

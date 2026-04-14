@@ -4,6 +4,7 @@ import { getSignedAvatarUrls } from '../services/s3';
 import {
   ValidationError,
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   ServiceUnavailableError,
 } from '../errors';
@@ -30,6 +31,10 @@ router.post('/:farmId/join', async (c) => {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   });
+
+  if (farm.visibility === 'private') {
+    throw new ForbiddenError('This farm is not accepting join requests.');
+  }
 
   const existing = await dynamoRepo.getFarmMembership(userId, farmId).catch(() => null);
   if (existing) {

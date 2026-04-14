@@ -40,6 +40,13 @@ export class ConflictError extends AppError {
   }
 }
 
+export class ForbiddenError extends AppError {
+  constructor(message = 'Forbidden', details?: Record<string, unknown>) {
+    super('FORBIDDEN', 403, message, details);
+    this.name = 'ForbiddenError';
+  }
+}
+
 export class InternalError extends AppError {
   constructor(message = 'Internal server error', details?: Record<string, unknown>) {
     super('INTERNAL_ERROR', 500, message, details);
