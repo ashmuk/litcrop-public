@@ -70,6 +70,18 @@ function WhatsNewContent() {
       </p>
 
       <VersionEntry
+        version="v0.95"
+        date="2026-04-14"
+        items={[
+          'Day-grouped image history with collapsible accordion',
+          'Timelapse source filtering (device/manual) and date range selector',
+          'Gap detection indicators on timelapse progress bar',
+          'Pilot mode: invitation code gate, notice banner, farm limit (2 max)',
+        ]}
+        current
+      />
+
+      <VersionEntry
         version="v0.94"
         date="2026-04-14"
         items={[
@@ -77,7 +89,6 @@ function WhatsNewContent() {
           'In-app notification system with DynamoDB persistence',
           'Notification bell with unread badge in desktop and mobile navigation',
         ]}
-        current
       />
 
       <VersionEntry
