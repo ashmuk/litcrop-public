@@ -27,7 +27,7 @@ router.get('/profile', async (c) => {
   );
 
   if (profile) {
-    const { profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
+    const { email: _e, profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
     return c.json({ ...rest, is_admin: isAdmin, profile_picture_url: profilePictureUrl, profile_picture_thumb_url: profilePictureThumbUrl });
   }
   return c.json({ user_id: userId, display_name: '', preferred_role: 'staff' as const, created_at: null, is_admin: isAdmin, profile_picture_url: null, profile_picture_thumb_url: null });
@@ -35,7 +35,7 @@ router.get('/profile', async (c) => {
 
 // PATCH /api/v1/me/profile
 router.patch('/profile', async (c) => {
-  const { userId } = getAuthContext(c);
+  const { userId, userEmail } = getAuthContext(c);
   const body = await c.req.json();
   const data = parseBody(UpdateProfileRequestSchema, body);
 
@@ -43,39 +43,29 @@ router.patch('/profile', async (c) => {
   const existingProfile = await dynamoRepo.getUserProfile(userId).catch(() => null);
   const isFirstCreation = existingProfile === null;
 
-  const profile = await dynamoRepo.upsertUserProfile(userId, data);
-
-  // Derive email from the auth context — decoded from JWT in middleware
-  const authHeader = c.req.header('Authorization') ?? '';
-  let actorEmail = '';
-  try {
-    const token = authHeader.replace(/^Bearer\s+/i, '');
-    const payloadB64 = token.split('.')[1] ?? '';
-    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
-    actorEmail = (JSON.parse(payloadJson) as Record<string, unknown>)['email'] as string ?? '';
-  } catch {
-    // ignore — email is best-effort
-  }
+  // Always sync email from JWT to profile — keeps it fresh if user changes email in Cognito
+  const profile = await dynamoRepo.upsertUserProfile(userId, { ...data, email: userEmail || undefined });
 
   if (isFirstCreation) {
     appEvents.emit('user.signup', {
       type: 'user.signup',
       timestamp: new Date().toISOString(),
       actor_id: userId,
-      actor_email: actorEmail,
-      payload: { user_id: userId, display_name: profile.display_name, email: actorEmail },
+      actor_email: userEmail,
+      payload: { user_id: userId, display_name: profile.display_name, email: userEmail },
     });
   } else {
     appEvents.emit('user.profile_updated', {
       type: 'user.profile_updated',
       timestamp: new Date().toISOString(),
       actor_id: userId,
-      actor_email: actorEmail,
+      actor_email: userEmail,
       payload: { changed_fields: Object.keys(data) },
     });
   }
 
-  return c.json(profile);
+  const { email: _e, profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
+  return c.json(rest);
 });
 
 // GET /api/v1/me/settings
@@ -104,21 +94,11 @@ router.get('/join-requests', async (c) => {
 
 // DELETE /api/v1/me — permanently delete caller's account and all associated data
 router.delete('/', async (c) => {
-  const { userId } = getAuthContext(c);
+  const { userId, userEmail } = getAuthContext(c);
 
   // Capture profile before deletion for the event payload
   const profile = await dynamoRepo.getUserProfile(userId).catch(() => null);
   const displayName = profile?.display_name ?? '';
-  const authHeader = c.req.header('Authorization') ?? '';
-  let actorEmail = '';
-  try {
-    const token = authHeader.replace(/^Bearer\s+/i, '');
-    const payloadB64 = token.split('.')[1] ?? '';
-    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
-    actorEmail = (JSON.parse(payloadJson) as Record<string, unknown>)['email'] as string ?? '';
-  } catch {
-    // ignore — email is best-effort
-  }
 
   let summary: DeleteAccountSummary;
   try {
@@ -132,8 +112,8 @@ router.delete('/', async (c) => {
     type: 'account.deleted',
     timestamp: new Date().toISOString(),
     actor_id: userId,
-    actor_email: actorEmail,
-    payload: { user_id: userId, display_name: displayName, email: actorEmail },
+    actor_email: userEmail,
+    payload: { user_id: userId, display_name: displayName, email: userEmail },
   });
 
   return c.json({ deleted: true, summary });

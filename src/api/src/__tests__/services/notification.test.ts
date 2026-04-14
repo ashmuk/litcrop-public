@@ -188,3 +188,118 @@ describe('notification service', () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 });
+
+// ── User-facing email notifications (#391) ─────────────────────
+
+describe('user-facing notifications (#391)', () => {
+  beforeEach(() => {
+    mockSend.mockReset();
+    mockSend.mockResolvedValue({});
+  });
+
+  it('sends user email on join_request.approved with target_user_email', async () => {
+    appEvents.emit('join_request.approved', makeEvent('join_request.approved', {
+      farm_id: 'farm-001',
+      farm_name: 'Green Acres',
+      target_user_id: 'user-002',
+      target_user_name: 'Bob',
+      target_user_email: 'bob@example.com',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // 2 calls: admin email + user email
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    const userCmd = mockSend.mock.calls[1][0];
+    expect(userCmd.input.Destination.ToAddresses).toEqual(['bob@example.com']);
+    expect(userCmd.input.Message.Subject.Data).toBe("[LitCrop] You've been accepted!");
+    expect(userCmd.input.Message.Body.Text.Data).toContain('Green Acres');
+    expect(userCmd.input.Message.Body.Text.Data).toContain('approved');
+  });
+
+  it('sends user email on join_request.rejected with target_user_email', async () => {
+    appEvents.emit('join_request.rejected', makeEvent('join_request.rejected', {
+      farm_id: 'farm-001',
+      farm_name: 'Green Acres',
+      target_user_id: 'user-002',
+      target_user_name: 'Carol',
+      target_user_email: 'carol@example.com',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    const userCmd = mockSend.mock.calls[1][0];
+    expect(userCmd.input.Destination.ToAddresses).toEqual(['carol@example.com']);
+    expect(userCmd.input.Message.Subject.Data).toBe('[LitCrop] Join request update');
+    expect(userCmd.input.Message.Body.Text.Data).toContain('not approved');
+  });
+
+  it('sends user email on member.role_changed with target_user_email', async () => {
+    appEvents.emit('member.role_changed', makeEvent('member.role_changed', {
+      farm_id: 'farm-001',
+      farm_name: 'Green Acres',
+      target_user_id: 'user-002',
+      target_user_name: 'Dave',
+      target_user_email: 'dave@example.com',
+      old_role: 'staff',
+      new_role: 'owner',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Only user email — member.role_changed is not in admin NOTIFICATION_EVENT_TYPES
+    expect(mockSend).toHaveBeenCalledOnce();
+    const cmd = mockSend.mock.calls[0][0];
+    expect(cmd.input.Destination.ToAddresses).toEqual(['dave@example.com']);
+    expect(cmd.input.Message.Subject.Data).toBe('[LitCrop] Your role has been updated');
+    expect(cmd.input.Message.Body.Text.Data).toContain('staff');
+    expect(cmd.input.Message.Body.Text.Data).toContain('owner');
+    expect(cmd.input.Message.Body.Text.Data).toContain('manage members');
+  });
+
+  it('skips user email when target_user_email is missing', async () => {
+    appEvents.emit('join_request.approved', makeEvent('join_request.approved', {
+      farm_id: 'farm-001',
+      farm_name: 'Test Farm',
+      target_user_id: 'user-002',
+      target_user_name: 'Eve',
+      // no target_user_email
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Only admin email — user email skipped
+    expect(mockSend).toHaveBeenCalledOnce();
+    expect(mockSend.mock.calls[0][0].input.Destination.ToAddresses).toContain('admin@litcrop.test');
+  });
+
+  it('user email SES failure does not throw', async () => {
+    // First call (admin) succeeds, second call (user) fails
+    mockSend.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('SES sandbox'));
+
+    expect(() => appEvents.emit('join_request.approved', makeEvent('join_request.approved', {
+      farm_id: 'farm-001',
+      farm_name: 'Test Farm',
+      target_user_id: 'user-002',
+      target_user_name: 'Frank',
+      target_user_email: 'unverified@example.com',
+    }))).not.toThrow();
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  it('role change to staff shows generic permissions message', async () => {
+    appEvents.emit('member.role_changed', makeEvent('member.role_changed', {
+      farm_id: 'farm-001',
+      farm_name: 'Green Acres',
+      target_user_id: 'user-002',
+      target_user_name: 'Grace',
+      target_user_email: 'grace@example.com',
+      old_role: 'owner',
+      new_role: 'staff',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    const cmd = mockSend.mock.calls[0][0];
+    expect(cmd.input.Message.Body.Text.Data).toContain('permissions have been updated');
+    expect(cmd.input.Message.Body.Text.Data).not.toContain('manage members');
+  });
+});

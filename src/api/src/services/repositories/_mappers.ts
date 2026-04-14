@@ -79,6 +79,7 @@ export function itemToUserProfile(item: Record<string, unknown>, userId: string)
   return {
     user_id: userId,
     display_name: (item['display_name'] as string) ?? '',
+    email: item['email'] as string | undefined,
     preferred_role: (item['preferred_role'] as UserProfile['preferred_role']) ?? 'staff',
     created_at: (item['created_at'] as string) ?? '',
     profile_picture_key: item['profile_picture_key'] as string | undefined,

@@ -5,7 +5,7 @@
  */
 
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { appEvents, type AppEventType, type AppEventMap } from './events';
+import { appEvents, type AppEventType, type AppEventMap, type JoinRequestResolvedPayload, type MemberRoleChangedPayload } from './events';
 
 // ── Config ──────────────────────────────────────────────────────
 
@@ -197,20 +197,16 @@ function formatEmailBody<T extends AppEventType>(event: AppEventMap[T]): string 
   return lines.join('\n');
 }
 
-// ── Send helper ─────────────────────────────────────────────────
+// ── Send helpers ────────────────────────────────────────────────
 
-async function sendToAdmins(
+/** Low-level SES send. Fire-and-forget: logs errors but never throws. */
+async function sendEmail(
+  recipients: string[],
   subject: string,
   body: string,
-  eventType: AppEventType,
+  logLabel: string,
 ): Promise<void> {
-  if (!ses) return;
-
-  // TODO (Beta-4 implementation): Load per-admin preferences from DynamoDB
-  // and filter ADMIN_EMAILS by opt-in status for this eventType.
-  // For now, send to all admins.
-  const recipients = ADMIN_EMAILS;
-  if (recipients.length === 0) return;
+  if (!ses || recipients.length === 0) return;
 
   try {
     await ses.send(
@@ -225,11 +221,21 @@ async function sendToAdmins(
         },
       }),
     );
-    console.log(`[notification] sent ${eventType} email to ${recipients.length} admin(s)`);
+    console.log(`[notification] sent ${logLabel}`);
   } catch (err) {
-    // Fire-and-forget: log error but never throw
-    console.error(`[notification] failed to send ${eventType} email:`, err);
+    console.error(`[notification] failed to send ${logLabel}:`, err);
   }
+}
+
+async function sendToAdmins(
+  subject: string,
+  body: string,
+  eventType: AppEventType,
+): Promise<void> {
+  // TODO (Beta-4 implementation): Load per-admin preferences from DynamoDB
+  // and filter ADMIN_EMAILS by opt-in status for this eventType.
+  // For now, send to all admins.
+  await sendEmail(ADMIN_EMAILS, subject, body, `${eventType} email to ${ADMIN_EMAILS.length} admin(s)`);
 }
 
 // ── Subscribe to events ─────────────────────────────────────────
@@ -250,6 +256,95 @@ function initNotificationSubscriptions(): void {
   }
 
   console.log(`[notification] subscribed to ${NOTIFICATION_EVENT_TYPES.length} event types`);
+}
+
+// ── User-facing email notifications (#391) ─────────────────────
+
+/** Event types that trigger an email to the affected user (not admins). */
+const USER_NOTIFICATION_EVENT_TYPES: AppEventType[] = [
+  'join_request.approved',
+  'join_request.rejected',
+  'member.role_changed',
+];
+
+const USER_EMAIL_SUBJECTS: Partial<Record<AppEventType, string>> = {
+  'join_request.approved': "You've been accepted!",
+  'join_request.rejected': 'Join request update',
+  'member.role_changed': 'Your role has been updated',
+};
+
+function formatUserEmailBody<T extends AppEventType>(event: AppEventMap[T]): string {
+  const lines: string[] = [];
+
+  switch (event.type) {
+    case 'join_request.approved': {
+      const p = event.payload as JoinRequestResolvedPayload;
+      lines.push(`Great news! Your request to join "${p.farm_name}" has been approved.`);
+      lines.push('');
+      lines.push('You now have access to the farm as a staff member. Log in to LitCrop to get started.');
+      break;
+    }
+    case 'join_request.rejected': {
+      const p = event.payload as JoinRequestResolvedPayload;
+      lines.push(`Your request to join "${p.farm_name}" was not approved at this time.`);
+      lines.push('');
+      lines.push('If you believe this was a mistake, please contact the farm owner directly.');
+      break;
+    }
+    case 'member.role_changed': {
+      const p = event.payload as MemberRoleChangedPayload;
+      lines.push(`Your role in "${p.farm_name}" has been changed from ${p.old_role} to ${p.new_role}.`);
+      lines.push('');
+      if (p.new_role === 'owner') {
+        lines.push('As an owner, you can now manage members and farm settings.');
+      } else {
+        lines.push('Your permissions have been updated accordingly.');
+      }
+      break;
+    }
+  }
+
+  lines.push('');
+  lines.push('--');
+  lines.push('LitCrop — Farm Management Platform');
+
+  return lines.join('\n');
+}
+
+/** Send an email to a specific user. Fire-and-forget, same as admin emails. */
+async function sendToUser(
+  email: string,
+  subject: string,
+  body: string,
+  eventType: AppEventType,
+): Promise<void> {
+  if (!email) return;
+  // SES sandbox: this will fail for unverified recipient emails — expected
+  await sendEmail([email], subject, body, `${eventType} user email to ${email}`);
+}
+
+function extractTargetEmail(event: AppEventMap[AppEventType]): string | undefined {
+  const payload = event.payload as Record<string, unknown>;
+  return (payload['target_user_email'] as string) || undefined;
+}
+
+function initUserNotificationSubscriptions(): void {
+  if (!ENABLED) return;
+
+  for (const eventType of USER_NOTIFICATION_EVENT_TYPES) {
+    appEvents.on(eventType, (event) => {
+      const targetEmail = extractTargetEmail(event);
+      if (!targetEmail) {
+        console.log(`[notification] skipping ${eventType} user email — no target email`);
+        return;
+      }
+      const subject = USER_EMAIL_SUBJECTS[eventType] ?? eventType;
+      const body = formatUserEmailBody(event);
+      sendToUser(targetEmail, subject, body, eventType);
+    });
+  }
+
+  console.log(`[notification] subscribed to ${USER_NOTIFICATION_EVENT_TYPES.length} user notification event types`);
 }
 
 /** Send a bug report email to all admins. Returns success status. */
@@ -295,3 +390,4 @@ export async function sendBugReport(
 
 // Initialize subscriptions at module load time
 initNotificationSubscriptions();
+initUserNotificationSubscriptions();

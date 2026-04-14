@@ -109,6 +109,7 @@ export interface Tag {
 export interface UserProfile {
   user_id: string;
   display_name: string;
+  email?: string;
   preferred_role: 'owner' | 'staff';
   created_at: string; // ISO 8601
   profile_picture_key?: string;

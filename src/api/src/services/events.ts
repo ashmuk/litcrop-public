@@ -43,6 +43,7 @@ export interface JoinRequestResolvedPayload {
   farm_name: string;
   target_user_id: string;
   target_user_name: string;
+  target_user_email?: string;
 }
 
 export interface AccountDeletedPayload {
@@ -105,6 +106,7 @@ export interface MemberRoleChangedPayload {
   farm_name: string;
   target_user_id: string;
   target_user_name: string;
+  target_user_email?: string;
   old_role: string;
   new_role: string;
 }

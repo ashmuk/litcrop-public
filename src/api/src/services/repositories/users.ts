@@ -19,7 +19,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
 export async function upsertUserProfile(
   userId: string,
-  data: { display_name?: string; preferred_role?: string; profile_picture_key?: string; profile_picture_thumb_key?: string },
+  data: { display_name?: string; email?: string; preferred_role?: string; profile_picture_key?: string; profile_picture_thumb_key?: string },
 ): Promise<UserProfile> {
   const now = new Date().toISOString();
   const setExpressions: string[] = [
@@ -32,6 +32,11 @@ export async function upsertUserProfile(
     setExpressions.push('#display_name = :display_name');
     names['#display_name'] = 'display_name';
     values[':display_name'] = data.display_name;
+  }
+  if (data.email !== undefined) {
+    setExpressions.push('#email = :email');
+    names['#email'] = 'email';
+    values[':email'] = data.email;
   }
   if (data.preferred_role !== undefined) {
     setExpressions.push('#preferred_role = :preferred_role');

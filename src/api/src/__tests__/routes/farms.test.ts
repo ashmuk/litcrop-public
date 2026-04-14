@@ -1005,13 +1005,14 @@ describe('join_request events emission', () => {
     appEvents.off('join_request.submitted', listener);
   });
 
-  it('emits join_request.approved after approval', async () => {
+  it('emits join_request.approved after approval with target email', async () => {
     const listener = vi.fn();
     appEvents.on('join_request.approved', listener);
 
     vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
     vi.mocked(dynamoRepo.approveJoinRequest).mockResolvedValue(undefined);
     vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Bob', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue({ status: 'pending', requested_at: '2026-04-14T00:00:00.000Z', display_name: 'Bob', email: 'bob@example.com' });
 
     await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
       method: 'PATCH',
@@ -1024,16 +1025,18 @@ describe('join_request events emission', () => {
     expect(event.type).toBe('join_request.approved');
     expect(event.payload.farm_id).toBe(FARM_ID);
     expect(event.payload.target_user_id).toBe(targetUserId);
+    expect(event.payload.target_user_email).toBe('bob@example.com');
 
     appEvents.off('join_request.approved', listener);
   });
 
-  it('emits join_request.rejected after rejection', async () => {
+  it('emits join_request.rejected after rejection with target email', async () => {
     const listener = vi.fn();
     appEvents.on('join_request.rejected', listener);
 
     vi.mocked(dynamoRepo.rejectJoinRequest).mockResolvedValue(undefined);
     vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Carol', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue({ status: 'pending', requested_at: '2026-04-14T00:00:00.000Z', display_name: 'Carol', email: 'carol@example.com' });
 
     await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
       method: 'PATCH',
@@ -1045,8 +1048,53 @@ describe('join_request events emission', () => {
     const event = listener.mock.calls[0][0] as AppEventMap['join_request.rejected'];
     expect(event.type).toBe('join_request.rejected');
     expect(event.payload.target_user_id).toBe(targetUserId);
+    expect(event.payload.target_user_email).toBe('carol@example.com');
 
     appEvents.off('join_request.rejected', listener);
+  });
+
+  it('falls back to profile email when join request has no email', async () => {
+    const listener = vi.fn();
+    appEvents.on('join_request.approved', listener);
+
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+    vi.mocked(dynamoRepo.approveJoinRequest).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Eve', email: 'eve@profile.com', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue({ status: 'pending', requested_at: '2026-04-14T00:00:00.000Z', display_name: 'Eve', email: null });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ action: 'approve' }),
+    });
+
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
+    const event = listener.mock.calls[0][0] as AppEventMap['join_request.approved'];
+    expect(event.payload.target_user_email).toBe('eve@profile.com');
+
+    appEvents.off('join_request.approved', listener);
+  });
+
+  it('target_user_email is undefined when neither join request nor profile has email', async () => {
+    const listener = vi.fn();
+    appEvents.on('join_request.approved', listener);
+
+    vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
+    vi.mocked(dynamoRepo.approveJoinRequest).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: targetUserId, display_name: 'Noemail', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
+    vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue({ status: 'pending', requested_at: '2026-04-14T00:00:00.000Z', display_name: 'Noemail', email: null });
+
+    await app.request(`/api/v1/farms/${FARM_ID}/join-requests/${targetUserId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ action: 'approve' }),
+    });
+
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledOnce());
+    const event = listener.mock.calls[0][0] as AppEventMap['join_request.approved'];
+    expect(event.payload.target_user_email).toBeUndefined();
+
+    appEvents.off('join_request.approved', listener);
   });
 });
 
@@ -1192,6 +1240,7 @@ describe('GET /api/v1/farms/discoverable', () => {
       status: 'pending',
       requested_at: '2026-04-13T00:00:00.000Z',
       display_name: 'Test',
+      email: 'test@example.com',
     });
 
     const res = await app.request('/api/v1/farms/discoverable', { headers: authHeaders() });

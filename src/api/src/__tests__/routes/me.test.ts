@@ -359,4 +359,76 @@ describe('GET /api/v1/me/profile (avatar URLs)', () => {
     expect(body.profile_picture_url).toBeNull();
     expect(body.profile_picture_thumb_url).toBeNull();
   });
+
+  it('excludes internal email field from GET /profile response (#391)', async () => {
+    mockRepo.getUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Test User',
+      email: 'test@example.com',
+      preferred_role: 'owner' as const,
+      created_at: '2026-04-01T00:00:00Z',
+    });
+    const res = await app.request('/api/v1/me/profile', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.email).toBeUndefined();
+    expect(body.display_name).toBe('Test User');
+  });
+});
+
+describe('PATCH /api/v1/me/profile — email sync (#391)', () => {
+  it('syncs JWT email to DynamoDB profile on update', async () => {
+    mockRepo.getUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Old Name',
+      preferred_role: 'staff' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+    mockRepo.upsertUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'New Name',
+      email: 'test@example.com',
+      preferred_role: 'staff' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+
+    const res = await app.request('/api/v1/me/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ display_name: 'New Name' }),
+    });
+    expect(res.status).toBe(200);
+
+    // Verify upsertUserProfile was called with email from JWT (default test email)
+    expect(mockRepo.upsertUserProfile).toHaveBeenCalledWith(TEST_USER_ID, {
+      display_name: 'New Name',
+      email: 'test@example.com',
+    });
+  });
+
+  it('excludes email from PATCH /profile response body (#391)', async () => {
+    mockRepo.getUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Existing',
+      preferred_role: 'staff' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+    mockRepo.upsertUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: 'Updated',
+      email: 'test@example.com',
+      preferred_role: 'staff' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+
+    const res = await app.request('/api/v1/me/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ display_name: 'Updated' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.email).toBeUndefined();
+    expect(body.display_name).toBe('Updated');
+  });
 });

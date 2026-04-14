@@ -4,7 +4,7 @@ import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { ddb, TABLE_NAME, pk, sk, GSI1_INDEX } from './_infrastructure';
 import { buildMembershipItems } from './_mappers';
 
-export async function createJoinRequest(farmId: string, userId: string, displayName: string): Promise<void> {
+export async function createJoinRequest(farmId: string, userId: string, displayName: string, email?: string): Promise<void> {
   const now = new Date().toISOString();
   await ddb.send(
     new PutCommand({
@@ -18,6 +18,7 @@ export async function createJoinRequest(farmId: string, userId: string, displayN
         user_id: userId,
         status: 'pending',
         display_name: displayName,
+        email: email ?? null,
         requested_at: now,
         resolved_at: null,
         resolved_by: null,
@@ -27,7 +28,7 @@ export async function createJoinRequest(farmId: string, userId: string, displayN
   );
 }
 
-export async function getJoinRequest(farmId: string, userId: string): Promise<{ status: string; requested_at: string; display_name: string } | null> {
+export async function getJoinRequest(farmId: string, userId: string): Promise<{ status: string; requested_at: string; display_name: string; email: string | null } | null> {
   const result = await ddb.send(
     new GetCommand({
       TableName: TABLE_NAME,
@@ -39,6 +40,7 @@ export async function getJoinRequest(farmId: string, userId: string): Promise<{ 
     status: result.Item['status'] as string,
     requested_at: result.Item['requested_at'] as string,
     display_name: (result.Item['display_name'] as string) ?? '',
+    email: (result.Item['email'] as string) ?? null,
   };
 }
 

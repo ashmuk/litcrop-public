@@ -49,7 +49,7 @@ router.post('/:farmId/join', async (c) => {
   const profile = await dynamoRepo.getUserProfile(userId).catch(() => null);
   const displayName = profile?.display_name ?? '';
 
-  await dynamoRepo.createJoinRequest(farmId, userId, displayName);
+  await dynamoRepo.createJoinRequest(farmId, userId, displayName, userEmail);
 
   appEvents.emit('join_request.submitted', {
     type: 'join_request.submitted',
@@ -96,6 +96,9 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
 
   const targetProfile = await dynamoRepo.getUserProfile(targetUserId).catch(() => null);
   const targetDisplayName = targetProfile?.display_name ?? '';
+  // Retrieve requester email: prefer join request record (stored at creation), fall back to profile
+  const joinReq = await dynamoRepo.getJoinRequest(farmId, targetUserId).catch(() => null);
+  const targetEmail = joinReq?.email ?? targetProfile?.email ?? undefined;
 
   try {
     if (action === 'approve') {
@@ -104,22 +107,8 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
         throw new ValidationError(`User has reached membership limit (max ${FREE_PLAN_MAX_MEMBERSHIPS})`);
       }
       await dynamoRepo.approveJoinRequest(farmId, targetUserId, userId);
-      appEvents.emit('join_request.approved', {
-        type: 'join_request.approved',
-        timestamp: new Date().toISOString(),
-        actor_id: userId,
-        actor_email: userEmail,
-        payload: { farm_id: farmId, farm_name: farm.name, target_user_id: targetUserId, target_user_name: targetDisplayName },
-      });
     } else {
       await dynamoRepo.rejectJoinRequest(farmId, targetUserId, userId);
-      appEvents.emit('join_request.rejected', {
-        type: 'join_request.rejected',
-        timestamp: new Date().toISOString(),
-        actor_id: userId,
-        actor_email: userEmail,
-        payload: { farm_id: farmId, farm_name: farm.name, target_user_id: targetUserId, target_user_name: targetDisplayName },
-      });
     }
   } catch (err) {
     if (isTransactionCanceled(err)) {
@@ -127,6 +116,15 @@ router.patch('/:farmId/join-requests/:targetUserId', async (c) => {
     }
     throw err;
   }
+
+  const eventType = action === 'approve' ? 'join_request.approved' : 'join_request.rejected' as const;
+  appEvents.emit(eventType, {
+    type: eventType,
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: { farm_id: farmId, farm_name: farm.name, target_user_id: targetUserId, target_user_name: targetDisplayName, target_user_email: targetEmail },
+  });
 
   return c.json({ farm_id: farmId, user_id: targetUserId, action, resolved_at: new Date().toISOString() });
 });
@@ -276,6 +274,7 @@ router.patch('/:farmId/members/:targetUserId', async (c) => {
       farm_name: farm.name,
       target_user_id: targetUserId,
       target_user_name: targetProfile?.display_name ?? '',
+      target_user_email: targetProfile?.email ?? undefined,
       old_role: oldRole,
       new_role: newRole,
     },
