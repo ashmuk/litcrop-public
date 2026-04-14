@@ -6,7 +6,8 @@
     "setup": "プロフィール",
     "manage": "デバイス",
     "layout": "レイアウト",
-    "admin": "管理"
+    "admin": "管理",
+    "notifications": "通知"
   },
   "page": {
     "weather": "⛅ 天気",
@@ -394,6 +395,9 @@
     "notifications_save": "保存",
     "notifications_saved": "設定を保存しました",
     "notifications_save_error": "設定の保存に失敗しました",
+    "notif_empty": "通知はありません",
+    "notif_mark_all_read": "すべて既読にする",
+    "notif_mark_read": "既読にする",
     "activity": "アクティビティ",
     "activity_title": "アクティビティログ",
     "activity_empty": "アクティビティが見つかりません",

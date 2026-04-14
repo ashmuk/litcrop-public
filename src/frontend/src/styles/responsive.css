@@ -56,6 +56,11 @@
     display: none !important;
   }
 
+  /* Hide mobile notification bell at desktop (desktop nav has its own) */
+  .mobile-notif-bell {
+    display: none !important;
+  }
+
   /* Show desktop nav bar */
   .desktop-nav {
     display: flex !important;

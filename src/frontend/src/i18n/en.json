@@ -6,7 +6,8 @@
     "setup": "Profile",
     "manage": "Device",
     "layout": "Layout",
-    "admin": "Admin"
+    "admin": "Admin",
+    "notifications": "Notifications"
   },
   "page": {
     "weather": "⛅ Weather",
@@ -394,6 +395,9 @@
     "notifications_save": "Save",
     "notifications_saved": "Preferences saved",
     "notifications_save_error": "Could not save preferences",
+    "notif_empty": "No notifications",
+    "notif_mark_all_read": "Mark all read",
+    "notif_mark_read": "Mark as read",
     "activity": "Activity",
     "activity_title": "Activity Log",
     "activity_empty": "No activity found",

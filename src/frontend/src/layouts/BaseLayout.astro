@@ -11,6 +11,7 @@ import '../styles/responsive.css';
 import AuthGuard from '../components/AuthGuard';
 import DesktopNav from '../components/DesktopNav';
 import AdminTabInjector from '../components/AdminTabInjector';
+import NotificationBell from '../components/NotificationBell';
 
 export interface Props {
   title?: string;
@@ -114,6 +115,11 @@ const {
     <main class="page-main" role="main">
       <slot />
     </main>
+
+    <!-- Mobile notification bell — floating above tab bar, hidden at desktop (1024px+) -->
+    <div class="mobile-notif-bell">
+      <NotificationBell variant="mobile" client:load />
+    </div>
 
     <!-- Bottom Tab Bar — mobile-first primary navigation (P2: thumb zone, 64px) -->
     <nav class="tab-bar" role="navigation" aria-label="Main navigation">

@@ -14,6 +14,7 @@ import { getCurrentUser, signOut } from '../lib/auth';
 import { getCachedIsAdmin } from '../lib/hooks';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
+import NotificationBell from './NotificationBell';
 
 export interface Props {
   activeTab?: 'farm' | 'weather' | 'diary' | 'manage' | 'setup' | 'admin';
@@ -99,8 +100,9 @@ export default function DesktopNav({ activeTab = 'farm' }: Props) {
         )}
       </div>
 
-      {/* User email + logout */}
+      {/* Notifications + User email + logout */}
       <div class="desktop-nav__right">
+        <NotificationBell variant="desktop" />
         {userEmail && (
           <span class="desktop-nav__user" title={userEmail}>
             {userEmail}

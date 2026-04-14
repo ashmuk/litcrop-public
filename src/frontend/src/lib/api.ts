@@ -665,3 +665,39 @@ export async function deleteProfilePicture(): Promise<{ deleted: boolean }> {
 export async function sendBugReport(description: string, steps: string): Promise<{ sent: boolean }> {
   return request<{ sent: boolean }>('POST', '/me/bug-report', { description, steps });
 }
+
+// ── In-app Notifications (#391) ─────────────────────────────────
+
+export interface NotificationItem {
+  id: string;
+  type: 'join_approved' | 'join_rejected' | 'role_changed';
+  title: string;
+  body: string;
+  farm_id?: string;
+  farm_name?: string;
+  read: boolean;
+  created_at: string;
+}
+
+/** GET /api/v1/me/notifications */
+export async function getNotifications(limit = 20): Promise<NotificationItem[]> {
+  const res = await request<{ data: NotificationItem[] }>('GET', `/me/notifications?limit=${limit}`);
+  return res.data;
+}
+
+/** GET /api/v1/me/notifications/unread-count */
+export async function getNotificationUnreadCount(): Promise<number> {
+  const res = await request<{ count: number }>('GET', '/me/notifications/unread-count');
+  return res.count;
+}
+
+/** PATCH /api/v1/me/notifications/:notifId/read */
+export async function markNotificationRead(notifId: string): Promise<void> {
+  await request('PATCH', `/me/notifications/${notifId}/read`, {});
+}
+
+/** POST /api/v1/me/notifications/read-all */
+export async function markAllNotificationsRead(): Promise<number> {
+  const res = await request<{ marked: number }>('POST', '/me/notifications/read-all', {});
+  return res.marked;
+}
