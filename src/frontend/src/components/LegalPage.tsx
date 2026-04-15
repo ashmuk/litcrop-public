@@ -124,11 +124,21 @@ function WhatsNewContent() {
           {t('guide.changelog')}
         </summary>
         <div style="margin-top:var(--space-3)">
+          <VersionEntry version="v0.97" date="2026-04-15" items={[
+            'Device capture hardening: full config round-trip (resolution, interval, active window)',
+            'Active-window enforcement on the camera with [SKIP] heartbeat-only path',
+            'Defense-in-depth HH:MM validation at API and on-device',
+          ]} current />
+          <VersionEntry version="v0.96" date="2026-04-15" items={[
+            'Public/private farm visibility toggle for discoverability',
+            'What\u2019s New revised as a step-by-step platform guide',
+            'ADR: farm-level promotion does not grant global owner capability',
+          ]} />
           <VersionEntry version="v0.95" date="2026-04-14" items={[
             'Day-grouped image history with collapsible accordion',
             'Timelapse source filtering and date range selector',
             'Pilot mode: invitation code gate, notice banner, farm limit',
-          ]} current />
+          ]} />
           <VersionEntry version="v0.94" date="2026-04-14" items={[
             'User notification system: email + in-app + bell',
           ]} />
