@@ -52,8 +52,29 @@ for arg in "$@"; do
             echo "  --non-interactive  Skip prompts; auto-detect hardware"
             exit 0
             ;;
+        # Reject unknown arguments loudly. A silent-ignore of a typo like
+        # `--branche=develop` would fall back to main and silently download
+        # the wrong capture.sh — exactly the bug #404 closes.
+        *)
+            echo "[✗] Unknown argument: '${arg}'. See --help." >&2
+            exit 2
+            ;;
     esac
 done
+
+# Validate BRANCH before it reaches the curl URL. Without this guard,
+# `--branch=../../evil-org/evil-repo/main` normalizes inside curl to a
+# different GitHub owner/repo and the returned capture.sh is then
+# chmod 700 and cron'd — full RCE as the Pi user.
+# Git branch names legitimately include `/` (feature/foo), `-`, `_`, `.`,
+# and alphanumerics. Anything else, or `..`, or leading/trailing `/`, is
+# either invalid or an injection attempt — refuse.
+case "$BRANCH" in
+    ""|*..*|/*|*/|*[!a-zA-Z0-9._/-]*)
+        echo "[✗] Invalid --branch value: '${BRANCH}'. Allowed: [a-zA-Z0-9._/-], no '..', no leading/trailing slash." >&2
+        exit 2
+        ;;
+esac
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -202,15 +223,23 @@ echo "== Hardware Detection (Device Tier) =="
 HAS_BATTERY_SENSOR=0
 HAS_PIR_SENSOR=0
 
-# Battery HAT — any device in /sys/class/power_supply/ with a capacity
-# attribute counts. Covers PiSugar, UPS HAT, and generic cgpmgr-exposed
-# batteries that surface sysfs capacity.
-if ls /sys/class/power_supply/*/capacity >/dev/null 2>&1; then
-    HAS_BATTERY_SENSOR=1
-fi
+# Battery HAT — filter sysfs entries by `type == Battery`. The raw
+# `/sys/class/power_supply/*/capacity` glob also matches USB chargers
+# and AC adapters on headless Pis that expose mains power without a
+# battery, which would falsely classify a Class-1 device as Class-2.
+for _ps_dir in /sys/class/power_supply/*/; do
+    [ -d "$_ps_dir" ] || continue
+    if [ "$(cat "${_ps_dir}type" 2>/dev/null)" = "Battery" ]; then
+        HAS_BATTERY_SENSOR=1
+        break
+    fi
+done
+unset _ps_dir
 
 # PIR motion sensor — gated by whether the RPZ-PIRS userland binary
-# `cgsensor` is installed and on PATH.
+# `cgsensor` is installed and on PATH. PATH-only detection is a known
+# limitation (a same-named unrelated binary would false-positive);
+# acceptable for pilot scope, reviewed as NITPICK.
 if command -v cgsensor >/dev/null 2>&1; then
     HAS_PIR_SENSOR=1
 fi
@@ -220,17 +249,27 @@ info "Detected: HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR} HAS_PIR_SENSOR=${HAS_PI
 # Allow interactive override so a user whose sensor is temporarily
 # disconnected (or wired but not yet enabled) can self-declare the
 # target tier without editing hardware.conf by hand.
+#
+# Empty answer = keep the auto-detected value. Previously the defaults
+# were hard-coded to 0 before reading, so an operator hitting Enter
+# through the prompts silently lost their Class-3 detection.
 if [ "$INTERACTIVE" = 1 ]; then
     echo "  (Class 1 = no sensors, Class 2 = battery only, Class 3 = + PIR)"
     read -rp "Override detected values? [y/N] " override
     if [[ "$override" =~ ^[yY]$ ]]; then
-        read -rp "Has battery HAT? [y/N] " battery_answer
-        HAS_BATTERY_SENSOR=0
-        [[ "$battery_answer" =~ ^[yY]$ ]] && HAS_BATTERY_SENSOR=1
+        read -rp "Has battery HAT? [y/N, Enter=keep detected=${HAS_BATTERY_SENSOR}] " battery_answer
+        case "$battery_answer" in
+            [yY]*) HAS_BATTERY_SENSOR=1 ;;
+            [nN]*) HAS_BATTERY_SENSOR=0 ;;
+            "")    : ;;  # keep detected value
+        esac
 
-        read -rp "Has PIR motion sensor? [y/N] " pir_answer
-        HAS_PIR_SENSOR=0
-        [[ "$pir_answer" =~ ^[yY]$ ]] && HAS_PIR_SENSOR=1
+        read -rp "Has PIR motion sensor? [y/N, Enter=keep detected=${HAS_PIR_SENSOR}] " pir_answer
+        case "$pir_answer" in
+            [yY]*) HAS_PIR_SENSOR=1 ;;
+            [nN]*) HAS_PIR_SENSOR=0 ;;
+            "")    : ;;  # keep detected value
+        esac
     fi
 fi
 
@@ -262,6 +301,15 @@ echo "╔═══════════════════════�
 echo "║   Installation complete!                  ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
+
+# If the cron step was skipped (crontab binary absent), re-state it in the
+# final banner so the operator can't miss the fact that nothing will
+# trigger capture.sh automatically.
+if ! command -v crontab >/dev/null 2>&1; then
+    warn "No scheduler configured — capture.sh will NOT run automatically."
+    warn "Phase 1 will ship systemd timers. For now, wire up a scheduler manually."
+    echo ""
+fi
 echo "Directory structure:"
 echo "  ~/litcrop/"
 echo "  ├── .env             ← credentials (download from web UI)"

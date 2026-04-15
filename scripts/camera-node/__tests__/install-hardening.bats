@@ -140,3 +140,72 @@ EOF
     perms=$(stat -c '%a' "${HOME}/litcrop/hardware.conf" 2>/dev/null || stat -f '%p' "${HOME}/litcrop/hardware.conf" 2>/dev/null)
     [[ "$perms" == *"600" ]]
 }
+
+# ── cc-review MUST-FIX regression guards ────────────────────────
+
+@test "security: --branch with '..' traversal is rejected (exit 2)" {
+    run bash "$INSTALL_SH" --branch=../../mallory/evil-repo/main --non-interactive
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Invalid --branch"* ]]
+}
+
+@test "security: --branch with absolute path is rejected (exit 2)" {
+    run bash "$INSTALL_SH" --branch=/etc/passwd --non-interactive
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Invalid --branch"* ]]
+}
+
+@test "security: --branch with shell metachars is rejected (exit 2)" {
+    run bash "$INSTALL_SH" '--branch=main;rm -rf /' --non-interactive
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Invalid --branch"* ]]
+}
+
+@test "security: --branch with empty value is rejected" {
+    run bash "$INSTALL_SH" --branch= --non-interactive
+    [ "$status" -eq 2 ]
+}
+
+@test "security: legitimate feature-branch name is accepted (contains /)" {
+    local isolated; isolated=$(mktemp -d)
+    cp "$INSTALL_SH" "${isolated}/install.sh"
+    cat > "${MOCK_BIN_DIR}/curl" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> '${MOCK_STATE_DIR}/curl.argv'
+for arg in "\$@"; do
+    if [ "\$prev" = "-o" ]; then touch "\$arg"; break; fi
+    prev="\$arg"
+done
+exit 0
+EOF
+    chmod +x "${MOCK_BIN_DIR}/curl"
+    run bash "${isolated}/install.sh" --branch=feature/xyz --non-interactive
+    rm -rf "$isolated"
+    local argv; argv=$(cat "${MOCK_STATE_DIR}/curl.argv" 2>/dev/null || true)
+    [[ "$argv" == *"ashmuk/litcrop/feature/xyz/scripts/camera-node/capture.sh"* ]]
+}
+
+@test "unknown flag is rejected loudly (exit 2, no silent main fallback)" {
+    # Before fix: `--branche=develop` typo was silently ignored and BRANCH
+    # stayed at main — re-introducing the exact bug #404 closes.
+    run bash "$INSTALL_SH" --branche=develop --non-interactive
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unknown argument"* ]]
+}
+
+@test "#405 battery detection ignores non-Battery power_supply entries" {
+    # We can't patch /sys/class/power_supply on the host, but we CAN verify
+    # that when no Battery-type entry exists (which is true on this test
+    # container), HAS_BATTERY_SENSOR stays 0 even though other power_supply
+    # entries might exist. Regression guard for the AC-adapter false-positive.
+    run_install
+    grep -q '^HAS_BATTERY_SENSOR=0$' "${HOME}/litcrop/hardware.conf"
+}
+
+@test "final banner re-warns when crontab is absent" {
+    # Remove the crontab stub that setup() installs so the binary is gone.
+    rm -f "${MOCK_BIN_DIR}/crontab"
+    # Narrow PATH so the host's real crontab can't save us.
+    PATH="${MOCK_BIN_DIR}:/bin:/usr/bin" run_install
+    [[ "$output" == *"No scheduler configured"* ]] || [[ "$output" == *"will NOT run automatically"* ]]
+}
