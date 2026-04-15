@@ -123,8 +123,45 @@ describe('iam-policy.json (POC — litcrop-poc-admin user)', () => {
         if (r === '*') continue;
         if (noPrefixStatements.has(stmt.Sid ?? '')) continue;
         expect(r, `${stmt.Sid} Resource "${r}" must be prefixed`).toMatch(
-          /(litcrop|ACCOUNT_ID|<AWS_ACCOUNT_ID>)/,
+          /(litcrop|ACCOUNT_ID)/,
         );
+      }
+    }
+  });
+
+  // Lock the affirmative invariant: the actions the POC user ACTUALLY uses
+  // every day (and that deploy-frontend.sh / capture.sh / CDK deploy rely on)
+  // must stay in the policy. A future over-tightening that drops one of
+  // these would break deploys silently — the wildcard/destructive guards
+  // above say nothing about missing actions.
+  it('retains operationally-required action set (#397 review remediation)', () => {
+    const actions = allActions(policy);
+    const required = [
+      's3:PutObject', 's3:GetObject', 's3:ListBucket',
+      'dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem',
+      'lambda:InvokeFunction', 'lambda:GetFunction',
+      'logs:PutLogEvents', 'logs:CreateLogStream',
+      'cloudfront:CreateInvalidation', 'cloudfront:GetDistribution', 'cloudfront:ListDistributions',
+      'sts:GetCallerIdentity',
+    ];
+    for (const action of required) {
+      expect(actions, `expected ${action} to remain in POC policy`).toContain(action);
+    }
+  });
+
+  // Destructive-action-not-wildcard guard, symmetric to the prod-least
+  // suite below. POC currently has zero destructive actions, but a future
+  // addition (e.g., s3:DeleteObject on the images bucket for cleanup)
+  // must NOT be combined with a wildcard resource. Locks the invariant now.
+  it('no destructive action is scoped to a wildcard resource (#397 review remediation)', () => {
+    const destructiveRe = /^(s3:Delete|dynamodb:Delete|lambda:Delete|iam:Delete|cloudfront:Delete)/;
+    for (const stmt of policy.Statement) {
+      const actions = Array.isArray(stmt.Action) ? stmt.Action : [stmt.Action];
+      const hasDestructive = actions.some((a) => destructiveRe.test(a));
+      if (!hasDestructive) continue;
+      const resources = Array.isArray(stmt.Resource) ? stmt.Resource : [stmt.Resource];
+      for (const r of resources) {
+        expect(r, `${stmt.Sid} destructive action on unscoped Resource`).not.toBe('*');
       }
     }
   });
@@ -138,8 +175,10 @@ describe('iam-policy-prod-least.json (production CDK deploy user)', () => {
   });
 
   it('rejects wildcard service actions', () => {
+    // cloudformation added per #397 review — prod-least deploys stacks so a
+    // regression to `cloudformation:*` would quietly expand blast radius.
     const bad = allActions(policy).filter((a) =>
-      /^(s3|dynamodb|lambda|cloudfront|apigateway|logs|iam|cognito-idp|sns|ssm|ses|budgets|ecr|cloudwatch):\*$/.test(a),
+      /^(s3|dynamodb|lambda|cloudfront|apigateway|logs|iam|cognito-idp|sns|ssm|ses|budgets|ecr|cloudwatch|cloudformation):\*$/.test(a),
     );
     expect(bad).toEqual([]);
   });

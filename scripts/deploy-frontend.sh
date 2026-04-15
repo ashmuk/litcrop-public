@@ -90,7 +90,10 @@ echo "✓ S3 sync complete"
 # If CF_FUNCTION_NAME is set, update the CloudFront Function code from
 # scripts/cloudfront-function-url-rewrite.js.
 # Requires cloudfront:DescribeFunction + cloudfront:UpdateFunction permissions.
-# If permissions are unavailable, skip gracefully and print a manual step.
+# Note (#397): the POC principal (scripts/iam-policy.json) intentionally
+# does NOT grant these actions — the CDK deploy principal does. When this
+# script runs under the POC user, the graceful-fallback below prints a
+# manual step instead. The CDK-owned prod-least principal has full access.
 if [ -n "${CF_FUNCTION_NAME:-}" ]; then
   CF_FUNCTION_JS="scripts/cloudfront-function-url-rewrite.js"
   if [ ! -f "${CF_FUNCTION_JS}" ]; then

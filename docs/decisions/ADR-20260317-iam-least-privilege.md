@@ -91,10 +91,19 @@ All three "Post-Provisioning Tightening (Recommended)" items applied to
    `arn:aws:apigateway:ap-northeast-1::/restapis/*` and `/apis/*`. Tighter
    than `/*` without needing specific API IDs (which would couple the
    policy to a specific deployment).
+
+   **Known limitation**: this scope blocks `/domainnames/*`, so the POC
+   principal can no longer run `aws apigateway create-domain-name` or
+   `update-domain-name`. The custom-domain work tracked in #238 uses the
+   CDK deploy principal (prod-least) which still has `/*`, so that path
+   is unaffected. If a future ops task needs CLI-driven domain ops from
+   the POC user, restore `/domainnames*` temporarily.
 2. **CloudFront action tightening**: dropped `CreateDistribution` and
    `UpdateDistribution` from the POC user — CDK owns those paths. Kept
    `GetDistribution`, `CreateInvalidation`, and `ListDistributions` for
-   cache busting via `deploy-frontend.sh`.
+   cache busting via `deploy-frontend.sh`. Note: `DescribeFunction` /
+   `UpdateFunction` were never in the POC policy; `deploy-frontend.sh`
+   gracefully falls through to a manual-step log when those are denied.
 3. **iam:CreateRole removed**: `IAMForLambdaRole` now only permits
    `AttachRolePolicy`, `PassRole`, and `GetRole`. Lambda roles exist from
    bootstrap; restore `CreateRole` temporarily if a new Lambda type needs
