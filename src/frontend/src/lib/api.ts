@@ -505,6 +505,13 @@ export async function updateNotificationPrefs(
 
 // ── Device Management (Beta-5) ──────────────────────────────────
 
+export interface DeviceEffectiveConfigResponse {
+  resolution?: string;
+  jpeg_quality?: number;
+  capture_interval?: number | null;
+  active_window?: { start: string; end: string };
+}
+
 export interface DeviceListItemResponse {
   device_id: string;
   farm_id: string;
@@ -523,6 +530,9 @@ export interface DeviceListItemResponse {
   storage_status: 'ok' | 'low' | 'full' | null;
   capabilities: { resolutions: string[]; has_battery_sensor: boolean; has_pir_sensor: boolean } | null;
   test_shot_requested: boolean;
+  // #406: applied-config visibility
+  last_config_polled_at?: string | null;
+  effective_config?: DeviceEffectiveConfigResponse | null;
   created_at: string;
   updated_at: string;
 }

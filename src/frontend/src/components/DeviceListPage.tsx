@@ -22,6 +22,7 @@ import {
 import { t } from '../i18n/i18n';
 import { useLocalFarmId, getLocalFarmRole, isWriteRole, refreshFarmRoleCache } from '../lib/hooks';
 import { getDeviceClass } from '@litcrop/shared';
+import { getConfigStatus } from '../lib/device-config-status';
 import TierBadge from './TierBadge';
 import { showToast } from './Toast';
 import { formatRelativeTime } from '../lib/format';
@@ -95,6 +96,12 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
     ? formatRelativeTime(device.last_seen_at)
     : t('device.never_seen');
 
+  // #406 config-propagation badge
+  const configStatus = getConfigStatus(device);
+  const configPolledText = device.last_config_polled_at
+    ? t('device.config_polled_ago').replace('{time}', formatRelativeTime(device.last_config_polled_at))
+    : t('device.config_never_polled');
+
   const batteryValue = hasBattery && device.battery_level !== null
     ? `${device.battery_level}%`
     : 'N/A';
@@ -152,6 +159,23 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
         {t('device.last_seen')}: {lastSeenText}
         {stale && <span aria-label={t('device.stale_warning')}> &#x26A0;&#xFE0F;</span>}
       </div>
+
+      {/* Config-propagation badge (#406) — hidden when device is offline */}
+      {configStatus !== 'unknown' && (
+        <div
+          class={`device-card__config device-card__config--${configStatus}`}
+          style={`font-size:var(--font-size-sm);display:flex;align-items:center;gap:var(--space-1);color:${configStatus === 'applied' ? 'var(--color-status-healthy)' : 'var(--color-status-warning, #b45309)'}`}
+          aria-label={`${t('device.config_label')}: ${t(configStatus === 'applied' ? 'device.config_applied' : 'device.config_pending')}`}
+        >
+          <span aria-hidden="true">{configStatus === 'applied' ? '\u2705' : '\u23F3'}</span>
+          <span>
+            {t('device.config_label')}: {t(configStatus === 'applied' ? 'device.config_applied' : 'device.config_pending')}
+          </span>
+          <span style="color:var(--color-gray-500);margin-left:var(--space-1)">
+            ({configStatus === 'applied' ? configPolledText : t('device.config_pending_hint')})
+          </span>
+        </div>
+      )}
 
       {/* Health grid */}
       <div
