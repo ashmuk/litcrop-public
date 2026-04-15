@@ -314,6 +314,24 @@ describe('GET /api/v1/devices/:deviceId/config', () => {
     expect(body['upload_url']).toBeDefined();
   });
 
+  // T-395-04: explicit assertion that the three Phase-0 round-trip fields
+  // are emitted by GET /config. Without this, a regression that drops any
+  // of resolution / active_window / capture_interval ships silently — the
+  // Pi falls back to compiled defaults and the operator never sees the bug.
+  it('returns resolution, active_window, capture_interval (#395)', async () => {
+    mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithHash });
+
+    const res = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
+      headers: { ...authHeaders(), 'X-Device-Key': 'dk_validkey' },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['resolution']).toBe('1920x1080');
+    expect(body['capture_interval']).toBe(1800);
+    expect(body['active_window']).toEqual({ start: '05:00', end: '20:00' });
+  });
+
   it('missing X-Device-Key → 401', async () => {
     const res = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
       headers: authHeaders(),
@@ -473,6 +491,59 @@ describe('PATCH /api/v1/farms/:farmId/devices/:deviceId', () => {
       DEVICE_ID,
       expect.objectContaining({ active_window_start: '06:00', active_window_end: '18:00' }),
     );
+  });
+
+  // T-395-04: PATCH resolution must reach the repo as a single string, not
+  // split into width/height. The legacy mvp schema stored width/height
+  // separately — a regression that re-splits it would break the Pi parser.
+  it('update resolution → 200, stored as single string (#395)', async () => {
+    mockRepo.updateDeviceConfig.mockResolvedValue({ ...deviceFixture, resolution: '1280x720' });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/devices/${DEVICE_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ resolution: '1280x720' }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockRepo.updateDeviceConfig).toHaveBeenCalledWith(
+      FARM_ID,
+      DEVICE_ID,
+      expect.objectContaining({ resolution: '1280x720' }),
+    );
+  });
+
+  // T-395-04: full PATCH→GET round-trip for the three Phase-0 fields.
+  // Drives the device fixture through the same shape the Pi will see.
+  it('PATCH then GET returns the same resolution/window/interval (#395)', async () => {
+    const patched = {
+      ...deviceFixture,
+      resolution: '1280x720',
+      capture_interval: 600,
+      active_window: { start: '07:00', end: '19:00' },
+    };
+    mockRepo.updateDeviceConfig.mockResolvedValue(patched);
+    mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: { ...patched, device_api_key_hash: '$2a$10$hashed' } });
+
+    const patchRes = await app.request(`/api/v1/farms/${FARM_ID}/devices/${DEVICE_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({
+        resolution: '1280x720',
+        capture_interval: 600,
+        active_window: { start: '07:00', end: '19:00' },
+      }),
+    });
+    expect(patchRes.status).toBe(200);
+
+    const getRes = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
+      headers: { ...authHeaders(), 'X-Device-Key': 'dk_validkey' },
+    });
+    expect(getRes.status).toBe(200);
+    const body = await getRes.json() as Record<string, unknown>;
+    expect(body['resolution']).toBe('1280x720');
+    expect(body['capture_interval']).toBe(600);
+    expect(body['active_window']).toEqual({ start: '07:00', end: '19:00' });
   });
 
   it('change bed_id to available bed → 200', async () => {

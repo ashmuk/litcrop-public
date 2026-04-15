@@ -71,6 +71,47 @@ describe('Beta-5 Contract Tests', () => {
       };
       expect(DeviceConfigResponseSchema.safeParse(data).success).toBe(true);
     });
+
+    // T-395-04: the three Phase-0 round-trip fields must be required, not
+    // optional. If any becomes optional the Pi falls back silently.
+    it('rejects payload missing resolution (#395)', () => {
+      const data = {
+        capture_interval: 1800,
+        jpeg_quality: 85,
+        active_window: { start: '05:00', end: '20:00' },
+        trigger_type: 'scheduled',
+        bed_id: 'bed-a1',
+        upload_url: '/api/v1/beds/bed-a1/images',
+        test_shot_requested: false,
+      };
+      expect(DeviceConfigResponseSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('rejects payload missing active_window (#395)', () => {
+      const data = {
+        capture_interval: 1800,
+        resolution: '1920x1080',
+        jpeg_quality: 85,
+        trigger_type: 'scheduled',
+        bed_id: 'bed-a1',
+        upload_url: '/api/v1/beds/bed-a1/images',
+        test_shot_requested: false,
+      };
+      expect(DeviceConfigResponseSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('rejects payload missing capture_interval (#395)', () => {
+      const data = {
+        resolution: '1920x1080',
+        jpeg_quality: 85,
+        active_window: { start: '05:00', end: '20:00' },
+        trigger_type: 'scheduled',
+        bed_id: 'bed-a1',
+        upload_url: '/api/v1/beds/bed-a1/images',
+        test_shot_requested: false,
+      };
+      expect(DeviceConfigResponseSchema.safeParse(data).success).toBe(false);
+    });
   });
 
   describe('ProfilePictureResponseSchema', () => {
