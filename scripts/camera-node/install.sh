@@ -7,14 +7,22 @@
 # Does NOT require sudo for the core setup.
 #
 # Usage:
-#   curl -sL https://litcrop.com/install.sh | bash
+#   Production (main):
+#     curl -sL https://litcrop.com/install.sh | bash
 #
-#   Or from GitHub:
-#   curl -sL https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/install.sh | bash
+#   Staging (ahead of main — pull matching capture.sh from develop):
+#     curl -sL https://<staging>/install.sh | bash -s -- --branch=develop
 #
-#   Or manually:
-#   scp scripts/camera-node/* pi@host:/tmp/litcrop-setup/
-#   ssh pi@host "bash /tmp/litcrop-setup/install.sh"
+#   Or directly from GitHub:
+#     curl -sL https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/install.sh | bash
+#
+#   Or manually (preferred for dev — SCRIPT_DIR/capture.sh wins over download):
+#     scp scripts/camera-node/* pi@host:/tmp/litcrop-setup/
+#     ssh pi@host "bash /tmp/litcrop-setup/install.sh"
+#
+# Flags:
+#   --branch=<name>   Git branch to download capture.sh from (default: main)
+#   --non-interactive Suppress prompts; use auto-detected hardware flags
 #
 # After install, copy your .env file:
 #   scp litcrop-dev-xxx.env pi@host:~/litcrop/.env
@@ -28,6 +36,24 @@ if [ -t 0 ]; then
 else
   INTERACTIVE=0
 fi
+
+# #404: which branch of ashmuk/litcrop to pull capture.sh from when no
+# local copy is available. Default is `main` so production install URLs
+# keep working unchanged. Staging callers pass --branch=develop to get
+# matching capture.sh for whatever is currently deployed to staging.
+BRANCH="main"
+for arg in "$@"; do
+    case "$arg" in
+        --branch=*) BRANCH="${arg#*=}" ;;
+        --non-interactive) INTERACTIVE=0 ;;
+        --help|-h)
+            echo "Usage: $(basename "$0") [--branch=<name>] [--non-interactive]"
+            echo "  --branch=<name>    Git branch for capture.sh download (default: main)"
+            echo "  --non-interactive  Skip prompts; auto-detect hardware"
+            exit 0
+            ;;
+    esac
+done
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -61,10 +87,13 @@ if [ -f "${SCRIPT_DIR}/capture.sh" ]; then
     info "Installing capture.sh from local files"
     cp "${SCRIPT_DIR}/capture.sh" "${LITCROP_DIR}/capture.sh"
 else
-    info "Downloading capture.sh from GitHub..."
-    curl -sL "https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/capture.sh" \
+    # #404: branch-aware download. Pulls from whatever branch the caller
+    # named (default main). Prevents the "install.sh from staging v0.97
+    # downloads capture.sh from main v0.93" footgun.
+    info "Downloading capture.sh from GitHub (branch: ${BRANCH})..."
+    curl -sL "https://raw.githubusercontent.com/ashmuk/litcrop/${BRANCH}/scripts/camera-node/capture.sh" \
         -o "${LITCROP_DIR}/capture.sh" || {
-        error "Failed to download capture.sh"
+        error "Failed to download capture.sh from branch '${BRANCH}'"
         exit 1
     }
 fi
@@ -131,7 +160,12 @@ fi
 echo ""
 CRON_LINE="*/30 5-20 * * * ${LITCROP_DIR}/capture.sh >> ${LITCROP_DIR}/logs/capture.log 2>&1"
 
-if crontab -l 2>/dev/null | grep -qF "capture.sh"; then
+if ! command -v crontab >/dev/null 2>&1; then
+    # Phase 1 targets systemd timers; for now just warn loudly so the
+    # operator knows they need to run capture.sh some other way.
+    warn "crontab not installed — skipping cron setup"
+    warn "Run capture.sh manually or via systemd: ~/litcrop/capture.sh"
+elif crontab -l 2>/dev/null | grep -qF "capture.sh"; then
     warn "Cron job already exists — skipping"
 else
     if [ "$INTERACTIVE" = 1 ]; then
@@ -150,34 +184,60 @@ else
     fi
 fi
 
-# ── Step 6: Hardware configuration prompts (device tier) ───────
+# ── Step 6: Hardware auto-detection (#405) ─────────────────────
+#
+# Pre-#405: prompted interactively, defaulted to 0/0 (Class-1) in
+# non-interactive mode. That silently misclassified every Pi installed
+# via `curl | bash` — the scp-workaround also runs non-interactively
+# (ssh + bash). Real hardware was present but the UI showed Class-1.
+#
+# Now: probe the actual hardware. /sys/class/power_supply/*/capacity is
+# the standard Linux interface for battery HATs; cgsensor is the RPZ-PIRS
+# binary. Detection matches DESIGNS-395 §3.4 which Phase 1 T-395-N1-05
+# will formalize across the broader install rewrite.
 
 echo ""
-echo "== Hardware Configuration (Device Tier) =="
-echo "Answer these to classify your device (see docs/REQUIREMENTS-337.md):"
-echo "  • No sensors  → Class 1 (Basic)"
-echo "  • Battery HAT → Class 2 (Power-managed)"
-echo "  • PIR sensor  → Class 3 (Sensor-equipped)"
-echo ""
+echo "== Hardware Detection (Device Tier) =="
 
 HAS_BATTERY_SENSOR=0
 HAS_PIR_SENSOR=0
 
-if [ "$INTERACTIVE" = 1 ]; then
-  read -rp "Does this device have a battery HAT? [y/N] " battery_answer
-  [[ "$battery_answer" =~ ^[yY]$ ]] && HAS_BATTERY_SENSOR=1
+# Battery HAT — any device in /sys/class/power_supply/ with a capacity
+# attribute counts. Covers PiSugar, UPS HAT, and generic cgpmgr-exposed
+# batteries that surface sysfs capacity.
+if ls /sys/class/power_supply/*/capacity >/dev/null 2>&1; then
+    HAS_BATTERY_SENSOR=1
+fi
 
-  read -rp "Does this device have a PIR motion sensor? [y/N] " pir_answer
-  [[ "$pir_answer" =~ ^[yY]$ ]] && HAS_PIR_SENSOR=1
-else
-  info "Non-interactive mode: defaulting to Class 1 (no battery HAT, no PIR)"
-  info "Re-run install.sh manually to configure hardware: bash ~/litcrop/install.sh"
+# PIR motion sensor — gated by whether the RPZ-PIRS userland binary
+# `cgsensor` is installed and on PATH.
+if command -v cgsensor >/dev/null 2>&1; then
+    HAS_PIR_SENSOR=1
+fi
+
+info "Detected: HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR} HAS_PIR_SENSOR=${HAS_PIR_SENSOR}"
+
+# Allow interactive override so a user whose sensor is temporarily
+# disconnected (or wired but not yet enabled) can self-declare the
+# target tier without editing hardware.conf by hand.
+if [ "$INTERACTIVE" = 1 ]; then
+    echo "  (Class 1 = no sensors, Class 2 = battery only, Class 3 = + PIR)"
+    read -rp "Override detected values? [y/N] " override
+    if [[ "$override" =~ ^[yY]$ ]]; then
+        read -rp "Has battery HAT? [y/N] " battery_answer
+        HAS_BATTERY_SENSOR=0
+        [[ "$battery_answer" =~ ^[yY]$ ]] && HAS_BATTERY_SENSOR=1
+
+        read -rp "Has PIR motion sensor? [y/N] " pir_answer
+        HAS_PIR_SENSOR=0
+        [[ "$pir_answer" =~ ^[yY]$ ]] && HAS_PIR_SENSOR=1
+    fi
 fi
 
 # Write hardware flags to a dedicated file (not .env — keeps credentials
 # separate from hardware config, so .env can be overwritten safely)
 cat > "${LITCROP_DIR}/hardware.conf" <<EOF
-# LitCrop hardware configuration (auto-generated by install.sh)
+# LitCrop hardware configuration (auto-detected by install.sh)
 HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR}
 HAS_PIR_SENSOR=${HAS_PIR_SENSOR}
 EOF
