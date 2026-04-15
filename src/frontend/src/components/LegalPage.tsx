@@ -128,6 +128,8 @@ function WhatsNewContent() {
             'Device capture hardening: full config round-trip (resolution, interval, active window)',
             'Active-window enforcement on the camera with [SKIP] heartbeat-only path',
             'Defense-in-depth HH:MM validation at API and on-device',
+            'Applied / Pending config badge on the Device list — no more SSH to confirm propagation',
+            'install.sh now prompts to install jq so UI-driven config changes always reach the device',
           ]} current />
           <VersionEntry version="v0.96" date="2026-04-15" items={[
             'Public/private farm visibility toggle for discoverability',
