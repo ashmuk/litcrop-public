@@ -57,14 +57,17 @@ mock_jq_ok() {
     ln -sf "$real_jq" "${MOCK_BIN_DIR}/jq"
 }
 
+# Simulate jq being absent from the system. `command -v jq` must fail, so we
+# narrow PATH to the mock dir only (plus /bin for essential coreutils) and
+# ensure no jq stub is left behind.
 mock_jq_missing() {
     rm -f "${MOCK_BIN_DIR}/jq"
-    cat > "${MOCK_BIN_DIR}/jq" <<'EOF'
-#!/usr/bin/env bash
-echo "jq: command not found" >&2
-exit 127
-EOF
-    chmod +x "${MOCK_BIN_DIR}/jq"
+    export PATH="${MOCK_BIN_DIR}:/bin:/usr/bin"
+    # Guard: if jq is still reachable on the narrowed PATH, the caller can
+    # override PATH further — but log a skip so green tests don't lie.
+    if command -v jq >/dev/null 2>&1; then
+        skip "jq is available via system PATH even after narrowing — helper cannot simulate missing jq here"
+    fi
 }
 
 # Count invocations of a mocked command (reads the log written by its stub).

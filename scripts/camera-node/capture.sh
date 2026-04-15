@@ -212,26 +212,43 @@ poll_config() {
     body=$(echo "$response" | sed '$d')
 
     if [ "$http_code" = "200" ] && [ -n "$body" ]; then
-        # Parse config JSON with jq if available
         if command -v jq &>/dev/null; then
-            local w h q
-            w=$(echo "$body" | jq -r '.resolution_width // empty' 2>/dev/null)
-            h=$(echo "$body" | jq -r '.resolution_height // empty' 2>/dev/null)
+            # resolution — API returns "WIDTHxHEIGHT" as a single string
+            local res
+            res=$(echo "$body" | jq -r '.resolution // empty' 2>/dev/null)
+            if [[ "$res" =~ ^([0-9]+)x([0-9]+)$ ]]; then
+                CAPTURE_WIDTH="${BASH_REMATCH[1]}"
+                CAPTURE_HEIGHT="${BASH_REMATCH[2]}"
+            fi
+
+            # jpeg_quality — integer 50..100
+            local q
             q=$(echo "$body" | jq -r '.jpeg_quality // empty' 2>/dev/null)
+            [[ "$q" =~ ^[0-9]+$ ]] && JPEG_QUALITY="$q"
 
-            [ -n "$w" ] && CAPTURE_WIDTH="$w"
-            [ -n "$h" ] && CAPTURE_HEIGHT="$h"
-            [ -n "$q" ] && JPEG_QUALITY="$q"
+            # capture_interval — advisory under systemd, honored by --loop mode
+            local ci
+            ci=$(echo "$body" | jq -r '.capture_interval // empty' 2>/dev/null)
+            [[ "$ci" =~ ^[0-9]+$ ]] && export INTERVAL_SECONDS="$ci"
 
-            # Check for test shot request
+            # active_window — {start, end} as HH:MM; defaults cover full daylight
+            local aw_start aw_end
+            aw_start=$(echo "$body" | jq -r '.active_window.start // "05:00"' 2>/dev/null)
+            aw_end=$(echo "$body"   | jq -r '.active_window.end   // "20:00"' 2>/dev/null)
+            export ACTIVE_WINDOW_START="$aw_start"
+            export ACTIVE_WINDOW_END="$aw_end"
+
+            # test_shot_requested — use LITCROP_TRIGGER namespace per ADR to
+            # avoid collision with the .env parser's legacy TRIGGER key
             local test_shot
             test_shot=$(echo "$body" | jq -r '.test_shot_requested // false' 2>/dev/null)
             if [ "$test_shot" = "true" ]; then
+                export LITCROP_TRIGGER="test_shot"
                 TRIGGER="test_shot"
                 log "[CONFIG] Test shot requested"
             fi
 
-            log "[CONFIG] Applied: ${CAPTURE_WIDTH}x${CAPTURE_HEIGHT} q${JPEG_QUALITY}"
+            log "[CONFIG] Applied: ${CAPTURE_WIDTH}x${CAPTURE_HEIGHT} q${JPEG_QUALITY} window=${ACTIVE_WINDOW_START}-${ACTIVE_WINDOW_END} interval=${INTERVAL_SECONDS:-unset}"
         else
             log "[CONFIG] jq not installed — using defaults"
         fi
@@ -440,13 +457,16 @@ run_once() {
     log "[DONE]"
 }
 
-if [ "${1:-}" = "--loop" ]; then
-    INTERVAL="${INTERVAL_SECONDS:-600}"
-    log "[LOOP] Starting continuous capture every ${INTERVAL}s"
-    while true; do
-        run_once || true
-        sleep "$INTERVAL"
-    done
-else
-    run_once
+# Only run when executed directly; allow `source capture.sh` from bats tests.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    if [ "${1:-}" = "--loop" ]; then
+        INTERVAL="${INTERVAL_SECONDS:-600}"
+        log "[LOOP] Starting continuous capture every ${INTERVAL}s"
+        while true; do
+            run_once || true
+            sleep "$INTERVAL"
+        done
+    else
+        run_once
+    fi
 fi
