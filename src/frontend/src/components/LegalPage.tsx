@@ -124,13 +124,18 @@ function WhatsNewContent() {
           {t('guide.changelog')}
         </summary>
         <div style="margin-top:var(--space-3)">
+          <VersionEntry version="v0.98" date="2026-04-15" items={[
+            'Install script now accepts --branch so staging-served installs stay in sync with the deployed code',
+            'Device hardware is auto-detected (battery HAT, PIR sensor) — no more silent Class-1 misclassification',
+            'IAM least-privilege tightening for the ops principal (scoped API Gateway, CloudFront read-only, no role creation)',
+          ]} current />
           <VersionEntry version="v0.97" date="2026-04-15" items={[
             'Device capture hardening: full config round-trip (resolution, interval, active window)',
             'Active-window enforcement on the camera with [SKIP] heartbeat-only path',
             'Defense-in-depth HH:MM validation at API and on-device',
             'Applied / Pending config badge on the Device list — no more SSH to confirm propagation',
             'install.sh now prompts to install jq so UI-driven config changes always reach the device',
-          ]} current />
+          ]} />
           <VersionEntry version="v0.96" date="2026-04-15" items={[
             'Public/private farm visibility toggle for discoverability',
             'What\u2019s New revised as a step-by-step platform guide',
