@@ -70,9 +70,12 @@ All four sprint issues shipped to production via PR #347. See Recently Closed.
 
 ### Core Scope
 
-- [#395](https://github.com/ashmuk/litcrop/issues/395) **design(device): refine install.sh and capture script for production camera usage** `priority:high` `size:L` — **DESIGN COMPLETE** (ADR v2 + DESIGNS/TASK-BREAKDOWN/PLANS docs committed @ 5449561). Ready to implement Phase 0 starting **T-395-00** (bats bootstrap).
+- [#395](https://github.com/ashmuk/litcrop/issues/395) **design(device): refine install.sh and capture script for production camera usage** `priority:high` `size:L` — **PHASE 0 SHIPPED** (tag v0.97, 8 commits + simplify + 2 remediation + jq prompt). **On-Pi verification partial**: EC-1 resolution ✅, EC-3 interval ✅; EC-2 / EC-4 / Test-Shot pending Pi return. See `docs/session-reports/SESSION-REPORT-395-phase-0.md`.
 - [#397](https://github.com/ashmuk/litcrop/issues/397) **chore(security): post-provisioning IAM tightening per ADR-20260317** `area:infra` `priority:high` `size:M` — **NOT STARTED**
 - [#380](https://github.com/ashmuk/litcrop/issues/380) **chore(security): CSP nonce — remove unsafe-inline from script-src** `area:infra` `priority:high` — **NOT STARTED** (promoted from deferred — pilot-important)
+- [#406](https://github.com/ashmuk/litcrop/issues/406) **feat(device-ux): applied-config echo + last-poll freshness in Device detail UI** `area:api` `area:frontend` `area:shared` `size:M` — **NOT STARTED** — closes config-propagation visibility gap surfaced by T-395-05
+- [#404](https://github.com/ashmuk/litcrop/issues/404) **chore(device-install): branch-aware capture.sh download in install.sh** `area:infra` `size:S` — **NOT STARTED** — install-hardening mini-PR candidate (pair with #405)
+- [#405](https://github.com/ashmuk/litcrop/issues/405) **bug(device-install): non-interactive install.sh silently defaults to Class-1** `area:infra` `size:S` — **NOT STARTED** — duplicate when #395 Phase 1 T-395-N1-05 ships; partial fix possible now
 
 ---
 
