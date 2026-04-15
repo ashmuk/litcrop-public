@@ -189,5 +189,52 @@ describe('Beta-5 Contract Tests', () => {
       const data = { active_window: { start: '00:00', end: '23:59' } };
       expect(UpdateDeviceRequestSchema.safeParse(data).success).toBe(true);
     });
+
+    // #406: effective_config — Pi echoes its runtime config in heartbeat.
+    // All fields optional so a pre-#406 Pi (no effective_config block at
+    // all) still passes the schema, and a booting Pi with partial state
+    // can report what it has.
+    it('heartbeat accepts a full effective_config block (#406)', () => {
+      const data = {
+        battery_level: 80,
+        effective_config: {
+          resolution: '1280x720',
+          jpeg_quality: 85,
+          capture_interval: 1800,
+          active_window: { start: '05:00', end: '20:00' },
+        },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
+    it('heartbeat accepts a partial effective_config (mid-boot state) (#406)', () => {
+      const data = {
+        effective_config: { resolution: '1920x1080' },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
+    it('heartbeat accepts effective_config with null capture_interval (#406)', () => {
+      // Pi sends null when INTERVAL_SECONDS is unset — advisory field
+      // under systemd per DESIGNS-395 §2.3.1.
+      const data = {
+        effective_config: { resolution: '1280x720', capture_interval: null },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
+    it('heartbeat rejects effective_config with malformed active_window (#406)', () => {
+      // Defense-in-depth — same regex tightening as the saved-config path.
+      const data = {
+        effective_config: { active_window: { start: '05:00', end: '25:99' } },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('heartbeat without effective_config is still valid (backward compat) (#406)', () => {
+      // Pre-#406 Pi: payload has no effective_config key at all.
+      const data = { battery_level: 80, storage_status: 'ok' };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
   });
 });

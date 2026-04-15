@@ -429,6 +429,19 @@ const ActiveWindowSchema = z.object({
   end: TimeOfDaySchema,
 });
 
+/**
+ * Effective runtime config echoed by the Pi in its heartbeat payload (#406).
+ * Every field is optional — a Pi on a pre-#406 capture.sh or mid-boot may
+ * not have all values set. The UI distinguishes "device reports X" from
+ * "I saved X" and shows a pending/applied/offline badge.
+ */
+export const EffectiveConfigSchema = z.object({
+  resolution: z.string().optional(),
+  jpeg_quality: z.number().int().min(1).max(100).optional(),
+  capture_interval: z.number().int().min(1).nullable().optional(),
+  active_window: ActiveWindowSchema.optional(),
+});
+
 /** GET /api/v1/farms/:farmId/devices — each device in the list */
 export const DeviceListItemSchema = z.object({
   device_id: z.string(),
@@ -447,6 +460,9 @@ export const DeviceListItemSchema = z.object({
   wifi_signal_dbm: z.number().nullable(),
   storage_status: StorageStatusSchema.nullable(),
   capabilities: DeviceCapabilitiesSchema.nullable(),
+  // --- #406 config-propagation visibility ---
+  last_config_polled_at: z.string().nullable().optional(),
+  effective_config: EffectiveConfigSchema.nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -500,6 +516,8 @@ export const DeviceHeartbeatRequestSchema = z.object({
   wifi_signal_dbm: z.number().min(-120).max(0).nullable().optional(),
   storage_status: StorageStatusSchema.optional(),
   capabilities: DeviceCapabilitiesSchema.optional(),
+  // --- #406: Pi echoes its runtime config so the UI can show drift ---
+  effective_config: EffectiveConfigSchema.optional(),
 });
 
 // ── Diary schemas (Beta-7) ───────────────────────────────────────

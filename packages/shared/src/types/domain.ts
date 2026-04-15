@@ -149,6 +149,18 @@ export interface DeviceCapabilities {
 }
 
 /**
+ * Runtime-effective config echoed by the Pi in its heartbeat (#406).
+ * Distinguishes "what the UI asked for" from "what the device is actually
+ * running" so the UI can surface drift and freshness.
+ */
+export interface EffectiveConfig {
+  resolution?: string;
+  jpeg_quality?: number;
+  capture_interval?: number | null;
+  active_window?: { start: string; end: string };
+}
+
+/**
  * Device entity — API-facing shape.
  * DynamoDB stores active_window as flat fields (active_window_start, active_window_end).
  * The DynamoDB service layer transforms to/from this nested shape for API responses.
@@ -170,6 +182,12 @@ export interface Device {
   storage_status: StorageStatus | null;
   capabilities: DeviceCapabilities | null;
   test_shot_requested: boolean;
+  // --- #406 config-propagation visibility ---
+  // Optional on the interface so existing fixtures and pre-#406 Pi records
+  // still satisfy Device. API emits these as either an ISO string / object
+  // or null; never omitted from the response envelope.
+  last_config_polled_at?: string | null;
+  effective_config?: EffectiveConfig | null;
   created_at: string;
   updated_at: string;
 }
