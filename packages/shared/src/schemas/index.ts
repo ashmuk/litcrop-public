@@ -430,13 +430,20 @@ const ActiveWindowSchema = z.object({
 });
 
 /**
+ * Resolution is always "WIDTHxHEIGHT" (e.g. "1920x1080"). Bounded so a
+ * compromised or buggy device can't persist arbitrary strings into
+ * DynamoDB — defense-in-depth alongside the capture.sh regex guard.
+ */
+const ResolutionSchema = z.string().regex(/^\d{1,5}x\d{1,5}$/, 'Must be WIDTHxHEIGHT (digits only, max 5 per dimension)');
+
+/**
  * Effective runtime config echoed by the Pi in its heartbeat payload (#406).
  * Every field is optional — a Pi on a pre-#406 capture.sh or mid-boot may
  * not have all values set. The UI distinguishes "device reports X" from
  * "I saved X" and shows a pending/applied/offline badge.
  */
 export const EffectiveConfigSchema = z.object({
-  resolution: z.string().optional(),
+  resolution: ResolutionSchema.optional(),
   jpeg_quality: z.number().int().min(1).max(100).optional(),
   capture_interval: z.number().int().min(1).nullable().optional(),
   active_window: ActiveWindowSchema.optional(),

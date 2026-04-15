@@ -239,9 +239,13 @@ deviceRouter.get('/:deviceId/config', async (c) => {
   }
 
   // #406: record the config fetch timestamp so the UI can show freshness.
-  // Best-effort — recordConfigPoll swallows DynamoDB errors so telemetry
-  // loss can't flip the device offline or break the poll response.
-  await dynamoRepo.recordConfigPoll(device.farm_id, deviceId);
+  // Best-effort — recordConfigPoll swallows DynamoDB errors internally,
+  // but we also .catch() here so that any future refactor which drops the
+  // internal try/catch still can't break the config-poll response. Two
+  // layers of safety because a 5xx on this path takes the device offline.
+  await dynamoRepo.recordConfigPoll(device.farm_id, deviceId).catch((err: unknown) => {
+    console.warn(`[recordConfigPoll/route] swallow failure deviceId=${deviceId}`, err);
+  });
 
   return c.json({
     capture_interval: device.capture_interval,

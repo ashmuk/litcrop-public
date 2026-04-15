@@ -414,6 +414,23 @@ describe('GET /api/v1/devices/:deviceId/config', () => {
     expect(res.status).toBe(401);
     expect(mockRepo.recordConfigPoll).not.toHaveBeenCalled();
   });
+
+  // #406 remediation: recordConfigPoll swallows its own failures so a
+  // telemetry-layer outage (DynamoDB regional issue) cannot break the
+  // config-poll response itself. The Pi must keep running; telemetry
+  // loss is the correct conservative failure mode.
+  it('still returns 200 when recordConfigPoll rejects (#406 remediation)', async () => {
+    mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithHash });
+    mockRepo.recordConfigPoll.mockRejectedValueOnce(new Error('dynamo down'));
+
+    const res = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
+      headers: { ...authHeaders(), 'X-Device-Key': 'dk_validkey' },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['resolution']).toBe('1920x1080');
+  });
 });
 
 // ── POST /api/v1/devices/:deviceId/heartbeat ─────────────────────

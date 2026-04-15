@@ -231,6 +231,31 @@ describe('Beta-5 Contract Tests', () => {
       expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(false);
     });
 
+    // Resolution bounds were added during cc-review remediation to prevent
+    // a compromised or buggy Pi from persisting arbitrary strings into the
+    // DynamoDB device record. Regex enforces WIDTHxHEIGHT shape, max 5 digits
+    // each — roomy enough for future displays but not for log injection.
+    it('heartbeat rejects effective_config with oversized resolution (#406 remediation)', () => {
+      const data = {
+        effective_config: { resolution: 'A'.repeat(4000) },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('heartbeat rejects effective_config with non-pattern resolution (#406 remediation)', () => {
+      const data = {
+        effective_config: { resolution: '1920X1080' },  // capital X not allowed
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('heartbeat accepts effective_config with well-formed resolution (#406 remediation)', () => {
+      const data = {
+        effective_config: { resolution: '1920x1080' },
+      };
+      expect(DeviceHeartbeatRequestSchema.safeParse(data).success).toBe(true);
+    });
+
     it('heartbeat without effective_config is still valid (backward compat) (#406)', () => {
       // Pre-#406 Pi: payload has no effective_config key at all.
       const data = { battery_level: 80, storage_status: 'ok' };

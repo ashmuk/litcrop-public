@@ -243,10 +243,13 @@ export async function recordConfigPoll(farmId: string, deviceId: string): Promis
         ConditionExpression: 'attribute_exists(PK)',
       }),
     );
-  } catch {
+  } catch (err) {
     // Best-effort write — do not surface DynamoDB errors to the Pi since
     // the config response itself is still valid. Telemetry loss is
     // preferable to a false 5xx that would flip the device offline.
+    // Warn so a regional Dynamo outage that only kills this write is at
+    // least visible in CloudWatch, not silent.
+    console.warn(`[recordConfigPoll] swallow failure deviceId=${deviceId}`, err);
   }
 }
 
