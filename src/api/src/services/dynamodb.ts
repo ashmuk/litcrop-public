@@ -73,6 +73,7 @@ export class DynamoRepository {
   getDevicesForFarm = devices.getDevicesForFarm;
   updateDeviceConfig = devices.updateDeviceConfig;
   updateDeviceHeartbeat = devices.updateDeviceHeartbeat;
+  recordConfigPoll = devices.recordConfigPoll;
   deleteDevice = devices.deleteDevice;
   setTestShotFlag = devices.setTestShotFlag;
   countDevicesForFarm = devices.countDevicesForFarm;

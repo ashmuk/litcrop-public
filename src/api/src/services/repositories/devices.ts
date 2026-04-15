@@ -1,5 +1,5 @@
 import { PutCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import type { Device, DeviceStatus, StorageStatus, DeviceCapabilities } from '@litcrop/shared';
+import type { Device, DeviceStatus, StorageStatus, DeviceCapabilities, EffectiveConfig } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { ddb, TABLE_NAME, pk, sk, GSI1_INDEX } from './_infrastructure';
 
@@ -24,6 +24,9 @@ function itemToDevice(item: Record<string, unknown>, deviceId: string): Device {
     storage_status: (item['storage_status'] as StorageStatus) ?? null,
     capabilities: (item['capabilities'] as DeviceCapabilities) ?? null,
     test_shot_requested: !!(item['test_shot_requested']),
+    // --- #406 config-propagation visibility ---
+    last_config_polled_at: (item['last_config_polled_at'] as string) ?? null,
+    effective_config: (item['effective_config'] as EffectiveConfig) ?? null,
     created_at: item['created_at'] as string,
     updated_at: item['updated_at'] as string,
   };
@@ -170,6 +173,7 @@ export async function updateDeviceHeartbeat(
     wifi_signal_dbm?: number | null;
     storage_status?: StorageStatus;
     capabilities?: DeviceCapabilities;
+    effective_config?: EffectiveConfig;
   },
 ): Promise<void> {
   const expressions: string[] = ['#status = :online', '#last_seen_at = :now', '#updated_at = :now'];
@@ -203,6 +207,11 @@ export async function updateDeviceHeartbeat(
     values[':capabilities'] = health.capabilities;
     expressions.push('#capabilities = :capabilities');
   }
+  if (health.effective_config !== undefined) {
+    names['#effective_config'] = 'effective_config';
+    values[':effective_config'] = health.effective_config;
+    expressions.push('#effective_config = :effective_config');
+  }
 
   await ddb.send(
     new UpdateCommand({
@@ -214,6 +223,31 @@ export async function updateDeviceHeartbeat(
       ConditionExpression: 'attribute_exists(PK)',
     }),
   );
+}
+
+/**
+ * #406: Record the timestamp of a successful config fetch so the UI can
+ * show freshness. Called from the Pi-facing GET /devices/:id/config
+ * handler AFTER authentication succeeds. Tolerates missing devices
+ * silently (we don't want to fail the config poll on a telemetry write).
+ */
+export async function recordConfigPoll(farmId: string, deviceId: string): Promise<void> {
+  try {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: pk.farm(farmId), SK: sk.device(deviceId) },
+        UpdateExpression: 'SET #last_config_polled_at = :now',
+        ExpressionAttributeNames: { '#last_config_polled_at': 'last_config_polled_at' },
+        ExpressionAttributeValues: { ':now': new Date().toISOString() },
+        ConditionExpression: 'attribute_exists(PK)',
+      }),
+    );
+  } catch {
+    // Best-effort write — do not surface DynamoDB errors to the Pi since
+    // the config response itself is still valid. Telemetry loss is
+    // preferable to a false 5xx that would flip the device offline.
+  }
 }
 
 export async function deleteDevice(farmId: string, deviceId: string): Promise<void> {

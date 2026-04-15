@@ -21,6 +21,7 @@ vi.mock('../../services/dynamodb', () => ({
     createDevice: vi.fn(),
     updateDeviceConfig: vi.fn(),
     updateDeviceHeartbeat: vi.fn(),
+    recordConfigPoll: vi.fn(),
     deleteDevice: vi.fn(),
     setTestShotFlag: vi.fn(),
     countDevicesForFarm: vi.fn(),
@@ -121,6 +122,7 @@ beforeEach(() => {
   mockRepo.createDevice.mockResolvedValue(undefined);
   mockRepo.updateDeviceConfig.mockResolvedValue(deviceFixture);
   mockRepo.updateDeviceHeartbeat.mockResolvedValue(undefined);
+  mockRepo.recordConfigPoll.mockResolvedValue(undefined);
   mockRepo.deleteDevice.mockResolvedValue(undefined);
   mockRepo.setTestShotFlag.mockResolvedValue(undefined);
   mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithHash });
@@ -387,6 +389,31 @@ describe('GET /api/v1/devices/:deviceId/config', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body['upload_url']).toBe(`/api/v1/beds/${BED_ID}/images`);
   });
+
+  // #406-b: every successful config fetch records a timestamp the UI uses
+  // to show freshness. Failure to call recordConfigPoll means the UI's
+  // "Applied / Pending / Offline" badge is stuck at Offline.
+  it('records config-poll timestamp on successful fetch (#406)', async () => {
+    mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithHash });
+
+    const res = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
+      headers: { ...authHeaders(), 'X-Device-Key': 'dk_validkey' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockRepo.recordConfigPoll).toHaveBeenCalledWith(FARM_ID, DEVICE_ID);
+  });
+
+  it('does NOT record config-poll timestamp on auth failure (#406)', async () => {
+    mockVerifyDeviceKey.mockResolvedValue({ valid: false });
+
+    const res = await app.request(`/api/v1/devices/${DEVICE_ID}/config`, {
+      headers: { ...authHeaders(), 'X-Device-Key': 'dk_wrongkey' },
+    });
+
+    expect(res.status).toBe(401);
+    expect(mockRepo.recordConfigPoll).not.toHaveBeenCalled();
+  });
 });
 
 // ── POST /api/v1/devices/:deviceId/heartbeat ─────────────────────
@@ -421,6 +448,46 @@ describe('POST /api/v1/devices/:deviceId/heartbeat', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body['acknowledged']).toBe(true);
+  });
+
+  // #406-b: Pi echoes its runtime config in the heartbeat so the UI can
+  // show drift. The repo persists it as-is — the UI compares saved vs
+  // effective to render the status badge.
+  it('persists effective_config from heartbeat (#406)', async () => {
+    mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithHash });
+
+    const effective = {
+      resolution: '1280x720',
+      jpeg_quality: 85,
+      capture_interval: 1800,
+      active_window: { start: '05:00', end: '20:00' },
+    };
+    const res = await app.request(`/api/v1/devices/${DEVICE_ID}/heartbeat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders(), 'X-Device-Key': 'dk_validkey' },
+      body: JSON.stringify({ battery_level: 80, effective_config: effective }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockRepo.updateDeviceHeartbeat).toHaveBeenCalledWith(
+      FARM_ID,
+      DEVICE_ID,
+      expect.objectContaining({ effective_config: effective }),
+    );
+  });
+
+  it('accepts heartbeat without effective_config (pre-#406 Pi backward compat)', async () => {
+    mockVerifyDeviceKey.mockResolvedValue({ valid: true, device: deviceWithHash });
+
+    const res = await app.request(`/api/v1/devices/${DEVICE_ID}/heartbeat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders(), 'X-Device-Key': 'dk_validkey' },
+      body: JSON.stringify({ battery_level: 80 }),
+    });
+
+    expect(res.status).toBe(200);
+    const calls = mockRepo.updateDeviceHeartbeat.mock.calls[0]?.[2] ?? {};
+    expect(calls).not.toHaveProperty('effective_config');
   });
 
   it('partial heartbeat (no fields) → 200', async () => {

@@ -238,6 +238,11 @@ deviceRouter.get('/:deviceId/config', async (c) => {
     await dynamoRepo.setTestShotFlag(device.farm_id, deviceId, false);
   }
 
+  // #406: record the config fetch timestamp so the UI can show freshness.
+  // Best-effort — recordConfigPoll swallows DynamoDB errors so telemetry
+  // loss can't flip the device offline or break the poll response.
+  await dynamoRepo.recordConfigPoll(device.farm_id, deviceId);
+
   return c.json({
     capture_interval: device.capture_interval,
     resolution: device.resolution,
