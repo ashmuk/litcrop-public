@@ -171,5 +171,23 @@ describe('Beta-5 Contract Tests', () => {
       const result = UpdateDeviceRequestSchema.safeParse(data);
       expect(result.success).toBe(false);
     });
+
+    // T-395-04 remediation: the previous /^\d{2}:\d{2}$/ regex accepted
+    // out-of-range values like "25:99". A bad end value silently extends
+    // the active window on-Pi via lexicographic string compare.
+    it('ActiveWindow rejects out-of-range hour 25:99 (#395)', () => {
+      const data = { active_window: { start: '05:00', end: '25:99' } };
+      expect(UpdateDeviceRequestSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('ActiveWindow rejects out-of-range minute 12:60 (#395)', () => {
+      const data = { active_window: { start: '12:60', end: '20:00' } };
+      expect(UpdateDeviceRequestSchema.safeParse(data).success).toBe(false);
+    });
+
+    it('ActiveWindow accepts boundary 00:00 and 23:59 (#395)', () => {
+      const data = { active_window: { start: '00:00', end: '23:59' } };
+      expect(UpdateDeviceRequestSchema.safeParse(data).success).toBe(true);
+    });
   });
 });

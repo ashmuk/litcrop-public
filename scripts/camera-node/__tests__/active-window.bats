@@ -123,3 +123,12 @@ count_lines() { [ -f "$1" ] && wc -l < "$1" | tr -d ' ' || echo 0; }
     run in_active_window
     [ "$status" -ne 0 ]
 }
+
+@test "boundary: 00:00 inside a midnight-start window" {
+    source_capture
+    ACTIVE_WINDOW_START="00:00"
+    ACTIVE_WINDOW_END="23:59"
+    date() { echo "00:00"; }
+    run in_active_window
+    [ "$status" -eq 0 ]
+}

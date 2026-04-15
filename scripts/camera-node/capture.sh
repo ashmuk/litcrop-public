@@ -239,9 +239,15 @@ poll_config() {
             # capture_interval — advisory under systemd, honored by --loop mode
             [[ "${fields[2]:-}" =~ ^[0-9]+$ ]] && export INTERVAL_SECONDS="${fields[2]}"
 
-            # active_window — {start, end} as HH:MM; defaults cover full daylight
-            export ACTIVE_WINDOW_START="${fields[3]:-05:00}"
-            export ACTIVE_WINDOW_END="${fields[4]:-20:00}"
+            # active_window — {start, end} as HH:MM in 24-hour format. Regex
+            # guard rejects malformed values (e.g. "25:99" which Zod's old
+            # /^\d{2}:\d{2}$/ accepted) — without this, a bad stored value
+            # silently extends the window via lexicographic string compare.
+            local hm_re='^([01][0-9]|2[0-3]):[0-5][0-9]$'
+            [[ "${fields[3]:-}" =~ $hm_re ]] && export ACTIVE_WINDOW_START="${fields[3]}"
+            [[ "${fields[4]:-}" =~ $hm_re ]] && export ACTIVE_WINDOW_END="${fields[4]}"
+            : "${ACTIVE_WINDOW_START:=05:00}" "${ACTIVE_WINDOW_END:=20:00}"
+            export ACTIVE_WINDOW_START ACTIVE_WINDOW_END
 
             # test_shot_requested — use LITCROP_TRIGGER namespace per ADR to
             # avoid collision with the .env parser's legacy TRIGGER key

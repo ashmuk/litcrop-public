@@ -104,3 +104,24 @@ source_capture() {
     run poll_config
     [[ "$output" == *"jq not installed"* ]]
 }
+
+# T-395-04 remediation: defense-in-depth against a malformed time value
+# slipping past the API schema. /^\d{2}:\d{2}$/ used to accept "25:99" —
+# the Pi's string-compare gate would treat such a value as if the window
+# extended past 24:00, silently keeping captures running. The shell guard
+# rejects the bad value so the device falls back to the default 20:00.
+@test "poll_config rejects malformed active_window end '25:99' (regex guard)" {
+    mock_curl '{"resolution":"1920x1080","active_window":{"start":"05:00","end":"25:99"}}' 200
+    source_capture
+    poll_config
+    [ "$ACTIVE_WINDOW_START" = "05:00" ]
+    [ "$ACTIVE_WINDOW_END"   = "20:00" ]
+}
+
+@test "poll_config rejects malformed active_window start 'noon' (regex guard)" {
+    mock_curl '{"resolution":"1920x1080","active_window":{"start":"noon","end":"18:00"}}' 200
+    source_capture
+    poll_config
+    [ "$ACTIVE_WINDOW_START" = "05:00" ]
+    [ "$ACTIVE_WINDOW_END"   = "18:00" ]
+}
