@@ -431,6 +431,21 @@ upload_spool() {
 
 # ── Main ────────────────────────────────────────────────────────
 
+# Return 0 iff the current HH:MM falls inside [ACTIVE_WINDOW_START, ACTIVE_WINDOW_END).
+# String comparison is safe only for same-day windows (start < end). A cross-
+# midnight window (e.g. 22:00 → 04:00) would compare as "empty" under string
+# ordering, so we detect it and fall back to the defaults with a warning.
+in_active_window() {
+    local start="${ACTIVE_WINDOW_START:-05:00}"
+    local end="${ACTIVE_WINDOW_END:-20:00}"
+    if [[ ! "$start" < "$end" ]]; then
+        log "[CONFIG] Warning: cross-midnight window ${start}-${end} not supported, using 05:00-20:00"
+        start="05:00"; end="20:00"
+    fi
+    local now_hm; now_hm=$(date +%H:%M)
+    [[ "$now_hm" > "$start" || "$now_hm" == "$start" ]] && [[ "$now_hm" < "$end" ]]
+}
+
 run_once() {
     rotate_log
     log "[START] device=${DEVICE_ID} bed=${BED_ID} trigger=${TRIGGER}"
@@ -438,20 +453,28 @@ run_once() {
     # 1. Refresh token if needed
     refresh_token || true
 
-    # 2. Poll config for latest settings
+    # 2. Poll config for latest settings (may update ACTIVE_WINDOW_*)
     poll_config || true
 
-    # 3. Capture new image (prioritize timely shot over spool drain)
+    # 3. Active-window gate — test_shot bypasses. Outside-window path sends
+    #    exactly one heartbeat so the UI still registers the device as alive.
+    if [ "$TRIGGER" != "test_shot" ] && ! in_active_window; then
+        log "[SKIP] Outside active window ${ACTIVE_WINDOW_START:-05:00}-${ACTIVE_WINDOW_END:-20:00}"
+        send_heartbeat
+        return 0
+    fi
+
+    # 4. Capture new image (prioritize timely shot over spool drain)
     local filepath
     filepath=$(capture) || { send_heartbeat; return 1; }
 
-    # 4. Upload
+    # 5. Upload
     upload "$filepath" || true
 
-    # 5. Heartbeat
+    # 6. Heartbeat (inside-window path — exactly once per cycle)
     send_heartbeat
 
-    # 6. Drain any queued files from previous failed uploads
+    # 7. Drain any queued files from previous failed uploads
     upload_spool
 
     log "[DONE]"
