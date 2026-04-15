@@ -16,12 +16,19 @@ import { DynamoDBDocumentClient, ScanCommand, UpdateCommand } from '@aws-sdk/lib
 
 const TABLE_NAME = process.env['TABLE_NAME'] ?? 'litcrop-poc';
 const AWS_REGION = process.env['AWS_REGION'] ?? 'ap-northeast-1';
-const DRY_RUN = process.env['DRY_RUN'] !== '0';
+// DRY_RUN defaults to TRUE (this migration drops legacy columns and is
+// not reversible without a snapshot). Accept the common falsy strings so
+// `DRY_RUN=false` or `DRY_RUN=no` don't silently leave dry-run on.
+const DRY_RUN = !['0', 'false', 'no', 'off'].includes(
+  (process.env['DRY_RUN'] ?? '1').toLowerCase(),
+);
 const DEFAULT_RESOLUTION = '1920x1080';
 const RESOLUTION_RE = /^\d+x\d+$/;
 
 console.log(`[migrate-device-resolution] Table: ${TABLE_NAME} (${AWS_REGION})`);
-console.log(`[migrate-device-resolution] Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'}`);
+console.log(
+  `[migrate-device-resolution] Mode: ${DRY_RUN ? 'DRY RUN (set DRY_RUN=0 to write)' : 'LIVE (writes will be applied)'}`,
+);
 
 const client = new DynamoDBClient({ region: AWS_REGION });
 const ddb = DynamoDBDocumentClient.from(client, {
