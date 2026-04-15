@@ -84,7 +84,27 @@ fi
 if command -v jq &>/dev/null; then
     info "  jq — installed"
 else
-    warn "  jq — NOT found (optional, for config polling). Install: sudo apt install jq"
+    # jq is required as of #395 Phase 0 — the Pi silently falls back to
+    # compiled defaults without it, and UI-side config changes never reach
+    # the device. Offer to install when we have a TTY; fail loud otherwise.
+    warn "  jq — NOT found (REQUIRED for UI-controlled config polling)"
+    if [ "$INTERACTIVE" = 1 ]; then
+        read -rp "  Install jq now via apt-get? [Y/n] " jq_answer
+        jq_answer="${jq_answer:-Y}"
+        if [[ "$jq_answer" =~ ^[Yy]$ ]]; then
+            if sudo apt-get update && sudo apt-get install -y jq; then
+                info "  jq — installed via apt"
+            else
+                warn "  apt-get failed — install manually: sudo apt install jq"
+            fi
+        else
+            warn "  Skipped jq install. Your device will ignore resolution,"
+            warn "  capture_interval, and active_window set from the web UI."
+        fi
+    else
+        warn "  Non-interactive mode. Install before running capture.sh:"
+        warn "    sudo apt-get update && sudo apt-get install -y jq"
+    fi
 fi
 
 # ── Step 4: Check camera ────────────────────────────────────────
