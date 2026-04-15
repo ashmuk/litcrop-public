@@ -392,6 +392,13 @@ send_heartbeat() {
     [ "$HAS_BATTERY_SENSOR" = "1" ] && has_battery_sensor="true"
     [ "$HAS_PIR_SENSOR" = "1" ] && has_pir_sensor="true"
 
+    # #406: echo the Pi's current runtime config so the UI can show drift
+    # between saved and effective state. capture_interval is emitted as
+    # JSON null (unquoted) when INTERVAL_SECONDS is unset — advisory under
+    # systemd per DESIGNS-395 §2.3.1.
+    local eff_interval="null"
+    [[ "${INTERVAL_SECONDS:-}" =~ ^[0-9]+$ ]] && eff_interval="$INTERVAL_SECONDS"
+
     # Heartbeat payload — keys match DeviceHeartbeatRequestSchema
     # (Beta-5 had a typo bug: battery_pct/wifi_dbm/storage — silently dropped. Fixed in #337.)
     local payload
@@ -404,6 +411,15 @@ send_heartbeat() {
     "has_battery_sensor": ${has_battery_sensor},
     "has_pir_sensor": ${has_pir_sensor},
     "resolutions": ["1920x1080", "1280x720"]
+  },
+  "effective_config": {
+    "resolution": "${CAPTURE_WIDTH}x${CAPTURE_HEIGHT}",
+    "jpeg_quality": ${JPEG_QUALITY},
+    "capture_interval": ${eff_interval},
+    "active_window": {
+      "start": "${ACTIVE_WINDOW_START:-05:00}",
+      "end": "${ACTIVE_WINDOW_END:-20:00}"
+    }
   }
 }
 JSON

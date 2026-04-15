@@ -24,15 +24,27 @@ teardown_mocks() {
 
 # Install a `curl` stub that echoes $1 on stdout and $2 as the HTTP trailer.
 # capture.sh reads `response=$(curl ...)` then splits the last line as the code.
+# The stub also records its stdin (what the caller is uploading) to
+# MOCK_STATE_DIR/curl.stdin — test helpers can cat/jq that file to inspect
+# payloads like the heartbeat JSON body (#406).
 mock_curl() {
     local body="$1"
     local http_code="${2:-200}"
     cat > "${MOCK_BIN_DIR}/curl" <<EOF
 #!/usr/bin/env bash
+# Capture stdin — harmless when caller doesn't pipe anything (empty file).
+if [ ! -t 0 ]; then
+    cat >> '${MOCK_STATE_DIR}/curl.stdin'
+fi
 printf '%s\n%s\n' '${body}' '${http_code}'
 exit 0
 EOF
     chmod +x "${MOCK_BIN_DIR}/curl"
+}
+
+# Read whatever the most-recent curl mock captured on stdin.
+mock_curl_stdin() {
+    [ -f "${MOCK_STATE_DIR}/curl.stdin" ] && cat "${MOCK_STATE_DIR}/curl.stdin" || true
 }
 
 # Install a `cgpmgr` stub that records every invocation to MOCK_STATE_DIR/cgpmgr.log
