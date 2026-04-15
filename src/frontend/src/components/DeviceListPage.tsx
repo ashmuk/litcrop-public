@@ -96,11 +96,20 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
     ? formatRelativeTime(device.last_seen_at)
     : t('device.never_seen');
 
-  // #406 config-propagation badge
+  // #406 config-propagation badge — precompute everything the JSX reads so
+  // the template stays a flat list of {expressions} instead of nested ternaries.
   const configStatus = getConfigStatus(device);
-  const configPolledText = device.last_config_polled_at
-    ? t('device.config_polled_ago').replace('{time}', formatRelativeTime(device.last_config_polled_at))
-    : t('device.config_never_polled');
+  const configApplied = configStatus === 'applied';
+  const configStateLabel = t(configApplied ? 'device.config_applied' : 'device.config_pending');
+  const configIcon = configApplied ? '\u2705' : '\u23F3';
+  const configColor = configApplied
+    ? 'var(--color-status-healthy)'
+    : 'var(--color-status-warning, #b45309)';
+  const configHint = configApplied
+    ? (device.last_config_polled_at
+        ? t('device.config_polled_ago').replace('{time}', formatRelativeTime(device.last_config_polled_at))
+        : t('device.config_never_polled'))
+    : t('device.config_pending_hint');
 
   const batteryValue = hasBattery && device.battery_level !== null
     ? `${device.battery_level}%`
@@ -164,15 +173,15 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
       {configStatus !== 'unknown' && (
         <div
           class={`device-card__config device-card__config--${configStatus}`}
-          style={`font-size:var(--font-size-sm);display:flex;align-items:center;gap:var(--space-1);color:${configStatus === 'applied' ? 'var(--color-status-healthy)' : 'var(--color-status-warning, #b45309)'}`}
-          aria-label={`${t('device.config_label')}: ${t(configStatus === 'applied' ? 'device.config_applied' : 'device.config_pending')}`}
+          style={`font-size:var(--font-size-sm);display:flex;align-items:center;gap:var(--space-1);color:${configColor}`}
+          aria-label={`${t('device.config_label')}: ${configStateLabel}`}
         >
-          <span aria-hidden="true">{configStatus === 'applied' ? '\u2705' : '\u23F3'}</span>
+          <span aria-hidden="true">{configIcon}</span>
           <span>
-            {t('device.config_label')}: {t(configStatus === 'applied' ? 'device.config_applied' : 'device.config_pending')}
+            {t('device.config_label')}: {configStateLabel}
           </span>
           <span style="color:var(--color-gray-500);margin-left:var(--space-1)">
-            ({configStatus === 'applied' ? configPolledText : t('device.config_pending_hint')})
+            ({configHint})
           </span>
         </div>
       )}
