@@ -81,3 +81,30 @@ After initial resource creation:
 
 ## Rollback Plan
 Revert to the baseline policy preserved in git commit `28da934` (`scripts/iam-policy.json` before tightening).
+
+## Applied Changelog
+
+### 2026-04-15 — #397 post-provisioning tightening
+All three "Post-Provisioning Tightening (Recommended)" items applied to
+`scripts/iam-policy.json`:
+1. **API Gateway scoping**: `arn:aws:apigateway:ap-northeast-1::/*` →
+   `arn:aws:apigateway:ap-northeast-1::/restapis/*` and `/apis/*`. Tighter
+   than `/*` without needing specific API IDs (which would couple the
+   policy to a specific deployment).
+2. **CloudFront action tightening**: dropped `CreateDistribution` and
+   `UpdateDistribution` from the POC user — CDK owns those paths. Kept
+   `GetDistribution`, `CreateInvalidation`, and `ListDistributions` for
+   cache busting via `deploy-frontend.sh`.
+3. **iam:CreateRole removed**: `IAMForLambdaRole` now only permits
+   `AttachRolePolicy`, `PassRole`, and `GetRole`. Lambda roles exist from
+   bootstrap; restore `CreateRole` temporarily if a new Lambda type needs
+   a new role.
+
+Regression test added at `src/api/src/__tests__/iam-policy.test.ts` —
+asserts no wildcard actions, no destructive S3/DDB/Lambda on POC policy,
+no `iam:CreateRole`, and API Gateway scoping invariant. Both POC and
+prod-least policies covered.
+
+`iam-policy-prod-least.json` intentionally NOT tightened — it's used by
+the CDK deploy principal which legitimately needs DeleteBucket, DeleteTable,
+and DeleteFunction during stack replacements.
