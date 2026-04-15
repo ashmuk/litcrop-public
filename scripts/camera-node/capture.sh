@@ -213,36 +213,39 @@ poll_config() {
 
     if [ "$http_code" = "200" ] && [ -n "$body" ]; then
         if command -v jq &>/dev/null; then
+            # Parse all fields in a single jq pass — cheaper on Pi Zero 2 W than
+            # five separate pipe-spawns. One field per line, empty string when
+            # absent. Regex guards below reject any malformed values so the
+            # device keeps its previous (or default) settings.
+            local fields
+            mapfile -t fields < <(echo "$body" | jq -r '
+                .resolution           // "",
+                .jpeg_quality         // "",
+                .capture_interval     // "",
+                (.active_window.start // "05:00"),
+                (.active_window.end   // "20:00"),
+                (.test_shot_requested // false)
+            ' 2>/dev/null)
+
             # resolution — API returns "WIDTHxHEIGHT" as a single string
-            local res
-            res=$(echo "$body" | jq -r '.resolution // empty' 2>/dev/null)
-            if [[ "$res" =~ ^([0-9]+)x([0-9]+)$ ]]; then
+            if [[ "${fields[0]:-}" =~ ^([0-9]+)x([0-9]+)$ ]]; then
                 CAPTURE_WIDTH="${BASH_REMATCH[1]}"
                 CAPTURE_HEIGHT="${BASH_REMATCH[2]}"
             fi
 
-            # jpeg_quality — integer 50..100
-            local q
-            q=$(echo "$body" | jq -r '.jpeg_quality // empty' 2>/dev/null)
-            [[ "$q" =~ ^[0-9]+$ ]] && JPEG_QUALITY="$q"
+            # jpeg_quality — integer (API-side Zod already bounds to 50..100)
+            [[ "${fields[1]:-}" =~ ^[0-9]+$ ]] && JPEG_QUALITY="${fields[1]}"
 
             # capture_interval — advisory under systemd, honored by --loop mode
-            local ci
-            ci=$(echo "$body" | jq -r '.capture_interval // empty' 2>/dev/null)
-            [[ "$ci" =~ ^[0-9]+$ ]] && export INTERVAL_SECONDS="$ci"
+            [[ "${fields[2]:-}" =~ ^[0-9]+$ ]] && export INTERVAL_SECONDS="${fields[2]}"
 
             # active_window — {start, end} as HH:MM; defaults cover full daylight
-            local aw_start aw_end
-            aw_start=$(echo "$body" | jq -r '.active_window.start // "05:00"' 2>/dev/null)
-            aw_end=$(echo "$body"   | jq -r '.active_window.end   // "20:00"' 2>/dev/null)
-            export ACTIVE_WINDOW_START="$aw_start"
-            export ACTIVE_WINDOW_END="$aw_end"
+            export ACTIVE_WINDOW_START="${fields[3]:-05:00}"
+            export ACTIVE_WINDOW_END="${fields[4]:-20:00}"
 
             # test_shot_requested — use LITCROP_TRIGGER namespace per ADR to
             # avoid collision with the .env parser's legacy TRIGGER key
-            local test_shot
-            test_shot=$(echo "$body" | jq -r '.test_shot_requested // false' 2>/dev/null)
-            if [ "$test_shot" = "true" ]; then
+            if [ "${fields[5]:-}" = "true" ]; then
                 export LITCROP_TRIGGER="test_shot"
                 TRIGGER="test_shot"
                 log "[CONFIG] Test shot requested"
