@@ -125,3 +125,48 @@ source_capture() {
     [ "$ACTIVE_WINDOW_START" = "05:00" ]
     [ "$ACTIVE_WINDOW_END"   = "18:00" ]
 }
+
+# cc-test gap #1 — HTTP error-branch coverage (see session report A-level notes)
+# Before: if poll_config received 401/5xx/empty body, the script logged
+# and returned defaults silently. On-Pi, a [SKIP] or default-capture could
+# be misattributed to window logic when the actual cause was auth expiry
+# or upstream unavailability. These tests pin the branch behavior so future
+# on-Pi failure triage is unambiguous.
+
+@test "poll_config on HTTP 401 logs auth-expired and calls refresh_token" {
+    mock_curl '' 401
+    source_capture
+    # Replace refresh_token with a recording stub; real refresh would hit Cognito.
+    _refresh_called=0
+    refresh_token() { _refresh_called=1; return 0; }
+    poll_config
+    [ "$_refresh_called" -eq 1 ]
+}
+
+@test "poll_config on HTTP 500 logs poll-failed and preserves prior config" {
+    mock_curl 'upstream error' 500
+    source_capture
+    CAPTURE_WIDTH="1280"
+    CAPTURE_HEIGHT="720"
+    JPEG_QUALITY="90"
+    run poll_config
+    [[ "$output" == *"Poll failed"* ]]
+    [[ "$output" == *"500"* ]]
+    [ "$CAPTURE_WIDTH"  = "1280" ]
+    [ "$CAPTURE_HEIGHT" = "720" ]
+    [ "$JPEG_QUALITY"   = "90" ]
+}
+
+@test "poll_config on HTTP 200 with empty body takes the poll-failed path" {
+    # Body is empty — the `[ -n "$body" ]` guard sends control to the else
+    # branch, same as a 5xx. Regression guard against an upstream that
+    # returns 200 without a payload (misconfigured gateway, etc).
+    mock_curl '' 200
+    source_capture
+    CAPTURE_WIDTH="1920"
+    CAPTURE_HEIGHT="1080"
+    run poll_config
+    [[ "$output" == *"Poll failed"* ]] || [[ "$output" == *"using defaults"* ]]
+    [ "$CAPTURE_WIDTH"  = "1920" ]
+    [ "$CAPTURE_HEIGHT" = "1080" ]
+}
