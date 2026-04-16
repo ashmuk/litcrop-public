@@ -53,8 +53,11 @@ test.describe('Security', () => {
     expect(value.length).toBeGreaterThan(0);
 
     // #380: script-src must be present, must include 'self', and must NOT
-    // include 'unsafe-inline'. All inline scripts have been moved to
-    // /scripts/*.js files served from the same origin.
+    // include 'unsafe-inline'. Astro emits two small hydration-runtime
+    // scripts inline during SSG that we cannot opt out of in the current
+    // config; both are allowlisted by their SHA-256 hash. Nothing else
+    // should ever need inline execution — if a new hash shows up, regen
+    // via tools/gen-csp-hashes.mjs and update the CDK stack.
     //
     // Gate ONLY on the enforcing header. A report-only header is advisory —
     // validating the fallback could let a misconfigured enforcing policy
@@ -65,6 +68,14 @@ test.describe('Security', () => {
         const scriptSrc = scriptSrcMatch[1]!.trim();
         expect(scriptSrc).toContain("'self'");
         expect(scriptSrc).not.toContain("'unsafe-inline'");
+        // Astro hydration-runtime hashes must stay allowlisted so login,
+        // AuthGuard, and all client:load Preact islands execute.
+        expect(scriptSrc).toContain(
+          "'sha256-U7a72oKuFFz8D7GUHLA1NZ0ciymHmDOc9T9aVDg2rWU='",
+        );
+        expect(scriptSrc).toContain(
+          "'sha256-QzWFZi+FLIx23tnm9SBU4aEgx4x8DsuASP07mfqol/c='",
+        );
       }
     }
   });

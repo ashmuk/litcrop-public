@@ -268,13 +268,24 @@ function handler(event) {
       responseHeadersPolicyName: names.headersPolicy,
       securityHeadersBehavior: {
         contentSecurityPolicy: {
-          // #380: script-src is 'self' only. Inline scripts live in
-          // src/frontend/public/scripts/*.js and load via <script src>.
+          // #380: script-src is 'self' plus two allowlisted SHA-256 hashes
+          // for Astro's auto-inlined hydration-runtime scripts. Our own
+          // inline scripts live in src/frontend/public/scripts/*.js and
+          // load via <script src>, but Astro emits two small bootstrap
+          // scripts inline during SSG that we cannot opt out of in the
+          // current config (tracked for the Astro-CSP migration follow-up).
+          //
+          //   sha256-U7a72oKu…  — Preact hydration runtime (client:load glue)
+          //   sha256-QzWFZi+F…  — Astro `astro:load` event dispatcher
+          //
+          // If the hashes drift after an Astro upgrade, regenerate via:
+          //   tools/gen-csp-hashes.sh  (see comment at bottom of this file)
+          //
           // style-src keeps 'unsafe-inline' for Astro scoped <style> blocks +
           // Preact JSX style props — scope tracked separately.
           contentSecurityPolicy: [
             "default-src 'self'",
-            "script-src 'self'",
+            "script-src 'self' 'sha256-U7a72oKuFFz8D7GUHLA1NZ0ciymHmDOc9T9aVDg2rWU=' 'sha256-QzWFZi+FLIx23tnm9SBU4aEgx4x8DsuASP07mfqol/c='",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
             "img-src 'self' data: blob: https:",
             `connect-src ${connectSrcDirectives.join(' ')}`,
