@@ -14,8 +14,11 @@
  *   5. Setup steps (links to technical runbook)
  *   6. Images (placeholder refs — real assets tracked in #410)
  *
- * i18n: English-first. Japanese translation deferred — static explainer
- * content lives outside the small i18n-labels.js nav map.
+ * i18n: bilingual EN/JA, dual-rendered in the same HTML and toggled at
+ * first paint via a CSS rule keyed off <html data-locale>. No JS, no flash.
+ * The root-attribute is set pre-paint by /scripts/auth-locale-restore.js
+ * loaded by AuthLayout. Translators: keep element order 1:1 between the
+ * two locales and preserve <strong>/<em>/<code> inside the translation.
  */
 import AuthLayout from '../../layouts/AuthLayout.astro';
 ---
@@ -24,192 +27,301 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
   <main class="help-page" role="main">
     <!-- Breadcrumb / back link -->
     <nav class="help-page__nav" aria-label="Page navigation">
-      <a href="/manage/" class="help-page__back">&larr; Back to Devices</a>
+      <a href="/manage/" class="help-page__back">
+        <span data-lang="en">&larr; Back to Devices</span>
+        <span data-lang="ja">&larr; デバイスに戻る</span>
+      </a>
       <a href="/" class="help-page__home">LitCrop</a>
     </nav>
 
     <header class="help-page__header">
-      <span class="help-page__eyebrow">Device setup</span>
-      <h1 class="help-page__title">Pi Camera — what it is and how it works</h1>
-      <p class="help-page__lede">
+      <span class="help-page__eyebrow">
+        <span data-lang="en">Device setup</span>
+        <span data-lang="ja">デバイスセットアップ</span>
+      </span>
+      <h1 class="help-page__title" data-lang="en">Pi Camera — what it is and how it works</h1>
+      <h1 class="help-page__title" data-lang="ja">Piカメラとは？仕組みと導入手順</h1>
+      <p class="help-page__lede" data-lang="en">
         LitCrop assumes a small Wi-Fi camera watching your bed. This page covers the
         least prerequisites and shows the capture cycle end-to-end, so you know what
         you are committing to before you buy any hardware.
       </p>
+      <p class="help-page__lede" data-lang="ja">
+        LitCropはベッドを見守る小型のWi-Fiカメラを前提としています。このページでは最低限必要な機材と、撮影サイクルの全体像を説明しますので、機材を購入する前に必要なことを把握できます。
+      </p>
     </header>
 
     <!-- ── Section 1: What is a Pi Camera? ──────────────────────────── -->
-    <section class="help-section" aria-labelledby="s1">
-      <h2 id="s1" class="help-section__title">
+    <section class="help-section" aria-labelledby="s1-en s1-ja">
+      <h2 id="s1-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">1</span> What is a Pi Camera?
       </h2>
-      <p>
+      <h2 id="s1-ja" class="help-section__title" data-lang="ja">
+        <span class="help-section__num">1</span> Piカメラとは？
+      </h2>
+      <p data-lang="en">
         A <strong>Raspberry Pi</strong> is a credit-card-sized Linux computer
         (~$15–$40) that sips power on a microSD card. Pair it with a
         <strong>Camera HQ</strong> module plus a C-mount lens and you get a
         12-megapixel weatherproof-capable camera that can be mounted anywhere
         with Wi-Fi reception.
       </p>
-      <p>
+      <p data-lang="ja">
+        <strong>Raspberry Pi</strong>は、クレジットカードサイズの低消費電力Linuxコンピュータ（約15〜40ドル）で、microSDカードで動作します。<strong>Camera HQ</strong>モジュールとCマウントレンズを組み合わせれば、Wi-Fiが届くどこにでも設置できる、12メガピクセルで耐候性のあるカメラになります。
+      </p>
+      <p data-lang="en">
         Every 15–60 minutes, the Pi runs LitCrop's <code>capture.sh</code>
         script: it asks the cloud for its current settings, takes a photo,
         uploads it, and reports its battery / Wi-Fi health. You see the results
         in your browser on the Devices page.
       </p>
-      <div class="help-callout">
+      <p data-lang="ja">
+        15〜60分ごとにPiはLitCropの<code>capture.sh</code>スクリプトを実行します。クラウドに現在の設定を問い合わせ、写真を撮影してアップロードし、バッテリーとWi-Fiの状態を報告します。結果はデバイスページのブラウザで確認できます。
+      </p>
+      <div class="help-callout" data-lang="en">
         <strong>Non-technical summary:</strong> buy the hardware, flash an SD
         card once, paste a config file, and the Pi photographs your bed on
         schedule — hands-off for months at a time.
       </div>
+      <div class="help-callout" data-lang="ja">
+        <strong>技術的でないまとめ：</strong>ハードウェアを購入し、SDカードを一度書き込み、設定ファイルを貼り付けるだけです。あとはPiがスケジュール通りにベッドを撮影し、数ヶ月間放置できます。
+      </div>
     </section>
 
     <!-- ── Section 2: Prerequisites ──────────────────────────────────── -->
-    <section class="help-section" aria-labelledby="s2">
-      <h2 id="s2" class="help-section__title">
+    <section class="help-section" aria-labelledby="s2-en s2-ja">
+      <h2 id="s2-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">2</span> Prerequisites
       </h2>
-      <ul class="help-list">
-        <li>
-          <strong>Raspberry Pi Zero WH</strong> or better — ~$15, built-in Wi-Fi +
-          pre-soldered header
-        </li>
-        <li>
-          <strong>Raspberry Pi Camera Module HQ</strong> + 6mm C/CS-mount lens —
-          ~$50 + ~$30
-        </li>
+      <h2 id="s2-ja" class="help-section__title" data-lang="ja">
+        <span class="help-section__num">2</span> 必要なもの
+      </h2>
+      <ul class="help-list" data-lang="en">
+        <li><strong>Raspberry Pi Zero WH</strong> or better — ~$15, built-in Wi-Fi + pre-soldered header</li>
+        <li><strong>Raspberry Pi Camera Module HQ</strong> + 6mm C/CS-mount lens — ~$50 + ~$30</li>
         <li><strong>microSD card</strong>, 16 GB or larger (Class 10 / A1 rated)</li>
-        <li>
-          <strong>Power</strong> — either a 5V USB supply near the bed <em>or</em> a
-          RPZ-PowerMGR battery HAT for off-grid (Class 2)
-        </li>
+        <li><strong>Power</strong> — either a 5V USB supply near the bed <em>or</em> a RPZ-PowerMGR battery HAT for off-grid (Class 2)</li>
         <li><strong>Wi-Fi coverage</strong> at the bed location, 2.4 GHz preferred</li>
-        <li>
-          <strong>Weatherproof enclosure</strong> — a simple IP54 outdoor box with a
-          clear window is enough for most climates
-        </li>
+        <li><strong>Weatherproof enclosure</strong> — a simple IP54 outdoor box with a clear window is enough for most climates</li>
       </ul>
-      <p class="help-section__aside">
+      <ul class="help-list" data-lang="ja">
+        <li><strong>Raspberry Pi Zero WH</strong>以上 — 約15ドル、Wi-Fi内蔵、ピンヘッダ実装済み</li>
+        <li><strong>Raspberry Pi Camera Module HQ</strong> ＋ 6mm C/CSマウントレンズ — 約50ドル＋約30ドル</li>
+        <li><strong>microSDカード</strong> 16GB以上（Class 10 / A1相当）</li>
+        <li><strong>電源</strong> — ベッド付近の5V USB電源、<em>または</em>オフグリッド運用向けのRPZ-PowerMGRバッテリーHAT（Class 2）</li>
+        <li><strong>Wi-Fi受信</strong> — 設置場所で2.4GHz帯が届くこと</li>
+        <li><strong>耐候性ケース</strong> — 透明窓付きの簡易IP54屋外ボックスで十分です</li>
+      </ul>
+      <p class="help-section__aside" data-lang="en">
         Total hardware bill for a bare-minimum Class 1 deployment is under
         <strong>$120</strong> — comparable to a mid-tier outdoor security camera,
         but with full user control over capture schedule and image retention.
       </p>
+      <p class="help-section__aside" data-lang="ja">
+        最小構成のClass 1では、機材合計は<strong>約120ドル以下</strong>です — 中級屋外防犯カメラと同程度の価格ですが、撮影スケジュールと画像保管をユーザー自身で完全に管理できます。
+      </p>
     </section>
 
     <!-- ── Section 3: How it works (CSS-only animated diagram, supersedes #242) ─── -->
-    <section class="help-section" aria-labelledby="s3">
-      <h2 id="s3" class="help-section__title">
+    <section class="help-section" aria-labelledby="s3-en s3-ja">
+      <h2 id="s3-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">3</span> How the capture cycle works
       </h2>
-      <p>
+      <h2 id="s3-ja" class="help-section__title" data-lang="ja">
+        <span class="help-section__num">3</span> 撮影サイクルの仕組み
+      </h2>
+      <p data-lang="en">
         Each capture cycle is a five-step hand-off between the Pi at the farm,
         AWS in the cloud, and your browser. No traffic flows from the cloud back
         to the Pi — the Pi polls, so you do not need to open any ports on your
         home router.
       </p>
+      <p data-lang="ja">
+        撮影サイクルは、農場のPi、クラウド上のAWS、そしてブラウザの間で行われる5ステップの受け渡しです。クラウドからPiへの通信はありません — Piが自ら問い合わせる方式のため、家のルーターでポート開放をする必要はありません。
+      </p>
 
-      <div class="flow-diagram" role="img" aria-label="Device-to-cloud capture flow: Pi polls config, captures photo, uploads image, sends heartbeat. Dashboard pulls results for the user.">
+      <div class="flow-diagram" role="img"
+           aria-label="Device-to-cloud capture flow: Pi polls config, captures photo, uploads image, sends heartbeat. Dashboard pulls results for the user.">
         <div class="flow-col">
-          <div class="flow-col__label">🍅 Farm</div>
-          <div class="flow-node flow-node--pi">Pi Camera</div>
+          <div class="flow-col__label">
+            <span data-lang="en">🍅 Farm</span>
+            <span data-lang="ja">🍅 農場</span>
+          </div>
+          <div class="flow-node flow-node--pi">
+            <span data-lang="en">Pi Camera</span>
+            <span data-lang="ja">Piカメラ</span>
+          </div>
         </div>
         <div class="flow-col flow-col--center">
-          <div class="flow-col__label">☁️ Cloud</div>
+          <div class="flow-col__label">
+            <span data-lang="en">☁️ Cloud</span>
+            <span data-lang="ja">☁️ クラウド</span>
+          </div>
           <div class="flow-node flow-node--aws">AWS</div>
         </div>
         <div class="flow-col">
-          <div class="flow-col__label">📱 You</div>
-          <div class="flow-node flow-node--browser">Browser</div>
+          <div class="flow-col__label">
+            <span data-lang="en">📱 You</span>
+            <span data-lang="ja">📱 あなた</span>
+          </div>
+          <div class="flow-node flow-node--browser">
+            <span data-lang="en">Browser</span>
+            <span data-lang="ja">ブラウザ</span>
+          </div>
         </div>
 
         <div class="flow-lane flow-lane--1">
           <span class="flow-arrow flow-arrow--right" aria-hidden="true"></span>
-          <span class="flow-label flow-label--out">1 · Poll config</span>
+          <span class="flow-label flow-label--out">
+            <span data-lang="en">1 · Poll config</span>
+            <span data-lang="ja">1 · 設定を取得</span>
+          </span>
         </div>
         <div class="flow-lane flow-lane--2">
           <span class="flow-arrow flow-arrow--left" aria-hidden="true"></span>
-          <span class="flow-label flow-label--in">settings</span>
+          <span class="flow-label flow-label--in">
+            <span data-lang="en">settings</span>
+            <span data-lang="ja">設定</span>
+          </span>
         </div>
         <div class="flow-lane flow-lane--3">
-          <span class="flow-label flow-label--self">2 · 📸 Capture</span>
+          <span class="flow-label flow-label--self">
+            <span data-lang="en">2 · 📸 Capture</span>
+            <span data-lang="ja">2 · 📸 撮影</span>
+          </span>
         </div>
         <div class="flow-lane flow-lane--4">
           <span class="flow-arrow flow-arrow--right" aria-hidden="true"></span>
-          <span class="flow-label flow-label--out">3 · Upload image → S3</span>
+          <span class="flow-label flow-label--out">
+            <span data-lang="en">3 · Upload image → S3</span>
+            <span data-lang="ja">3 · 画像をS3にアップロード</span>
+          </span>
         </div>
         <div class="flow-lane flow-lane--5">
           <span class="flow-arrow flow-arrow--right" aria-hidden="true"></span>
-          <span class="flow-label flow-label--out">4 · Heartbeat (🔋 📶)</span>
+          <span class="flow-label flow-label--out">
+            <span data-lang="en">4 · Heartbeat (🔋 📶)</span>
+            <span data-lang="ja">4 · ハートビート（🔋 📶）</span>
+          </span>
         </div>
         <div class="flow-lane flow-lane--6">
           <span class="flow-arrow flow-arrow--right-long" aria-hidden="true"></span>
-          <span class="flow-label flow-label--view">5 · View dashboard</span>
+          <span class="flow-label flow-label--view">
+            <span data-lang="en">5 · View dashboard</span>
+            <span data-lang="ja">5 · ダッシュボード表示</span>
+          </span>
         </div>
       </div>
 
-      <p class="help-section__aside">
+      <p class="help-section__aside" data-lang="en">
         The loop runs every 15, 30, or 60 minutes depending on your configured
         interval. An <em>active window</em> (e.g. 06:00–20:00) tells the Pi to
         skip capture at night while still sending heartbeats so you see a live
         battery reading on the Devices page.
       </p>
+      <p class="help-section__aside" data-lang="ja">
+        サイクルは設定した間隔（15分・30分・60分のいずれか）で繰り返します。<em>アクティブウィンドウ</em>（例：06:00〜20:00）を指定するとPiは夜間の撮影をスキップしますが、ハートビートは送信され続けるため、デバイスページで最新のバッテリー残量を確認できます。
+      </p>
     </section>
 
     <!-- ── Section 4: Hardware tiers (Class 1/2/3) ──────────────────── -->
-    <section class="help-section" aria-labelledby="s4">
-      <h2 id="s4" class="help-section__title">
+    <section class="help-section" aria-labelledby="s4-en s4-ja">
+      <h2 id="s4-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">4</span> Optional hardware tiers
       </h2>
-      <p>
+      <h2 id="s4-ja" class="help-section__title" data-lang="ja">
+        <span class="help-section__num">4</span> オプションのハードウェアクラス
+      </h2>
+      <p data-lang="en">
         LitCrop auto-detects what is attached to your Pi on the first heartbeat
         and assigns a <strong>class</strong>. Every class uses the same capture
         script — the class just tells the UI what extra readings to show.
       </p>
+      <p data-lang="ja">
+        LitCropは最初のハートビートでPiに接続された機器を自動検出し、<strong>クラス</strong>を割り当てます。どのクラスも同じ撮影スクリプトを使用し、クラスはUIに追加表示する項目を伝えるだけです。
+      </p>
 
-      <table class="tier-table" aria-describedby="tier-table-caption">
-        <caption id="tier-table-caption">Hardware tier comparison</caption>
+      <table class="tier-table" aria-describedby="tier-table-caption-en tier-table-caption-ja">
+        <caption>
+          <span id="tier-table-caption-en" data-lang="en">Hardware tier comparison</span>
+          <span id="tier-table-caption-ja" data-lang="ja">ハードウェアクラス比較</span>
+        </caption>
         <thead>
           <tr>
-            <th scope="col">Class</th>
-            <th scope="col">Adds hardware</th>
-            <th scope="col">Unlocks</th>
-            <th scope="col">Cost delta</th>
+            <th scope="col"><span data-lang="en">Class</span><span data-lang="ja">クラス</span></th>
+            <th scope="col"><span data-lang="en">Adds hardware</span><span data-lang="ja">追加機材</span></th>
+            <th scope="col"><span data-lang="en">Unlocks</span><span data-lang="ja">解放される機能</span></th>
+            <th scope="col"><span data-lang="en">Cost delta</span><span data-lang="ja">追加コスト</span></th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <th scope="row"><span class="tier-pill tier-pill--1">Class 1</span></th>
-            <td>Pi + Camera HQ (baseline)</td>
-            <td>Scheduled capture · Wi-Fi + storage reporting</td>
-            <td>≈ $120</td>
+            <td>
+              <span data-lang="en">Pi + Camera HQ (baseline)</span>
+              <span data-lang="ja">Pi ＋ Camera HQ（基本構成）</span>
+            </td>
+            <td>
+              <span data-lang="en">Scheduled capture · Wi-Fi + storage reporting</span>
+              <span data-lang="ja">定期撮影・Wi-Fi／ストレージ状態通知</span>
+            </td>
+            <td>
+              <span data-lang="en">≈ $120</span>
+              <span data-lang="ja">約120ドル</span>
+            </td>
           </tr>
           <tr>
             <th scope="row"><span class="tier-pill tier-pill--2">Class 2</span></th>
-            <td>+ RPZ-PowerMGR battery HAT</td>
-            <td>Live battery level · off-grid operation</td>
-            <td>+ ≈ $60</td>
+            <td>
+              <span data-lang="en">+ RPZ-PowerMGR battery HAT</span>
+              <span data-lang="ja">＋ RPZ-PowerMGR バッテリーHAT</span>
+            </td>
+            <td>
+              <span data-lang="en">Live battery level · off-grid operation</span>
+              <span data-lang="ja">バッテリー残量のリアルタイム表示・オフグリッド運用</span>
+            </td>
+            <td>
+              <span data-lang="en">+ ≈ $60</span>
+              <span data-lang="ja">＋ 約60ドル</span>
+            </td>
           </tr>
           <tr>
             <th scope="row"><span class="tier-pill tier-pill--3">Class 3</span></th>
-            <td>+ RPZ-PIRS motion sensor</td>
-            <td>Motion-triggered capture (Phase 2, roadmap)</td>
-            <td>+ ≈ $15</td>
+            <td>
+              <span data-lang="en">+ RPZ-PIRS motion sensor</span>
+              <span data-lang="ja">＋ RPZ-PIRS 動体センサー</span>
+            </td>
+            <td>
+              <span data-lang="en">Motion-triggered capture (Phase 2, roadmap)</span>
+              <span data-lang="ja">動体検知トリガー撮影（Phase 2、ロードマップ予定）</span>
+            </td>
+            <td>
+              <span data-lang="en">+ ≈ $15</span>
+              <span data-lang="ja">＋ 約15ドル</span>
+            </td>
           </tr>
         </tbody>
       </table>
 
-      <p class="help-section__aside">
+      <p class="help-section__aside" data-lang="en">
         There is no wrong choice — you can start at Class 1 and add the HAT or
         the PIR sensor later. A re-run of <code>install.sh</code> picks up the
         new hardware automatically.
       </p>
+      <p class="help-section__aside" data-lang="ja">
+        どのクラスから始めても間違いはありません — Class 1から始めて、後でHATやPIRセンサーを追加することも可能です。<code>install.sh</code>を再実行すれば、新しいハードウェアを自動検出します。
+      </p>
     </section>
 
     <!-- ── Section 5: Setup steps ────────────────────────────────────── -->
-    <section class="help-section" aria-labelledby="s5">
-      <h2 id="s5" class="help-section__title">
+    <section class="help-section" aria-labelledby="s5-en s5-ja">
+      <h2 id="s5-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">5</span> Setup in five steps
       </h2>
-      <ol class="help-list help-list--numbered">
+      <h2 id="s5-ja" class="help-section__title" data-lang="ja">
+        <span class="help-section__num">5</span> 5ステップで始めるセットアップ
+      </h2>
+      <ol class="help-list help-list--numbered" data-lang="en">
         <li>
           <strong>Flash the microSD</strong> with Raspberry Pi OS Lite (64-bit).
           The Raspberry Pi Imager lets you pre-set the Wi-Fi SSID and SSH access
@@ -237,8 +349,25 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
           bypasses the active window for on-demand verification.
         </li>
       </ol>
+      <ol class="help-list help-list--numbered" data-lang="ja">
+        <li>
+          <strong>microSDを書き込む。</strong>Raspberry Pi OS Lite（64ビット版）をRaspberry Pi ImagerでSDカードに書き込みます。Wi-FiのSSIDとSSHアクセスもワンクリックで事前設定できます。
+        </li>
+        <li>
+          <strong>組み立てて電源を入れる。</strong>カメラリボンを接続し、耐候性ケースに組み込み、Wi-Fiに接続します。
+        </li>
+        <li>
+          <strong>LitCropに登録する。</strong>デバイスページで<em>「デバイスを登録」</em>をクリックし、Piに名前を付けて、生成された<code>.env</code>ファイルをダウンロードします。
+        </li>
+        <li>
+          <strong>設定をPiにコピーする。</strong><code>.env</code>を<code>~/litcrop/.env</code>に配置し、<code>curl -fsSL https://litcrop.com/install.sh | bash</code>を実行します。install.shはHAT／センサーを自動検出し、systemdタイマー（旧イメージではcron）を設定します。
+        </li>
+        <li>
+          <strong>初回撮影を確認する。</strong>デバイスページでは、最初のハートビート受信から約60秒以内にバッジが<em>「検出中」</em>からクラス表示に切り替わります。各デバイスの<em>「テスト撮影」</em>ボタンを使えば、アクティブウィンドウに関わらずその場で撮影を確認できます。
+        </li>
+      </ol>
 
-      <div class="help-callout help-callout--muted">
+      <div class="help-callout help-callout--muted" data-lang="en">
         Technical runbook: <a
           href="https://github.com/ashmuk/litcrop/blob/main/docs/device/TEST-CAMERA-NODE.md"
           target="_blank"
@@ -247,14 +376,24 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
         walks through exit criteria, heartbeat shape, and how to reproduce the
         capture cycle from SSH.
       </div>
+      <div class="help-callout help-callout--muted" data-lang="ja">
+        技術向け詳細手順：<a
+          href="https://github.com/ashmuk/litcrop/blob/main/docs/device/TEST-CAMERA-NODE.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >docs/device/TEST-CAMERA-NODE.md ↗</a>に、Exit Criteria、ハートビートの形式、SSHからの撮影サイクル再現手順が記載されています。
+      </div>
     </section>
 
     <!-- ── Section 6: Reference images ──────────────────────────────── -->
-    <section class="help-section" aria-labelledby="s6">
-      <h2 id="s6" class="help-section__title">
+    <section class="help-section" aria-labelledby="s6-en s6-ja">
+      <h2 id="s6-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">6</span> Reference photos
       </h2>
-      <p>
+      <h2 id="s6-ja" class="help-section__title" data-lang="ja">
+        <span class="help-section__num">6</span> 参考写真
+      </h2>
+      <p data-lang="en">
         Real assembled-hardware photos and example field captures are tracked
         in <a
           href="https://github.com/ashmuk/litcrop/issues/410"
@@ -264,38 +403,84 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
         alongside the branded OG image. The placeholders below will be replaced
         as those assets land.
       </p>
+      <p data-lang="ja">
+        実際の組み立て済み機材の写真と現地での撮影例は、ブランドOG画像とあわせて<a
+          href="https://github.com/ashmuk/litcrop/issues/410"
+          target="_blank"
+          rel="noopener noreferrer"
+        >#410 ↗</a>で管理しています。以下のプレースホルダは素材が届き次第、順次差し替えます。
+      </p>
 
       <div class="ref-gallery">
         <figure class="ref-figure">
-          <div class="ref-figure__slot" aria-hidden="true">Pi Zero WH + Camera HQ, assembled</div>
-          <figcaption>Assembled camera — Pi Zero WH + Camera HQ in a 3D-printed mount</figcaption>
+          <div class="ref-figure__slot" aria-hidden="true">
+            <span data-lang="en">Pi Zero WH + Camera HQ, assembled</span>
+            <span data-lang="ja">Pi Zero WH ＋ Camera HQ 組み立て済み</span>
+          </div>
+          <figcaption>
+            <span data-lang="en">Assembled camera — Pi Zero WH + Camera HQ in a 3D-printed mount</span>
+            <span data-lang="ja">組み立て済みカメラ — 3Dプリント製マウント内のPi Zero WH ＋ Camera HQ</span>
+          </figcaption>
         </figure>
         <figure class="ref-figure">
-          <div class="ref-figure__slot" aria-hidden="true">Example bed capture</div>
-          <figcaption>Example capture — tomato bed, 12 MP, lunchtime light</figcaption>
+          <div class="ref-figure__slot" aria-hidden="true">
+            <span data-lang="en">Example bed capture</span>
+            <span data-lang="ja">ベッド撮影例</span>
+          </div>
+          <figcaption>
+            <span data-lang="en">Example capture — tomato bed, 12 MP, lunchtime light</span>
+            <span data-lang="ja">撮影例 — トマトベッド、12MP、昼光下</span>
+          </figcaption>
         </figure>
         <figure class="ref-figure">
-          <div class="ref-figure__slot" aria-hidden="true">Weatherproof enclosure</div>
-          <figcaption>IP54 outdoor enclosure with clear acrylic window</figcaption>
+          <div class="ref-figure__slot" aria-hidden="true">
+            <span data-lang="en">Weatherproof enclosure</span>
+            <span data-lang="ja">耐候性ケース</span>
+          </div>
+          <figcaption>
+            <span data-lang="en">IP54 outdoor enclosure with clear acrylic window</span>
+            <span data-lang="ja">透明アクリル窓付きIP54屋外ケース</span>
+          </figcaption>
         </figure>
       </div>
 
-      <p class="help-section__aside">
+      <p class="help-section__aside" data-lang="en">
         Reputable suppliers:
         <a href="https://thepihut.com/" target="_blank" rel="noopener noreferrer">The Pi Hut ↗</a> (UK),
         <a href="https://www.adafruit.com/" target="_blank" rel="noopener noreferrer">Adafruit ↗</a> (US),
         <a href="https://www.switch-science.com/" target="_blank" rel="noopener noreferrer">Switch Science ↗</a> (JP).
       </p>
+      <p class="help-section__aside" data-lang="ja">
+        おすすめの販売店：
+        <a href="https://thepihut.com/" target="_blank" rel="noopener noreferrer">The Pi Hut ↗</a>（英国）、
+        <a href="https://www.adafruit.com/" target="_blank" rel="noopener noreferrer">Adafruit ↗</a>（米国）、
+        <a href="https://www.switch-science.com/" target="_blank" rel="noopener noreferrer">Switch Science ↗</a>（日本）。
+      </p>
     </section>
 
     <footer class="help-page__footer">
-      <a href="/manage/" class="btn-primary help-page__cta">Back to Devices →</a>
-      <p class="help-page__version">
+      <a href="/manage/" class="btn-primary help-page__cta">
+        <span data-lang="en">Back to Devices →</span>
+        <span data-lang="ja">デバイスに戻る →</span>
+      </a>
+      <p class="help-page__version" data-lang="en">
         Feedback on this page? Use the <a href="/report-bug">Report Bug</a> form.
+      </p>
+      <p class="help-page__version" data-lang="ja">
+        このページへのご意見は<a href="/report-bug">「バグを報告」</a>フォームからお送りください。
       </p>
     </footer>
   </main>
 </AuthLayout>
+
+<style is:global>
+  /* #407 i18n: dual-render EN + JA, toggle by <html data-locale>.
+     auth-locale-restore.js sets data-locale pre-paint so there is no flash.
+     Declared is:global so the rule matches elements rendered anywhere in
+     the page, including inside the bilingual flow-diagram and tier table. */
+  html[data-locale="ja"] [data-lang="en"] { display: none; }
+  html:not([data-locale="ja"]) [data-lang="ja"] { display: none; }
+</style>
 
 <style>
   .help-page {
@@ -506,7 +691,6 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
     animation-name: flow-slide-left;
   }
   .flow-arrow--right-long {
-    /* Step 5 — a longer cooldown between pulses suggests a pull, not a push. */
     animation-duration: 4s;
   }
   .flow-arrow::after {
@@ -634,7 +818,6 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
     margin: 0;
   }
 
-  /* Mobile tweaks — stack flow labels and shrink paddings below 640px. */
   @media (max-width: 640px) {
     .help-page__title {
       font-size: var(--font-size-xl);
