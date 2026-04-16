@@ -54,8 +54,24 @@ function mapConfirmError(err: unknown): string {
   return t('auth.errors.generic');
 }
 
-// ── Promo code (soft barrier for beta field testing) ─────────────
-
+// ── Access codes (both client-side gates) ────────────────────────
+//
+// Two separate pilot codes, intentionally different strings:
+//
+//   INVITATION_CODE — gates entry to the registration flow in pilot mode.
+//     Widely distributed in the pilot invite, so it's OK that invited users
+//     see it. Unlocks step 1 of the signup wizard; passed users default to
+//     the staff role, same as any public registration would have before
+//     the invitation gate was in place.
+//
+//   PROMO_CODE      — gates self-elevation to the owner role during signup.
+//     Kept separate from INVITATION_CODE so that (a) leaking the invite
+//     doesn't hand out owner privileges, and (b) staff-only invitees can
+//     register without ever seeing the owner string.
+//
+// Both checks are client-side (server enforces the promoted role on
+// write); see feedback_observer_only_registration for the full model.
+const INVITATION_CODE = '2026LITCROP';
 const PROMO_CODE = 'LITCROP2026';
 
 // ── Pilot mode invitation gate ──────────────────────────────────
@@ -293,13 +309,12 @@ export default function RegisterForm() {
   function handleInviteSubmit(e: Event) {
     e.preventDefault();
     const trimmed = inviteCode.trim().toUpperCase();
-    if (trimmed === PROMO_CODE) {
+    if (trimmed === INVITATION_CODE) {
       setInviteVerified(true);
       setInviteError('');
-      // Auto-fill promo code since invitation code = promo code during pilot
-      setPromoCode(trimmed);
-      setPromoValid(true);
-      setRole('owner');
+      // Invitation and owner codes are distinct strings — do NOT auto-fill the
+      // owner promo. Invited users default to the staff role and must enter
+      // the separate owner code explicitly to self-elevate.
     } else {
       setInviteError(t('auth.register.invite_invalid'));
     }
