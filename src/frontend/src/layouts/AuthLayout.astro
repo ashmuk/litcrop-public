@@ -46,7 +46,12 @@ const ogImageAbs = `${siteUrl}${OG_IMAGE}`;
     <meta name="theme-color" content="#6B7F5E" />
     <meta name="generator" content={Astro.generator} />
     <title>{title} — LitCrop</title>
+    <!-- Favicon set: see BaseLayout for the same chain (SVG → PNG → apple-touch → manifest). -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- #410 OpenGraph + Twitter Card (shared by every AuthLayout route) -->
     <meta property="og:type" content="website" />

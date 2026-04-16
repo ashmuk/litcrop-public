@@ -288,6 +288,10 @@ function handler(event) {
             "script-src 'self' 'sha256-U7a72oKuFFz8D7GUHLA1NZ0ciymHmDOc9T9aVDg2rWU=' 'sha256-QzWFZi+FLIx23tnm9SBU4aEgx4x8DsuASP07mfqol/c='",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
             "img-src 'self' data: blob: https:",
+            // manifest-src is covered by default-src in CSP L3, but Firefox
+            // has historically been stricter about the fallback — declare
+            // it explicitly now that site.webmanifest ships (PR #419).
+            "manifest-src 'self'",
             `connect-src ${connectSrcDirectives.join(' ')}`,
             "frame-ancestors 'none'",
           ].join('; '),

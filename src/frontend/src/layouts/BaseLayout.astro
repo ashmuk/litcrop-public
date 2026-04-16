@@ -65,7 +65,13 @@ const ogImageAbs = `${siteUrl}${OG_IMAGE}`;
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>{title}</title>
+    <!-- Favicon set: modern browsers pick the SVG, legacy fall back to PNG,
+         iOS home-screen uses apple-touch-icon, PWA installs read the webmanifest. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- #410 OpenGraph + Twitter Card (shared by every BaseLayout route) -->
     <meta property="og:type" content="website" />
