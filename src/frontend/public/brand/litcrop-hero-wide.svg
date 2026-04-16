@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1600 900"
+     preserveAspectRatio="xMidYMid meet"
+     role="img"
+     aria-label="LitCrop — minimalist line-art landscape: mountains, flowing water, field rows, crops, and the LitCrop wordmark.">
+  <title>LitCrop — from soil to signal</title>
+  <desc>
+    Horizontal hero per .agent/prompts/design/litcrop_design_prompt_full.md.
+    Narrative left→right: mountains + rising sun → flowing water / data
+    layers → field horizon + perspective rows → sprouts stepping upward →
+    "LitCrop" typographic wordmark with a bending-crop arc over the final
+    'C'. Stroke-only line art, 2–3px, earthy brand palette matching
+    LitCropWordmarkMorph (water #5E7F9B, sage #6B7F5E, amber #B89B5E,
+    sienna #C07842, brown #8F6B48, blue #8FA8BF, ink #3B3530, bg #F5F0E6).
+    Static-first: no CSS animations so sharp/librsvg rasterises cleanly;
+    flow paths carry stroke-dasharray so keyframes can be added at the
+    page level if the asset is adopted for an animated hero.
+  </desc>
+
+  <defs>
+    <!-- Sun arc gradient (upper-right glow) -->
+    <radialGradient id="sun-glow" cx="82%" cy="18%" r="32%">
+      <stop offset="0%"   stop-color="#F0D49A" stop-opacity="0.55"/>
+      <stop offset="60%"  stop-color="#F0D49A" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#F0D49A" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Reusable sprout motif — instanced via <use> for the crop row -->
+    <symbol id="sprout" viewBox="0 0 40 60">
+      <path d="M 20 58 L 20 28" fill="none" stroke="#6B7F5E" stroke-width="2.2"
+            stroke-linecap="round"/>
+      <path d="M 20 38 Q 10 32, 6 38 Q 12 44, 20 40 Z"
+            fill="#6B7F5E" fill-opacity="0.14"
+            stroke="#6B7F5E" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M 20 30 Q 32 24, 36 30 Q 28 36, 20 32 Z"
+            fill="#6B7F5E" fill-opacity="0.14"
+            stroke="#6B7F5E" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="20" cy="26.5" r="1.6" fill="#B89B5E"/>
+    </symbol>
+  </defs>
+
+  <!-- Background + warm wash toward the sun -->
+  <rect width="1600" height="900" fill="#F5F0E6"/>
+  <rect width="1600" height="900" fill="url(#sun-glow)"/>
+
+  <!-- Sun arc (upper-right, pulled inward for breathing room) -->
+  <circle cx="1260" cy="190" r="64" fill="none"
+          stroke="#C07842" stroke-width="1.8" stroke-opacity="0.55"/>
+  <path d="M 1160 230 Q 1260 220, 1360 230" fill="none"
+        stroke="#C07842" stroke-width="1.3" stroke-opacity="0.4"/>
+
+  <!-- Ambient data/terrain flow lines (dashed — mark them as data-flow="true" -->
+  <path d="M -40 360 C 200 340, 420 380, 640 350 S 960 380, 1180 352 S 1440 370, 1640 350"
+        fill="none" stroke="#5E7F9B" stroke-width="1.8"
+        stroke-linecap="round" stroke-dasharray="16 14"
+        data-flow="true"/>
+  <path d="M -40 408 C 220 420, 440 400, 660 420 S 980 400, 1200 418 S 1460 404, 1640 418"
+        fill="none" stroke="#B89B5E" stroke-width="1.6"
+        stroke-linecap="round" stroke-dasharray="16 14"
+        stroke-opacity="0.55" data-flow="true" data-flow-reverse="true"/>
+
+  <!-- Mountains — 3 layered ridges -->
+  <path d="M -40 340 L 80 270 L 170 210 L 260 180 L 360 230 L 460 190 L 560 220 L 660 250 L 760 240"
+        fill="none" stroke="#8FA8BF" stroke-width="2.6" stroke-opacity="0.95"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M -40 400 C 100 360, 220 410, 340 370 S 520 410, 660 360 S 820 400, 960 385"
+        fill="none" stroke="#8F6B48" stroke-width="2.6" stroke-opacity="0.90"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M -40 460 C 140 420, 280 470, 420 430 S 620 460, 780 420 S 940 450, 1060 440"
+        fill="none" stroke="#6B7F5E" stroke-width="2.6" stroke-opacity="0.85"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Water / river band (middle) -->
+  <path d="M 100 540 C 280 530, 460 555, 640 535 S 940 555, 1120 540 S 1360 548, 1560 540"
+        fill="none" stroke="#5E7F9B" stroke-width="2.6"
+        stroke-linecap="round" stroke-dasharray="16 14"
+        data-flow="true"/>
+  <path d="M 100 575 C 280 585, 460 562, 640 582 S 940 562, 1120 578 S 1360 572, 1560 578"
+        fill="none" stroke="#5E7F9B" stroke-width="1.8"
+        stroke-linecap="round" stroke-dasharray="16 14"
+        data-flow="true" data-flow-reverse="true"/>
+  <!-- ripple ticks -->
+  <path d="M 320 550 L 320 558 M 520 547 L 520 555 M 780 556 L 780 564 M 1040 550 L 1040 558 M 1280 552 L 1280 560"
+        fill="none" stroke="#5E7F9B" stroke-width="1.8"
+        stroke-linecap="round" stroke-opacity="0.55"/>
+
+  <!-- Field horizon -->
+  <path d="M 40 640 L 1560 640" fill="none" stroke="#3B3530"
+        stroke-width="2.6" stroke-linecap="round"/>
+
+  <!-- Perspective crop rows converging toward the wordmark -->
+  <g fill="none" stroke="#6B7F5E" stroke-width="1.8"
+     stroke-linecap="round" stroke-opacity="0.85">
+    <path d="M  40 780 Q  600 700, 1120 642"/>
+    <path d="M 140 795 Q  660 718, 1180 648"/>
+    <path d="M 240 810 Q  720 735, 1240 655"/>
+    <path d="M 340 825 Q  780 752, 1300 662"/>
+    <path d="M 440 840 Q  840 770, 1360 670"/>
+    <path d="M 540 855 Q  900 790, 1420 678"/>
+  </g>
+
+  <!-- Crop-row tick marks (tiny stems) -->
+  <g fill="none" stroke="#6B7F5E" stroke-width="1.8"
+     stroke-linecap="round" stroke-opacity="0.65">
+    <path d="M 380 760 L 380 770 M 520 760 L 520 770 M 660 760 L 660 770 M 800 760 L 800 770 M 940 760 L 940 770"/>
+    <path d="M 420 800 L 420 812 M 580 800 L 580 812 M 740 800 L 740 812 M 900 800 L 900 812"/>
+  </g>
+
+  <!-- Sprouts — step up in height moving rightward -->
+  <use href="#sprout" x="200" y="560" width="28" height="42"/>
+  <use href="#sprout" x="310" y="550" width="34" height="52"/>
+  <use href="#sprout" x="440" y="540" width="40" height="60"/>
+  <use href="#sprout" x="600" y="530" width="48" height="72"/>
+  <use href="#sprout" x="780" y="520" width="56" height="84"/>
+  <use href="#sprout" x="980" y="510" width="60" height="90"/>
+
+  <!-- Small farmhouse silhouette (quiet narrative anchor) -->
+  <g fill="none" stroke="#8F6B48" stroke-width="1.8"
+     stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.85">
+    <path d="M 870 470 L 870 500 L 920 500 L 920 470 Z"/>
+    <path d="M 864 470 L 895 452 L 926 470"/>
+    <path d="M 882 500 L 882 482 L 894 482 L 894 500"/>
+    <path d="M 904 478 L 912 478 L 912 486 L 904 486 Z"/>
+  </g>
+
+  <!-- Eyebrow tagline — right-anchored so it aligns with the wordmark
+       regardless of the rasteriser's font metrics. -->
+  <text x="1560" y="546" text-anchor="end"
+        font-family="'Inter', -apple-system, 'Helvetica Neue', Helvetica, sans-serif"
+        font-weight="500" font-size="22" letter-spacing="4"
+        fill="#8F6B48">FROM SOIL TO SIGNAL</text>
+
+  <!-- Typographic wordmark — right-anchored + smaller cap so it fits every
+       fallback font (librsvg has no Inter, so browser-accurate sizing can't
+       be relied on). Matches LitCropWordmarkMorph final lockup in spirit. -->
+  <text x="1560" y="672" text-anchor="end"
+        font-family="'Inter', -apple-system, 'Helvetica Neue', Helvetica, sans-serif"
+        font-weight="800" font-size="128" letter-spacing="-3"
+        fill="#3B3530">LitCrop</text>
+
+  <!-- Decorative crop-arc floating over the approximate 'C' position
+       (prompt §7 bending-crop echo). Positions are intentionally generic
+       rather than glyph-hugging because fallback fonts shift the letter
+       widths — the arc + bud read as "this C is a sprout" even when the
+       exact glyph pixel doesn't align. -->
+  <g transform="translate(1300, 608)">
+    <path d="M 0 0 C -42 10, -56 46, -30 78 Q -6 92, 26 82"
+          fill="none" stroke="#6B7F5E" stroke-width="3.2"
+          stroke-linecap="round" stroke-opacity="0.75"/>
+    <circle cx="0" cy="0" r="3.4" fill="#B89B5E"/>
+  </g>
+
+  <!-- Gentle bottom hairline -->
+  <path d="M 60 860 L 1540 860" fill="none" stroke="#3B3530"
+        stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.18"/>
+</svg>
