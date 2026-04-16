@@ -19,13 +19,22 @@ export interface Props {
    *   "hero"    — bare shell; the page owns the full layout (#335 login hero)
    */
   variant?: 'default' | 'hero';
+  /** OpenGraph description override. Defaults to the platform tagline. */
+  description?: string;
 }
 
 const {
   title = 'LitCrop',
   cardTitle,
   variant = 'default',
+  description = 'LitCrop — from soil to signal. Smart crop monitoring for small-scale farms.',
 } = Astro.props;
+
+// #410 canonical OG card — reference at docs/screenshots/litcrop-OG.png.
+const OG_IMAGE = '/og/og-default.png';
+const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? 'https://litcrop.com';
+const ogUrl = `${siteUrl}${Astro.url.pathname}`;
+const ogImageAbs = `${siteUrl}${OG_IMAGE}`;
 ---
 
 <!doctype html>
@@ -33,10 +42,26 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content={description} />
     <meta name="theme-color" content="#6B7F5E" />
     <meta name="generator" content={Astro.generator} />
     <title>{title} — LitCrop</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- #410 OpenGraph + Twitter Card (shared by every AuthLayout route) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LitCrop" />
+    <meta property="og:title" content={`${title} — LitCrop`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={ogUrl} />
+    <meta property="og:image" content={ogImageAbs} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LitCrop — from soil to signal" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={`${title} — LitCrop`} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageAbs} />
     <!-- Auth routes render data-theme="earthy" via SSR on <html>.
          This script only restores the user's locale preference.
          Externalized for CSP #380 — script-src is 'self' only, no unsafe-inline.
