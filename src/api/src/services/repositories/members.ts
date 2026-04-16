@@ -51,9 +51,12 @@ export async function getFarmMembership(userId: string, farmId: string): Promise
 }
 
 export async function removeFarmMember(userId: string, farmId: string): Promise<void> {
+  // Also remove any historical join_request row so the user can re-request
+  // to join later. DDB BatchWrite tolerates deletes on non-existent keys.
   const deleteRequests = [
     { DeleteRequest: { Key: { PK: pk.user(userId), SK: sk.farmMember(farmId) } } },
     { DeleteRequest: { Key: { PK: pk.farm(farmId), SK: sk.member(userId) } } },
+    { DeleteRequest: { Key: { PK: pk.farm(farmId), SK: sk.joinRequest(userId) } } },
   ];
   await ddb.send(new BatchWriteCommand({ RequestItems: { [TABLE_NAME]: deleteRequests } }));
 }

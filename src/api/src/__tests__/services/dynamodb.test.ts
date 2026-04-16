@@ -545,6 +545,26 @@ describe('deleteJoinRequest', () => {
   });
 });
 
+// ── removeFarmMember ──────────────────────────────────────────────
+
+describe('removeFarmMember', () => {
+  it('sends a BatchWrite deleting user membership, farm member, and join request', async () => {
+    ddbMock.on(BatchWriteCommand).resolves({});
+    await repo.removeFarmMember(USER_ID, FARM_ID);
+
+    const calls = ddbMock.commandCalls(BatchWriteCommand);
+    expect(calls).toHaveLength(1);
+    const tableRequests = calls[0].args[0].input.RequestItems as Record<string, unknown[]>;
+    const requests = Object.values(tableRequests)[0] as Array<{ DeleteRequest: { Key: Record<string, string> } }>;
+    expect(requests).toHaveLength(3);
+
+    const keys = requests.map((r) => `${r.DeleteRequest.Key['PK']}|${r.DeleteRequest.Key['SK']}`);
+    expect(keys).toContain(`USER#${USER_ID}|FARM_MEMBER#${FARM_ID}`);
+    expect(keys).toContain(`FARM#${FARM_ID}|MEMBER#${USER_ID}`);
+    expect(keys).toContain(`FARM#${FARM_ID}|JOIN_REQUEST#${USER_ID}`);
+  });
+});
+
 // ── deleteUserItems ───────────────────────────────────────────────
 
 describe('deleteUserItems', () => {
