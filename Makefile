@@ -1,4 +1,4 @@
-.PHONY: help init init-cli setup-hooks check-env sync sync-check sync-verify sync-claude sync-cursor sync-codex fetch-from-upstream fetch-from-upstream-check fetch-from-upstream-status fetch-from-upstream-dry-run push-to-upstream push-to-upstream-check push-to-upstream-status push-to-upstream-dry-run _check-starters init-staged init-toolbox show-character
+.PHONY: help init init-cli setup-hooks check-env sync sync-check sync-verify sync-claude sync-cursor sync-codex fetch-from-upstream fetch-from-upstream-check fetch-from-upstream-status fetch-from-upstream-dry-run push-to-upstream push-to-upstream-check push-to-upstream-status push-to-upstream-dry-run _check-starters init-staged init-toolbox show-character test-catalog
 
 # ============================================
 # Help
@@ -36,6 +36,10 @@ help:
 	@echo "  make push-to-upstream-check     # Show what would be pushed (dry-run)"
 	@echo "  make push-to-upstream-status    # Compare local vs upstream"
 	@echo "  make push-to-upstream-dry-run   # Preview push without changes"
+	@echo ""
+	@echo "Test Catalog:"
+	@echo "  make test-catalog              # Regenerate docs/TEST-CATALOG.md from latest run"
+	@echo "  make test-catalog ARGS=--skip-vitest  # Re-render without re-running vitest"
 	@echo ""
 	@echo "Options:"
 	@echo "  VERBOSE=1 make init    # Show detailed command output and errors"
@@ -233,3 +237,12 @@ push-to-upstream-status:
 # Preview push without changes
 push-to-upstream-dry-run:
 	@./scripts/boilerplate/push-to-upstream.sh --dry-run
+
+# ============================================
+# Test Catalog
+# ============================================
+# Regenerate docs/TEST-CATALOG.md from vitest JSON reporter + bats declarations.
+# Full refresh (runs vitest): make test-catalog
+# Skip vitest (re-use prior JSON): make test-catalog ARGS=--skip-vitest
+test-catalog:
+	@node tools/gen-test-catalog.mjs $(ARGS)
