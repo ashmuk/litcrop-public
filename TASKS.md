@@ -82,7 +82,8 @@ All four sprint issues shipped to production via PR #347. See Recently Closed.
 - [#395](https://github.com/ashmuk/litcrop/issues/395) **Phase 1** — T-395-N1-01..08: schema additions, systemd migration, install.sh rewrite. **Blocked**: Phase 0 on-Pi verification (EC-2, EC-4, Test-Shot) must complete first.
 - [#380](https://github.com/ashmuk/litcrop/issues/380) **chore(security): CSP nonce — remove unsafe-inline from script-src** `area:infra` `priority:high` — **NOT STARTED** (promoted from deferred — pilot-important).
 - [#407](https://github.com/ashmuk/litcrop/issues/407) **feat(frontend): /help/device-setup explainer page for Pi Camera hardware** `area:frontend` `type:feature` `size:M` — **NOT STARTED** — supersedes #242 (animated device-to-cloud diagram becomes Section 3).
-- **develop → main promotion** — 5 tags queued (v0.94..v0.98); ~15 shipped-but-open issues will auto-close on main merge. Gated on T-395-05 on-Pi verification.
+- [#409](https://github.com/ashmuk/litcrop/issues/409) **chore(tooling): add tsc --build to pre-commit to catch re-export gaps locally** `area:infra` `type:infra` `size:S` — **NOT STARTED** — caught by PR #408 CI (d2bbad0 immediate fix).
+- **develop → main promotion (PR #408 DRAFT)** — 5 tags queued (v0.94..v0.98); ~13 shipped-but-open issues will auto-close on main merge. Gated on T-395-05 on-Pi verification.
 
 ---
 
