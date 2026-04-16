@@ -429,6 +429,12 @@ export default function DeviceListPage({ farmId }: Props) {
                 {t(key)}
               </div>
             ))}
+            <a
+              href="/help/device-setup"
+              style="display:inline-block;margin-top:var(--space-3);font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none;font-weight:var(--font-weight-semibold)"
+            >
+              {t('device.learn_more_cta')}
+            </a>
           </div>
         </div>
       </div>

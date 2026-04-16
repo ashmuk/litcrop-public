@@ -1,0 +1,651 @@
+---
+/**
+ * /help/device-setup — Pi Camera hardware explainer (#407).
+ *
+ * Supersedes the deferred #242 animated device-to-cloud flow diagram
+ * (folded in as Section 3). Accessible without authentication so prospective
+ * pilot users can browse the hardware prerequisites before signing up.
+ *
+ * Content sections (issue #407):
+ *   1. What is a Pi Camera?
+ *   2. Prerequisites
+ *   3. How it works (CSS-only animated diagram — was #242)
+ *   4. Hardware tiers (Class 1/2/3)
+ *   5. Setup steps (links to technical runbook)
+ *   6. Images (placeholder refs — real assets tracked in #410)
+ *
+ * i18n: English-first. Japanese translation deferred — static explainer
+ * content lives outside the small i18n-labels.js nav map.
+ */
+import AuthLayout from '../../layouts/AuthLayout.astro';
+---
+
+<AuthLayout title="Pi Camera — Setup Guide" variant="hero">
+  <main class="help-page" role="main">
+    <!-- Breadcrumb / back link -->
+    <nav class="help-page__nav" aria-label="Page navigation">
+      <a href="/manage/" class="help-page__back">&larr; Back to Devices</a>
+      <a href="/" class="help-page__home">LitCrop</a>
+    </nav>
+
+    <header class="help-page__header">
+      <span class="help-page__eyebrow">Device setup</span>
+      <h1 class="help-page__title">Pi Camera — what it is and how it works</h1>
+      <p class="help-page__lede">
+        LitCrop assumes a small Wi-Fi camera watching your bed. This page covers the
+        least prerequisites and shows the capture cycle end-to-end, so you know what
+        you are committing to before you buy any hardware.
+      </p>
+    </header>
+
+    <!-- ── Section 1: What is a Pi Camera? ──────────────────────────── -->
+    <section class="help-section" aria-labelledby="s1">
+      <h2 id="s1" class="help-section__title">
+        <span class="help-section__num">1</span> What is a Pi Camera?
+      </h2>
+      <p>
+        A <strong>Raspberry Pi</strong> is a credit-card-sized Linux computer
+        (~$15–$40) that sips power on a microSD card. Pair it with a
+        <strong>Camera HQ</strong> module plus a C-mount lens and you get a
+        12-megapixel weatherproof-capable camera that can be mounted anywhere
+        with Wi-Fi reception.
+      </p>
+      <p>
+        Every 15–60 minutes, the Pi runs LitCrop's <code>capture.sh</code>
+        script: it asks the cloud for its current settings, takes a photo,
+        uploads it, and reports its battery / Wi-Fi health. You see the results
+        in your browser on the Devices page.
+      </p>
+      <div class="help-callout">
+        <strong>Non-technical summary:</strong> buy the hardware, flash an SD
+        card once, paste a config file, and the Pi photographs your bed on
+        schedule — hands-off for months at a time.
+      </div>
+    </section>
+
+    <!-- ── Section 2: Prerequisites ──────────────────────────────────── -->
+    <section class="help-section" aria-labelledby="s2">
+      <h2 id="s2" class="help-section__title">
+        <span class="help-section__num">2</span> Prerequisites
+      </h2>
+      <ul class="help-list">
+        <li>
+          <strong>Raspberry Pi Zero WH</strong> or better — ~$15, built-in Wi-Fi +
+          pre-soldered header
+        </li>
+        <li>
+          <strong>Raspberry Pi Camera Module HQ</strong> + 6mm C/CS-mount lens —
+          ~$50 + ~$30
+        </li>
+        <li><strong>microSD card</strong>, 16 GB or larger (Class 10 / A1 rated)</li>
+        <li>
+          <strong>Power</strong> — either a 5V USB supply near the bed <em>or</em> a
+          RPZ-PowerMGR battery HAT for off-grid (Class 2)
+        </li>
+        <li><strong>Wi-Fi coverage</strong> at the bed location, 2.4 GHz preferred</li>
+        <li>
+          <strong>Weatherproof enclosure</strong> — a simple IP54 outdoor box with a
+          clear window is enough for most climates
+        </li>
+      </ul>
+      <p class="help-section__aside">
+        Total hardware bill for a bare-minimum Class 1 deployment is under
+        <strong>$120</strong> — comparable to a mid-tier outdoor security camera,
+        but with full user control over capture schedule and image retention.
+      </p>
+    </section>
+
+    <!-- ── Section 3: How it works (CSS-only animated diagram, supersedes #242) ─── -->
+    <section class="help-section" aria-labelledby="s3">
+      <h2 id="s3" class="help-section__title">
+        <span class="help-section__num">3</span> How the capture cycle works
+      </h2>
+      <p>
+        Each capture cycle is a five-step hand-off between the Pi at the farm,
+        AWS in the cloud, and your browser. No traffic flows from the cloud back
+        to the Pi — the Pi polls, so you do not need to open any ports on your
+        home router.
+      </p>
+
+      <div class="flow-diagram" role="img" aria-label="Device-to-cloud capture flow: Pi polls config, captures photo, uploads image, sends heartbeat. Dashboard pulls results for the user.">
+        <div class="flow-col">
+          <div class="flow-col__label">🍅 Farm</div>
+          <div class="flow-node flow-node--pi">Pi Camera</div>
+        </div>
+        <div class="flow-col flow-col--center">
+          <div class="flow-col__label">☁️ Cloud</div>
+          <div class="flow-node flow-node--aws">AWS</div>
+        </div>
+        <div class="flow-col">
+          <div class="flow-col__label">📱 You</div>
+          <div class="flow-node flow-node--browser">Browser</div>
+        </div>
+
+        <div class="flow-lane flow-lane--1">
+          <span class="flow-arrow flow-arrow--right" aria-hidden="true"></span>
+          <span class="flow-label flow-label--out">1 · Poll config</span>
+        </div>
+        <div class="flow-lane flow-lane--2">
+          <span class="flow-arrow flow-arrow--left" aria-hidden="true"></span>
+          <span class="flow-label flow-label--in">settings</span>
+        </div>
+        <div class="flow-lane flow-lane--3">
+          <span class="flow-label flow-label--self">2 · 📸 Capture</span>
+        </div>
+        <div class="flow-lane flow-lane--4">
+          <span class="flow-arrow flow-arrow--right" aria-hidden="true"></span>
+          <span class="flow-label flow-label--out">3 · Upload image → S3</span>
+        </div>
+        <div class="flow-lane flow-lane--5">
+          <span class="flow-arrow flow-arrow--right" aria-hidden="true"></span>
+          <span class="flow-label flow-label--out">4 · Heartbeat (🔋 📶)</span>
+        </div>
+        <div class="flow-lane flow-lane--6">
+          <span class="flow-arrow flow-arrow--right-long" aria-hidden="true"></span>
+          <span class="flow-label flow-label--view">5 · View dashboard</span>
+        </div>
+      </div>
+
+      <p class="help-section__aside">
+        The loop runs every 15, 30, or 60 minutes depending on your configured
+        interval. An <em>active window</em> (e.g. 06:00–20:00) tells the Pi to
+        skip capture at night while still sending heartbeats so you see a live
+        battery reading on the Devices page.
+      </p>
+    </section>
+
+    <!-- ── Section 4: Hardware tiers (Class 1/2/3) ──────────────────── -->
+    <section class="help-section" aria-labelledby="s4">
+      <h2 id="s4" class="help-section__title">
+        <span class="help-section__num">4</span> Optional hardware tiers
+      </h2>
+      <p>
+        LitCrop auto-detects what is attached to your Pi on the first heartbeat
+        and assigns a <strong>class</strong>. Every class uses the same capture
+        script — the class just tells the UI what extra readings to show.
+      </p>
+
+      <table class="tier-table" aria-describedby="tier-table-caption">
+        <caption id="tier-table-caption">Hardware tier comparison</caption>
+        <thead>
+          <tr>
+            <th scope="col">Class</th>
+            <th scope="col">Adds hardware</th>
+            <th scope="col">Unlocks</th>
+            <th scope="col">Cost delta</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><span class="tier-pill tier-pill--1">Class 1</span></th>
+            <td>Pi + Camera HQ (baseline)</td>
+            <td>Scheduled capture · Wi-Fi + storage reporting</td>
+            <td>≈ $120</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="tier-pill tier-pill--2">Class 2</span></th>
+            <td>+ RPZ-PowerMGR battery HAT</td>
+            <td>Live battery level · off-grid operation</td>
+            <td>+ ≈ $60</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="tier-pill tier-pill--3">Class 3</span></th>
+            <td>+ RPZ-PIRS motion sensor</td>
+            <td>Motion-triggered capture (Phase 2, roadmap)</td>
+            <td>+ ≈ $15</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="help-section__aside">
+        There is no wrong choice — you can start at Class 1 and add the HAT or
+        the PIR sensor later. A re-run of <code>install.sh</code> picks up the
+        new hardware automatically.
+      </p>
+    </section>
+
+    <!-- ── Section 5: Setup steps ────────────────────────────────────── -->
+    <section class="help-section" aria-labelledby="s5">
+      <h2 id="s5" class="help-section__title">
+        <span class="help-section__num">5</span> Setup in five steps
+      </h2>
+      <ol class="help-list help-list--numbered">
+        <li>
+          <strong>Flash the microSD</strong> with Raspberry Pi OS Lite (64-bit).
+          The Raspberry Pi Imager lets you pre-set the Wi-Fi SSID and SSH access
+          in one click.
+        </li>
+        <li>
+          <strong>Assemble and power up.</strong> Attach the camera ribbon,
+          screw on your weatherproof enclosure, bring up Wi-Fi.
+        </li>
+        <li>
+          <strong>Register on LitCrop.</strong> In the Devices page, click
+          <em>Register Device</em>, name your Pi, and download the generated
+          <code>.env</code> file.
+        </li>
+        <li>
+          <strong>Copy config to the Pi.</strong> Paste the <code>.env</code> into
+          <code>~/litcrop/.env</code>, then run <code>curl -fsSL https://litcrop.com/install.sh | bash</code>.
+          install.sh auto-detects your HAT/sensor and installs a systemd timer
+          (or cron on older images).
+        </li>
+        <li>
+          <strong>Confirm first capture.</strong> Back in the Devices page the
+          badge flips from <em>Pending</em> to a class within ~60 seconds of the
+          first heartbeat. A <em>Test Shot</em> button next to each device
+          bypasses the active window for on-demand verification.
+        </li>
+      </ol>
+
+      <div class="help-callout help-callout--muted">
+        Technical runbook: <a
+          href="https://github.com/ashmuk/litcrop/blob/main/docs/device/TEST-CAMERA-NODE.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >docs/device/TEST-CAMERA-NODE.md ↗</a>
+        walks through exit criteria, heartbeat shape, and how to reproduce the
+        capture cycle from SSH.
+      </div>
+    </section>
+
+    <!-- ── Section 6: Reference images ──────────────────────────────── -->
+    <section class="help-section" aria-labelledby="s6">
+      <h2 id="s6" class="help-section__title">
+        <span class="help-section__num">6</span> Reference photos
+      </h2>
+      <p>
+        Real assembled-hardware photos and example field captures are tracked
+        in <a
+          href="https://github.com/ashmuk/litcrop/issues/410"
+          target="_blank"
+          rel="noopener noreferrer"
+        >#410 ↗</a>
+        alongside the branded OG image. The placeholders below will be replaced
+        as those assets land.
+      </p>
+
+      <div class="ref-gallery">
+        <figure class="ref-figure">
+          <div class="ref-figure__slot" aria-hidden="true">Pi Zero WH + Camera HQ, assembled</div>
+          <figcaption>Assembled camera — Pi Zero WH + Camera HQ in a 3D-printed mount</figcaption>
+        </figure>
+        <figure class="ref-figure">
+          <div class="ref-figure__slot" aria-hidden="true">Example bed capture</div>
+          <figcaption>Example capture — tomato bed, 12 MP, lunchtime light</figcaption>
+        </figure>
+        <figure class="ref-figure">
+          <div class="ref-figure__slot" aria-hidden="true">Weatherproof enclosure</div>
+          <figcaption>IP54 outdoor enclosure with clear acrylic window</figcaption>
+        </figure>
+      </div>
+
+      <p class="help-section__aside">
+        Reputable suppliers:
+        <a href="https://thepihut.com/" target="_blank" rel="noopener noreferrer">The Pi Hut ↗</a> (UK),
+        <a href="https://www.adafruit.com/" target="_blank" rel="noopener noreferrer">Adafruit ↗</a> (US),
+        <a href="https://www.switch-science.com/" target="_blank" rel="noopener noreferrer">Switch Science ↗</a> (JP).
+      </p>
+    </section>
+
+    <footer class="help-page__footer">
+      <a href="/manage/" class="btn-primary help-page__cta">Back to Devices →</a>
+      <p class="help-page__version">
+        Feedback on this page? Use the <a href="/report-bug">Report Bug</a> form.
+      </p>
+    </footer>
+  </main>
+</AuthLayout>
+
+<style>
+  .help-page {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: var(--space-4) var(--space-4) var(--space-8);
+    color: var(--color-text);
+    line-height: var(--line-height-relaxed);
+    font-size: var(--font-size-base);
+  }
+
+  .help-page__nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) 0 var(--space-4);
+    font-size: var(--font-size-sm);
+  }
+  .help-page__back,
+  .help-page__home {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  .help-page__back:hover,
+  .help-page__home:hover {
+    text-decoration: underline;
+  }
+
+  .help-page__header {
+    padding: var(--space-4) 0 var(--space-6);
+    border-bottom: var(--border-default);
+    margin-bottom: var(--space-6);
+  }
+  .help-page__eyebrow {
+    display: inline-block;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    margin-bottom: var(--space-2);
+  }
+  .help-page__title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    margin: 0 0 var(--space-3);
+  }
+  .help-page__lede {
+    font-size: var(--font-size-md);
+    color: var(--color-gray-700);
+    margin: 0;
+  }
+
+  .help-section {
+    margin-bottom: var(--space-7);
+  }
+  .help-section__title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-3);
+  }
+  .help-section__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+  }
+  .help-section__aside {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-600);
+    font-style: italic;
+  }
+  .help-section p {
+    margin: 0 0 var(--space-3);
+  }
+  .help-section code {
+    font-family: var(--font-family-mono, ui-monospace, Menlo, monospace);
+    font-size: 0.92em;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-gray-100);
+    color: var(--color-gray-900);
+  }
+
+  .help-list {
+    margin: var(--space-2) 0 var(--space-4);
+    padding-left: var(--space-5);
+  }
+  .help-list li {
+    margin-bottom: var(--space-2);
+  }
+  .help-list--numbered {
+    list-style: decimal;
+  }
+
+  .help-callout {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border-left: 3px solid var(--color-primary);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    margin-top: var(--space-3);
+  }
+  .help-callout--muted {
+    background: var(--color-gray-100);
+    border-left-color: var(--color-gray-400);
+    color: var(--color-gray-800);
+  }
+
+  /* ── Section 3: animated flow diagram (CSS-only, no JS) ─────────── */
+  .flow-diagram {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto repeat(6, 36px) var(--space-3);
+    gap: var(--space-2) 0;
+    padding: var(--space-4) var(--space-3);
+    background: var(--color-surface);
+    border: var(--border-default);
+    border-radius: var(--radius-lg);
+    margin: var(--space-4) 0;
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+  }
+  .flow-col {
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .flow-col__label {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-700);
+  }
+  .flow-node {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: white;
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    font-size: var(--font-size-xs);
+  }
+  .flow-node--aws {
+    background: color-mix(in srgb, var(--color-primary) 75%, black);
+  }
+  .flow-node--browser {
+    background: var(--color-accent, #6B7F5E);
+  }
+
+  .flow-lane {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    position: relative;
+  }
+  .flow-lane--1 { grid-row: 3; grid-column: 1 / span 2; }
+  .flow-lane--2 { grid-row: 4; grid-column: 1 / span 2; justify-content: flex-end; }
+  .flow-lane--3 { grid-row: 5; grid-column: 1; justify-content: center; }
+  .flow-lane--4 { grid-row: 6; grid-column: 1 / span 2; }
+  .flow-lane--5 { grid-row: 7; grid-column: 1 / span 2; }
+  .flow-lane--6 { grid-row: 8; grid-column: 2 / span 2; }
+
+  .flow-label {
+    background: var(--color-bg, #fff);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-gray-800);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    white-space: nowrap;
+  }
+  .flow-label--self {
+    font-weight: var(--font-weight-semibold);
+  }
+  .flow-label--view {
+    background: color-mix(in srgb, var(--color-primary) 10%, white);
+  }
+
+  /* Animated flow arrows (CSS keyframes, respects prefers-reduced-motion) */
+  .flow-arrow {
+    display: inline-block;
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--color-primary) 15%,
+      var(--color-primary) 85%,
+      transparent 100%
+    );
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    background-position: -40% 0;
+    animation: flow-slide 2.8s linear infinite;
+    position: relative;
+  }
+  .flow-arrow--left {
+    animation-name: flow-slide-left;
+  }
+  .flow-arrow--right-long {
+    /* Step 5 — a longer cooldown between pulses suggests a pull, not a push. */
+    animation-duration: 4s;
+  }
+  .flow-arrow::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: 0;
+    border-left: 6px solid var(--color-primary);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .flow-arrow--left::after {
+    right: auto;
+    left: 0;
+    border-left: 0;
+    border-right: 6px solid var(--color-primary);
+  }
+
+  @keyframes flow-slide {
+    0%   { background-position: -40% 0; }
+    100% { background-position: 140% 0; }
+  }
+  @keyframes flow-slide-left {
+    0%   { background-position: 140% 0; }
+    100% { background-position: -40% 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flow-arrow {
+      animation: none;
+      background-position: 50% 0;
+    }
+  }
+
+  /* ── Section 4: tier table ─────────────────────────────────────── */
+  .tier-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-3) 0;
+    font-size: var(--font-size-sm);
+  }
+  .tier-table caption {
+    caption-side: top;
+    text-align: left;
+    font-weight: var(--font-weight-semibold);
+    padding-bottom: var(--space-2);
+    color: var(--color-gray-700);
+  }
+  .tier-table th,
+  .tier-table td {
+    text-align: left;
+    padding: var(--space-3) var(--space-2);
+    border-bottom: var(--border-default);
+    vertical-align: top;
+  }
+  .tier-table thead th {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-700);
+    background: var(--color-gray-100);
+  }
+  .tier-pill {
+    display: inline-block;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-full, 999px);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: white;
+    white-space: nowrap;
+  }
+  .tier-pill--1 { background: #6B7F5E; }
+  .tier-pill--2 { background: #A06B3E; }
+  .tier-pill--3 { background: #1B6B3A; }
+
+  /* ── Section 6: reference image gallery (placeholders) ─────────── */
+  .ref-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-3);
+    margin: var(--space-3) 0 var(--space-4);
+  }
+  .ref-figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .ref-figure__slot {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-md);
+    background:
+      repeating-linear-gradient(
+        45deg,
+        var(--color-gray-100),
+        var(--color-gray-100) 10px,
+        var(--color-gray-200) 10px,
+        var(--color-gray-200) 20px
+      );
+    color: var(--color-gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: var(--font-size-xs);
+    padding: var(--space-3);
+    border: 1px dashed var(--color-gray-300);
+  }
+  .ref-figure figcaption {
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-600);
+  }
+
+  .help-page__footer {
+    padding: var(--space-6) 0 0;
+    border-top: var(--border-default);
+    text-align: center;
+  }
+  .help-page__cta {
+    display: inline-block;
+    margin-bottom: var(--space-3);
+    text-decoration: none;
+  }
+  .help-page__version {
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-400);
+    margin: 0;
+  }
+
+  /* Mobile tweaks — stack flow labels and shrink paddings below 640px. */
+  @media (max-width: 640px) {
+    .help-page__title {
+      font-size: var(--font-size-xl);
+    }
+    .flow-diagram {
+      grid-template-rows: auto auto repeat(6, 44px) var(--space-3);
+      font-size: 11px;
+    }
+    .tier-table th,
+    .tier-table td {
+      padding: var(--space-2);
+    }
+  }
+</style>

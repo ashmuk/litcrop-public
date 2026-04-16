@@ -1121,6 +1121,18 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        {/* Help section (#407) */}
+        <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md)">
+          <h3 style="font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-3);color:var(--color-text)">
+            {t('legal.section_help')}
+          </h3>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <a href="/help/device-setup" style="font-size:var(--font-size-sm);color:var(--color-primary);text-decoration:none">
+              {t('legal.help_device_setup')}
+            </a>
+          </div>
+        </div>
+
         {/* Legal & Info section (#280) */}
         <div style="margin-top:var(--space-5);padding:var(--space-4);background:var(--color-surface);border:var(--border-default);border-radius:var(--radius-md)">
           <h3 style="font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-3);color:var(--color-text)">
