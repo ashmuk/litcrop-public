@@ -2,25 +2,22 @@
 /**
  * Plot Detail — deprecated redirect shim
  * Redirects to /beds/view preserving the ?id= query param.
- * No visible content is rendered to avoid a "Plot Detail" flash before redirect.
+ * Meta refresh covers the no-JS case; the external script adds query preservation.
+ *
+ * CSP #380: inline script replaced with /scripts/redirect-preserve-query.js.
  */
 ---
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="refresh" content="0;url=/beds/view" id="meta-refresh" />
+    <meta http-equiv="refresh" content="0;url=/beds/view" />
     <title></title>
-    <script is:inline>
-      // Preserve query string (e.g. ?id=…) on redirect
-      var search = window.location.search;
-      if (search) {
-        var meta = document.getElementById('meta-refresh');
-        if (meta) meta.setAttribute('content', '0;url=/beds/view' + search);
-        window.location.replace('/beds/view' + search);
-      } else {
-        window.location.replace('/beds/view');
-      }
-    </script>
+    <script
+      is:inline
+      src="/scripts/redirect-preserve-query.js"
+      data-litcrop-redirect
+      data-target="/beds/view"
+    ></script>
   </head>
   <body style="display:none"></body>
 </html>

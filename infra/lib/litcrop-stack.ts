@@ -268,9 +268,13 @@ function handler(event) {
       responseHeadersPolicyName: names.headersPolicy,
       securityHeadersBehavior: {
         contentSecurityPolicy: {
+          // #380: script-src is 'self' only. Inline scripts live in
+          // src/frontend/public/scripts/*.js and load via <script src>.
+          // style-src keeps 'unsafe-inline' for Astro scoped <style> blocks +
+          // Preact JSX style props — scope tracked separately.
           contentSecurityPolicy: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self'",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
             "img-src 'self' data: blob: https:",
             `connect-src ${connectSrcDirectives.join(' ')}`,

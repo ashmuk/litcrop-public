@@ -41,7 +41,13 @@ const {
 ---
 
 <!doctype html>
-<html lang={lang} data-theme={theme} data-locale={locale}>
+<html
+  lang={lang}
+  data-theme={theme}
+  data-locale={locale}
+  data-farm-name-title-id={farmNameTitleId}
+  data-farm-name-prefix={farmNamePrefix}
+>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -54,55 +60,15 @@ const {
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Restore persisted settings before first paint (avoids flash of wrong theme/locale) -->
-    <script is:inline>
-      (function() {
-        var theme = localStorage.getItem('litcrop-theme');
-        var locale = localStorage.getItem('litcrop-locale');
-        var lang = locale === 'ja' ? 'ja' : 'en';
-        if (theme) document.documentElement.setAttribute('data-theme', theme);
-        if (locale) {
-          document.documentElement.setAttribute('data-locale', locale);
-          document.documentElement.setAttribute('lang', lang);
-        }
-      })();
-    </script>
-    <!-- Translate [data-i18n] elements after DOM is ready (nav labels, static text) -->
-    <script is:inline>
-      document.addEventListener('DOMContentLoaded', function() {
-        var locale = document.documentElement.getAttribute('data-locale') || 'en';
-        if (locale === 'en') return; // English is already the default text content
-        var XHR_TRANSLATIONS = null;
-        try {
-          // Inline translation map for nav + common static labels (ja only for PoC)
-          var JA = {
-            'nav.farm': '作物', 'nav.weather': '天気', 'nav.diary': '日誌',
-            'nav.setup': 'プロフィール', 'nav.manage': 'デバイス', 'nav.admin': '管理',
-            'nav.layout': 'レイアウト', 'nav.pilot_banner': 'パイロット版 — リリース候補です。フィードバックをお待ちしています。',
-            'page.weather': '⛅ 天気', 'page.device': '📡 デバイス'
-          };
-          if (locale === 'ja') XHR_TRANSLATIONS = JA;
-        } catch(e) {}
-        if (!XHR_TRANSLATIONS) return;
-        var els = document.querySelectorAll('[data-i18n]');
-        for (var i = 0; i < els.length; i++) {
-          var key = els[i].getAttribute('data-i18n');
-          if (key && XHR_TRANSLATIONS[key]) {
-            els[i].textContent = XHR_TRANSLATIONS[key];
-          }
-        }
-      });
-    </script>
+    <!-- Restore persisted theme + locale before first paint (flash prevention).
+         Externalized for CSP #380 — script-src is 'self' only, no unsafe-inline.
+         `is:inline` tells Astro to skip Vite bundling and emit the <script> tag
+         verbatim — the script itself stays external (served from public/). -->
+    <script is:inline src="/scripts/theme-locale-restore.js"></script>
+    <!-- Static-label translation (runs on DOMContentLoaded). -->
+    <script is:inline src="/scripts/i18n-labels.js" defer></script>
     {farmNameTitleId && (
-      <script is:inline define:vars={{ farmNameTitleId, farmNamePrefix: farmNamePrefix ?? '' }}>
-        document.addEventListener('DOMContentLoaded', function() {
-          var name = localStorage.getItem('litcrop-farmName');
-          if (name) {
-            var el = document.getElementById(farmNameTitleId);
-            if (el) el.textContent = farmNamePrefix + name;
-          }
-        });
-      </script>
+      <script is:inline src="/scripts/farm-name-title.js" defer></script>
     )}
   </head>
   <body>

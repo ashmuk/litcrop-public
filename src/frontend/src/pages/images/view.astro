@@ -10,10 +10,14 @@ import Toast from '../../components/Toast';
 
 <BaseLayout title="LitCrop — Image Viewer" activeTab="farm">
   <nav class="nav-header" aria-label="Page navigation">
-    <a href="javascript:history.back()" class="nav-header__back" aria-label="Back">←</a>
+    <!-- #380 CSP: href="javascript:…" is classified as inline script and
+         would be blocked under script-src 'self'. Delegated click handler
+         in /scripts/nav-back.js walks the history (or falls back to /). -->
+    <a href="/" class="nav-header__back" aria-label="Back" data-litcrop-back-button>←</a>
     <span class="nav-header__title">Image Viewer</span>
   </nav>
 
   <ImageViewer client:load />
   <Toast client:load />
+  <script is:inline src="/scripts/nav-back.js"></script>
 </BaseLayout>

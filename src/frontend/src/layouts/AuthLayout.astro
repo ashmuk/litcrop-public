@@ -38,17 +38,10 @@ const {
     <title>{title} — LitCrop</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Auth routes render data-theme="earthy" via SSR on <html>.
-         This script only restores the user's locale preference. -->
-    <script is:inline>
-      (function() {
-        var locale = localStorage.getItem('litcrop-locale');
-        if (locale === 'en' || locale === 'ja') {
-          var root = document.documentElement;
-          root.setAttribute('data-locale', locale);
-          root.setAttribute('lang', locale);
-        }
-      })();
-    </script>
+         This script only restores the user's locale preference.
+         Externalized for CSP #380 — script-src is 'self' only, no unsafe-inline.
+         `is:inline` skips Astro's Vite bundler (the script lives under public/). -->
+    <script is:inline src="/scripts/auth-locale-restore.js"></script>
   </head>
   <body class="auth-layout-body">
     {variant === 'hero' ? (

@@ -2,6 +2,8 @@
 /**
  * Settings — Redirects to /manage/ (F-01: Settings tab replaced by Manage)
  * Kept for backwards compatibility with bookmarks.
+ *
+ * CSP #380: meta http-equiv refresh is sufficient; no inline script needed.
  */
 ---
 
@@ -11,9 +13,6 @@
     <meta charset="UTF-8" />
     <meta http-equiv="refresh" content="0;url=/manage/" />
     <title>Redirecting to Manage...</title>
-    <script is:inline>
-      window.location.replace('/manage/');
-    </script>
   </head>
   <body>
     <p>Redirecting to <a href="/manage/">Manage</a>...</p>

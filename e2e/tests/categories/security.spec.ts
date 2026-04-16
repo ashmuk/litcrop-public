@@ -47,10 +47,25 @@ test.describe('Security', () => {
       console.warn(
         '[security] No CSP header found on /login — acceptable in dev, required in production',
       );
-    } else {
-      // If present, ensure it is non-empty
-      const value = (csp ?? cspReportOnly)!;
-      expect(value.length).toBeGreaterThan(0);
+      return;
+    }
+    const value = (csp ?? cspReportOnly)!;
+    expect(value.length).toBeGreaterThan(0);
+
+    // #380: script-src must be present, must include 'self', and must NOT
+    // include 'unsafe-inline'. All inline scripts have been moved to
+    // /scripts/*.js files served from the same origin.
+    //
+    // Gate ONLY on the enforcing header. A report-only header is advisory —
+    // validating the fallback could let a misconfigured enforcing policy
+    // pass silently when report-only happens to look correct.
+    if (csp) {
+      const scriptSrcMatch = csp.match(/(?:^|;\s*)script-src\s+([^;]+)/);
+      if (scriptSrcMatch) {
+        const scriptSrc = scriptSrcMatch[1]!.trim();
+        expect(scriptSrc).toContain("'self'");
+        expect(scriptSrc).not.toContain("'unsafe-inline'");
+      }
     }
   });
 
