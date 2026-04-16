@@ -990,6 +990,9 @@ describe('join_request events emission', () => {
     vi.mocked(dynamoRepo.getJoinRequest).mockResolvedValue(null);
     vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Alice', preferred_role: 'staff', created_at: '2026-01-01T00:00:00.000Z' });
     vi.mocked(dynamoRepo.createJoinRequest).mockResolvedValue(undefined);
+    vi.mocked(dynamoRepo.getFarmMembers).mockResolvedValue([
+      { user_id: 'owner-001', role: 'owner', joined_at: '2026-01-01T00:00:00.000Z' },
+    ]);
 
     await app.request(`/api/v1/farms/${FARM_ID}/join`, {
       method: 'POST',
@@ -1001,6 +1004,7 @@ describe('join_request events emission', () => {
     const event = listener.mock.calls[0][0] as AppEventMap['join_request.submitted'];
     expect(event.type).toBe('join_request.submitted');
     expect(event.payload.farm_id).toBe(FARM_ID);
+    expect(event.payload.target_user_id).toBe('owner-001');
 
     appEvents.off('join_request.submitted', listener);
   });

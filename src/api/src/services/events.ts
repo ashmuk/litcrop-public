@@ -36,6 +36,8 @@ export interface JoinRequestSubmittedPayload {
   farm_id: string;
   farm_name: string;
   requester_name: string;
+  target_user_id: string;
+  target_user_email?: string;
 }
 
 export interface JoinRequestResolvedPayload {

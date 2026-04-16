@@ -112,11 +112,20 @@ else
     # named (default main). Prevents the "install.sh from staging v0.97
     # downloads capture.sh from main v0.93" footgun.
     info "Downloading capture.sh from GitHub (branch: ${BRANCH})..."
-    curl -sL "https://raw.githubusercontent.com/ashmuk/litcrop/${BRANCH}/scripts/camera-node/capture.sh" \
+    curl -sfL "https://raw.githubusercontent.com/ashmuk/litcrop/${BRANCH}/scripts/camera-node/capture.sh" \
         -o "${LITCROP_DIR}/capture.sh" || {
         error "Failed to download capture.sh from branch '${BRANCH}'"
+        error "If the repo is private, use scp instead:"
+        error "  scp scripts/camera-node/capture.sh pi@host:~/litcrop/"
         exit 1
     }
+    if ! head -1 "${LITCROP_DIR}/capture.sh" | grep -q '^#!/'; then
+        error "Downloaded capture.sh is not a valid script (missing shebang)."
+        error "This usually means GitHub returned an error page instead of the file."
+        error "Check: is the branch '${BRANCH}' pushed? Is the repo public?"
+        rm -f "${LITCROP_DIR}/capture.sh"
+        exit 1
+    fi
 fi
 chmod 700 "${LITCROP_DIR}/capture.sh"
 
@@ -223,10 +232,10 @@ echo "== Hardware Detection (Device Tier) =="
 HAS_BATTERY_SENSOR=0
 HAS_PIR_SENSOR=0
 
-# Battery HAT — filter sysfs entries by `type == Battery`. The raw
-# `/sys/class/power_supply/*/capacity` glob also matches USB chargers
-# and AC adapters on headless Pis that expose mains power without a
-# battery, which would falsely classify a Class-1 device as Class-2.
+# Battery HAT — try three methods in priority order:
+#   1. sysfs /sys/class/power_supply/*/type == Battery (standard kernel)
+#   2. cgpmgr binary on PATH (RPZ-PowerMGR vendor binary)
+#   3. i2c device at known address (hardware present, driver not loaded)
 for _ps_dir in /sys/class/power_supply/*/; do
     [ -d "$_ps_dir" ] || continue
     if [ "$(cat "${_ps_dir}type" 2>/dev/null)" = "Battery" ]; then
@@ -235,16 +244,40 @@ for _ps_dir in /sys/class/power_supply/*/; do
     fi
 done
 unset _ps_dir
-
-# PIR motion sensor — gated by whether the RPZ-PIRS userland binary
-# `cgsensor` is installed and on PATH. PATH-only detection is a known
-# limitation (a same-named unrelated binary would false-positive);
-# acceptable for pilot scope, reviewed as NITPICK.
+if [ "$HAS_BATTERY_SENSOR" = 0 ] && command -v cgpmgr >/dev/null 2>&1; then
+    HAS_BATTERY_SENSOR=1
+fi
+# PIR motion sensor — try PATH then i2c fallback:
+#   1. cgsensor binary on PATH (RPZ-PIRS vendor binary)
+#   2. i2c device at known address
 if command -v cgsensor >/dev/null 2>&1; then
     HAS_PIR_SENSOR=1
 fi
 
+# i2c fallback for both sensors (single bus scan)
+if { [ "$HAS_BATTERY_SENSOR" = 0 ] || [ "$HAS_PIR_SENSOR" = 0 ]; } && command -v i2cdetect >/dev/null 2>&1; then
+    _i2c_out=$(i2cdetect -y 1 2>/dev/null)
+    if [ "$HAS_BATTERY_SENSOR" = 0 ] && echo "$_i2c_out" | grep -q ' 6b'; then
+        HAS_BATTERY_SENSOR=1
+        warn "Battery HAT detected via i2c (0x6b) but cgpmgr not on PATH"
+        warn "  Install vendor package for full power management support"
+    fi
+    if [ "$HAS_PIR_SENSOR" = 0 ] && echo "$_i2c_out" | grep -q ' 4d'; then
+        HAS_PIR_SENSOR=1
+        warn "PIR sensor detected via i2c (0x4d) but cgsensor not on PATH"
+        warn "  Install vendor package for motion detection support"
+    fi
+    unset _i2c_out
+fi
+
 info "Detected: HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR} HAS_PIR_SENSOR=${HAS_PIR_SENSOR}"
+if [ "$HAS_BATTERY_SENSOR" = 0 ] && [ "$HAS_PIR_SENSOR" = 0 ]; then
+    warn "No sensors detected — classified as Class 1"
+    warn "If your Pi has RPZ-PowerMGR or RPZ-PIRS, ensure:"
+    warn "  1. i2c is enabled:  sudo raspi-config → Interface → I2C"
+    warn "  2. Vendor binaries installed: cgpmgr (power), cgsensor (PIR)"
+    warn "  Or use the interactive override below to self-declare"
+fi
 
 # Allow interactive override so a user whose sensor is temporarily
 # disconnected (or wired but not yet enabled) can self-declare the

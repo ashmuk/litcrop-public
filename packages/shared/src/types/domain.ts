@@ -119,7 +119,7 @@ export interface UserProfile {
 
 // ── In-app Notifications ─────────────────────────────────────────
 
-export type NotificationType = 'join_approved' | 'join_rejected' | 'role_changed';
+export type NotificationType = 'join_submitted' | 'join_approved' | 'join_rejected' | 'role_changed';
 
 export interface Notification {
   id: string;

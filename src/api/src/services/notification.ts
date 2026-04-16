@@ -6,7 +6,7 @@
 
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import type { NotificationType } from '@litcrop/shared';
-import { appEvents, type AppEventType, type AppEventMap, type JoinRequestResolvedPayload, type MemberRoleChangedPayload } from './events';
+import { appEvents, type AppEventType, type AppEventMap, type JoinRequestSubmittedPayload, type JoinRequestResolvedPayload, type MemberRoleChangedPayload } from './events';
 import { createNotification } from './repositories/notifications';
 
 // ── Config ──────────────────────────────────────────────────────
@@ -264,12 +264,14 @@ function initNotificationSubscriptions(): void {
 
 /** Event types that trigger an email to the affected user (not admins). */
 const USER_NOTIFICATION_EVENT_TYPES: AppEventType[] = [
+  'join_request.submitted',
   'join_request.approved',
   'join_request.rejected',
   'member.role_changed',
 ];
 
 const USER_EMAIL_SUBJECTS: Partial<Record<AppEventType, string>> = {
+  'join_request.submitted': 'New join request for your farm',
   'join_request.approved': "You've been accepted!",
   'join_request.rejected': 'Join request update',
   'member.role_changed': 'Your role has been updated',
@@ -279,6 +281,13 @@ function formatUserEmailBody<T extends AppEventType>(event: AppEventMap[T]): str
   const lines: string[] = [];
 
   switch (event.type) {
+    case 'join_request.submitted': {
+      const p = event.payload as JoinRequestSubmittedPayload;
+      lines.push(`${p.requester_name || 'A user'} has requested to join your farm "${p.farm_name}".`);
+      lines.push('');
+      lines.push('Log in to LitCrop to review and approve or reject this request.');
+      break;
+    }
     case 'join_request.approved': {
       const p = event.payload as JoinRequestResolvedPayload;
       lines.push(`Great news! Your request to join "${p.farm_name}" has been approved.`);
@@ -352,6 +361,7 @@ function initUserNotificationSubscriptions(): void {
 // ── In-app notification persistence (#391) ─────────────────────
 
 const EVENT_TO_NOTIF_TYPE: Partial<Record<AppEventType, NotificationType>> = {
+  'join_request.submitted': 'join_submitted',
   'join_request.approved': 'join_approved',
   'join_request.rejected': 'join_rejected',
   'member.role_changed': 'role_changed',
@@ -360,6 +370,10 @@ const EVENT_TO_NOTIF_TYPE: Partial<Record<AppEventType, NotificationType>> = {
 /** Short in-app message (single line, no footer — distinct from email body). */
 function formatInAppMessage<T extends AppEventType>(event: AppEventMap[T]): string {
   switch (event.type) {
+    case 'join_request.submitted': {
+      const p = event.payload as JoinRequestSubmittedPayload;
+      return `${p.requester_name || 'Someone'} wants to join "${p.farm_name}".`;
+    }
     case 'join_request.approved': {
       const p = event.payload as JoinRequestResolvedPayload;
       return `Your request to join "${p.farm_name}" has been approved.`;

@@ -56,12 +56,25 @@ router.post('/:farmId/join', async (c) => {
 
   await dynamoRepo.createJoinRequest(farmId, userId, displayName, userEmail);
 
-  appEvents.emit('join_request.submitted', {
-    type: 'join_request.submitted',
-    timestamp: new Date().toISOString(),
-    actor_id: userId,
-    actor_email: userEmail,
-    payload: { farm_id: farmId, farm_name: farm.name, requester_name: displayName },
+  const members = await dynamoRepo.getFarmMembers(farmId);
+  const owners = members.filter(m => m.role === 'owner');
+  const ownerProfiles = await Promise.all(
+    owners.map(o => dynamoRepo.getUserProfile(o.user_id).catch(() => null)),
+  );
+  owners.forEach((owner, i) => {
+    appEvents.emit('join_request.submitted', {
+      type: 'join_request.submitted',
+      timestamp: new Date().toISOString(),
+      actor_id: userId,
+      actor_email: userEmail,
+      payload: {
+        farm_id: farmId,
+        farm_name: farm.name,
+        requester_name: displayName,
+        target_user_id: owner.user_id,
+        target_user_email: ownerProfiles[i]?.email,
+      },
+    });
   });
 
   return c.json({
