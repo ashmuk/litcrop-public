@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook to prevent diff in agent files
+# Pre-commit hook: agent-sync drift guard + CI-equivalent typecheck (#409).
 
 set -euo pipefail
 
@@ -15,6 +15,37 @@ if ! git diff --quiet; then
   echo "  git commit"
   echo ""
   exit 1
+fi
+
+# Typecheck against compiled declarations — matches CI build order.
+# Without the shared build, workspace tsc --noEmit resolves via source paths
+# and misses re-export gaps (d2bbad0 class of bug).
+#
+# Short-circuit: skip when no TypeScript source in a shared/downstream
+# workspace is staged. Docs-only, infra-only, or shell-only commits pay
+# zero penalty. Escape hatch: LITCROP_SKIP_TSC_BUILD=1 forces the skip
+# even when .ts files are staged.
+staged_ts=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^(packages/shared|src/api|src/frontend|src/simulator)/.*\.(ts|tsx)$' || true)
+
+if [ -n "${LITCROP_SKIP_TSC_BUILD:-}" ]; then
+  echo "[pre-commit] LITCROP_SKIP_TSC_BUILD set — skipping shared build + typecheck"
+elif [ -z "$staged_ts" ]; then
+  echo "[pre-commit] no staged .ts/.tsx in shared/api/frontend/simulator — skipping typecheck"
+else
+  echo "[pre-commit] building packages/shared (emits .d.ts for downstream typecheck)"
+  # silent-unless-fail: capture output, only surface it on non-zero exit.
+  # Without this, `--silent` would swallow the tsc diagnostics the hook
+  # exists to catch, and the developer would see nothing actionable.
+  if ! build_out=$(npm run build -w packages/shared --silent 2>&1); then
+    echo "$build_out"
+    exit 1
+  fi
+
+  echo "[pre-commit] typechecking all workspaces"
+  if ! check_out=$(npm run typecheck --silent 2>&1); then
+    echo "$check_out"
+    exit 1
+  fi
 fi
 
 echo "[pre-commit] OK"
