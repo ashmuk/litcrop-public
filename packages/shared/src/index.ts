@@ -24,6 +24,7 @@ export type {
   DeviceStatus,
   StorageStatus,
   DeviceCapabilities,
+  EffectiveConfig,
   Device,
   DeviceRegistrationResponse,
   DeviceConfigResponse,
