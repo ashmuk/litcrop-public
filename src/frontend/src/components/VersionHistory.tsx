@@ -60,13 +60,34 @@ export default function VersionHistory() {
       </p>
 
       <VersionEntry
+        version="v0.99.3"
+        date="2026-04-17"
+        items={[
+          'Admin dashboard: Refresh button bypasses the stats cache so new users appear immediately',
+          'Password show/hide toggle now tappable on mobile (was hidden behind iOS password manager overlay)',
+          'Profile footer translated in Japanese locale',
+        ]}
+        current
+      />
+      <VersionEntry
+        version="v0.99.2"
+        date="2026-04-17"
+        items={[
+          'Profile page reorganised into three tabs: Farms, You, System',
+          'New /help/getting-started page with the 5-step platform guide',
+          'New /history page with the full version changelog (replaces What\u2019s New)',
+          'Desktop spacing gap between nav bar and pilot banner fixed',
+          'Profile heading translates to Japanese in JA locale',
+          '36 new tests covering tab switching, i18n keys, and link correctness',
+        ]}
+      />
+      <VersionEntry
         version="v0.99.1"
         date="2026-04-16"
         items={[
           'Branded favicon — the LitCrop sprout icon now shows in browser tabs, bookmarks, and iOS/Android home screens',
           'Install LitCrop as a standalone app: tap "Add to Home Screen" for a full-screen experience without the browser chrome',
         ]}
-        current
       />
       <VersionEntry
         version="v0.99"
