@@ -19,9 +19,9 @@ export default function AdminStats() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  async function fetchStats() {
+  async function fetchStats(refresh = false) {
     try {
-      const data = await getAdminStats();
+      const data = await getAdminStats(refresh);
       setStats(data);
       setLastRefresh(new Date());
       setError(false);
@@ -95,9 +95,26 @@ export default function AdminStats() {
 
       {/* ── Entity counts ─────────────────────────────────────── */}
       <section>
-        <h2 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-gray-500);margin-bottom:var(--space-3)">
-          ENTITIES
-        </h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <h2 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-gray-500);margin:0">
+            ENTITIES
+          </h2>
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            {lastRefresh && (
+              <span style="font-size:var(--font-size-xs);color:var(--color-gray-400)">
+                {lastRefresh.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => fetchStats(true)}
+              style="font-size:var(--font-size-xs);padding:4px 10px;border:1px solid var(--color-gray-300);border-radius:var(--radius-full);background:var(--color-surface);color:var(--color-gray-600);cursor:pointer"
+              title="Refresh stats (skip cache)"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)">
           {([
             { label: 'Users', value: entity_counts.users, icon: '👤' },

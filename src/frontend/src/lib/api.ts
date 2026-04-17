@@ -352,8 +352,9 @@ export interface AdminStatsResponse {
 }
 
 /** GET /api/v1/admin/stats — admin only, returns 403 for non-admins */
-export async function getAdminStats(): Promise<AdminStatsResponse> {
-  return request<AdminStatsResponse>('GET', '/admin/stats');
+export async function getAdminStats(refresh = false): Promise<AdminStatsResponse> {
+  const qs = refresh ? '?refresh=true' : '';
+  return request<AdminStatsResponse>('GET', `/admin/stats${qs}`);
 }
 
 export interface AdminUserItem {

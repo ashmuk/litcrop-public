@@ -179,21 +179,23 @@ export async function getDiscoverableFarms(): Promise<Farm[]> {
   return allFarms.filter((f) => f.id !== DEMO_FARM_ID);
 }
 
-export async function getStats(): Promise<{ farms: number; users: number; beds: number }> {
+export async function getStats(skipCache = false): Promise<{ farms: number; users: number; beds: number }> {
   const CACHE_KEY = { PK: 'STATS#GLOBAL', SK: '#COUNTS' };
   const CACHE_TTL_MS = 5 * 60 * 1000;
 
-  const cached = await ddb.send(
-    new GetCommand({ TableName: TABLE_NAME, Key: CACHE_KEY }),
-  );
-  if (cached.Item && typeof cached.Item['computed_at'] === 'string') {
-    const age = Date.now() - new Date(cached.Item['computed_at']).getTime();
-    if (age < CACHE_TTL_MS) {
-      return {
-        farms: (cached.Item['farms'] as number) ?? 0,
-        users: (cached.Item['users'] as number) ?? 0,
-        beds: (cached.Item['beds'] as number) ?? 0,
-      };
+  if (!skipCache) {
+    const cached = await ddb.send(
+      new GetCommand({ TableName: TABLE_NAME, Key: CACHE_KEY }),
+    );
+    if (cached.Item && typeof cached.Item['computed_at'] === 'string') {
+      const age = Date.now() - new Date(cached.Item['computed_at']).getTime();
+      if (age < CACHE_TTL_MS) {
+        return {
+          farms: (cached.Item['farms'] as number) ?? 0,
+          users: (cached.Item['users'] as number) ?? 0,
+          beds: (cached.Item['beds'] as number) ?? 0,
+        };
+      }
     }
   }
 

@@ -46,8 +46,9 @@ router.get('/stats', async (c) => {
   const { userId } = result;
 
   try {
+    const skipCache = c.req.query('refresh') === 'true';
     const [counts, usage] = await Promise.all([
-      dynamoRepo.getStats(),
+      dynamoRepo.getStats(skipCache),
       getUsage(userId),
     ]);
 
