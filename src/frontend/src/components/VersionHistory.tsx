@@ -60,6 +60,17 @@ export default function VersionHistory() {
       </p>
 
       <VersionEntry
+        version="v0.99.4"
+        date="2026-04-17"
+        items={[
+          'New users are now visible in Admin immediately \u2014 profile auto-created on first page load',
+          'Display name from registration syncs on any first page, not just Profile',
+          'Earthy favicon: sandy background with sage-green sprout (matches app theme)',
+          'CI build cache cleared on every deploy \u2014 fixes stale JS chunks that prevented prior features from shipping',
+        ]}
+        current
+      />
+      <VersionEntry
         version="v0.99.3"
         date="2026-04-17"
         items={[
@@ -67,7 +78,6 @@ export default function VersionHistory() {
           'Password show/hide toggle now tappable on mobile (was hidden behind iOS password manager overlay)',
           'Profile footer translated in Japanese locale',
         ]}
-        current
       />
       <VersionEntry
         version="v0.99.2"
