@@ -13,6 +13,7 @@
     'nav.pilot_banner': 'パイロット版 — リリース候補です。フィードバックをお待ちしています。',
     'page.weather': '⛅ 天気',
     'page.device': '📡 デバイス',
+    'page.profile': '🌱 プロフィール',
   };
 
   function apply() {

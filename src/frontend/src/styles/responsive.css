@@ -66,6 +66,13 @@
     margin-top: 56px;
   }
 
+  /* When the pilot banner is visible it already clears the 56px nav
+     height via its own margin-top. The page-main padding-top would
+     double the gap — cancel it when the banner is the preceding sibling. */
+  .pilot-banner ~ .page-main {
+    padding-top: 0;
+  }
+
   /* Show desktop nav bar */
   .desktop-nav {
     display: flex !important;
