@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Clear Astro build cache
+        run: rm -rf src/frontend/.astro src/frontend/dist
+
       - name: Build all workspaces
         run: npm run build
         env:

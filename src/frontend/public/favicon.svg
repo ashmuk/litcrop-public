@@ -1,30 +1,12 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-  LitCrop favicon — sprout motif inside a camera-viewfinder frame.
-  Companion to the #410 OG card (src/frontend/public/og/og-default.png):
-  the sprout is cropped from the OG hero; the four corner brackets echo a
-  camera reticle, on-brand for a camera-monitoring platform.
-
-  32×32 viewBox chosen so stroke widths align to pixel grid at 16px.
-  Palette is the dark-card palette from the OG:
-    #14100c  near-black warm background
-    #c9a86a  muted gold accents (corner brackets + apex bud)
-    #e6dcc4  warm off-white (sprout strokes)
-
-  Leaves are tilted leaf-silhouettes (closed pointed ovals) attached at the
-  top of the stem with a rotation each, so they read as two upward-sweeping
-  leaflets rather than horizontal crescents. A very light fill makes the leaf
-  shape legible at 16×16 where stroke alone would blur.
--->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"
      role="img" aria-label="LitCrop">
   <title>LitCrop</title>
 
-  <!-- Dark rounded-square background -->
-  <rect x="0" y="0" width="32" height="32" rx="4" ry="4" fill="#14100c"/>
+  <!-- Earthy sandy background (matches the app's earthy theme) -->
+  <rect x="0" y="0" width="32" height="32" rx="4" ry="4" fill="#E8DFC9"/>
 
-  <!-- Four corner viewfinder brackets (muted gold) -->
-  <g fill="none" stroke="#c9a86a" stroke-width="1.3"
+  <!-- Four corner viewfinder brackets (warm brown — earthy, not gold) -->
+  <g fill="none" stroke="#8F6B48" stroke-width="1.3"
      stroke-linecap="round" stroke-linejoin="round">
     <path d="M 4 8 L 4 4 L 8 4"/>
     <path d="M 24 4 L 28 4 L 28 8"/>
@@ -32,27 +14,22 @@
     <path d="M 24 28 L 28 28 L 28 24"/>
   </g>
 
-  <!-- Sprout stem (warm off-white, upright, visibly heavier than leaves) -->
+  <!-- Sprout stem (sage green, upright) -->
   <path d="M 16 24 L 16 16"
-        fill="none" stroke="#e6dcc4" stroke-width="1.8"
+        fill="none" stroke="#6B7F5E" stroke-width="1.8"
         stroke-linecap="round"/>
 
-  <!-- Two leaves share the same pointed-oval silhouette, rotated outward
-       from the stem-apex pivot at (16, 16). Tip-at-origin so the leaf grows
-       outward from the stem. Right leaf is scaled up a touch for subtle
-       asymmetry (echoes the OG sprout). -->
-  <g fill="#e6dcc4" fill-opacity="0.18"
-     stroke="#e6dcc4" stroke-width="1.35" stroke-linejoin="round">
-    <!-- Left leaf: grows up-out to the left -->
+  <!-- Two sage-green leaves with subtle fill for 16px legibility -->
+  <g fill="#6B7F5E" fill-opacity="0.2"
+     stroke="#6B7F5E" stroke-width="1.35" stroke-linejoin="round">
     <g transform="translate(16 16) rotate(-55)">
       <path d="M 0 0 Q 3.2 -3.2, 7.2 -1 Q 4.6 1.8, 0 0 Z"/>
     </g>
-    <!-- Right leaf: grows up-out to the right, slightly larger -->
     <g transform="translate(16 16) rotate(40) scale(1.1)">
       <path d="M 0 0 Q 3.4 -3.4, 7.6 -1.1 Q 4.8 1.9, 0 0 Z"/>
     </g>
   </g>
 
-  <!-- Apex bud — small gold dot where the leaves meet the stem -->
-  <circle cx="16" cy="15.7" r="0.95" fill="#e8c788"/>
+  <!-- Apex bud — warm earthy brown dot -->
+  <circle cx="16" cy="15.7" r="0.95" fill="#8F6B48"/>
 </svg>
