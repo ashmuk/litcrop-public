@@ -113,6 +113,11 @@
   font-size: 18px;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   transition: color var(--transition-fast);
+  /* Sit above iOS Safari's password auto-fill overlay which renders at
+     z-index:auto and can make the custom toggle untappable on mobile. */
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .password-toggle:hover {
