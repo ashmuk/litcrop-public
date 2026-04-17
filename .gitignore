@@ -104,6 +104,7 @@ cmake-build-debug/
 
 # Claude Code
 .claude/settings.local.json
+.claude/worktrees/
 
 # Cache directories
 .cache/
