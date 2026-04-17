@@ -1,12 +1,21 @@
 ---
 /**
- * What's New / Release Notes — #280
- * Static info page, no auth required.
+ * /whats-new — Redirects to /history for backward compatibility.
+ * The changelog was split into Getting Started (/help/getting-started)
+ * and version history (/history). Old bookmarks continue to work.
+ *
+ * CSP #380: meta http-equiv refresh is sufficient; no inline script needed.
  */
-import AuthLayout from '../layouts/AuthLayout.astro';
-import LegalPage from '../components/LegalPage';
 ---
 
-<AuthLayout title="What's New">
-  <LegalPage page="whats-new" client:load />
-</AuthLayout>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0;url=/history" />
+    <title>Redirecting to History...</title>
+  </head>
+  <body>
+    <p>Redirecting to <a href="/history">History</a>...</p>
+  </body>
+</html>

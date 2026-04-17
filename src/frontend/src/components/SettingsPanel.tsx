@@ -117,7 +117,7 @@ export default function SettingsPanel() {
           <div
             style="font-size: var(--font-size-sm); color: var(--color-gray-700); margin-bottom: var(--space-4);"
           >
-            Signed in as <strong>{userEmail}</strong>
+            {t('profile.signed_in_as')} <strong>{userEmail}</strong>
           </div>
         )}
         <button

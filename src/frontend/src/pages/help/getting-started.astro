@@ -1,0 +1,13 @@
+---
+/**
+ * /help/getting-started — Platform overview & 5-step onboarding guide.
+ * Pre-auth accessible (no login required).
+ * Content rendered by GettingStartedGuide Preact island using guide.* i18n keys.
+ */
+import AuthLayout from '../../layouts/AuthLayout.astro';
+import GettingStartedGuide from '../../components/GettingStartedGuide';
+---
+
+<AuthLayout title="Getting Started" variant="hero">
+  <GettingStartedGuide client:load />
+</AuthLayout>

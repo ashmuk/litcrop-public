@@ -14,6 +14,7 @@
     'page.weather': '⛅ 天気',
     'page.device': '📡 デバイス',
     'page.profile': '🌱 プロフィール',
+    'footer.help': 'ヘルプ',
   };
 
   function apply() {

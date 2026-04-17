@@ -326,6 +326,7 @@
     "role_admin": "管理者",
     "role_owner": "オーナー",
     "role_staff": "スタッフ",
+    "signed_in_as": "サインイン中",
     "name_placeholder": "名前を入力",
     "no_name": "名前未設定",
     "edit_name": "編集",
@@ -347,7 +348,20 @@
       "success": "アカウントが削除されました。",
       "error": "アカウントを削除できませんでした。もう一度お試しください。",
       "cognito_warning": "アカウントデータは削除されましたが、サインインの処理に失敗しました。ログアウトしました。"
-    }
+    },
+    "tab_farms": "農園",
+    "tab_you": "あなた",
+    "tab_system": "システム",
+    "section_help": "ヘルプ",
+    "section_info": "情報",
+    "app_settings": "アプリ設定"
+  },
+  "help": {
+    "getting_started": "はじめかた",
+    "device_setup": "Piカメラ セットアップガイド"
+  },
+  "info": {
+    "history": "更新履歴"
   },
   "manage": {
     "title": "デバイス",

@@ -102,7 +102,7 @@ export default function ReportBugForm() {
       <div style="margin-top:var(--space-6);padding-top:var(--space-4);border-top:var(--border-default);display:flex;gap:var(--space-4);font-size:var(--font-size-xs)">
         <a href="/terms" style="color:var(--color-primary);text-decoration:none">{t('legal.terms')}</a>
         <a href="/privacy" style="color:var(--color-primary);text-decoration:none">{t('legal.privacy')}</a>
-        <a href="/whats-new" style="color:var(--color-primary);text-decoration:none">{t('legal.whats_new')}</a>
+        <a href="/history" style="color:var(--color-primary);text-decoration:none">{t('info.history')}</a>
       </div>
     </div>
   );

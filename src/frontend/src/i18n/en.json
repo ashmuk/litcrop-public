@@ -326,6 +326,7 @@
     "role_admin": "Admin",
     "role_owner": "Owner",
     "role_staff": "Staff",
+    "signed_in_as": "Signed in as",
     "name_placeholder": "Your name",
     "no_name": "No name set",
     "edit_name": "Edit",
@@ -347,7 +348,20 @@
       "success": "Your account has been deleted.",
       "error": "Could not delete account. Please try again.",
       "cognito_warning": "Account data deleted, but sign-in cleanup failed. You have been logged out."
-    }
+    },
+    "tab_farms": "Farms",
+    "tab_you": "You",
+    "tab_system": "System",
+    "section_help": "Help",
+    "section_info": "Info",
+    "app_settings": "App Settings"
+  },
+  "help": {
+    "getting_started": "How-To: Getting Started",
+    "device_setup": "How-To: Pi Camera Setup Guide"
+  },
+  "info": {
+    "history": "History"
   },
   "manage": {
     "title": "Device",

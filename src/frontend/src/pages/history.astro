@@ -1,0 +1,14 @@
+---
+/**
+ * /history — Version changelog for LitCrop.
+ * Pre-auth accessible (no login required).
+ * Extracted from LegalPage.tsx's What's New changelog section.
+ * Old /whats-new route redirects here for backward compatibility.
+ */
+import AuthLayout from '../layouts/AuthLayout.astro';
+import VersionHistory from '../components/VersionHistory';
+---
+
+<AuthLayout title="History" variant="hero">
+  <VersionHistory client:load />
+</AuthLayout>
