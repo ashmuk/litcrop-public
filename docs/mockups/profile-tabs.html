@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="earthy">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LitCrop — Profile Tabs Mockup</title>
+<style>
+  /* ── Design tokens (earthy theme subset) ──────────────────────── */
+  :root {
+    --color-primary: #6B7F5E;
+    --color-primary-dark: #4A5E3E;
+    --color-surface: #FFFFFF;
+    --color-background: #F5F0E6;
+    --color-text: #3B3530;
+    --color-gray-100: #F0EDE4;
+    --color-gray-200: #E2DDD2;
+    --color-gray-300: #C9C2B4;
+    --color-gray-400: #9E9689;
+    --color-gray-500: #7A7266;
+    --color-gray-600: #5E564A;
+    --color-gray-700: #4A423A;
+    --color-danger: #B85C4A;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --font-size-xs: 12px;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-md: 18px;
+    --font-size-xl: 24px;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --border-default: 1px solid var(--color-gray-200);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Inter', 'Helvetica Neue', sans-serif;
+    background: var(--color-background);
+    color: var(--color-text);
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  @media (min-width: 768px) { body { max-width: 768px; } }
+  @media (min-width: 1024px) { body { max-width: 1280px; } }
+
+  /* ── Page heading (sticky) ────────────────────────────────────── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border-bottom: var(--border-default);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .page-header h1 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+  }
+
+  /* ── Tab bar (segmented control style) ────────────────────────── */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border-bottom: var(--border-default);
+    position: sticky;
+    top: 56px; /* below page header */
+    z-index: 99;
+  }
+  .tab-bar__inner {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--color-gray-100);
+    border-radius: var(--radius-full);
+    padding: 3px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-500);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--color-text); }
+  .tab-btn[aria-selected="true"] {
+    background: var(--color-surface);
+    color: var(--color-primary-dark);
+    box-shadow: var(--shadow-sm);
+  }
+  .tab-btn__icon { font-size: 16px; }
+
+  /* ── Tab panels ──────────────────────────────────────────────── */
+  .tab-panel { display: none; padding: var(--space-4); }
+  .tab-panel[data-active] { display: block; }
+
+  /* ── Desktop: centered content within panel ──────────────────── */
+  @media (min-width: 1024px) {
+    .tab-panel { max-width: 640px; margin: 0 auto; }
+    .tab-bar__inner { max-width: 400px; }
+  }
+
+  /* ── Shared card style ───────────────────────────────────────── */
+  .card {
+    background: var(--color-surface);
+    border: var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  .section-heading {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* ── Farm card (compact) ─────────────────────────────────────── */
+  .farm-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    border: var(--border-default);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-3);
+  }
+  .farm-card--active { border-left: 3px solid var(--color-primary); }
+  .farm-card__name { font-weight: var(--font-weight-semibold); }
+  .farm-card__meta { font-size: var(--font-size-xs); color: var(--color-gray-500); }
+  .farm-card__badge {
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    color: white;
+  }
+
+  /* ── Avatar ──────────────────────────────────────────────────── */
+  .avatar-section { text-align: center; margin-bottom: var(--space-5); }
+  .avatar-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--color-gray-200);
+    margin: 0 auto var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: var(--color-gray-400);
+  }
+  .avatar-link { font-size: var(--font-size-sm); color: var(--color-primary); text-decoration: none; }
+
+  /* ── Form elements (simplified) ──────────────────────────────── */
+  .form-row {
+    margin-bottom: var(--space-4);
+  }
+  .form-label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: 6px;
+    color: var(--color-gray-600);
+  }
+  .form-value {
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+  }
+
+  /* ── Settings item ───────────────────────────────────────────── */
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) 0;
+    border-bottom: var(--border-default);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: var(--font-size-sm); color: var(--color-gray-700); }
+  .setting-value {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary-dark);
+  }
+
+  /* ── Info link row (What's New, Help) ────────────────────────── */
+  .info-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-bottom: var(--border-default);
+    font-size: var(--font-size-sm);
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  .info-link:last-child { border-bottom: none; }
+  .info-link:hover { text-decoration: underline; }
+  .info-link__arrow { margin-left: auto; color: var(--color-gray-300); }
+
+  /* ── Danger zone ─────────────────────────────────────────────── */
+  .danger-zone {
+    border-color: var(--color-danger);
+    border-left: 3px solid var(--color-danger);
+  }
+  .danger-zone .section-heading { color: var(--color-danger); }
+  .btn-danger {
+    padding: 10px 20px;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-danger);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    width: 100%;
+  }
+
+  /* ── CTA button ──────────────────────────────────────────────── */
+  .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: white;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    text-align: center;
+  }
+
+  /* ── Footer (legal links) ────────────────────────────────────── */
+  .legal-footer {
+    padding: var(--space-6) var(--space-4) var(--space-4);
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-400);
+    display: flex;
+    justify-content: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    border-top: var(--border-default);
+    margin-top: var(--space-4);
+  }
+  .legal-footer a {
+    color: var(--color-gray-400);
+    text-decoration: none;
+  }
+  .legal-footer a:hover { text-decoration: underline; }
+
+  /* ── Version footer ──────────────────────────────────────────── */
+  .version-footer {
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-400);
+    padding: var(--space-3) 0 var(--space-6);
+  }
+
+  /* ── Locale toggle (top-right for demo) ──────────────────────── */
+  .locale-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 200;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- Demo locale toggle -->
+<button class="locale-toggle" onclick="toggleLocale()">EN / JA</button>
+
+<!-- Page heading -->
+<div class="page-header">
+  <h1><span data-i18n="page.profile">🌱 Profile</span></h1>
+</div>
+
+<!-- Tab bar (segmented control) -->
+<div class="tab-bar" role="tablist" aria-label="Profile sections">
+  <div class="tab-bar__inner">
+    <button class="tab-btn" role="tab" id="tab-farms" aria-selected="true" aria-controls="panel-farms" onclick="switchTab('farms')">
+      <span class="tab-btn__icon">🌾</span>
+      <span data-i18n="profile.tab_farms">Farms</span>
+    </button>
+    <button class="tab-btn" role="tab" id="tab-you" aria-selected="false" aria-controls="panel-you" onclick="switchTab('you')">
+      <span class="tab-btn__icon">👤</span>
+      <span data-i18n="profile.tab_you">You</span>
+    </button>
+    <button class="tab-btn" role="tab" id="tab-system" aria-selected="false" aria-controls="panel-system" onclick="switchTab('system')">
+      <span class="tab-btn__icon">⚙</span>
+      <span data-i18n="profile.tab_system">System</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ FARMS TAB ═══════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-farms" role="tabpanel" aria-labelledby="tab-farms" data-active>
+  <div class="section-heading">🌾 <span data-i18n="profile.your_farms">Your farms</span></div>
+
+  <div class="farm-card farm-card--active">
+    <div>
+      <div class="farm-card__name">木こりん農園 ✏️</div>
+      <div class="farm-card__meta">オーナー · アクティブ · 13d3daf6</div>
+      <div class="farm-card__meta">1140m 標高 · 5×4 畝</div>
+    </div>
+    <span class="farm-card__badge">Active</span>
+  </div>
+
+  <button class="btn-primary" style="margin-top:var(--space-3)">
+    <span data-i18n="profile.new_farm">+ New Farm</span>
+  </button>
+</div>
+
+<!-- ═══ YOU TAB ═════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-you" role="tabpanel" aria-labelledby="tab-you">
+  <div class="avatar-section">
+    <div class="avatar-circle">👤</div>
+    <a href="#" class="avatar-link" data-i18n="profile.change_photo">Change photo</a>
+  </div>
+
+  <div class="card">
+    <div class="form-row">
+      <span class="form-label" data-i18n="profile.display_name">Display name</span>
+      <span class="form-value">ひさ蔵 <a href="#" style="font-size:12px;color:var(--color-primary);margin-left:8px" data-i18n="profile.edit">Edit</a></span>
+    </div>
+    <div class="form-row">
+      <span class="form-label" data-i18n="profile.signed_in_as">Signed in as</span>
+      <span class="form-value">you@example.com</span>
+    </div>
+    <div class="form-row" style="margin-bottom:0">
+      <a href="#" style="font-size:14px;color:var(--color-primary);text-decoration:none" data-i18n="profile.change_password">▸ Change password</a>
+    </div>
+  </div>
+
+  <button style="display:block;width:100%;padding:14px;border:none;border-radius:8px;background:var(--color-primary);color:white;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:var(--space-4)" data-i18n="auth.logout">Log out</button>
+
+  <div class="card danger-zone">
+    <div class="section-heading" data-i18n="profile.danger_zone">Danger Zone</div>
+    <button class="btn-danger" data-i18n="profile.delete_account">Delete Account</button>
+  </div>
+</div>
+
+<!-- ═══ SYSTEM TAB ═════════════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-system" role="tabpanel" aria-labelledby="tab-system">
+  <div class="card">
+    <div class="section-heading">⚙ <span data-i18n="profile.app_settings">App Settings</span></div>
+    <div class="setting-row">
+      <span class="setting-label" data-i18n="settings.theme">Theme</span>
+      <span class="setting-value">Earthy</span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label" data-i18n="settings.locale">Language</span>
+      <span class="setting-value">日本語</span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label" data-i18n="settings.temp_unit">Temperature</span>
+      <span class="setting-value">°C</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">📚 <span data-i18n="profile.help">Help</span></div>
+    <a href="/help/getting-started" class="info-link">
+      <span>🌱</span>
+      <span data-i18n="help.getting_started">How-To: Getting Started</span>
+      <span class="info-link__arrow">›</span>
+    </a>
+    <a href="/help/device-setup" class="info-link">
+      <span>📡</span>
+      <span data-i18n="help.device_setup">How-To: Pi Camera Setup Guide</span>
+      <span class="info-link__arrow">›</span>
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="section-heading">ℹ <span data-i18n="profile.info">Info</span></div>
+    <a href="/history" class="info-link">
+      <span>📋</span>
+      <span data-i18n="info.history">History</span>
+      <span class="info-link__arrow">›</span>
+    </a>
+    <a href="/terms" class="info-link">
+      <span>📜</span>
+      <span data-i18n="legal.terms">Terms of Service</span>
+      <span class="info-link__arrow">›</span>
+    </a>
+    <a href="/privacy" class="info-link">
+      <span>🔒</span>
+      <span data-i18n="legal.privacy">Privacy Policy</span>
+      <span class="info-link__arrow">›</span>
+    </a>
+    <a href="/report-bug" class="info-link">
+      <span>🐛</span>
+      <span data-i18n="legal.report_bug">Report a Bug</span>
+      <span class="info-link__arrow">›</span>
+    </a>
+  </div>
+
+  <p class="version-footer">LitCrop v0.99.1</p>
+</div>
+
+<!-- ═══ LEGAL FOOTER (always visible, below active tab) ═══════════ -->
+<footer class="legal-footer">
+  <a href="/help/getting-started" data-i18n="footer.help">Help</a>
+  <a href="/terms" data-i18n="legal.terms">Terms</a>
+  <a href="/privacy" data-i18n="legal.privacy">Privacy</a>
+  <a href="/report-bug" data-i18n="legal.report_bug">Report a Bug</a>
+</footer>
+
+<script>
+  // ── Tab switching ──────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected', 'false'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.removeAttribute('data-active'));
+    document.getElementById('tab-' + name).setAttribute('aria-selected', 'true');
+    document.getElementById('panel-' + name).setAttribute('data-active', '');
+    // Update URL without reload
+    var url = new URL(window.location);
+    url.searchParams.set('tab', name);
+    history.replaceState(null, '', url);
+  }
+
+  // ── Read ?tab= on load ────────────────────────────────────────
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var tab = params.get('tab');
+    if (tab && document.getElementById('tab-' + tab)) switchTab(tab);
+  })();
+
+  // ── Keyboard nav ──────────────────────────────────────────────
+  document.querySelector('.tab-bar').addEventListener('keydown', function(e) {
+    var tabs = Array.from(document.querySelectorAll('.tab-btn'));
+    var idx = tabs.indexOf(document.activeElement);
+    if (e.key === 'ArrowRight') { tabs[(idx + 1) % tabs.length].focus(); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { tabs[(idx - 1 + tabs.length) % tabs.length].focus(); e.preventDefault(); }
+    if (e.key === 'Enter' || e.key === ' ') { document.activeElement.click(); e.preventDefault(); }
+  });
+
+  // ── Demo locale toggle ────────────────────────────────────────
+  var jaMap = {
+    'page.profile': '🌱 プロフィール',
+    'profile.tab_farms': '農園',
+    'profile.tab_you': 'あなた',
+    'profile.tab_system': 'システム',
+    'profile.your_farms': 'あなたの農園',
+    'profile.new_farm': '+ 新しい農園',
+    'profile.change_photo': '写真を変更',
+    'profile.display_name': '表示名',
+    'profile.signed_in_as': 'サインイン中',
+    'profile.edit': '編集',
+    'profile.change_password': '▸ パスワード変更',
+    'profile.danger_zone': '危険な操作',
+    'profile.delete_account': 'アカウントを削除',
+    'profile.app_settings': 'アプリ設定',
+    'profile.help': 'ヘルプ',
+    'profile.info': '情報',
+    'help.getting_started': 'はじめかた',
+    'help.device_setup': 'Piカメラ セットアップガイド',
+    'info.history': '更新履歴',
+    'footer.help': 'ヘルプ',
+    'auth.logout': 'ログアウト',
+    'settings.theme': 'テーマ',
+    'settings.locale': '言語',
+    'settings.temp_unit': '温度単位',
+    'legal.whats_new': '新着情報',
+    'legal.help_device_setup': 'Piカメラ — セットアップガイド',
+    'legal.terms': '利用規約',
+    'legal.privacy': 'プライバシーポリシー',
+    'legal.report_bug': 'バグを報告',
+  };
+  var enMap = {
+    'page.profile': '🌱 Profile',
+    'profile.tab_farms': 'Farms',
+    'profile.tab_you': 'You',
+    'profile.tab_system': 'System',
+    'profile.your_farms': 'Your farms',
+    'profile.new_farm': '+ New Farm',
+    'profile.change_photo': 'Change photo',
+    'profile.display_name': 'Display name',
+    'profile.signed_in_as': 'Signed in as',
+    'profile.edit': 'Edit',
+    'profile.change_password': '▸ Change password',
+    'profile.danger_zone': 'Danger Zone',
+    'profile.delete_account': 'Delete Account',
+    'profile.app_settings': 'App Settings',
+    'profile.help': 'Help',
+    'profile.info': 'Info',
+    'help.getting_started': 'How-To: Getting Started',
+    'help.device_setup': 'How-To: Pi Camera Setup Guide',
+    'info.history': 'History',
+    'footer.help': 'Help',
+    'auth.logout': 'Log out',
+    'settings.theme': 'Theme',
+    'settings.locale': 'Language',
+    'settings.temp_unit': 'Temperature',
+    'legal.whats_new': "What's New",
+    'legal.help_device_setup': 'Pi Camera — Setup Guide',
+    'legal.terms': 'Terms of Service',
+    'legal.privacy': 'Privacy Policy',
+    'legal.report_bug': 'Report a Bug',
+  };
+  var currentLocale = 'en';
+  function toggleLocale() {
+    currentLocale = currentLocale === 'en' ? 'ja' : 'en';
+    var map = currentLocale === 'ja' ? jaMap : enMap;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n');
+      if (map[key]) el.textContent = map[key];
+    });
+    document.querySelector('.locale-toggle').textContent = currentLocale === 'en' ? 'EN / JA' : 'JA / EN';
+  }
+</script>
+</body>
+</html>
