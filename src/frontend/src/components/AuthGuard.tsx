@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 import { getAccessToken } from '../lib/auth';
-import { getMyProfile, getMySettings } from '../lib/api';
+import { getMyProfile, getMySettings, updateMyProfile } from '../lib/api';
 import { setCachedIsAdmin } from '../lib/hooks';
 import { THEME_OPTIONS, LOCALE_OPTIONS } from '@litcrop/shared';
 import type { Theme, Locale } from '@litcrop/shared';
@@ -33,8 +33,33 @@ export default function AuthGuard() {
         return;
       }
       setChecking(false);
-      // Cache admin flag for nav components (non-blocking, deduped by setCachedIsAdmin change guard)
-      getMyProfile().then(p => setCachedIsAdmin(p.is_admin === true)).catch(() => {});
+      // Cache admin flag for nav components (non-blocking, deduped by setCachedIsAdmin change guard).
+      // Also sync any pending registration data (display name, preferred role) from localStorage
+      // that was written by RegisterForm but never PATCHed — e.g. when the user's first
+      // authenticated page is / (Farm Overview) not /profile/.
+      getMyProfile().then(p => {
+        setCachedIsAdmin(p.is_admin === true);
+        try {
+          const pendingName = localStorage.getItem('litcrop-pendingName');
+          const pendingRole = localStorage.getItem('litcrop-pendingRole');
+          if (pendingName || pendingRole) {
+            const updates: Record<string, string> = {};
+            if (pendingName && !p.display_name) updates['display_name'] = pendingName;
+            if (pendingRole && (pendingRole === 'owner' || pendingRole === 'staff')) updates['preferred_role'] = pendingRole;
+            if (Object.keys(updates).length > 0) {
+              updateMyProfile(updates).then(() => {
+                localStorage.removeItem('litcrop-pendingName');
+                localStorage.removeItem('litcrop-pendingRole');
+                localStorage.removeItem('litcrop-pendingLocale');
+                localStorage.removeItem('litcrop-pendingTempUnit');
+              }).catch(() => {});
+            } else {
+              localStorage.removeItem('litcrop-pendingName');
+              localStorage.removeItem('litcrop-pendingRole');
+            }
+          }
+        } catch {}
+      }).catch(() => {});
       // Sync settings from API so theme/locale/temp_unit apply on every page, not just Profile
       getMySettings().then(s => {
         const validTheme = THEME_OPTIONS.includes(s.theme as Theme);
