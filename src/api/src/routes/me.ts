@@ -17,20 +17,28 @@ const router = new Hono();
 
 // GET /api/v1/me/profile
 router.get('/profile', async (c) => {
-  const { userId, isAdmin } = getAuthContext(c);
-  const profile = await dynamoRepo.getUserProfile(userId);
+  const { userId, userEmail, isAdmin } = getAuthContext(c);
+  let profile = await dynamoRepo.getUserProfile(userId);
+
+  // Auto-create a minimal profile on first authenticated access so the user
+  // appears in admin user lists and stats counts immediately — not only after
+  // they explicitly PATCH their profile. Without this, users who join a farm
+  // via join-request have a MEMBER record but no USER#/PROFILE record.
+  if (!profile) {
+    profile = await dynamoRepo.upsertUserProfile(userId, {
+      display_name: '',
+      email: userEmail || undefined,
+    });
+  }
 
   // Resolve avatar signed URLs if picture keys exist
   const { url: profilePictureUrl, thumbUrl: profilePictureThumbUrl } = await getSignedAvatarUrls(
-    profile?.profile_picture_key,
-    profile?.profile_picture_thumb_key,
+    profile.profile_picture_key,
+    profile.profile_picture_thumb_key,
   );
 
-  if (profile) {
-    const { email: _e, profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
-    return c.json({ ...rest, is_admin: isAdmin, profile_picture_url: profilePictureUrl, profile_picture_thumb_url: profilePictureThumbUrl });
-  }
-  return c.json({ user_id: userId, display_name: '', preferred_role: 'staff' as const, created_at: null, is_admin: isAdmin, profile_picture_url: null, profile_picture_thumb_url: null });
+  const { email: _e, profile_picture_key: _k, profile_picture_thumb_key: _tk, ...rest } = profile;
+  return c.json({ ...rest, is_admin: isAdmin, profile_picture_url: profilePictureUrl, profile_picture_thumb_url: profilePictureThumbUrl });
 });
 
 // PATCH /api/v1/me/profile
