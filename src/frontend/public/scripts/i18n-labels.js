@@ -15,6 +15,9 @@
     'page.device': '📡 デバイス',
     'page.profile': '🌱 プロフィール',
     'footer.help': 'ヘルプ',
+    'legal.terms': '利用規約',
+    'legal.privacy': 'プライバシー',
+    'legal.report_bug': 'バグを報告',
   };
 
   function apply() {
