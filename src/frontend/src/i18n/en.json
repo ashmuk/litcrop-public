@@ -81,7 +81,26 @@
   },
   "changelog": {
     "v0996_item_1": "Behind-the-scenes test and documentation improvements — no visible changes to the app",
-    "v0996_item_2": "Tab keyboard navigation is more reliable on slower devices"
+    "v0996_item_2": "Tab keyboard navigation is more reliable on slower devices",
+    "v0995_item_1": "Your display name now follows you across devices from sign-up",
+    "v0995_item_2": "Profile tabs respond to keyboard Left / Right arrow keys",
+    "v0994_item_1": "New users appear in the admin dashboard immediately on first login",
+    "v0994_item_2": "Earthy-theme favicon in browser tabs and home-screen shortcuts",
+    "v0993_item_1": "Admin stats refresh on demand; password toggle now works on mobile",
+    "v0992_item_1": "Profile page reorganised into three tabs — Farms, You, System",
+    "v0992_item_2": "New pages: /help/getting-started (walkthrough) and /history (changelog)",
+    "v0991_item_1": "Branded favicon and Progressive Web App install support",
+    "v099_item_1": "Security tightened: inline scripts removed from the app",
+    "v099_item_2": "New Pi Camera setup guide at /help/device-setup (EN and JP)",
+    "v098_item_1": "Device install hardened: branch-aware downloads and hardware auto-detection",
+    "v097_item_1": "Camera config round-trip — the UI now shows what the device actually applied",
+    "v096_item_1": "Farms can be set public or private to control discoverability",
+    "v095_item_1": "Day-grouped image history, timelapse filters, and invitation-only sign-up",
+    "v094_item_1": "User notifications: email, in-app panel, and the notification bell",
+    "v093_item_1": "Terms of Service, Privacy Policy, and the bug report form",
+    "v092_item_1": "WCAG 2.1 AA accessibility compliance across the app",
+    "v091_item_1": "Custom domain litcrop.com and separate staging/production environments",
+    "v090_item_1": "Production AWS resources, redesigned login, and device auth fix"
   },
   "weather": {
     "temperature": "Temperature",

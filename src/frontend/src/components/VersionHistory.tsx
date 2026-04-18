@@ -71,124 +71,77 @@ export default function VersionHistory() {
       <VersionEntry
         version="v0.99.5"
         date="2026-04-18"
-        items={[
-          'Display name now follows you across devices \u2014 the name you set at sign-up shows up on every first login, not just the browser you registered from',
-          'Profile tabs are keyboard-accessible: Left/Right arrows move both the highlighted tab and keyboard focus in one step, matching screen-reader conventions',
-          'Version-aware build cache: after a release, the app no longer needs a manual CI cache clear to pick up the new version string',
-        ]}
+        items={[t('changelog.v0995_item_1'), t('changelog.v0995_item_2')]}
       />
       <VersionEntry
         version="v0.99.4"
         date="2026-04-17"
-        items={[
-          'New users are now visible in Admin immediately \u2014 profile auto-created on first page load',
-          'Display name from registration syncs on any first page, not just Profile',
-          'Earthy favicon: sandy background with sage-green sprout (matches app theme)',
-          'CI build cache cleared on every deploy \u2014 fixes stale JS chunks that prevented prior features from shipping',
-        ]}
+        items={[t('changelog.v0994_item_1'), t('changelog.v0994_item_2')]}
       />
       <VersionEntry
         version="v0.99.3"
         date="2026-04-17"
-        items={[
-          'Admin dashboard: Refresh button bypasses the stats cache so new users appear immediately',
-          'Password show/hide toggle now tappable on mobile (was hidden behind iOS password manager overlay)',
-          'Profile footer translated in Japanese locale',
-        ]}
+        items={[t('changelog.v0993_item_1')]}
       />
       <VersionEntry
         version="v0.99.2"
         date="2026-04-17"
-        items={[
-          'Profile page reorganised into three tabs: Farms, You, System',
-          'New /help/getting-started page with the 5-step platform guide',
-          'New /history page with the full version changelog (replaces What\u2019s New)',
-          'Desktop spacing gap between nav bar and pilot banner fixed',
-          'Profile heading translates to Japanese in JA locale',
-          '36 new tests covering tab switching, i18n keys, and link correctness',
-        ]}
+        items={[t('changelog.v0992_item_1'), t('changelog.v0992_item_2')]}
       />
       <VersionEntry
         version="v0.99.1"
         date="2026-04-16"
-        items={[
-          'Branded favicon — the LitCrop sprout icon now shows in browser tabs, bookmarks, and iOS/Android home screens',
-          'Install LitCrop as a standalone app: tap "Add to Home Screen" for a full-screen experience without the browser chrome',
-        ]}
+        items={[t('changelog.v0991_item_1')]}
       />
       <VersionEntry
         version="v0.99"
         date="2026-04-16"
-        items={[
-          'Content Security Policy hardened — inline-script allowance removed; only the app\u2019s own code can execute',
-          'New help page for Pi Camera hardware setup at /help/device-setup (English and \u65e5\u672c\u8a9e), including the capture cycle diagram',
-          'Branded social share card — LitCrop links posted on Slack, Twitter, LINE, or Discord now show an OG preview image',
-          'Invitation code is now separate from the owner promotion code, so being invited no longer auto-grants owner privileges',
-          'Developer-side: pre-commit hook catches cross-workspace type gaps locally before they reach CI',
-        ]}
+        items={[t('changelog.v099_item_1'), t('changelog.v099_item_2')]}
       />
       <VersionEntry
         version="v0.98"
         date="2026-04-15"
-        items={[
-          'Install script now accepts --branch so staging-served installs stay in sync with the deployed code',
-          'Device hardware is auto-detected (battery HAT, PIR sensor) — no more silent Class-1 misclassification',
-          'IAM least-privilege tightening for the ops principal (scoped API Gateway, CloudFront read-only, no role creation)',
-        ]}
+        items={[t('changelog.v098_item_1')]}
       />
       <VersionEntry
         version="v0.97"
         date="2026-04-15"
-        items={[
-          'Device capture hardening: full config round-trip (resolution, interval, active window)',
-          'Active-window enforcement on the camera with [SKIP] heartbeat-only path',
-          'Defense-in-depth HH:MM validation at API and on-device',
-          'Applied / Pending config badge on the Device list — no more SSH to confirm propagation',
-          'install.sh now prompts to install jq so UI-driven config changes always reach the device',
-        ]}
+        items={[t('changelog.v097_item_1')]}
       />
       <VersionEntry
         version="v0.96"
         date="2026-04-15"
-        items={[
-          'Public/private farm visibility toggle for discoverability',
-          'What\u2019s New revised as a step-by-step platform guide',
-          'ADR: farm-level promotion does not grant global owner capability',
-        ]}
+        items={[t('changelog.v096_item_1')]}
       />
       <VersionEntry
         version="v0.95"
         date="2026-04-14"
-        items={[
-          'Day-grouped image history with collapsible accordion',
-          'Timelapse source filtering and date range selector',
-          'Pilot mode: invitation code gate, notice banner, farm limit',
-        ]}
+        items={[t('changelog.v095_item_1')]}
       />
       <VersionEntry
         version="v0.94"
         date="2026-04-14"
-        items={['User notification system: email + in-app + bell']}
+        items={[t('changelog.v094_item_1')]}
       />
       <VersionEntry
         version="v0.93"
         date="2026-04-13"
-        items={['Terms of Service, Privacy Policy, bug report form']}
+        items={[t('changelog.v093_item_1')]}
       />
       <VersionEntry
         version="v0.92"
         date="2026-04-13"
-        items={['WCAG 2.1 AA compliance, E2E tests, production hotfixes']}
+        items={[t('changelog.v092_item_1')]}
       />
       <VersionEntry
         version="v0.91"
         date="2026-04-12"
-        items={['Custom domain litcrop.com, environment separation']}
+        items={[t('changelog.v091_item_1')]}
       />
       <VersionEntry
         version="v0.90"
         date="2026-04-11"
-        items={['Production AWS resources, login redesign, device auth fix']}
+        items={[t('changelog.v090_item_1')]}
       />
 
       {/* Footer link row */}
