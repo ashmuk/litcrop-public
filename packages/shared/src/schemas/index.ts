@@ -466,6 +466,13 @@ export const DeviceListItemSchema = z.object({
   battery_level: z.number().nullable(),
   wifi_signal_dbm: z.number().nullable(),
   storage_status: StorageStatusSchema.nullable(),
+  // #457: quantitative storage fields. Nullable (not required) so list
+  // responses covering pre-upgrade devices still validate; the frontend
+  // falls back to the qualitative status string when numeric data is
+  // absent.
+  storage_used_pct: z.number().nullable().optional(),
+  storage_free_bytes: z.number().nullable().optional(),
+  storage_total_bytes: z.number().nullable().optional(),
   capabilities: DeviceCapabilitiesSchema.nullable(),
   // --- #406 config-propagation visibility ---
   last_config_polled_at: z.string().nullable().optional(),
@@ -522,6 +529,12 @@ export const DeviceHeartbeatRequestSchema = z.object({
   battery_level: z.number().int().min(0).max(100).nullable().optional(),
   wifi_signal_dbm: z.number().min(-120).max(0).nullable().optional(),
   storage_status: StorageStatusSchema.optional(),
+  // #457: quantitative storage — nullable+optional so pre-v0.99.6.2 Pis
+  // that omit them still validate. Bounded to sensible ranges so a bad df
+  // output can't poison the UI with negatives or absurd totals.
+  storage_used_pct: z.number().int().min(0).max(100).nullable().optional(),
+  storage_free_bytes: z.number().int().min(0).nullable().optional(),
+  storage_total_bytes: z.number().int().min(0).nullable().optional(),
   capabilities: DeviceCapabilitiesSchema.optional(),
   // --- #406: Pi echoes its runtime config so the UI can show drift ---
   effective_config: EffectiveConfigSchema.optional(),

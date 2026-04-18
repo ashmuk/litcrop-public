@@ -529,6 +529,11 @@ export interface DeviceListItemResponse {
   battery_level: number | null;
   wifi_signal_dbm: number | null;
   storage_status: 'ok' | 'low' | 'full' | null;
+  // #457: quantitative storage fields — optional on the response type so
+  // pre-v0.99.6.2 Pi records (that omit them) still satisfy the interface.
+  storage_used_pct?: number | null;
+  storage_free_bytes?: number | null;
+  storage_total_bytes?: number | null;
   capabilities: { resolutions: string[]; has_battery_sensor: boolean; has_pir_sensor: boolean } | null;
   test_shot_requested: boolean;
   // #406: applied-config visibility

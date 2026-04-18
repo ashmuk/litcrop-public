@@ -22,6 +22,9 @@ function itemToDevice(item: Record<string, unknown>, deviceId: string): Device {
     battery_level: (item['battery_level'] as number) ?? null,
     wifi_signal_dbm: (item['wifi_signal_dbm'] as number) ?? null,
     storage_status: (item['storage_status'] as StorageStatus) ?? null,
+    storage_used_pct: (item['storage_used_pct'] as number | null) ?? null,
+    storage_free_bytes: (item['storage_free_bytes'] as number | null) ?? null,
+    storage_total_bytes: (item['storage_total_bytes'] as number | null) ?? null,
     capabilities: (item['capabilities'] as DeviceCapabilities) ?? null,
     test_shot_requested: !!(item['test_shot_requested']),
     // --- #406 config-propagation visibility ---
@@ -172,6 +175,9 @@ export async function updateDeviceHeartbeat(
     battery_level?: number | null;
     wifi_signal_dbm?: number | null;
     storage_status?: StorageStatus;
+    storage_used_pct?: number | null;
+    storage_free_bytes?: number | null;
+    storage_total_bytes?: number | null;
     capabilities?: DeviceCapabilities;
     effective_config?: EffectiveConfig;
   },
@@ -201,6 +207,21 @@ export async function updateDeviceHeartbeat(
     names['#storage_status'] = 'storage_status';
     values[':storage_status'] = health.storage_status;
     expressions.push('#storage_status = :storage_status');
+  }
+  if (health.storage_used_pct !== undefined) {
+    names['#storage_used_pct'] = 'storage_used_pct';
+    values[':storage_used_pct'] = health.storage_used_pct;
+    expressions.push('#storage_used_pct = :storage_used_pct');
+  }
+  if (health.storage_free_bytes !== undefined) {
+    names['#storage_free_bytes'] = 'storage_free_bytes';
+    values[':storage_free_bytes'] = health.storage_free_bytes;
+    expressions.push('#storage_free_bytes = :storage_free_bytes');
+  }
+  if (health.storage_total_bytes !== undefined) {
+    names['#storage_total_bytes'] = 'storage_total_bytes';
+    values[':storage_total_bytes'] = health.storage_total_bytes;
+    expressions.push('#storage_total_bytes = :storage_total_bytes');
   }
   if (health.capabilities !== undefined) {
     names['#capabilities'] = 'capabilities';

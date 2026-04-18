@@ -89,3 +89,26 @@ export function formatRelativeTime(iso: string): string {
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
+
+/**
+ * Format a byte count using binary units (KiB/MiB/GiB) but with decimal-SI
+ * labels (KB/MB/GB) since those are what operators expect when reading a Pi
+ * SD-card spec. Returns `'—'` for null/non-finite input so callers can drop
+ * it straight into JSX without an extra guard.
+ *
+ * Precision scales down with magnitude — 1.8 GB reads cleaner than
+ * 1.82 GB, while 128 MB reads cleaner than 128.3 MB.
+ */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let n = bytes / 1024;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  const decimals = n >= 100 ? 0 : n >= 10 ? 1 : 2;
+  return `${n.toFixed(decimals)} ${units[i]}`;
+}

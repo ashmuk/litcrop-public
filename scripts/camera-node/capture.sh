@@ -367,15 +367,31 @@ send_heartbeat() {
         wifi_signal_dbm=$(iwconfig wlan0 2>/dev/null | grep -oP '(?<=Signal level=)-?\d+' || echo "null")
     fi
 
-    # Storage status
+    # Storage — qualitative status (ok/low/full) + quantitative fields
+    # (#457). Single `df -B1 /` call emits total(bytes) free(bytes) use%,
+    # which df itself computes; we strip the "%" so the integer is ready
+    # for JSON. Each numeric field defaults to "null" (unquoted in JSON)
+    # on parse failure, so the API's nullable schema still accepts the
+    # payload — the UI then falls back to the qualitative status string.
     local storage_status="ok"
-    local usage_pct
-    usage_pct=$(df -h / | awk 'NR==2 {print $5+0}')
-    if [ "$usage_pct" -gt 90 ]; then
-        storage_status="full"
-    elif [ "$usage_pct" -gt 80 ]; then
-        storage_status="low"
+    local storage_used_pct="null"
+    local storage_free_bytes="null"
+    local storage_total_bytes="null"
+    local _df_line
+    _df_line=$(df -B1 / 2>/dev/null | awk 'NR==2 {gsub("%","",$5); print $2, $4, $5}')
+    if [[ "$_df_line" =~ ^[0-9]+\ [0-9]+\ [0-9]+$ ]]; then
+        storage_total_bytes="${_df_line%% *}"
+        storage_used_pct="${_df_line##* }"
+        # free is the middle field: strip leading total + trailing pct.
+        local _rest="${_df_line#* }"
+        storage_free_bytes="${_rest% *}"
+        if [ "$storage_used_pct" -gt 90 ]; then
+            storage_status="full"
+        elif [ "$storage_used_pct" -gt 80 ]; then
+            storage_status="low"
+        fi
     fi
+    unset _df_line
 
     # Battery (UPS HAT if connected) — validate numeric
     local battery_level="null"
@@ -407,6 +423,9 @@ send_heartbeat() {
   "battery_level": ${battery_level},
   "wifi_signal_dbm": ${wifi_signal_dbm},
   "storage_status": "${storage_status}",
+  "storage_used_pct": ${storage_used_pct},
+  "storage_free_bytes": ${storage_free_bytes},
+  "storage_total_bytes": ${storage_total_bytes},
   "capabilities": {
     "has_battery_sensor": ${has_battery_sensor},
     "has_pir_sensor": ${has_pir_sensor},

@@ -180,6 +180,12 @@ export interface Device {
   battery_level: number | null;
   wifi_signal_dbm: number | null;
   storage_status: StorageStatus | null;
+  // #457: quantitative storage — optional on the interface so older Pi
+  // records and pre-upgrade fixtures still satisfy Device. API emits
+  // these as numbers or null on heartbeat-capable devices.
+  storage_used_pct?: number | null;
+  storage_free_bytes?: number | null;
+  storage_total_bytes?: number | null;
   capabilities: DeviceCapabilities | null;
   test_shot_requested: boolean;
   // --- #406 config-propagation visibility ---

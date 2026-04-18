@@ -25,7 +25,8 @@ import { getDeviceClass } from '@litcrop/shared';
 import { getConfigStatus } from '../lib/device-config-status';
 import TierBadge from './TierBadge';
 import { showToast } from './Toast';
-import { formatRelativeTime } from '../lib/format';
+import { formatRelativeTime, formatBytes } from '../lib/format';
+import { WifiBars, StorageBar } from './DeviceHealthIndicators';
 import DeviceRegisterForm from './DeviceRegisterForm';
 import DeviceConfigForm from './DeviceConfigForm';
 import Modal from './Modal';
@@ -72,6 +73,23 @@ function storageHealthClass(status: DeviceListItemResponse['storage_status']): s
   return '';
 }
 
+// #457: progress-bar fill color matches storageHealthClass thresholds so
+// the bar color stays in step with the cell-background tint.
+function storageBarVariant(
+  status: DeviceListItemResponse['storage_status'],
+): 'healthy' | 'warning' | 'critical' | 'unknown' {
+  if (status === null) return 'unknown';
+  if (status === 'full') return 'critical';
+  if (status === 'low') return 'warning';
+  return 'healthy';
+}
+
+// Shared base style for each cell in the 3-column health grid. Kept here
+// (not pulled into a CSS module) because the rest of this component is
+// inline-styled — #449 tracks the broader Tailwind migration.
+const HEALTH_CELL_STYLE =
+  'text-align:center;padding:var(--space-2);background:var(--color-gray-100);border-radius:var(--radius-md)';
+
 function isStale(lastSeenAt: string | null): boolean {
   if (!lastSeenAt) return true;
   return Date.now() - new Date(lastSeenAt).getTime() > STALE_THRESHOLD_MS;
@@ -111,17 +129,53 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
         : t('device.config_never_polled'))
     : t('device.config_pending_hint');
 
-  const batteryValue = hasBattery && device.battery_level !== null
-    ? `${device.battery_level}%`
-    : 'N/A';
+  // #456: Class-1 devices have no I2C power monitoring at all — distinguish
+  // "sensor present but reading is null" (N/A) from "device is incapable of
+  // reading" (italic hint + tooltip) so the operator knows *why* the cell
+  // is empty instead of assuming hardware fault.
+  let batteryValue: string;
+  let batteryHint: string | null = null;
+  let batteryTooltip: string | undefined;
+  if (!hasBattery) {
+    batteryValue = t('device.battery_unavailable_class1');
+    batteryHint = t('device.battery_unavailable_hint');
+    batteryTooltip = t('device.battery_unavailable_tooltip');
+  } else if (device.battery_level === null) {
+    batteryValue = 'N/A';
+  } else {
+    batteryValue = `${device.battery_level}%`;
+  }
 
   const wifiValue = device.wifi_signal_dbm !== null
     ? `${device.wifi_signal_dbm} dBm`
     : 'N/A';
 
-  const storageValue = device.storage_status !== null
-    ? device.storage_status.toUpperCase()
-    : 'N/A';
+  // #457: prefer the quantitative fields. Each field (pct, free-bytes) is
+  // derived independently because the schema permits them to arrive apart —
+  // e.g. a future partial-heartbeat path, or a constrained Pi that can read
+  // free but not total. Today's capture.sh emits them together, but
+  // decoupling here means any future drift is still renderable instead of
+  // silently dropping the data we do have.
+  const storageUsedPct =
+    typeof device.storage_used_pct === 'number' && Number.isFinite(device.storage_used_pct)
+      ? device.storage_used_pct
+      : null;
+  const storageFreeBytes =
+    typeof device.storage_free_bytes === 'number' && Number.isFinite(device.storage_free_bytes)
+      ? device.storage_free_bytes
+      : null;
+  let storagePrimary: string;
+  if (storageUsedPct !== null) {
+    storagePrimary = t('device.storage_used_pct').replace('{pct}', String(storageUsedPct));
+  } else if (device.storage_status !== null) {
+    storagePrimary = device.storage_status.toUpperCase();
+  } else {
+    storagePrimary = 'N/A';
+  }
+  const storageSecondary =
+    storageFreeBytes !== null
+      ? t('device.storage_free_suffix').replace('{size}', formatBytes(storageFreeBytes))
+      : null;
 
   return (
     <article
@@ -190,31 +244,45 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
       <div
         class="health-grid"
         style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-2)"
-        aria-label={`${t('device.health_battery')} ${batteryValue}, ${t('device.health_wifi')} ${wifiValue}, ${t('device.health_storage')} ${storageValue}`}
+        aria-label={`${t('device.health_battery')} ${batteryValue}, ${t('device.health_wifi')} ${wifiValue}, ${t('device.health_storage')} ${storagePrimary}${storageSecondary ? ` (${storageSecondary})` : ''}`}
       >
-        {/* Battery */}
+        {/* Battery — #456: Class-1 devices render italic hint + tooltip */}
         <div
           class={`health-cell ${batteryHealthClass(hasBattery ? device.battery_level : null)}`}
-          style="text-align:center;padding:var(--space-2);background:var(--color-gray-100);border-radius:var(--radius-md)"
+          style={HEALTH_CELL_STYLE}
+          title={batteryTooltip}
         >
-          <span class="health-cell__icon" style="font-size:16px;display:block;margin-bottom:2px" aria-hidden="true">🔋</span>
+          <span
+            class="health-cell__icon"
+            style={`font-size:16px;display:block;margin-bottom:2px${hasBattery ? '' : ';opacity:0.45'}`}
+            aria-hidden="true"
+          >
+            🔋
+          </span>
           <div
             class="health-cell__value"
-            style="font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);color:var(--color-gray-900)"
+            style={`font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);color:${hasBattery ? 'var(--color-gray-900)' : 'var(--color-gray-500)'}${hasBattery ? '' : ';font-style:italic'}`}
           >
             {batteryValue}
           </div>
+          {batteryHint && (
+            <div style="font-size:9px;color:var(--color-gray-400);font-style:italic;margin-top:1px">
+              {batteryHint}
+            </div>
+          )}
           <div class="health-cell__label" style="font-size:10px;color:var(--color-gray-500)">
             {t('device.health_battery')}
           </div>
         </div>
 
-        {/* WiFi */}
+        {/* WiFi — #453: 4-bar SVG indicator + dBm value alongside */}
         <div
           class={`health-cell ${wifiHealthClass(device.wifi_signal_dbm)}`}
-          style="text-align:center;padding:var(--space-2);background:var(--color-gray-100);border-radius:var(--radius-md)"
+          style={HEALTH_CELL_STYLE}
         >
-          <span class="health-cell__icon" style="font-size:16px;display:block;margin-bottom:2px" aria-hidden="true">📶</span>
+          <div style="display:flex;justify-content:center;align-items:flex-end;height:18px;margin-bottom:2px">
+            <WifiBars dbm={device.wifi_signal_dbm} size={20} />
+          </div>
           <div
             class="health-cell__value"
             style="font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);color:var(--color-gray-900)"
@@ -226,19 +294,25 @@ function DeviceCard({ device, canEdit, onConfigure, onTestShot }: DeviceCardProp
           </div>
         </div>
 
-        {/* Storage */}
+        {/* Storage — #457: percent + free bytes + progress bar */}
         <div
           class={`health-cell ${storageHealthClass(device.storage_status)}`}
-          style="text-align:center;padding:var(--space-2);background:var(--color-gray-100);border-radius:var(--radius-md)"
+          style={HEALTH_CELL_STYLE}
         >
           <span class="health-cell__icon" style="font-size:16px;display:block;margin-bottom:2px" aria-hidden="true">💾</span>
           <div
             class="health-cell__value"
             style="font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);color:var(--color-gray-900)"
           >
-            {storageValue}
+            {storagePrimary}
           </div>
-          <div class="health-cell__label" style="font-size:10px;color:var(--color-gray-500)">
+          {storageSecondary && (
+            <div style="font-size:9px;color:var(--color-gray-500);margin-top:1px">
+              {storageSecondary}
+            </div>
+          )}
+          <StorageBar usedPct={storageUsedPct} variant={storageBarVariant(device.storage_status)} />
+          <div class="health-cell__label" style="font-size:10px;color:var(--color-gray-500);margin-top:2px">
             {t('device.health_storage')}
           </div>
         </div>
