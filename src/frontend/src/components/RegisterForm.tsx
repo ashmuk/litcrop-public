@@ -232,7 +232,10 @@ export default function RegisterForm() {
 
     setStep1Loading(true);
     try {
-      await signUp(email, password);
+      // Pass displayName so Cognito stores it as custom:display_name.
+      // The attribute arrives in ID token claims on every subsequent
+      // login, giving us a device-agnostic bootstrap value for profiles.
+      await signUp(email, password, displayName.trim());
       startResendCooldown();
       setStep(2);
     } catch (err) {

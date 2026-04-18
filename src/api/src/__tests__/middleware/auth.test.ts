@@ -175,3 +175,73 @@ describe('authMiddleware — Lambda event claims path', () => {
     expect(body.userId).toBe('fallback-user');
   });
 });
+
+// ── displayNameHint extraction (custom:display_name claim) ────────
+
+describe('authMiddleware — displayNameHint from custom:display_name', () => {
+  /**
+   * Build a test app that surfaces displayNameHint so the test can
+   * assert on the value independently of other context fields.
+   */
+  function buildHintApp() {
+    const app = new Hono();
+    app.use('*', authMiddleware);
+    app.get('/hint', (c) => {
+      const ctx = getAuthContext(c);
+      return c.json({ displayNameHint: ctx.displayNameHint });
+    });
+    return app;
+  }
+
+  it('extracts custom:display_name from Lambda claims', async () => {
+    const app = buildHintApp();
+    const event = {
+      requestContext: {
+        authorizer: {
+          jwt: {
+            claims: {
+              sub: 'hint-user',
+              email: 'hint@example.com',
+              'custom:display_name': 'Alice Hint',
+            },
+          },
+        },
+      },
+    };
+    const res = await app.fetch(new Request('http://localhost/hint'), { event });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { displayNameHint: string };
+    expect(body.displayNameHint).toBe('Alice Hint');
+  });
+
+  it('extracts custom:display_name from Bearer token payload', async () => {
+    const app = buildHintApp();
+    const token = mockJwt({
+      sub: 'bearer-user',
+      email: 'bearer@example.com',
+      iss: 'https://cognito-idp.ap-northeast-1.amazonaws.com/test-pool',
+      'custom:display_name': 'Bob Bearer',
+    });
+    const res = await app.request('/hint', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { displayNameHint: string };
+    expect(body.displayNameHint).toBe('Bob Bearer');
+  });
+
+  it('defaults displayNameHint to empty string when claim is absent', async () => {
+    const app = buildHintApp();
+    const token = mockJwt({
+      sub: 'no-hint-user',
+      email: 'plain@example.com',
+      iss: 'https://cognito-idp.ap-northeast-1.amazonaws.com/test-pool',
+    });
+    const res = await app.request('/hint', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { displayNameHint: string };
+    expect(body.displayNameHint).toBe('');
+  });
+});

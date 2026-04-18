@@ -246,13 +246,31 @@ export interface SignUpResult {
   needsConfirmation: boolean;
 }
 
-/** Register a new user. Returns needsConfirmation=true when email verification is required. */
-export async function signUp(email: string, password: string): Promise<SignUpResult> {
+/**
+ * Register a new user.  Returns needsConfirmation=true when email
+ * verification is required.
+ *
+ * When `displayName` is provided it is stored as the custom:display_name
+ * user attribute so subsequent logins on any device have the name in
+ * their ID token claims — closing the cross-device gap that the
+ * localStorage-only bridge (litcrop-pendingName) couldn't cover.
+ */
+export async function signUp(
+  email: string,
+  password: string,
+  displayName?: string,
+): Promise<SignUpResult> {
+  const trimmedName = displayName?.trim() ?? '';
+  const userAttributes: Array<{ Name: string; Value: string }> = [
+    { Name: 'email', Value: email },
+    ...(trimmedName ? [{ Name: 'custom:display_name', Value: trimmedName }] : []),
+  ];
+
   const data = (await cognitoRequest('SignUp', {
     ClientId: CLIENT_ID,
     Username: email,
     Password: password,
-    UserAttributes: [{ Name: 'email', Value: email }],
+    UserAttributes: userAttributes,
   })) as { UserSub: string; UserConfirmed: boolean };
 
   return { userSub: data.UserSub, needsConfirmation: !data.UserConfirmed };

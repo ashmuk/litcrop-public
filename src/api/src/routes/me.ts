@@ -17,16 +17,22 @@ const router = new Hono();
 
 // GET /api/v1/me/profile
 router.get('/profile', async (c) => {
-  const { userId, userEmail, isAdmin } = getAuthContext(c);
+  const { userId, userEmail, isAdmin, displayNameHint } = getAuthContext(c);
   let profile = await dynamoRepo.getUserProfile(userId);
 
   // Auto-create a minimal profile on first authenticated access so the user
   // appears in admin user lists and stats counts immediately — not only after
   // they explicitly PATCH their profile. Without this, users who join a farm
   // via join-request have a MEMBER record but no USER#/PROFILE record.
+  //
+  // Seed display_name from the custom:display_name Cognito claim if it was
+  // set at SignUp time.  This lets a user's chosen name survive a
+  // cross-device first login (their localStorage bridge on the new device
+  // is empty, but the JWT claim is always present).  When the claim is
+  // absent, displayNameHint is '' — same as legacy auto-create behaviour.
   if (!profile) {
     profile = await dynamoRepo.upsertUserProfile(userId, {
-      display_name: '',
+      display_name: displayNameHint,
       email: userEmail || undefined,
     });
   }

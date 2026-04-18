@@ -380,6 +380,88 @@ describe('GET /api/v1/me/profile (avatar URLs)', () => {
   });
 });
 
+// ── Auto-create seeds display_name from custom:display_name claim ─
+
+describe('GET /api/v1/me/profile — auto-create with Cognito display_name hint', () => {
+  /** Build a JWT that carries a custom:display_name claim. */
+  function tokenWithDisplayHint(userId: string, hint: string, email = 'new-user@example.com'): string {
+    const payload: Record<string, unknown> = {
+      sub: userId,
+      email,
+      iss: 'https://cognito-idp.ap-northeast-1.amazonaws.com/test-pool',
+      'custom:display_name': hint,
+    };
+    const encoded = btoa(JSON.stringify(payload))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    return `aaa.${encoded}.sig`;
+  }
+
+  it('seeds display_name from custom:display_name on first GET when profile is absent', async () => {
+    // Repo has no profile yet → auto-create path
+    mockRepo.getUserProfile.mockResolvedValue(null);
+    mockRepo.upsertUserProfile.mockResolvedValue({
+      user_id: 'first-login-user',
+      display_name: 'Alice from Signup',
+      email: 'alice@example.com',
+      preferred_role: 'staff' as const,
+      created_at: '2026-04-18T00:00:00Z',
+    });
+
+    const token = tokenWithDisplayHint('first-login-user', 'Alice from Signup', 'alice@example.com');
+    const res = await app.request('/api/v1/me/profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+
+    // The hint must be passed through as the initial display_name
+    expect(mockRepo.upsertUserProfile).toHaveBeenCalledWith('first-login-user', {
+      display_name: 'Alice from Signup',
+      email: 'alice@example.com',
+    });
+  });
+
+  it('falls back to empty display_name when the custom:display_name claim is absent', async () => {
+    mockRepo.getUserProfile.mockResolvedValue(null);
+    mockRepo.upsertUserProfile.mockResolvedValue({
+      user_id: TEST_USER_ID,
+      display_name: '',
+      email: 'test@example.com',
+      preferred_role: 'staff' as const,
+      created_at: '2026-04-18T00:00:00Z',
+    });
+
+    const res = await app.request('/api/v1/me/profile', { headers: authHeaders() });
+    expect(res.status).toBe(200);
+
+    // No hint in claims → stays empty (existing auto-create behaviour)
+    expect(mockRepo.upsertUserProfile).toHaveBeenCalledWith(TEST_USER_ID, {
+      display_name: '',
+      email: 'test@example.com',
+    });
+  });
+
+  it('does not overwrite an existing profile, regardless of hint value', async () => {
+    mockRepo.getUserProfile.mockResolvedValue({
+      user_id: 'existing-user',
+      display_name: 'Existing Name',
+      preferred_role: 'owner' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    });
+
+    const token = tokenWithDisplayHint('existing-user', 'Hint That Should Not Win');
+    const res = await app.request('/api/v1/me/profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+
+    // Profile already exists → auto-create branch must NOT fire
+    expect(mockRepo.upsertUserProfile).not.toHaveBeenCalled();
+
+    const body = await res.json() as { display_name: string };
+    expect(body.display_name).toBe('Existing Name');
+  });
+});
+
 describe('PATCH /api/v1/me/profile — email sync (#391)', () => {
   it('syncs JWT email to DynamoDB profile on update', async () => {
     mockRepo.getUserProfile.mockResolvedValue({

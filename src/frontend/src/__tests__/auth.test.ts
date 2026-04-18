@@ -185,3 +185,83 @@ describe('deleteCurrentUser', () => {
     await expect(deleteCurrentUser()).resolves.toBeUndefined();
   });
 });
+
+// ── signUp — passes custom:display_name when provided ────────────
+
+describe('signUp custom:display_name attribute', () => {
+  const storageStore: Record<string, string> = {};
+  const localStorageMock = {
+    getItem: (k: string) => storageStore[k] ?? null,
+    setItem: (k: string, v: string) => { storageStore[k] = v; },
+    removeItem: (k: string) => { delete storageStore[k]; },
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+    Object.keys(storageStore).forEach((k) => delete storageStore[k]);
+    vi.stubGlobal('localStorage', localStorageMock);
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() });
+  });
+
+  /**
+   * Capture the request body sent to the mocked Cognito endpoint so
+   * each test can assert the exact UserAttributes payload.
+   */
+  function mockCognitoCapture(status: number, body: object) {
+    const calls: Array<{ url: string; init: { body?: string } }> = [];
+    const fn = vi.fn().mockImplementation((url: string, init: { body?: string }) => {
+      calls.push({ url, init });
+      return Promise.resolve({
+        ok: status >= 200 && status < 300,
+        status,
+        json: () => Promise.resolve(body),
+      });
+    });
+    vi.stubGlobal('fetch', fn);
+    return calls;
+  }
+
+  /** Extract the UserAttributes array from the first captured SignUp request. */
+  function sentAttrs(calls: Array<{ init: { body?: string } }>): Array<{ Name: string; Value: string }> {
+    const sent = JSON.parse(calls[0].init.body ?? '{}') as { UserAttributes: Array<{ Name: string; Value: string }> };
+    return sent.UserAttributes;
+  }
+
+  it('omits custom:display_name when displayName is not provided', async () => {
+    const calls = mockCognitoCapture(200, { UserSub: 'new-sub', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('alice@example.com', 'Password1!');
+
+    expect(calls).toHaveLength(1);
+    const names = sentAttrs(calls).map((a) => a.Name);
+    expect(names).toContain('email');
+    expect(names).not.toContain('custom:display_name');
+  });
+
+  it('includes custom:display_name when a non-empty name is provided', async () => {
+    const calls = mockCognitoCapture(200, { UserSub: 'new-sub', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('bob@example.com', 'Password1!', 'Bob Smith');
+
+    const displayAttr = sentAttrs(calls).find((a) => a.Name === 'custom:display_name');
+    expect(displayAttr?.Value).toBe('Bob Smith');
+  });
+
+  it('omits custom:display_name when displayName is only whitespace', async () => {
+    const calls = mockCognitoCapture(200, { UserSub: 'new-sub', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('carol@example.com', 'Password1!', '   ');
+
+    const names = sentAttrs(calls).map((a) => a.Name);
+    expect(names).not.toContain('custom:display_name');
+  });
+
+  it('trims whitespace around a valid displayName', async () => {
+    const calls = mockCognitoCapture(200, { UserSub: 'new-sub', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('dan@example.com', 'Password1!', '  Dan  ');
+
+    const displayAttr = sentAttrs(calls).find((a) => a.Name === 'custom:display_name');
+    expect(displayAttr?.Value).toBe('Dan');
+  });
+});

@@ -31,6 +31,14 @@ export interface AuthContext {
   userEmail: string;
   /** True when userEmail appears in the ADMIN_EMAILS env var (comma-separated). */
   isAdmin: boolean;
+  /**
+   * Display name hinted by the custom:display_name Cognito attribute
+   * (seeded at SignUp time).  Used by routes that auto-create a profile
+   * record on first access so the user doesn't see an empty name before
+   * they open /profile/ for the first time.  Empty string when the claim
+   * is absent — e.g. users who registered before the attribute existed.
+   */
+  displayNameHint: string;
 }
 
 // ── Context accessor ─────────────────────────────────────────────
@@ -47,6 +55,7 @@ export function getAuthContext(c: Context): AuthContext {
     userId: c.get('userId' as never) as string,
     userEmail,
     isAdmin: userEmail.length > 0 && ADMIN_EMAILS_SET.has(userEmail.toLowerCase()),
+    displayNameHint: (c.get('displayNameHint' as never) as string | undefined) ?? '',
   };
 }
 
@@ -64,6 +73,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
   if (claims?.['sub']) {
     c.set('userId' as never, claims['sub'] as string);
     c.set('userEmail' as never, (claims['email'] ?? '') as string);
+    c.set('displayNameHint' as never, (claims['custom:display_name'] ?? '') as string);
     await next();
     return;
   }
@@ -93,6 +103,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
           console.warn('[auth] WARNING: Using unverified JWT decode (Path 2) — development only');
           c.set('userId' as never, sub);
           c.set('userEmail' as never, (payload['email'] as string | undefined) ?? '');
+          c.set('displayNameHint' as never, (payload['custom:display_name'] as string | undefined) ?? '');
           await next();
           return;
         }

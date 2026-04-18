@@ -82,6 +82,14 @@ export class LitCropStack extends cdk.Stack {
       standardAttributes: {
         email: { required: true, mutable: true },
       },
+      // custom:display_name closes the cross-device registration gap.  The
+      // attribute is populated during SignUp and arrives in ID token claims
+      // on every subsequent login, so a user who registers on device A sees
+      // their display name on device B without needing the localStorage
+      // bridge that RegisterForm/AuthGuard previously relied on.
+      customAttributes: {
+        display_name: new cognito.StringAttribute({ minLen: 0, maxLen: 100, mutable: true }),
+      },
       passwordPolicy: {
         minLength: 8,
         requireUppercase: true,
