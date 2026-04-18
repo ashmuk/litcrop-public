@@ -79,6 +79,10 @@
     "yesterday": "Yesterday",
     "images_count": "{count} images"
   },
+  "changelog": {
+    "v0996_item_1": "Behind-the-scenes test and documentation improvements — no visible changes to the app",
+    "v0996_item_2": "Tab keyboard navigation is more reliable on slower devices"
+  },
   "weather": {
     "temperature": "Temperature",
     "humidity": "Humidity",

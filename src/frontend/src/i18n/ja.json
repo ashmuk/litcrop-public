@@ -79,6 +79,10 @@
     "yesterday": "昨日",
     "images_count": "{count}枚"
   },
+  "changelog": {
+    "v0996_item_1": "テストとドキュメントの改善（裏側の作業）。アプリの見た目や動作に変化はありません",
+    "v0996_item_2": "低速な端末でも、タブのキーボード操作がより確実に動作します"
+  },
   "weather": {
     "temperature": "気温",
     "humidity": "湿度",

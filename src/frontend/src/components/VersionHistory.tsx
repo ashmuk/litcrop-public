@@ -60,6 +60,15 @@ export default function VersionHistory() {
       </p>
 
       <VersionEntry
+        version="v0.99.6"
+        date="2026-04-18"
+        items={[
+          t('changelog.v0996_item_1'),
+          t('changelog.v0996_item_2'),
+        ]}
+        current
+      />
+      <VersionEntry
         version="v0.99.5"
         date="2026-04-18"
         items={[
@@ -67,7 +76,6 @@ export default function VersionHistory() {
           'Profile tabs are keyboard-accessible: Left/Right arrows move both the highlighted tab and keyboard focus in one step, matching screen-reader conventions',
           'Version-aware build cache: after a release, the app no longer needs a manual CI cache clear to pick up the new version string',
         ]}
-        current
       />
       <VersionEntry
         version="v0.99.4"
