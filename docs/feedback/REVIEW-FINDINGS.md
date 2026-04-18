@@ -90,3 +90,56 @@ After full audit against the my-reviewer checklist (alignment, security, quality
 ## 7. Decision
 
 **Status**: ACCEPTED — proceed to `/cc-test`. `/cc-remediate` is not required (no MUST-FIX). The four SHOULD-FIX items are documented for the author's discretion and the next session's consideration.
+
+---
+
+# Review Findings — Session 099.x Addendum (2026-04-18, post-v0.99.5)
+
+> Scope: B1/B2/B3 + C2 + C8 test-strengthening work from `docs/TEST-STRATEGY-099X-GAP-ANALYSIS.md`.
+> Target tag: `v0.99.6` (next patch bump for test + doc polish).
+> Baseline: 944 vitest → 970 (+26 tests), all green.
+
+## A1. Scope reviewed
+
+- `tools/invalidate-version-cache.mjs` — new DI-friendly helper extracted from `astro.config.mjs`
+- `src/frontend/astro.config.mjs` — simplified to delegate to the helper
+- `src/frontend/src/__tests__/invalidate-version-cache.test.ts` — 14 new tests (B1/B2/B3 + fs-failure + stamp edge cases)
+- `src/frontend/src/__tests__/auth.test.ts` — +12 C2 edge-case tests via `it.each` (Unicode, emoji, boundary, quotes, whitespace)
+- `.github/PULL_REQUEST_TEMPLATE.md` — new "Post-Deploy Verification" subsection under Deployment Notes
+
+## A2. MUST-FIX findings
+
+**None.**
+
+| Check                                          | Verdict |
+|------------------------------------------------|---------|
+| DI seam sound; no fs references leak           | ✅       |
+| All fs calls wrapped in try/catch              | ✅       |
+| Defaults are hardcoded and safe (no traversal) | ✅       |
+| Tests deterministic (no real filesystem touch) | ✅       |
+| Edge cases cover realistic user names          | ✅       |
+| JSON transport preserves all edge inputs       | ✅       |
+| PR-template addition is actionable and scoped  | ✅       |
+
+## A3. SHOULD-FIX findings
+
+| # | File:Line                                                                 | Issue                                                                                                                                                                                    | Severity   |
+|---|---------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| 5 | `invalidate-version-cache.test.ts`                                        | Only `cacheDirs` override is exercised. `stampDir` and `stampFileName` overrides are part of the public API but untested. Add one test per override to complete the DI surface coverage. | SHOULD-FIX |
+| 6 | `auth.test.ts` (C2 edge-case table)                                       | Missing null-byte (`'Alice\x00Bob'`) and RTL override mark (`'\u202EAlice'`) cases. Both are pass-through contracts (frontend doesn't strip; Cognito/backend rejects). Adding them documents the semantics explicitly. | SHOULD-FIX |
+
+## A4. Suggestions
+
+- **S4** — `PULL_REQUEST_TEMPLATE.md`: consider a one-line pointer near the top of the template ("🔒 Auth/Cognito changes? See Post-Deploy Verification below") so reviewers don't miss the section in long PRs. Low urgency; the current "when applicable" qualifier handles discoverability well enough.
+- **S5** — `invalidate-version-cache.mjs`: `appVersion=''` (defensive) triggers the same "no clear" path as an absent stamp, but the semantics are subtle. Adding a tiny test that feeds `''` as the current version would prevent a future refactor from silently breaking this guard.
+- **S6** — The helper could short-circuit the stamp write when `appVersion` matches the stamp (no-op write saves one syscall). Cosmetic.
+
+## A5. Verification needed before merge
+
+- [ ] Run `npx vitest run` once more after any remediation → confirm 970 (or 970+N) pass
+- [ ] Run `npx astro build` in `src/frontend/` to confirm the refactored `astro.config.mjs` still produces a valid build (the helper now runs as a side-effect call at config-load; ensure no regression)
+- [ ] Manual read of the new PR template section — does it trigger the right behavior for someone unfamiliar with the Cognito flow?
+
+## A6. Decision
+
+**Status**: ACCEPTED — proceed to commit + push + tag + PR for v0.99.6. `/cc-remediate` not required (no MUST-FIX). The two SHOULD-FIX items are low-effort (each is ~10 lines of test code) and could either be folded into v0.99.6 or deferred to a future session.
