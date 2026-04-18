@@ -95,8 +95,14 @@ authTest.describe('Profile tablist a11y', () => {
     await authenticatedPage.locator('#tab-farms').focus();
     await authenticatedPage.keyboard.press('ArrowRight');
 
-    const activeId = await authenticatedPage.evaluate(() => document.activeElement?.id ?? null);
-    expect(activeId).toBe('tab-you');
+    // Focus shift is deferred via queueMicrotask so Preact's re-render
+    // flushes before the button is focused; wait for the post-render state
+    // rather than reading document.activeElement immediately.
+    await authenticatedPage.waitForFunction(
+      () => document.activeElement?.id === 'tab-you',
+      undefined,
+      { timeout: 5000 },
+    );
 
     // Sanity: aria-selected also reflects the new active tab
     await expect(authenticatedPage.locator('#tab-you')).toHaveAttribute('aria-selected', 'true');

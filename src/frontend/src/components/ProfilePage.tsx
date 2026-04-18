@@ -90,8 +90,13 @@ export default function ProfilePage() {
     if (next) {
       e.preventDefault();
       switchTab(next);
-      // WAI-ARIA tablist pattern: focus follows selection on arrow keys
-      document.getElementById(`tab-${next}`)?.focus();
+      // WAI-ARIA tablist pattern: focus follows selection on arrow keys.
+      // Defer via queueMicrotask so Preact's state-update flush completes
+      // first — otherwise the subsequent re-render can blur the button we
+      // just focused, producing the race caught by Playwright A-4.
+      queueMicrotask(() => {
+        document.getElementById(`tab-${next}`)?.focus();
+      });
     }
   }
 
