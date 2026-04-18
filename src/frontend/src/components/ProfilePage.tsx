@@ -81,12 +81,17 @@ export default function ProfilePage() {
   function handleTabKeyDown(e: KeyboardEvent) {
     const tabs: TabName[] = ['farms', 'you', 'system'];
     const idx = tabs.indexOf(activeTab);
+    let next: TabName | null = null;
     if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      switchTab(tabs[(idx + 1) % tabs.length]);
+      next = tabs[(idx + 1) % tabs.length];
     } else if (e.key === 'ArrowLeft') {
+      next = tabs[(idx - 1 + tabs.length) % tabs.length];
+    }
+    if (next) {
       e.preventDefault();
-      switchTab(tabs[(idx - 1 + tabs.length) % tabs.length]);
+      switchTab(next);
+      // WAI-ARIA tablist pattern: focus follows selection on arrow keys
+      document.getElementById(`tab-${next}`)?.focus();
     }
   }
 
