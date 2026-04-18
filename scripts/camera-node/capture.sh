@@ -19,6 +19,7 @@ ENV_FILE="${LITCROP_DIR}/.env"
 HARDWARE_CONF="${LITCROP_DIR}/hardware.conf"
 AUTH_TOKEN_FILE="${LITCROP_DIR}/.auth-token"         # sidecar — refreshed JWT (#341)
 REFRESH_FAIL_FILE="${LITCROP_DIR}/.refresh-failures" # sidecar — counter (#341)
+LAST_CAPTURE_FILE="${LITCROP_DIR}/.last-capture"     # sidecar — interval gate (#454)
 MAX_REFRESH_FAILURES=3
 IMAGES_DIR="${LITCROP_DIR}/images"
 LOG_DIR="${LITCROP_DIR}/logs"
@@ -500,6 +501,44 @@ in_active_window() {
     [[ "$now_hm" > "$start" || "$now_hm" == "$start" ]] && [[ "$now_hm" < "$end" ]]
 }
 
+# #454 interval gate. The cron schedule (v2 tick every 5 min) fires
+# capture.sh 6x more often than the old `*/30` line, but user-configured
+# INTERVAL_SECONDS controls how often we ACTUALLY capture. Heartbeat
+# still fires on the skip path — that's the freshness win that makes
+# the fast-tick cron worthwhile (UI sees 5-min-fresh device status
+# regardless of capture cadence).
+#
+# Bypass order, applied in run_once():
+#   - test_shot:        bypasses both active-window and interval gates
+#   - outside window:   interval gate not reached
+#   - legacy mode:      INTERVAL_SECONDS unset → always capture (preserves
+#                       behavior for pre-config-poll devices)
+#   - first run:        LAST_CAPTURE_FILE missing → always capture
+should_capture_now() {
+    # Legacy: no interval configured → always capture
+    [[ ! "${INTERVAL_SECONDS:-}" =~ ^[0-9]+$ ]] && return 0
+    # First run: no sidecar yet → always capture
+    [ ! -f "$LAST_CAPTURE_FILE" ] && return 0
+    # Within interval → skip.
+    # Use bash's EPOCHSECONDS builtin (bash ≥5.0) rather than `date +%s`.
+    # The run_once test harness mocks `date` to fix the wall-clock for
+    # active-window gating; a shadowed `date +%s` would return non-numeric
+    # "HH:MM" and break arithmetic. EPOCHSECONDS is a builtin and can't
+    # be shadowed by a function definition. Fall back to `date +%s` only
+    # on shells where EPOCHSECONDS is unset (bash <5, non-bash sourcing).
+    local last_mtime now_sec elapsed
+    last_mtime=$(stat -c%Y "$LAST_CAPTURE_FILE" 2>/dev/null \
+                 || stat -f%m "$LAST_CAPTURE_FILE" 2>/dev/null \
+                 || echo 0)
+    now_sec="${EPOCHSECONDS:-$(date +%s)}"
+    elapsed=$((now_sec - last_mtime))
+    if [ "$elapsed" -lt "$INTERVAL_SECONDS" ]; then
+        log "[SKIP] Interval not elapsed (last=${elapsed}s ago, need ${INTERVAL_SECONDS}s)"
+        return 1
+    fi
+    return 0
+}
+
 run_once() {
     rotate_log
     log "[START] device=${DEVICE_ID} bed=${BED_ID} trigger=${TRIGGER}"
@@ -507,7 +546,7 @@ run_once() {
     # 1. Refresh token if needed
     refresh_token || true
 
-    # 2. Poll config for latest settings (may update ACTIVE_WINDOW_*)
+    # 2. Poll config for latest settings (may update INTERVAL_SECONDS, ACTIVE_WINDOW_*)
     poll_config || true
 
     # 3. Active-window gate — test_shot bypasses. Outside-window path sends
@@ -518,17 +557,34 @@ run_once() {
         return 0
     fi
 
-    # 4. Capture new image (prioritize timely shot over spool drain)
+    # 4. Interval gate (#454) — test_shot bypasses. Heartbeat still fires
+    #    on the skip path so the UI sees fresh device status even when
+    #    capture is throttled by interval.
+    if [ "$TRIGGER" != "test_shot" ] && ! should_capture_now; then
+        send_heartbeat
+        return 0
+    fi
+
+    # 5. Capture new image (prioritize timely shot over spool drain)
     local filepath
     filepath=$(capture) || { send_heartbeat; return 1; }
 
-    # 5. Upload
+    # 6. Mark this capture's timestamp for the next interval check.
+    #    Best-effort — a touch failure shouldn't abort the upload path,
+    #    but silent failure would cause runaway captures at every 5-min
+    #    cron tick (the gate would see a missing sidecar and allow each
+    #    time). Log loud when touch fails so the operator has ground
+    #    truth instead of mystery 6× capture storms.
+    touch "$LAST_CAPTURE_FILE" 2>/dev/null \
+        || log "[WARN] touch ${LAST_CAPTURE_FILE} failed — interval gate will not throttle this cycle"
+
+    # 7. Upload
     upload "$filepath" || true
 
-    # 6. Heartbeat (inside-window path — exactly once per cycle)
+    # 8. Heartbeat (inside-window + captured path — exactly once per cycle)
     send_heartbeat
 
-    # 7. Drain any queued files from previous failed uploads
+    # 9. Drain any queued files from previous failed uploads
     upload_spool
 
     log "[DONE]"

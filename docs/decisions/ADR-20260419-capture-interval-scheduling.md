@@ -120,10 +120,15 @@ Until one of those triggers, the 5-min granularity + Option C is the right ceili
    ```
 3. **Migration logic** — replace the current `skipping` branch:
    ```bash
-   if crontab -l 2>/dev/null | grep -qF "capture.sh"; then
-       # Remove ALL prior LitCrop cron entries (keeps the user's other cron lines intact).
-       info "Removing outdated LitCrop cron entries"
-       crontab -l 2>/dev/null | grep -vE '(capture\.sh|LitCrop cron schema)' | crontab -
+   # Anchor the match on /litcrop/capture.sh (not bare "capture.sh") so
+   # unrelated user cron entries like /usr/local/bin/video-capture.sh
+   # aren't deleted as collateral. The `|| true` survives the
+   # grep-returns-1-when-all-filtered case (a pilot Pi whose crontab
+   # contains nothing but the old LitCrop v1 line) under `set -euo pipefail`.
+   _migrate_pattern='(/litcrop/capture\.sh|LitCrop cron schema)'
+   if crontab -l 2>/dev/null | grep -qE "$_migrate_pattern"; then
+       info "Removing outdated LitCrop cron entries (schema migration)"
+       crontab -l 2>/dev/null | grep -vE "$_migrate_pattern" | crontab - || true
    fi
    # Install new entry unconditionally
    (crontab -l 2>/dev/null; echo "$CRON_HEADER"; echo "$CRON_LINE") | crontab -

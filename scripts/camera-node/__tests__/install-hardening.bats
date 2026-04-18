@@ -320,3 +320,106 @@ EOF
     PATH="${MOCK_BIN_DIR}:/bin:/usr/bin" run_install
     [[ "$output" == *"No scheduler configured"* ]] || [[ "$output" == *"will NOT run automatically"* ]]
 }
+
+# ── #454 cron schema v2 migration guards ────────────────────────
+
+# Helper: install a STATEFUL crontab stub. Writes from `crontab -` are
+# persisted in a state file; subsequent `crontab -l` calls return that
+# same state. Without state, the stub would return the original seed on
+# every -l call and the migration flow's "re-read after clean" would see
+# stale data — defeating the point of the migration test.
+install_stateful_crontab() {
+    local initial_content="$1"
+    local state_file="${MOCK_STATE_DIR}/crontab.state"
+    printf '%s' "$initial_content" > "$state_file"
+    # Write to a sibling then atomically rename via mv. Avoids ETXTBSY
+    # ("Text file busy") when the previous crontab stub from setup() was
+    # recently chmod+x'd — Linux can keep an i-node reference that
+    # forbids O_TRUNC opens on the same path for a few ms, but rename(2)
+    # is exempt from the text-busy check.
+    local new_stub="${MOCK_BIN_DIR}/crontab.new"
+    cat > "$new_stub" <<EOF
+#!/usr/bin/env bash
+STATE='${state_file}'
+if [ "\${1:-}" = "-l" ]; then
+    [ -f "\$STATE" ] && cat "\$STATE" || true
+    exit 0
+fi
+# \`crontab -\` writes piped stdin to state. Use a tmp buffer + rename
+# so the state file isn't truncated before the pipe drains — real bash
+# opens '> STATE' with O_TRUNC at pipeline setup time, which races with
+# a concurrent \`crontab -l\` in the same subshell reading the same
+# state. Buffering via a sibling + mv makes the write atomic.
+TMP="\${STATE}.tmp.\$\$"
+cat > "\$TMP"
+mv -f "\$TMP" "\$STATE"
+exit 0
+EOF
+    chmod +x "$new_stub"
+    mv -f "$new_stub" "${MOCK_BIN_DIR}/crontab"
+}
+
+@test "#454 fresh install writes cron schema v2 (*/5) with schema-tag comment" {
+    install_stateful_crontab ""
+    run_install
+    local final; final=$(cat "${MOCK_STATE_DIR}/crontab.state" 2>/dev/null || true)
+    [[ "$final" == *"LitCrop cron schema v2"* ]]
+    [[ "$final" == *"*/5 5-20 * * *"* ]]
+    [[ "$final" == *"capture.sh"* ]]
+}
+
+@test "#454 re-install replaces old */30 v1 entry with v2 (migration path)" {
+    # Pilot Pi scenario: cron already has the old */30 line. Re-running
+    # install.sh must REPLACE it — previously the elif branch just
+    # warned "skipping", which would strand pilot Pis on v1 forever.
+    install_stateful_crontab "*/30 5-20 * * * /home/pi/litcrop/capture.sh >> /home/pi/litcrop/logs/capture.log 2>&1"
+    run_install
+    local final; final=$(cat "${MOCK_STATE_DIR}/crontab.state" 2>/dev/null || true)
+    [[ "$final" == *"*/5 5-20 * * *"* ]]
+    [[ "$final" == *"LitCrop cron schema v2"* ]]
+    [[ "$final" != *"*/30"* ]]
+    # Operator-visible migration notice
+    [[ "$output" == *"Removing outdated LitCrop cron entries"* ]]
+}
+
+@test "#454 re-install preserves unrelated user cron entries" {
+    # Migration must be surgical — only remove LitCrop entries, not the
+    # user's own cron jobs that happen to sit in the same crontab.
+    local seed
+    seed=$(printf '%s\n' \
+        "0 3 * * * /usr/local/bin/backup.sh" \
+        "*/30 5-20 * * * /home/pi/litcrop/capture.sh >> /home/pi/litcrop/logs/capture.log 2>&1" \
+        "# User's weekly archive" \
+        "@weekly /usr/local/bin/archive.sh")
+    install_stateful_crontab "$seed"
+    run_install
+    local final; final=$(cat "${MOCK_STATE_DIR}/crontab.state" 2>/dev/null || true)
+    [[ "$final" == *"backup.sh"* ]]
+    [[ "$final" == *"archive.sh"* ]]
+    [[ "$final" == *"*/5 5-20"* ]]
+    # And MUST NOT retain the old */30 LitCrop entry
+    [[ "$final" != *"*/30 5-20 * * * /home/pi/litcrop/capture.sh"* ]]
+}
+
+@test "#454 migration does NOT delete unrelated scripts containing 'capture.sh' outside /litcrop/" {
+    # Regression guard for the grep-anchor my-reviewer SHOULD-FIX: a user
+    # may have a cron entry naming e.g. /usr/local/bin/video-capture.sh
+    # or ~/scripts/screen-capture.sh. The original regex `capture\.sh`
+    # would have deleted those as collateral. The anchored
+    # `/litcrop/capture\.sh` must leave them alone.
+    local seed
+    seed=$(printf '%s\n' \
+        "*/10 * * * * /usr/local/bin/video-capture.sh" \
+        "0 */4 * * * /home/pi/scripts/screen-capture.sh" \
+        "*/30 5-20 * * * /home/pi/litcrop/capture.sh >> /home/pi/litcrop/logs/capture.log 2>&1")
+    install_stateful_crontab "$seed"
+    run_install
+    local final; final=$(cat "${MOCK_STATE_DIR}/crontab.state" 2>/dev/null || true)
+    # User's non-LitCrop capture scripts must still be there
+    [[ "$final" == *"video-capture.sh"* ]]
+    [[ "$final" == *"screen-capture.sh"* ]]
+    # LitCrop's own v1 entry must be gone
+    [[ "$final" != *"/home/pi/litcrop/capture.sh"* ]]
+    # v2 schema must be installed
+    [[ "$final" == *"*/5 5-20"* ]]
+}

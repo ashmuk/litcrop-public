@@ -208,31 +208,68 @@ else
 fi
 
 # ── Step 5: Set up cron job ─────────────────────────────────────
+#
+# #454 / ADR-20260419: cron schema v2 = fast-tick (*/5) + capture.sh
+# self-skip gated on INTERVAL_SECONDS. This gives users honest control
+# over their interval setting (rounded up to 5-min ticks) without
+# rewriting crontab from capture.sh.
+#
+# Migration: when re-run against a Pi that already has a v1 line
+# (`*/30`), we REPLACE it rather than skip. Previously the elif
+# branch below just warned and skipped, which meant a pilot Pi could
+# never upgrade its cron via `curl | bash` — the exact bug that would
+# have kept the 0.99.6.5 fix invisible on upgrading devices.
 
 echo ""
-CRON_LINE="*/30 5-20 * * * ${LITCROP_DIR}/capture.sh >> ${LITCROP_DIR}/logs/capture.log 2>&1"
+CRON_SCHEMA_TAG="# LitCrop cron schema v2 (fast-tick + self-skip) — do not edit manually"
+CRON_LINE="*/5 5-20 * * * ${LITCROP_DIR}/capture.sh >> ${LITCROP_DIR}/logs/capture.log 2>&1"
 
 if ! command -v crontab >/dev/null 2>&1; then
     # Phase 1 targets systemd timers; for now just warn loudly so the
     # operator knows they need to run capture.sh some other way.
     warn "crontab not installed — skipping cron setup"
     warn "Run capture.sh manually or via systemd: ~/litcrop/capture.sh"
-elif crontab -l 2>/dev/null | grep -qF "capture.sh"; then
-    warn "Cron job already exists — skipping"
 else
+    # Strip any pre-existing LitCrop cron entries (v1 `*/30` lines or
+    # earlier v2 lines) before installing the current version. Keeps
+    # unrelated user entries intact via grep -v on the specific markers
+    # rather than a full crontab reset.
+    #
+    # The `grep -v | crontab -` pipeline exits non-zero when every input
+    # line matches the filter (grep -v returns 1 with no output) — under
+    # `set -euo pipefail` that would kill install.sh mid-script. `|| true`
+    # keeps the migration path safe when the crontab contains nothing
+    # but LitCrop entries (the exact case for a pilot Pi upgrading from
+    # v1).
+    # Migration regex anchored on the `/litcrop/capture.sh` path fragment
+    # (not bare "capture.sh") so unrelated user cron lines naming e.g.
+    # `video-capture.sh` or `screen-capture.sh` aren't deleted as
+    # collateral. The `/litcrop/` prefix is the canonical LitCrop marker —
+    # specific enough to exclude arbitrary capture scripts, portable
+    # across $HOME values (pilot Pi, test harness FAKE_HOME, future
+    # service-account installs). The schema-tag marker is kept as a
+    # plain substring since it's a LitCrop-owned comment unlikely to
+    # collide with anything in the wild.
+    _migrate_pattern='(/litcrop/capture\.sh|LitCrop cron schema)'
+    if crontab -l 2>/dev/null | grep -qE "$_migrate_pattern"; then
+        info "Removing outdated LitCrop cron entries (schema migration)"
+        crontab -l 2>/dev/null | grep -vE "$_migrate_pattern" | crontab - || true
+    fi
+    unset _migrate_pattern
+
     if [ "$INTERACTIVE" = 1 ]; then
-      read -rp "Set up cron job for scheduled capture every 30 min (5am-8pm)? [Y/n] " setup_cron
+      read -rp "Set up cron job for scheduled capture (every 5 min tick, 5am-8pm)? [Y/n] " setup_cron
       setup_cron="${setup_cron:-Y}"
     else
       setup_cron="Y"
       info "Non-interactive mode: auto-enabling cron job"
     fi
     if [[ "$setup_cron" =~ ^[Yy]$ ]]; then
-        (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
-        info "Cron job added: every 30 minutes, 5am-8pm"
+        (crontab -l 2>/dev/null; echo "$CRON_SCHEMA_TAG"; echo "$CRON_LINE") | crontab -
+        info "Cron schema v2 installed: every 5 min tick, 5am-8pm (interval gating in capture.sh)"
     else
         info "Skipped cron setup — you can add manually later:"
-        echo "    (crontab -l; echo '${CRON_LINE}') | crontab -"
+        echo "    (crontab -l; echo '${CRON_SCHEMA_TAG}'; echo '${CRON_LINE}') | crontab -"
     fi
 fi
 
