@@ -60,6 +60,16 @@ export default function VersionHistory() {
       </p>
 
       <VersionEntry
+        version="v0.99.5"
+        date="2026-04-18"
+        items={[
+          'Display name now follows you across devices \u2014 the name you set at sign-up shows up on every first login, not just the browser you registered from',
+          'Profile tabs are keyboard-accessible: Left/Right arrows move both the highlighted tab and keyboard focus in one step, matching screen-reader conventions',
+          'Version-aware build cache: after a release, the app no longer needs a manual CI cache clear to pick up the new version string',
+        ]}
+        current
+      />
+      <VersionEntry
         version="v0.99.4"
         date="2026-04-17"
         items={[
@@ -68,7 +78,6 @@ export default function VersionHistory() {
           'Earthy favicon: sandy background with sage-green sprout (matches app theme)',
           'CI build cache cleared on every deploy \u2014 fixes stale JS chunks that prevented prior features from shipping',
         ]}
-        current
       />
       <VersionEntry
         version="v0.99.3"
