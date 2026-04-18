@@ -236,63 +236,122 @@ else
     fi
 fi
 
-# ── Step 6: Hardware auto-detection (#405) ─────────────────────
+# ── Step 6: Hardware auto-detection (#405 + #455) ──────────────
 #
 # Pre-#405: prompted interactively, defaulted to 0/0 (Class-1) in
 # non-interactive mode. That silently misclassified every Pi installed
 # via `curl | bash` — the scp-workaround also runs non-interactively
 # (ssh + bash). Real hardware was present but the UI showed Class-1.
 #
-# Now: probe the actual hardware. /sys/class/power_supply/*/capacity is
-# the standard Linux interface for battery HATs; cgsensor is the RPZ-PIRS
-# binary. Detection matches DESIGNS-395 §3.4 which Phase 1 T-395-N1-05
-# will formalize across the broader install rewrite.
+# #455: tightened the probes after a Pi Zero WH without any HAT was
+# mis-detected as Class-2. Sysfs now requires `present=1` (some drivers
+# expose a type=Battery entry with present=0 even when no battery is
+# wired), and the i2c grep is row-anchored so a "6b" cell on a non-0x60
+# row can't false-positive. Each positive detection records WHICH path
+# triggered it (_battery_source / _pir_source) so field diagnostics can
+# read the answer straight out of hardware.conf.
+#
+# Set LITCROP_INSTALL_DEBUG=1 in the environment to dump the raw
+# detection inputs (sysfs entries + i2cdetect grid) alongside the
+# outcome — useful when a user reports a surprise classification.
 
 echo ""
 echo "== Hardware Detection (Device Tier) =="
 
 HAS_BATTERY_SENSOR=0
 HAS_PIR_SENSOR=0
+_battery_source="none"
+_pir_source="none"
 
 # Battery HAT — try three methods in priority order:
-#   1. sysfs /sys/class/power_supply/*/type == Battery (standard kernel)
+#   1. sysfs /sys/class/power_supply/*/{type==Battery, present==1}
 #   2. cgpmgr binary on PATH (RPZ-PowerMGR vendor binary)
-#   3. i2c device at known address (hardware present, driver not loaded)
+#   3. i2c device at 0x6b (hardware present, driver not loaded)
+#
+# #455: the old code checked only `type=Battery`. Drivers for some UPS HATs
+# expose a Battery-typed entry with `present=0` when the battery isn't
+# wired, which would flip a bare Pi Zero WH to Class-2. Require present=1
+# when the file exists; tolerate its absence for drivers that don't
+# expose it (older kernels).
 for _ps_dir in /sys/class/power_supply/*/; do
     [ -d "$_ps_dir" ] || continue
-    if [ "$(cat "${_ps_dir}type" 2>/dev/null)" = "Battery" ]; then
+    _ps_type=$(cat "${_ps_dir}type" 2>/dev/null || echo "")
+    _ps_present=$(cat "${_ps_dir}present" 2>/dev/null || echo "")
+    if [ "$_ps_type" = "Battery" ] && { [ -z "$_ps_present" ] || [ "$_ps_present" = "1" ]; }; then
         HAS_BATTERY_SENSOR=1
+        _battery_source="sysfs:$(basename "$_ps_dir")"
         break
     fi
 done
-unset _ps_dir
+unset _ps_dir _ps_type _ps_present
 if [ "$HAS_BATTERY_SENSOR" = 0 ] && command -v cgpmgr >/dev/null 2>&1; then
     HAS_BATTERY_SENSOR=1
+    _battery_source="cgpmgr"
 fi
 # PIR motion sensor — try PATH then i2c fallback:
 #   1. cgsensor binary on PATH (RPZ-PIRS vendor binary)
-#   2. i2c device at known address
+#   2. i2c device at 0x4d
 if command -v cgsensor >/dev/null 2>&1; then
     HAS_PIR_SENSOR=1
+    _pir_source="cgsensor"
 fi
 
-# i2c fallback for both sensors (single bus scan)
+# i2c fallback for both sensors (single bus scan).
+#
+# #455: the old `grep -q ' 6b'` matched any cell ending in "6b" across the
+# whole grid. Although standard i2cdetect output only emits "6b" on the
+# 0x60 row (cells are 2-hex-digit addresses, so column values there are
+# 60..6f), some custom builds or verbose modes prepend text that could
+# include "6b" substrings. Anchor the match to row "60:" and check that
+# "6b" appears as a whole cell (preceded by space/start, followed by
+# space/end) to remove any ambiguity.
+_i2c_out=""
 if { [ "$HAS_BATTERY_SENSOR" = 0 ] || [ "$HAS_PIR_SENSOR" = 0 ]; } && command -v i2cdetect >/dev/null 2>&1; then
-    _i2c_out=$(i2cdetect -y 1 2>/dev/null)
-    if [ "$HAS_BATTERY_SENSOR" = 0 ] && echo "$_i2c_out" | grep -q ' 6b'; then
+    _i2c_out=$(i2cdetect -y 1 2>/dev/null || echo "")
+    if [ "$HAS_BATTERY_SENSOR" = 0 ] && echo "$_i2c_out" | grep -qE '^60:.*[[:space:]]6b([[:space:]]|$)'; then
         HAS_BATTERY_SENSOR=1
+        _battery_source="i2c:0x6b"
         warn "Battery HAT detected via i2c (0x6b) but cgpmgr not on PATH"
         warn "  Install vendor package for full power management support"
     fi
-    if [ "$HAS_PIR_SENSOR" = 0 ] && echo "$_i2c_out" | grep -q ' 4d'; then
+    if [ "$HAS_PIR_SENSOR" = 0 ] && echo "$_i2c_out" | grep -qE '^40:.*[[:space:]]4d([[:space:]]|$)'; then
         HAS_PIR_SENSOR=1
+        _pir_source="i2c:0x4d"
         warn "PIR sensor detected via i2c (0x4d) but cgsensor not on PATH"
         warn "  Install vendor package for motion detection support"
     fi
-    unset _i2c_out
 fi
 
-info "Detected: HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR} HAS_PIR_SENSOR=${HAS_PIR_SENSOR}"
+info "Detected: HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR} (${_battery_source}) HAS_PIR_SENSOR=${HAS_PIR_SENSOR} (${_pir_source})"
+
+# Debug mode — surface the raw inputs so a field operator can diagnose
+# a surprise classification without ssh'ing in.
+if [ "${LITCROP_INSTALL_DEBUG:-0}" = "1" ]; then
+    echo ""
+    echo "-- LITCROP_INSTALL_DEBUG: detection inputs ------"
+    echo "power_supply entries:"
+    for _ps_dir in /sys/class/power_supply/*/; do
+        [ -d "$_ps_dir" ] || continue
+        _name=$(basename "$_ps_dir")
+        _t=$(cat "${_ps_dir}type" 2>/dev/null || echo "?")
+        _p=$(cat "${_ps_dir}present" 2>/dev/null || echo "?")
+        _c=$(cat "${_ps_dir}capacity" 2>/dev/null || echo "?")
+        echo "  ${_name}: type=${_t} present=${_p} capacity=${_c}"
+    done
+    unset _ps_dir _name _t _p _c
+    echo "cgpmgr on PATH: $(command -v cgpmgr 2>/dev/null || echo '(not found)')"
+    echo "cgsensor on PATH: $(command -v cgsensor 2>/dev/null || echo '(not found)')"
+    if [ -n "$_i2c_out" ]; then
+        echo "i2cdetect -y 1 output:"
+        echo "$_i2c_out" | sed 's/^/  /'
+    else
+        echo "i2cdetect: not run (either already detected via sysfs/PATH, or i2cdetect missing)"
+    fi
+    echo "-- end debug dump ------"
+    echo ""
+fi
+unset _i2c_out
+
 if [ "$HAS_BATTERY_SENSOR" = 0 ] && [ "$HAS_PIR_SENSOR" = 0 ]; then
     warn "No sensors detected — classified as Class 1"
     warn "If your Pi has RPZ-PowerMGR or RPZ-PIRS, ensure:"
@@ -314,29 +373,32 @@ if [ "$INTERACTIVE" = 1 ]; then
     if [[ "$override" =~ ^[yY]$ ]]; then
         read -rp "Has battery HAT? [y/N, Enter=keep detected=${HAS_BATTERY_SENSOR}] " battery_answer
         case "$battery_answer" in
-            [yY]*) HAS_BATTERY_SENSOR=1 ;;
-            [nN]*) HAS_BATTERY_SENSOR=0 ;;
-            "")    : ;;  # keep detected value
+            [yY]*) HAS_BATTERY_SENSOR=1; _battery_source="manual" ;;
+            [nN]*) HAS_BATTERY_SENSOR=0; _battery_source="manual" ;;
+            "")    : ;;  # keep detected value + source
         esac
 
         read -rp "Has PIR motion sensor? [y/N, Enter=keep detected=${HAS_PIR_SENSOR}] " pir_answer
         case "$pir_answer" in
-            [yY]*) HAS_PIR_SENSOR=1 ;;
-            [nN]*) HAS_PIR_SENSOR=0 ;;
-            "")    : ;;  # keep detected value
+            [yY]*) HAS_PIR_SENSOR=1; _pir_source="manual" ;;
+            [nN]*) HAS_PIR_SENSOR=0; _pir_source="manual" ;;
+            "")    : ;;  # keep detected value + source
         esac
     fi
 fi
 
 # Write hardware flags to a dedicated file (not .env — keeps credentials
-# separate from hardware config, so .env can be overwritten safely)
+# separate from hardware config, so .env can be overwritten safely).
+# #455: include the detection source as a comment so a field operator can
+# read "why was this Pi flagged Class-2?" without re-running the install.
 cat > "${LITCROP_DIR}/hardware.conf" <<EOF
 # LitCrop hardware configuration (auto-detected by install.sh)
+# Detection sources: battery=${_battery_source}, pir=${_pir_source}
 HAS_BATTERY_SENSOR=${HAS_BATTERY_SENSOR}
 HAS_PIR_SENSOR=${HAS_PIR_SENSOR}
 EOF
 chmod 600 "${LITCROP_DIR}/hardware.conf"
-info "Hardware flags saved to ${LITCROP_DIR}/hardware.conf"
+info "Hardware flags saved to ${LITCROP_DIR}/hardware.conf (battery source: ${_battery_source})"
 
 # ── Step 7: Check for .env ──────────────────────────────────────
 

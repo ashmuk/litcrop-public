@@ -393,11 +393,21 @@ send_heartbeat() {
     fi
     unset _df_line
 
-    # Battery (UPS HAT if connected) — validate numeric
+    # Battery (UPS HAT if connected) — validate numeric.
+    # #455: gate the sysfs read on HAS_BATTERY_SENSOR=1 from hardware.conf.
+    # Some power_supply drivers expose a Battery-typed entry with
+    # present=0 even when no battery is wired; install.sh now rejects
+    # those at detection time, but if one slips through (e.g., a kernel
+    # quirk that flips present=1 transiently) we still don't want the
+    # heartbeat to emit a battery_level claiming a HAT exists. UI keys
+    # off capabilities.has_battery_sensor anyway, so a null here is the
+    # honest report for a Class-1 Pi.
     local battery_level="null"
-    local raw_battery
-    raw_battery=$(cat /sys/class/power_supply/*/capacity 2>/dev/null | head -1 || echo "")
-    [[ "$raw_battery" =~ ^[0-9]+$ ]] && battery_level="$raw_battery"
+    if [ "${HAS_BATTERY_SENSOR:-0}" = "1" ]; then
+        local raw_battery
+        raw_battery=$(cat /sys/class/power_supply/*/capacity 2>/dev/null | head -1 || echo "")
+        [[ "$raw_battery" =~ ^[0-9]+$ ]] && battery_level="$raw_battery"
+    fi
 
     # Validate wifi_signal_dbm is numeric
     [[ ! "$wifi_signal_dbm" =~ ^-?[0-9]+$ ]] && wifi_signal_dbm="null"

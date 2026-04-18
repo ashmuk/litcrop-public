@@ -209,6 +209,110 @@ EOF
     grep -q '^HAS_BATTERY_SENSOR=0$' "${HOME}/litcrop/hardware.conf"
 }
 
+# ── #455 Class-2 false-positive guards ──────────────────────────
+
+@test "#455 hardware.conf records the detection source for operator diagnosis" {
+    # A bare test container with no sensors should produce a no-sensor
+    # classification AND a 'battery=none' annotation so field operators
+    # can see why a Pi landed in Class-1 without re-running the install.
+    export PATH="${MOCK_BIN_DIR}:/bin:/usr/bin"
+    run_install
+    local conf="${HOME}/litcrop/hardware.conf"
+    [ -f "$conf" ]
+    grep -q '^# Detection sources: battery=none, pir=none$' "$conf"
+}
+
+@test "#455 cgpmgr-detected battery is recorded with source=cgpmgr" {
+    # Install a cgpmgr stub — install.sh should flip HAS_BATTERY_SENSOR=1
+    # AND mark the source so we can distinguish this from an i2c / sysfs hit.
+    cat > "${MOCK_BIN_DIR}/cgpmgr" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_BIN_DIR}/cgpmgr"
+    run_install
+    local conf="${HOME}/litcrop/hardware.conf"
+    grep -q '^HAS_BATTERY_SENSOR=1$' "$conf"
+    grep -q 'battery=cgpmgr' "$conf"
+}
+
+@test "#455 LITCROP_INSTALL_DEBUG=1 dumps detection inputs" {
+    # Debug mode should surface the raw inputs (sysfs entries, cgpmgr/cgsensor
+    # PATH status, i2c output) so a surprise classification can be diagnosed
+    # without ssh'ing to the Pi. This test just asserts the debug header
+    # + a representative line are printed.
+    export PATH="${MOCK_BIN_DIR}:/bin:/usr/bin"
+    LITCROP_INSTALL_DEBUG=1 run_install
+    [[ "$output" == *"LITCROP_INSTALL_DEBUG: detection inputs"* ]]
+    [[ "$output" == *"power_supply entries:"* ]]
+    [[ "$output" == *"cgpmgr on PATH:"* ]]
+}
+
+@test "#455 Detected line names the battery source for operator visibility" {
+    # The summary line previously read "Detected: HAS_BATTERY_SENSOR=0 HAS_PIR_SENSOR=0".
+    # #455 adds the source in parentheses so "why did this flip?" is answerable
+    # from a single line of log output.
+    export PATH="${MOCK_BIN_DIR}:/bin:/usr/bin"
+    run_install
+    [[ "$output" == *"HAS_BATTERY_SENSOR=0 (none)"* ]]
+    [[ "$output" == *"HAS_PIR_SENSOR=0 (none)"* ]]
+}
+
+@test "#455 i2c 0x6b grep is anchored to row 60: (row-prefix false positive)" {
+    # Feed install.sh an i2cdetect stub whose output contains '6b' in a cell
+    # on a NON-0x60 row. The old grep ' 6b' would have lit up false-positive;
+    # the new row-anchored grep rejects it.
+    #
+    # We realistically can't inject a '6b' cell into i2cdetect output that
+    # would ever appear outside row 60 in the real world (i2cdetect only
+    # emits the address in its own row), but a verbose-mode build or
+    # verbose logging prefix could include "6b" text. Simulate by emitting
+    # a header line that contains "6b" as substring.
+    cat > "${MOCK_BIN_DIR}/i2cdetect" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+I will probe address range 0x08-0x77. Probing 6b-ish addresses may take longer.
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- --
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+70: -- -- -- -- -- -- -- --
+OUT
+EOF
+    chmod +x "${MOCK_BIN_DIR}/i2cdetect"
+    export PATH="${MOCK_BIN_DIR}:/bin:/usr/bin"
+    run_install
+    # No HAT on row 60 → should stay Class-1
+    grep -q '^HAS_BATTERY_SENSOR=0$' "${HOME}/litcrop/hardware.conf"
+}
+
+@test "#455 i2c 0x6b on row 60: is correctly detected" {
+    # The positive case — a real HAT at 0x6b shows up on row 60.
+    cat > "${MOCK_BIN_DIR}/i2cdetect" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- --
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+60: -- -- -- -- -- -- -- -- -- -- -- 6b -- -- -- --
+70: -- -- -- -- -- -- -- --
+OUT
+EOF
+    chmod +x "${MOCK_BIN_DIR}/i2cdetect"
+    export PATH="${MOCK_BIN_DIR}:/bin:/usr/bin"
+    run_install
+    grep -q '^HAS_BATTERY_SENSOR=1$' "${HOME}/litcrop/hardware.conf"
+    grep -q 'battery=i2c:0x6b' "${HOME}/litcrop/hardware.conf"
+}
+
 @test "final banner re-warns when crontab is absent" {
     # Remove the crontab stub that setup() installs so the binary is gone.
     rm -f "${MOCK_BIN_DIR}/crontab"
