@@ -92,18 +92,24 @@ authTest.describe('Profile tablist a11y', () => {
    * (focus follows selection on Left/Right arrow keys).
    */
   authTest('A-4: ArrowRight on tab-farms moves focus to tab-you', async ({ authenticatedPage }) => {
-    await authenticatedPage.locator('#tab-farms').focus();
-    await authenticatedPage.keyboard.press('ArrowRight');
+    // ProfilePage is an Astro client:load island — the tablist is in the
+    // server-rendered HTML before Preact's onKeyDown listener is attached.
+    // A bare .focus() + .press() can race with hydration and dispatch the
+    // keydown into a dead tree.  Exercise the onClick first as a hydration
+    // probe: once aria-selected flips to "true" from a click, we know
+    // Preact has committed and event listeners are live.
+    await authenticatedPage.locator('#tab-farms').click();
+    await expect(authenticatedPage.locator('#tab-farms')).toHaveAttribute('aria-selected', 'true');
 
-    // Focus shift is driven by a useEffect that runs AFTER Preact's re-render
-    // completes, so the post-ArrowRight focus state is observable but may
-    // arrive a tick later. Playwright's toBeFocused auto-waits for the
-    // focus to settle — the preferred assertion style over manual
-    // document.activeElement polling.
-    await expect(authenticatedPage.locator('#tab-you')).toBeFocused({ timeout: 5000 });
+    // locator.press() atomically focuses the target and sends the key —
+    // no gap where focus can be stolen back.
+    await authenticatedPage.locator('#tab-farms').press('ArrowRight');
 
-    // Sanity: aria-selected also reflects the new active tab
+    // Selection updates synchronously inside the handler.
     await expect(authenticatedPage.locator('#tab-you')).toHaveAttribute('aria-selected', 'true');
     await expect(authenticatedPage.locator('#tab-farms')).toHaveAttribute('aria-selected', 'false');
+
+    // Focus shift runs in a post-render useEffect; toBeFocused auto-waits.
+    await expect(authenticatedPage.locator('#tab-you')).toBeFocused({ timeout: 5000 });
   });
 });
