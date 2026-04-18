@@ -55,6 +55,11 @@ export default function ProfilePage() {
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [preferredRole, setPreferredRole] = useState<'owner' | 'staff' | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
+  // Tracks a keyboard-driven tab switch so the focus shift can happen in a
+  // useEffect AFTER Preact re-renders the tablist — decouples focus from
+  // the keydown handler's race with the state flush. Null on initial
+  // mount and after every settled focus shift.
+  const [keyboardFocusTarget, setKeyboardFocusTarget] = useState<TabName | null>(null);
   const activeFarmId = useLocalFarmId('');
 
   const settingsDirty = useRef(false);
@@ -90,15 +95,22 @@ export default function ProfilePage() {
     if (next) {
       e.preventDefault();
       switchTab(next);
-      // WAI-ARIA tablist pattern: focus follows selection on arrow keys.
-      // Defer via queueMicrotask so Preact's state-update flush completes
-      // first — otherwise the subsequent re-render can blur the button we
-      // just focused, producing the race caught by Playwright A-4.
-      queueMicrotask(() => {
-        document.getElementById(`tab-${next}`)?.focus();
-      });
+      // Ask the useEffect below to move focus AFTER the re-render.
+      // Doing it synchronously (or via queueMicrotask) races with Preact's
+      // pending state flush and the focus can get blurred by the subsequent
+      // DOM patch.
+      setKeyboardFocusTarget(next);
     }
   }
+
+  // WAI-ARIA tablist pattern: focus follows selection on arrow keys.
+  // Runs only when a keyboard handler has explicitly requested a focus
+  // shift — NOT on initial mount or URL-driven deep-link tab changes.
+  useEffect(() => {
+    if (!keyboardFocusTarget) return;
+    document.getElementById(`tab-${keyboardFocusTarget}`)?.focus();
+    setKeyboardFocusTarget(null);
+  }, [keyboardFocusTarget]);
 
   function refreshFarms(): void {
     getMyFarms()

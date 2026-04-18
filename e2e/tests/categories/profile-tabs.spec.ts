@@ -95,14 +95,12 @@ authTest.describe('Profile tablist a11y', () => {
     await authenticatedPage.locator('#tab-farms').focus();
     await authenticatedPage.keyboard.press('ArrowRight');
 
-    // Focus shift is deferred via queueMicrotask so Preact's re-render
-    // flushes before the button is focused; wait for the post-render state
-    // rather than reading document.activeElement immediately.
-    await authenticatedPage.waitForFunction(
-      () => document.activeElement?.id === 'tab-you',
-      undefined,
-      { timeout: 5000 },
-    );
+    // Focus shift is driven by a useEffect that runs AFTER Preact's re-render
+    // completes, so the post-ArrowRight focus state is observable but may
+    // arrive a tick later. Playwright's toBeFocused auto-waits for the
+    // focus to settle — the preferred assertion style over manual
+    // document.activeElement polling.
+    await expect(authenticatedPage.locator('#tab-you')).toBeFocused({ timeout: 5000 });
 
     // Sanity: aria-selected also reflects the new active tab
     await expect(authenticatedPage.locator('#tab-you')).toHaveAttribute('aria-selected', 'true');
