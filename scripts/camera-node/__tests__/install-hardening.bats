@@ -83,14 +83,19 @@ EOF
     [[ "$argv" == *"ashmuk/litcrop/develop/scripts/camera-node/capture.sh"* ]]
 }
 
-@test "#404 default branch is 'main' when --branch is omitted" {
+@test "default fetch hits the CDN (litcrop.com/capture.sh) when --branch is omitted" {
+    # Regression guard: the default path MUST NOT rely on GitHub raw,
+    # which returns 404 for private repos and is the exact failure mode
+    # reported in the field. When BRANCH=main (the default), capture.sh
+    # must come from the CloudFront-fronted static site.
     local isolated; isolated=$(mktemp -d)
     cp "$INSTALL_SH" "${isolated}/install.sh"
     cat > "${MOCK_BIN_DIR}/curl" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> '${MOCK_STATE_DIR}/curl.argv'
+# Emit a valid shebang so install.sh's post-download validation passes.
 for arg in "\$@"; do
-    if [ "\$prev" = "-o" ]; then touch "\$arg"; break; fi
+    if [ "\$prev" = "-o" ]; then printf '#!/usr/bin/env bash\n' > "\$arg"; break; fi
     prev="\$arg"
 done
 exit 0
@@ -101,7 +106,9 @@ EOF
     rm -rf "$isolated"
 
     local argv; argv=$(cat "${MOCK_STATE_DIR}/curl.argv" 2>/dev/null || true)
-    [[ "$argv" == *"ashmuk/litcrop/main/scripts/camera-node/capture.sh"* ]]
+    [[ "$argv" == *"https://litcrop.com/capture.sh"* ]]
+    # Must NOT have fallen back to GitHub raw for the default case
+    [[ "$argv" != *"raw.githubusercontent.com"* ]]
 }
 
 @test "#405 no-sensors host produces hardware.conf with both flags = 0" {

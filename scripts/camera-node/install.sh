@@ -7,13 +7,15 @@
 # Does NOT require sudo for the core setup.
 #
 # Usage:
-#   Production (main):
+#   Production (default — fetches capture.sh from the CDN, works for
+#   private repos since the file is served by CloudFront not GitHub raw):
 #     curl -sL https://litcrop.com/install.sh | bash
 #
-#   Staging (ahead of main — pull matching capture.sh from develop):
+#   Staging (pull matching capture.sh from develop via GitHub raw —
+#   REQUIRES PUBLIC REPO, or use the scp fallback below):
 #     curl -sL https://<staging>/install.sh | bash -s -- --branch=develop
 #
-#   Or directly from GitHub:
+#   Or directly from GitHub (public-repo only):
 #     curl -sL https://raw.githubusercontent.com/ashmuk/litcrop/main/scripts/camera-node/install.sh | bash
 #
 #   Or manually (preferred for dev — SCRIPT_DIR/capture.sh wins over download):
@@ -86,7 +88,14 @@ warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 
 LITCROP_DIR="${HOME}/litcrop"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd 2>/dev/null || echo "/tmp/litcrop-setup")"
+# When piped via `curl | bash`, there is no script file, so BASH_SOURCE[0]
+# is unset — and under `set -u` that aborts with "unbound variable" before
+# `dirname`'s 2>/dev/null can catch anything. The `:-` default expansion
+# is nounset-safe: it yields the given fallback when the var is unset.
+# The fallback path points at /tmp/litcrop-setup (the scp-workflow dir)
+# so dirname resolves to a real-looking directory; if it doesn't exist
+# cd fails and the outer `|| echo` still produces a usable SCRIPT_DIR.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-/tmp/litcrop-setup/install.sh}")" 2>/dev/null && pwd 2>/dev/null || echo "/tmp/litcrop-setup")"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -108,21 +117,34 @@ if [ -f "${SCRIPT_DIR}/capture.sh" ]; then
     info "Installing capture.sh from local files"
     cp "${SCRIPT_DIR}/capture.sh" "${LITCROP_DIR}/capture.sh"
 else
-    # #404: branch-aware download. Pulls from whatever branch the caller
-    # named (default main). Prevents the "install.sh from staging v0.97
-    # downloads capture.sh from main v0.93" footgun.
-    info "Downloading capture.sh from GitHub (branch: ${BRANCH})..."
-    curl -sfL "https://raw.githubusercontent.com/ashmuk/litcrop/${BRANCH}/scripts/camera-node/capture.sh" \
-        -o "${LITCROP_DIR}/capture.sh" || {
-        error "Failed to download capture.sh from branch '${BRANCH}'"
-        error "If the repo is private, use scp instead:"
+    # Default path (BRANCH=main): fetch from the CDN that fronts the
+    # frontend. The same CloudFront distribution serving /install.sh also
+    # serves /capture.sh (symlinked from scripts/camera-node/capture.sh
+    # into src/frontend/public/), so this works even when the GitHub
+    # repo is private — no auth required.
+    #
+    # Override with --branch=<name> to pull a non-main branch from GitHub
+    # raw instead (useful when staging runs ahead of main and needs a
+    # matching capture.sh). That path REQUIRES a public repo or a working
+    # GitHub token in the caller's environment; otherwise use scp to
+    # transfer capture.sh manually.
+    if [ "$BRANCH" = "main" ]; then
+        CAPTURE_URL="https://litcrop.com/capture.sh"
+        info "Downloading capture.sh from ${CAPTURE_URL}..."
+    else
+        CAPTURE_URL="https://raw.githubusercontent.com/ashmuk/litcrop/${BRANCH}/scripts/camera-node/capture.sh"
+        info "Downloading capture.sh from GitHub (branch: ${BRANCH})..."
+    fi
+    curl -sfL "${CAPTURE_URL}" -o "${LITCROP_DIR}/capture.sh" || {
+        error "Failed to download capture.sh from: ${CAPTURE_URL}"
+        error "If the repo is private and you used --branch=${BRANCH}, use scp instead:"
         error "  scp scripts/camera-node/capture.sh pi@host:~/litcrop/"
         exit 1
     }
     if ! head -1 "${LITCROP_DIR}/capture.sh" | grep -q '^#!/'; then
         error "Downloaded capture.sh is not a valid script (missing shebang)."
-        error "This usually means GitHub returned an error page instead of the file."
-        error "Check: is the branch '${BRANCH}' pushed? Is the repo public?"
+        error "The URL returned an error page instead of the file: ${CAPTURE_URL}"
+        error "Check: is the CDN deploy up to date? Is branch '${BRANCH}' pushed?"
         rm -f "${LITCROP_DIR}/capture.sh"
         exit 1
     fi

@@ -1,0 +1,1 @@
+../../../scripts/camera-node/capture.sh
