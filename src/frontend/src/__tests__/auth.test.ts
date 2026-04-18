@@ -264,4 +264,60 @@ describe('signUp custom:display_name attribute', () => {
     const displayAttr = sentAttrs(calls).find((a) => a.Name === 'custom:display_name');
     expect(displayAttr?.Value).toBe('Dan');
   });
+
+  // ── C2: edge-case values for custom:display_name ──────────────────
+  //
+  // The frontend signUp must pass the (trimmed) value through verbatim to
+  // Cognito.  Cognito's own maxLen=100 / character-class validation happens
+  // server-side on SignUp — we only assert that the client-side trim is
+  // applied and nothing else is mangled (no truncation, no escaping beyond
+  // what JSON.stringify already does for transport).
+
+  const ONE_HUNDRED_A = 'a'.repeat(100);
+  const ONE_HUNDRED_ONE_A = 'a'.repeat(101);
+
+  it.each([
+    // [label, input, expected Value sent in UserAttributes]
+    ['Japanese kanji (multi-byte)', '田中太郎', '田中太郎'],
+    ['emoji with skin-tone modifier', '🌾👨‍🌾', '🌾👨‍🌾'],
+    ['exact 100-char boundary',      ONE_HUNDRED_A, ONE_HUNDRED_A],
+    ['101-char over-boundary passes through (Cognito rejects server-side)', ONE_HUNDRED_ONE_A, ONE_HUNDRED_ONE_A],
+    ['leading + trailing whitespace only trimmed at edges', '  Hello World  ', 'Hello World'],
+    ['internal whitespace preserved', 'Alice  Bob', 'Alice  Bob'],
+    ['mixed quotes and backslashes preserved (JSON.stringify handles transport)', 'Alice "the" \\best/', 'Alice "the" \\best/'],
+    ['apostrophe (typical user name)', "O'Brien", "O'Brien"],
+    ['hyphen + accent (Latin-1)', 'Renée-Léa', 'Renée-Léa'],
+    ['mixed script (Japanese + Latin + digits)', '佐藤 Alice 42', '佐藤 Alice 42'],
+    // Pass-through contract: frontend does NOT sanitize these; Cognito's
+    // server-side allowed-char validation is expected to reject them.
+    // These tests document the boundary so future "defensive strip" refactors
+    // surface as test failures and get an explicit review.
+    ['null-byte inside the string is forwarded as-is (pass-through contract)', 'Alice\x00Bob', 'Alice\x00Bob'],
+    ['RTL override mark is forwarded as-is (pass-through contract)', '\u202EAlice', '\u202EAlice'],
+  ])('passes %s verbatim after edge-trimming', async (_label, input, expected) => {
+    const calls = mockCognitoCapture(200, { UserSub: 'edge-sub', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('edge@example.com', 'Password1!', input);
+
+    const displayAttr = sentAttrs(calls).find((a) => a.Name === 'custom:display_name');
+    expect(displayAttr?.Value).toBe(expected);
+  });
+
+  it('omits custom:display_name when the input is only a single whitespace char', async () => {
+    const calls = mockCognitoCapture(200, { UserSub: 's', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('ws@example.com', 'Password1!', '\t');
+
+    const names = sentAttrs(calls).map((a) => a.Name);
+    expect(names).not.toContain('custom:display_name');
+  });
+
+  it('omits custom:display_name when the input is only newlines', async () => {
+    const calls = mockCognitoCapture(200, { UserSub: 's', UserConfirmed: false });
+    const { signUp } = await import('../lib/auth');
+    await signUp('nl@example.com', 'Password1!', '\n\n\n');
+
+    const names = sentAttrs(calls).map((a) => a.Name);
+    expect(names).not.toContain('custom:display_name');
+  });
 });
