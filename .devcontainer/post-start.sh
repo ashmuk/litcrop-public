@@ -19,6 +19,13 @@ mkdir -p "$CLAUDE_DIR"
 
 # ── Layer 1: Writable state (persisted in volume) ──────────────────────
 # These directories/files need write access during Claude Code operation.
+#
+# NOTE: `projects` is intentionally omitted. The memory bind mount in
+# devcontainer.json (~/.claude/projects/-workspace/memory) causes Docker to
+# pre-create ~/.claude/projects as a root-owned real directory before this
+# script runs, which makes it a poor candidate for a state-volume symlink.
+# Per-project memory for `-workspace` lives on the host via the bind mount;
+# memory for any other project is ephemeral in the container layer (acceptable).
 STATE_DIRS=(
     "backups"
     "cache"
@@ -29,7 +36,6 @@ STATE_DIRS=(
     "logs"
     "paste-cache"
     "plans"
-    "projects"
     "session-env"
     "shell-snapshots"
     "statsig"
@@ -42,7 +48,16 @@ STATE_DIRS=(
 
 for dir in "${STATE_DIRS[@]}"; do
     mkdir -p "$STATE_DIR/$dir"
-    ln -sfn "$STATE_DIR/$dir" "$CLAUDE_DIR/$dir"
+    target="$CLAUDE_DIR/$dir"
+    # Defensive: if the target slot is already a real directory (e.g. created
+    # by Docker as the parent of a bind mount), `ln -sfn` would create the
+    # symlink *inside* it ($target/$dir) rather than replacing it. Skip in
+    # that case so the script can proceed to Layers 2 and 3.
+    if [ -d "$target" ] && [ ! -L "$target" ]; then
+        echo "[post-start] Skipping symlink for '$dir' (slot is a real directory, likely bind-mounted)"
+        continue
+    fi
+    ln -sfn "$STATE_DIR/$dir" "$target"
 done
 
 # Writable state files (create in volume if not present, symlink into ~/.claude)
