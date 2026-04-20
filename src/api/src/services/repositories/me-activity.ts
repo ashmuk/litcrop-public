@@ -1,4 +1,4 @@
-import { QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { QueryCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb';
 import type {
   ActivityItem,
   ActivityItemType,
@@ -26,6 +26,13 @@ interface ActivityCursor {
   id: string;
 }
 
+/** Throw the ValidationException shape the route maps to a generic 400. */
+function badCursor(message: string): never {
+  const err = new Error(message);
+  err.name = 'ValidationException';
+  throw err;
+}
+
 export function encodeActivityCursor(c: ActivityCursor): string {
   return Buffer.from(JSON.stringify(c)).toString('base64url');
 }
@@ -41,9 +48,7 @@ export function decodeActivityCursor(cursor: string, expectedUserId: string): Ac
   try {
     parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf-8'));
   } catch {
-    const err = new Error('Invalid cursor format');
-    err.name = 'ValidationException';
-    throw err;
+    badCursor('Invalid cursor format');
   }
   if (
     !parsed ||
@@ -53,20 +58,12 @@ export function decodeActivityCursor(cursor: string, expectedUserId: string): Ac
     typeof (parsed as ActivityCursor).type !== 'string' ||
     typeof (parsed as ActivityCursor).id !== 'string'
   ) {
-    const err = new Error('Invalid cursor payload');
-    err.name = 'ValidationException';
-    throw err;
+    badCursor('Invalid cursor payload');
   }
   const c = parsed as ActivityCursor;
-  if (c.user_id !== expectedUserId) {
-    const err = new Error('Invalid cursor: user mismatch');
-    err.name = 'ValidationException';
-    throw err;
-  }
+  if (c.user_id !== expectedUserId) badCursor('Invalid cursor: user mismatch');
   if (c.type !== 'diary' && c.type !== 'device' && c.type !== 'image') {
-    const err = new Error('Invalid cursor: unknown type');
-    err.name = 'ValidationException';
-    throw err;
+    badCursor('Invalid cursor: unknown type');
   }
   return c;
 }
@@ -87,69 +84,74 @@ function imageDeepLink(bedId: string, imageId: string): string {
 
 // ── Per-source queries (farm-scoped, filtered by caller) ─────────
 
-async function queryDiaryForUserInFarm(
-  farmId: string,
-  userId: string,
-): Promise<Array<{ id: string; timestamp: string; category: DiaryCategory; entry_type: DiaryEntryType; description: string; bed_id: string | null }>> {
-  // Scan the farm's diary block; filter by created_by in-memory.
+/** Paginated prefix scan — collects all items matching PK + begins_with(SK, prefix). */
+async function scanAllByPrefix(partitionKey: string, skPrefix: string): Promise<Record<string, unknown>[]> {
   const items: Record<string, unknown>[] = [];
   let lastKey: Record<string, unknown> | undefined;
   do {
-    const result = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk.farm(farmId),
-          ':prefix': DDB_KEY_PREFIXES.DIARY,
-        },
-        ExclusiveStartKey: lastKey,
-      }),
-    );
+    const input: QueryCommandInput = {
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+      ExpressionAttributeValues: { ':pk': partitionKey, ':prefix': skPrefix },
+      ExclusiveStartKey: lastKey,
+    };
+    const result = await ddb.send(new QueryCommand(input));
     items.push(...(result.Items ?? []));
     lastKey = result.LastEvaluatedKey;
   } while (lastKey);
+  return items;
+}
+
+interface DiaryRow {
+  id: string;
+  timestamp: string;
+  category: DiaryCategory;
+  entry_type: DiaryEntryType;
+  description: string;
+  bed_id: string | null;
+}
+
+async function queryDiaryForUserInFarm(farmId: string, userId: string): Promise<DiaryRow[]> {
+  // Scan the farm's diary block; filter by created_by in-memory (strict
+  // `=== userId` drops legacy records with null attribution — R2 guard).
+  const items = await scanAllByPrefix(pk.farm(farmId), DDB_KEY_PREFIXES.DIARY);
   return items
     .filter((it) => it['created_by'] === userId)
     .map((it) => ({
       id: it['id'] as string,
       timestamp: it['created_at'] as string,
       category: it['category'] as DiaryCategory,
-      entry_type: ((it['entry_type'] as DiaryEntryType) ?? 'actual'),
+      entry_type: (it['entry_type'] as DiaryEntryType) ?? 'actual',
       description: it['description'] as string,
-      bed_id: ((it['bed_id'] as string) ?? null),
+      bed_id: (it['bed_id'] as string) ?? null,
     }));
 }
 
-async function queryDevicesForUserInFarm(
-  farmId: string,
-  userId: string,
-): Promise<Array<{ id: string; timestamp: string; node_name: string; bed_id: string }>> {
-  const items: Record<string, unknown>[] = [];
-  let lastKey: Record<string, unknown> | undefined;
-  do {
-    const result = await ddb.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
-        ExpressionAttributeValues: {
-          ':pk': pk.farm(farmId),
-          ':prefix': DDB_KEY_PREFIXES.DEVICE,
-        },
-        ExclusiveStartKey: lastKey,
-      }),
-    );
-    items.push(...(result.Items ?? []));
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey);
+interface DeviceRow {
+  id: string;
+  timestamp: string;
+  node_name: string;
+  bed_id: string;
+}
+
+async function queryDevicesForUserInFarm(farmId: string, userId: string): Promise<DeviceRow[]> {
+  const items = await scanAllByPrefix(pk.farm(farmId), DDB_KEY_PREFIXES.DEVICE);
   return items
     .filter((it) => it['registered_by'] === userId)
     .map((it) => ({
-      id: (it['device_id'] as string),
-      timestamp: (it['created_at'] as string),
-      node_name: (it['node_name'] as string),
-      bed_id: (it['bed_id'] as string),
+      id: it['device_id'] as string,
+      timestamp: it['created_at'] as string,
+      node_name: it['node_name'] as string,
+      bed_id: it['bed_id'] as string,
     }));
+}
+
+interface ImageRow {
+  id: string;
+  timestamp: string;
+  bed_id: string;
+  trigger: TriggerType;
+  thumbnail_key: string | null;
 }
 
 /**
@@ -166,29 +168,13 @@ async function queryImagesForUserInFarm(
   userId: string,
   piBedIds: Set<string>,
   beds: Bed[],
-): Promise<Array<{ id: string; timestamp: string; bed_id: string; trigger: TriggerType; thumbnail_key: string | null }>> {
-  const out: Array<{ id: string; timestamp: string; bed_id: string; trigger: TriggerType; thumbnail_key: string | null }> = [];
+): Promise<ImageRow[]> {
+  const out: ImageRow[] = [];
   for (const bed of beds) {
-    const items: Record<string, unknown>[] = [];
-    let lastKey: Record<string, unknown> | undefined;
-    do {
-      const result = await ddb.send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
-          ExpressionAttributeValues: {
-            ':pk': pk.bed(bed.id),
-            ':prefix': DDB_KEY_PREFIXES.IMG,
-          },
-          ExclusiveStartKey: lastKey,
-        }),
-      );
-      items.push(...(result.Items ?? []));
-      lastKey = result.LastEvaluatedKey;
-    } while (lastKey);
+    const items = await scanAllByPrefix(pk.bed(bed.id), DDB_KEY_PREFIXES.IMG);
     for (const it of items) {
       const uploadedBy = (it['uploaded_by'] as string | null | undefined) ?? null;
-      const trigger = ((it['trigger'] as TriggerType) ?? 'scheduled');
+      const trigger = (it['trigger'] as TriggerType) ?? 'scheduled';
       const isManualMatch = uploadedBy !== null && uploadedBy === userId;
       const isPiMatch = trigger === 'scheduled' && piBedIds.has(bed.id);
       if (!isManualMatch && !isPiMatch) continue;
@@ -197,7 +183,7 @@ async function queryImagesForUserInFarm(
         timestamp: it['uploaded_at'] as string,
         bed_id: bed.id,
         trigger,
-        thumbnail_key: ((it['thumbnail_key'] as string) ?? null),
+        thumbnail_key: (it['thumbnail_key'] as string) ?? null,
       });
     }
   }
