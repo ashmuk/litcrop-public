@@ -99,7 +99,10 @@ function ItemRow({ item }: { item: ActivityItem }) {
 }
 
 export default function ProfileActivityList() {
-  const { items, loading, initialLoading, error, hasMore, totalCount, loadMore, retry } = useMeActivity(20);
+  // 10 items per page keeps the first paint short on the Profile "You" tab —
+  // account-management sections sit above and should be visible without a
+  // scroll. Users who want more can tap Load more.
+  const { items, loading, initialLoading, error, hasMore, totalCount, loadMore, retry } = useMeActivity(10);
 
   return (
     <section

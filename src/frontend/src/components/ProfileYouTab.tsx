@@ -408,9 +408,10 @@ export default function ProfileYouTab({
         </div>
       )}
 
-      {/* Logout kept above the activity feed so a long paginated feed can't
-          push it below the fold. Account-management sections (Change Password,
-          Delete Account) stay in the bottom cluster where users expect them. */}
+      {/* Activity is the only variable-length section on this tab — it
+          anchors the end. All fixed-height sections (Logout, Change Password,
+          Delete Account) sit above it so none drift below the fold as the
+          activity feed paginates. */}
       <div style="border-top:var(--border-default);padding-top:var(--space-4);margin-top:var(--space-2);margin-bottom:var(--space-4)">
         <button
           type="button"
@@ -422,11 +423,11 @@ export default function ProfileYouTab({
         </button>
       </div>
 
-      <ProfileActivityList />
-
       <ChangePasswordSection />
 
       <DeleteAccountSection farms={farms} />
+
+      <ProfileActivityList />
     </section>
   );
 }
