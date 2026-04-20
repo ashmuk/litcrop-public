@@ -229,6 +229,7 @@ CI/CD: GitHub Actions runs on push to `main` via `.github/workflows/deploy.yml` 
 - Follow existing code patterns before introducing new ones
 - See [RULES.md](RULES.md) for stable project policy
 - See [CLAUDE.md](CLAUDE.md) for AI assistant guidelines
+- See [CHANGELOG.md](CHANGELOG.md) for the machine-readable release log (Keep a Changelog format)
 
 ## Development & AI Assistance
 
