@@ -80,6 +80,10 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0997_2_item_1": "Farm description now visible on your Profile → Farms tab",
+    "v0997_2_item_2": "Pi camera setup guide: new troubleshooting section and clearer SSH step",
+    "v0997_1_item_1": "Weather forecast warnings now fully translated to Japanese with localised dates",
+    "v0997_1_item_2": "Cross-browser testing expanded (WebKit / Safari added) and automated accessibility scans in place",
     "v0997_item_1": "LICENSE file added (MIT) — the project now has a clear open-source licence",
     "v0997_item_2": "Resolved 9 security advisories in our dependencies (no known exploit impact for LitCrop users)",
     "v0997_item_3": "Added SECURITY.md with a private disclosure channel for reporting vulnerabilities",

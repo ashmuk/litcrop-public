@@ -11,16 +11,40 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ## [Unreleased]
 
+_No unreleased changes — see [0.99.7.3] scope tracking in [#462](https://github.com/ashmuk/litcrop/issues/462)._
+
+---
+
+## [0.99.7.2] - 2026-04-20 — *Wave 2 Part A: UX polish + scaffolding*
+
 ### Added
-- Development & AI Assistance section in README explaining Claude Code collaboration (#446, R-007).
-- ADR-20260420 — #279 BUILD-in-waves scope decision, superseding ADR-20260406.
-- DevContainer memory bridge (host ↔ container) — Claude memory persists across rebuilds (#466).
+- Farm description now shown on the Profile → Farms tab — inline truncated on each farm card, full-width in the expanded detail panel (#461).
+- Troubleshooting subsection in `/help/device-setup` covering the four most common first-boot failures: camera ribbon orientation, `install.sh` permissions, no-heartbeat debug chain, and Class-2 battery-reading timing (#464).
+- k6 load-test baseline harness in `tools/load-test/` with scenarios for auth cold-path, farm hot-path, and admin stats (R-010, #443). Empirical baseline pending first staging run.
 
 ### Changed
+- `/help/device-setup` Step 4 now explicitly states the SSH prerequisite (Raspberry Pi Imager advanced options) — EN + JA lockstep.
+
+---
+
+## [0.99.7.1] - 2026-04-20 — *Audit findings Wave 2 + DevContainer memory bridge*
+
+### Added
+- `CHANGELOG.md` at repo root in Keep a Changelog 1.1.0 format for machine-readable release tooling (R-013, #444).
+- Development & AI Assistance section in README explaining Claude Code collaboration (R-007, #446).
+- ADR-20260420 — #279 BUILD-in-waves scope decision, superseding ADR-20260406 (DEFER).
+- DevContainer memory bridge (host ↔ container bind mount) — Claude memory persists across container rebuilds (#466).
+- Playwright webkit project + reusable `expectNoSeriousA11y()` helper via `@axe-core/playwright`; one axe scan added per E2E spec file (R-008 + R-012, #442).
+
+### Changed
+- Weather impact and alert banners now show forecast values in both EN and JA with locale-aware date formatting (`4月23日` for Japanese instead of raw `2026-04-23`); fixes key-mismatch that previously dropped translation entirely (#463).
 - TASKS.md synced to reflect v0.99.7 Wave 1 and device-ux series closures.
 
+### Fixed
+- DevContainer `post-start.sh` collision with the memory bind mount.
+
 ### Removed
-- Retired stale `docs/TEST-STRATEGY-099X-GAP-ANALYSIS.md` — audit report preserves the story (#447, R-014).
+- Retired stale `docs/TEST-STRATEGY-099X-GAP-ANALYSIS.md` — audit report preserves the story (R-014, #447).
 
 ---
 
@@ -231,7 +255,9 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
-[Unreleased]: https://github.com/ashmuk/litcrop/compare/v0.99.7...HEAD
+[Unreleased]: https://github.com/ashmuk/litcrop/compare/v0.99.7.2...HEAD
+[0.99.7.2]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.2
+[0.99.7.1]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.1
 [0.99.7]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7
 [0.99.6.5]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.6.5
 [0.99.6.3]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.6.3
