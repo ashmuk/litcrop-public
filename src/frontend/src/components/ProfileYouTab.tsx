@@ -6,6 +6,7 @@ import { getCurrentUser, signOut, changePassword, deleteCurrentUser, CognitoErro
 import type { FarmWithRole } from './FarmSwitcher';
 import PasswordStrengthIndicator, { checkPassword, strengthScore } from './PasswordStrengthIndicator';
 import ProfilePicture from './ProfilePicture';
+import ProfileActivityList from './ProfileActivityList';
 
 interface ProfileYouTabProps {
   userEmail: string | null;
@@ -406,6 +407,8 @@ export default function ProfileYouTab({
           {t('profile.signed_in_as')} <strong>{userEmail}</strong>
         </div>
       )}
+
+      <ProfileActivityList />
 
       <ChangePasswordSection />
 

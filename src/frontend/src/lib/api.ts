@@ -717,3 +717,22 @@ export async function markAllNotificationsRead(): Promise<number> {
   const res = await request<{ marked: number }>('POST', '/me/notifications/read-all', {});
   return res.marked;
 }
+
+// ── Me Activity (#462 Phase 3) ────────────────────────────────────
+
+/**
+ * GET /api/v1/me/activity — chronological merge of the caller's diary
+ * entries, registered devices, and attributed images. Cursor is opaque;
+ * clients must treat next_cursor as a black-box string and just round-trip
+ * it.
+ */
+export async function getMyActivity(
+  options: { cursor?: string; limit?: number } = {},
+): Promise<import('@litcrop/shared').ActivityFeedResponse> {
+  const params = new URLSearchParams();
+  if (options.cursor) params.set('cursor', options.cursor);
+  if (options.limit) params.set('limit', String(options.limit));
+  const qs = params.toString();
+  const path = qs ? `/me/activity?${qs}` : '/me/activity';
+  return request<import('@litcrop/shared').ActivityFeedResponse>('GET', path);
+}

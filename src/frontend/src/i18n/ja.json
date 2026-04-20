@@ -393,7 +393,38 @@
     "sections_label": "プロフィールのセクション",
     "section_help": "ヘルプ",
     "section_info": "情報",
-    "app_settings": "アプリ設定"
+    "app_settings": "アプリ設定",
+    "activity": {
+      "title": "アクティビティ",
+      "empty": "まだアクティビティはありません",
+      "loading": "読み込み中...",
+      "error": "読み込めませんでした",
+      "retry": "再試行",
+      "load_more": "さらに読み込む",
+      "item": {
+        "diary": {
+          "icon_label": "日誌"
+        },
+        "device": {
+          "icon_label": "デバイス登録"
+        },
+        "image": {
+          "icon_label": "画像"
+        }
+      },
+      "time": {
+        "just_now": "たった今",
+        "m_ago": "分前",
+        "h_ago": "時間前",
+        "d_ago": "日前"
+      },
+      "summary": {
+        "device_registered": "登録:",
+        "image_scheduled": "自動撮影:",
+        "image_motion": "動体検出:",
+        "image_manual": "手動アップロード:"
+      }
+    }
   },
   "help": {
     "getting_started": "はじめかた",

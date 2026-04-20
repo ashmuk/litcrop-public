@@ -393,7 +393,38 @@
     "sections_label": "Profile sections",
     "section_help": "Help",
     "section_info": "Info",
-    "app_settings": "App Settings"
+    "app_settings": "App Settings",
+    "activity": {
+      "title": "Activity",
+      "empty": "No activity yet",
+      "loading": "Loading...",
+      "error": "Couldn't load activity",
+      "retry": "Retry",
+      "load_more": "Load more",
+      "item": {
+        "diary": {
+          "icon_label": "Diary entry"
+        },
+        "device": {
+          "icon_label": "Device registration"
+        },
+        "image": {
+          "icon_label": "Image"
+        }
+      },
+      "time": {
+        "just_now": "just now",
+        "m_ago": "m ago",
+        "h_ago": "h ago",
+        "d_ago": "d ago"
+      },
+      "summary": {
+        "device_registered": "Registered",
+        "image_scheduled": "Pi capture on",
+        "image_motion": "Motion capture on",
+        "image_manual": "Uploaded to"
+      }
+    }
   },
   "help": {
     "getting_started": "How-To: Getting Started",
