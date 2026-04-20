@@ -73,7 +73,7 @@
 
 <!-- Check only when the PR touches the items listed. Uncheck the rest. -->
 
-- [ ] **Cognito round-trip** (when touching `signUp`, `custom:*` attributes, auth middleware, or `/me/profile`): verified SignUp → ID-token claim → `GET /me/profile` against the target environment. Reference: `docs/TEST-STRATEGY-099X-GAP-ANALYSIS.md` §C1.
+- [ ] **Cognito round-trip** (when touching `signUp`, `custom:*` attributes, auth middleware, or `/me/profile`): verified SignUp → ID-token claim → `GET /me/profile` against the target environment.
 - [ ] **CDK schema change** (when adding/renaming Cognito attributes, DynamoDB GSIs, or S3 buckets): ran `cdk diff` and confirmed the change is additive or reviewed the replacement risk.
 - [ ] **Prod CloudFront invalidation** complete (~3–5 min after deploy) before spot-checking the live site.
 - [ ] **Version label** on prod matches the latest git tag (`git describe --tags --abbrev=0`).
