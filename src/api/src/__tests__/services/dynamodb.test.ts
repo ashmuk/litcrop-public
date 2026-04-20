@@ -822,3 +822,112 @@ describe('getStats', () => {
   });
 });
 
+// ── #462 activity-feed attribution ────────────────────────────────
+// Consolidated coverage for Image.uploaded_by + Device.registered_by
+// across write + read + legacy-record paths. See #462 Phase 1 review
+// (docs/feedback/REVIEW-FINDINGS.md) — this block closes the
+// zero-test-coverage SHOULD-FIX.
+
+describe('#462 attribution fields', () => {
+  const DEVICE_ID = 'dev-abcdef01';
+  const UPLOADER_SUB = 'u-cognito-uploader-sub';
+  const REGISTRANT_SUB = 'u-cognito-registrant-sub';
+
+  describe('Image.uploaded_by', () => {
+    it('createImage persists the uploader sub in the PutCommand Item', async () => {
+      ddbMock.on(PutCommand).resolves({});
+
+      await repo.createImage(BED_ID, IMAGE_ID, {
+        node_id: 'cam-001',
+        captured_at: '2026-04-20T10:00:00.000Z',
+        uploaded_at: '2026-04-20T10:00:05.000Z',
+        storage_key: 'images/k.jpg',
+        trigger: 'scheduled',
+        content_type: 'image/jpeg',
+        size_bytes: 1024,
+        uploaded_by: UPLOADER_SUB,
+      });
+
+      const item = ddbMock.commandCalls(PutCommand)[0].args[0].input.Item as Record<string, unknown>;
+      expect(item['uploaded_by']).toBe(UPLOADER_SUB);
+    });
+
+    it('getImageById round-trips uploaded_by when the DDB attribute is present', async () => {
+      ddbMock.on(QueryCommand).resolves({
+        Items: [{ ...imageItem, uploaded_by: UPLOADER_SUB }],
+      });
+
+      const image = await repo.getImageById(IMAGE_ID);
+      expect(image.uploaded_by).toBe(UPLOADER_SUB);
+    });
+
+    it('getImageById defaults uploaded_by to null for legacy items missing the attribute', async () => {
+      ddbMock.on(QueryCommand).resolves({ Items: [imageItem] });
+
+      const image = await repo.getImageById(IMAGE_ID);
+      expect(image.uploaded_by).toBeNull();
+    });
+  });
+
+  describe('Device.registered_by', () => {
+    const deviceItem = {
+      PK: `FARM#${FARM_ID}`,
+      SK: `DEV#${DEVICE_ID}`,
+      GSI1PK: `DEV#${DEVICE_ID}`,
+      GSI1SK: '#META',
+      device_id: DEVICE_ID,
+      farm_id: FARM_ID,
+      bed_id: BED_ID,
+      node_name: 'Test Pi',
+      device_api_key_hash: 'hash-bcrypt-placeholder',
+      status: 'inactive',
+      capture_interval: 1800,
+      resolution: '1920x1080',
+      jpeg_quality: 85,
+      active_window_start: '05:00',
+      active_window_end: '20:00',
+      trigger_type: 'scheduled',
+      test_shot_requested: false,
+      created_at: '2026-04-20T10:00:00.000Z',
+      updated_at: '2026-04-20T10:00:00.000Z',
+    };
+
+    it('createDevice persists the registrant sub in the PutCommand Item', async () => {
+      ddbMock.on(PutCommand).resolves({});
+
+      await repo.createDevice(FARM_ID, DEVICE_ID, {
+        bed_id: BED_ID,
+        node_name: 'Test Pi',
+        device_api_key_hash: 'hash-bcrypt-placeholder',
+        capture_interval: 1800,
+        resolution: '1920x1080',
+        jpeg_quality: 85,
+        active_window_start: '05:00',
+        active_window_end: '20:00',
+        registered_by: REGISTRANT_SUB,
+      });
+
+      const item = ddbMock.commandCalls(PutCommand)[0].args[0].input.Item as Record<string, unknown>;
+      expect(item['registered_by']).toBe(REGISTRANT_SUB);
+    });
+
+    it('getDeviceById round-trips registered_by when the DDB attribute is present', async () => {
+      ddbMock.on(QueryCommand).resolves({
+        Items: [{ ...deviceItem, registered_by: REGISTRANT_SUB }],
+      });
+
+      const device = await repo.getDeviceById(DEVICE_ID);
+      expect(device).not.toBeNull();
+      expect(device!.registered_by).toBe(REGISTRANT_SUB);
+    });
+
+    it('getDeviceById defaults registered_by to null for legacy items missing the attribute', async () => {
+      ddbMock.on(QueryCommand).resolves({ Items: [deviceItem] });
+
+      const device = await repo.getDeviceById(DEVICE_ID);
+      expect(device).not.toBeNull();
+      expect(device!.registered_by).toBeNull();
+    });
+  });
+});
+

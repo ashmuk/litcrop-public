@@ -96,7 +96,15 @@ export interface Image {
   content_type: string;
   size_bytes: number;
   metadata?: Record<string, unknown>;
-  /** Cognito sub of the uploader — device registrant for Pi uploads, the user for manual UI uploads. Null on pre-v0.99.7.3 records. */
+  /**
+   * Cognito sub of whichever user's JWT authenticated the upload. For MVP
+   * Pi uploads this is the shared service-user JWT provisioned on the device
+   * (per `scripts/camera-node/capture.sh`) — NOT necessarily the user who
+   * ran Register Device. Phase 3 `/me/activity` must therefore reconcile by
+   * combining `uploaded_by = me` OR `bed belongs to a device where
+   * registered_by = me`. Null on pre-v0.99.7.3 records. Revisit when
+   * per-device M2M credentials ship.
+   */
   uploaded_by?: string | null;
 }
 
