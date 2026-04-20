@@ -15,6 +15,7 @@ import * as conversation from './repositories/conversation';
 import * as joinRequests from './repositories/join-requests';
 // account.deleteAccount is implemented inline (needs this.* for test spies)
 import * as notifications from './repositories/notifications';
+import * as meActivity from './repositories/me-activity';
 
 // Re-export types for backward compatibility
 export type { StoredMessage, UserSettings, NotificationPrefs, DeleteAccountSummary } from './repositories/_types';
@@ -157,6 +158,9 @@ export class DynamoRepository {
   getUnreadCount = notifications.getUnreadCount;
   markAsRead = notifications.markAsRead;
   markAllAsRead = notifications.markAllAsRead;
+
+  // ── Me Activity (#462 Phase 3) ────────────────────────────────
+  getActivityForUser = meActivity.getActivityForUser;
 }
 
 export const dynamoRepo = new DynamoRepository();

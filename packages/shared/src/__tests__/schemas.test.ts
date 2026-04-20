@@ -9,6 +9,11 @@ import {
   ImageDetailResponseSchema,
   TagCreateResponseSchema,
   DeviceListItemSchema,
+  ActivityItemSchema,
+  ActivityFeedResponseSchema,
+  DiaryActivityItemSchema,
+  DeviceActivityItemSchema,
+  ImageActivityItemSchema,
 } from '../schemas/index';
 
 // ── BedStatusSchema ───────────────────────────────────────────────
@@ -387,5 +392,220 @@ describe('#462 registered_by nullability — DeviceListItemSchema', () => {
     expect(
       DeviceListItemSchema.safeParse({ ...validDevice, registered_by: 'cognito-sub-xyz' }).success,
     ).toBe(true);
+  });
+});
+
+// ── C1: ActivityItem schema stability (#462 Phase 3) ──────────────
+//
+// These tests assert the discriminated-union shape is stable. A rename of
+// the discriminant key ('type') or removal of a required field must fail
+// CI rather than silently breaking the frontend consumer.
+
+describe('C1 — ActivityItemSchema: discriminated-union stability', () => {
+  const baseFields = {
+    id: 'diary:diary-abc-001',
+    timestamp: '2026-03-01T08:00:00Z',
+    farm_id: 'farm-001',
+    farm_name: 'Test Farm',
+    actor_id: 'user-abc',
+    actor_name: 'Alice',
+    deep_link: '/diary?farm=farm-001&entry=diary-abc-001',
+  };
+
+  const validDiary = {
+    ...baseFields,
+    type: 'diary',
+    diary_category: 'watering',
+    diary_entry_type: 'actual',
+    description: 'Watered beds A1 and A2',
+    bed_id: 'bed-001',
+    bed_name: 'A1',
+  };
+
+  const validDevice = {
+    ...baseFields,
+    id: 'device:dev-001',
+    type: 'device',
+    deep_link: '/devices?farm=farm-001&device=dev-001',
+    device_id: 'dev-001',
+    node_name: 'Pi-Cam-1',
+    bed_id: 'bed-001',
+    bed_name: 'A1',
+  };
+
+  const validImage = {
+    ...baseFields,
+    id: 'image:img-001',
+    type: 'image',
+    deep_link: '/beds/bed-001?image=img-001',
+    image_id: 'img-001',
+    bed_id: 'bed-001',
+    bed_name: 'A1',
+    trigger: 'scheduled',
+    thumbnail_key: null,
+  };
+
+  it('accepts a valid diary ActivityItem', () => {
+    expect(ActivityItemSchema.safeParse(validDiary).success).toBe(true);
+  });
+
+  it('accepts a valid device ActivityItem', () => {
+    expect(ActivityItemSchema.safeParse(validDevice).success).toBe(true);
+  });
+
+  it('accepts a valid image ActivityItem', () => {
+    expect(ActivityItemSchema.safeParse(validImage).success).toBe(true);
+  });
+
+  it('rejects an item with unknown type', () => {
+    expect(ActivityItemSchema.safeParse({ ...validDiary, type: 'crop' }).success).toBe(false);
+  });
+
+  it('rejects a diary item missing diary_category', () => {
+    const { diary_category: _dc, ...rest } = validDiary;
+    expect(DiaryActivityItemSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects a device item missing node_name', () => {
+    const { node_name: _nn, ...rest } = validDevice;
+    expect(DeviceActivityItemSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects an image item missing trigger', () => {
+    const { trigger: _t, ...rest } = validImage;
+    expect(ImageActivityItemSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects an image item with invalid trigger value', () => {
+    expect(ImageActivityItemSchema.safeParse({ ...validImage, trigger: 'manual' }).success).toBe(false);
+  });
+
+  it('accepts actor_id as null (nullability contract)', () => {
+    expect(ActivityItemSchema.safeParse({ ...validDiary, actor_id: null }).success).toBe(true);
+  });
+
+  it('accepts farm_name as null (nullability contract)', () => {
+    expect(ActivityItemSchema.safeParse({ ...validDiary, farm_name: null }).success).toBe(true);
+  });
+
+  it('accepts bed_name as null on diary item', () => {
+    expect(DiaryActivityItemSchema.safeParse({ ...validDiary, bed_name: null }).success).toBe(true);
+  });
+
+  it('accepts bed_id as null on diary item', () => {
+    expect(DiaryActivityItemSchema.safeParse({ ...validDiary, bed_id: null }).success).toBe(true);
+  });
+
+  it('rejects a diary item missing the timestamp field', () => {
+    const { timestamp: _ts, ...rest } = validDiary;
+    expect(ActivityItemSchema.safeParse(rest).success).toBe(false);
+  });
+});
+
+// ── C2: ActivityFeedResponse schema stability (#462 Phase 3) ──────
+//
+// Guards the top-level response envelope shape. Frontend code reads
+// items, next_cursor, and total_count directly — a field rename must fail CI.
+
+describe('C2 — ActivityFeedResponseSchema: response envelope stability', () => {
+  const baseFields = {
+    id: 'diary:diary-c2-001',
+    timestamp: '2026-04-01T10:00:00Z',
+    farm_id: 'farm-c2',
+    farm_name: 'C2 Farm',
+    actor_id: 'user-c2',
+    actor_name: 'Bob',
+    deep_link: '/diary?farm=farm-c2&entry=diary-c2-001',
+    type: 'diary',
+    diary_category: 'seeding',
+    diary_entry_type: 'actual',
+    description: 'Seeded row A',
+    bed_id: null,
+    bed_name: null,
+  };
+
+  it('accepts a valid response with items, next_cursor, total_count', () => {
+    const feed = {
+      items: [baseFields],
+      next_cursor: null,
+      total_count: 1,
+    };
+    expect(ActivityFeedResponseSchema.safeParse(feed).success).toBe(true);
+  });
+
+  it('accepts an empty items array', () => {
+    expect(ActivityFeedResponseSchema.safeParse({ items: [], next_cursor: null, total_count: 0 }).success).toBe(true);
+  });
+
+  it('accepts a non-null next_cursor string', () => {
+    const cursor = Buffer.from(JSON.stringify({ user_id: 'u', ts: '2026-04-01T10:00:00Z', type: 'diary', id: 'diary:x' })).toString('base64url');
+    expect(
+      ActivityFeedResponseSchema.safeParse({ items: [], next_cursor: cursor, total_count: 5 }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a missing next_cursor field', () => {
+    expect(ActivityFeedResponseSchema.safeParse({ items: [], total_count: 0 }).success).toBe(false);
+  });
+
+  it('rejects a missing total_count field', () => {
+    expect(ActivityFeedResponseSchema.safeParse({ items: [], next_cursor: null }).success).toBe(false);
+  });
+
+  it('rejects a missing items field', () => {
+    expect(ActivityFeedResponseSchema.safeParse({ next_cursor: null, total_count: 0 }).success).toBe(false);
+  });
+
+  it('rejects negative total_count', () => {
+    expect(ActivityFeedResponseSchema.safeParse({ items: [], next_cursor: null, total_count: -1 }).success).toBe(false);
+  });
+
+  it('rejects a non-integer total_count', () => {
+    expect(ActivityFeedResponseSchema.safeParse({ items: [], next_cursor: null, total_count: 1.5 }).success).toBe(false);
+  });
+
+  it('rejects items that fail discriminated-union validation', () => {
+    const badItem = { ...baseFields, type: 'unknown_type' };
+    expect(
+      ActivityFeedResponseSchema.safeParse({ items: [badItem], next_cursor: null, total_count: 1 }).success,
+    ).toBe(false);
+  });
+
+  it('accepts all three ActivityItem types in a single items array', () => {
+    const deviceItem = {
+      id: 'device:dev-c2',
+      timestamp: '2026-03-15T12:00:00Z',
+      farm_id: 'farm-c2',
+      farm_name: 'C2 Farm',
+      actor_id: 'user-c2',
+      actor_name: 'Bob',
+      deep_link: '/devices?farm=farm-c2&device=dev-c2',
+      type: 'device',
+      device_id: 'dev-c2',
+      node_name: 'Pi-2',
+      bed_id: 'bed-c2',
+      bed_name: 'B1',
+    };
+    const imageItem = {
+      id: 'image:img-c2',
+      timestamp: '2026-03-20T06:00:00Z',
+      farm_id: 'farm-c2',
+      farm_name: 'C2 Farm',
+      actor_id: 'user-c2',
+      actor_name: 'Bob',
+      deep_link: '/beds/bed-c2?image=img-c2',
+      type: 'image',
+      image_id: 'img-c2',
+      bed_id: 'bed-c2',
+      bed_name: 'B1',
+      trigger: 'scheduled',
+      thumbnail_key: null,
+    };
+    const result = ActivityFeedResponseSchema.safeParse({
+      items: [imageItem, baseFields, deviceItem],
+      next_cursor: null,
+      total_count: 3,
+    });
+    expect(result.success).toBe(true);
   });
 });

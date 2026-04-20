@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { dynamoRepo, type UserSettings, DEFAULT_SETTINGS } from '../services/dynamodb';
 import { ValidationError, PayloadTooLargeError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
-import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema } from '@litcrop/shared';
+import { UpdateProfileRequestSchema, UpdateSettingsRequestSchema, ActivityFeedQuerySchema } from '@litcrop/shared';
 import { parseBody } from './_helpers';
 import type { DeleteAccountSummary } from '../services/dynamodb';
 import { appEvents } from '../services/events';
@@ -296,6 +296,39 @@ router.post('/notifications/read-all', async (c) => {
   const { userId } = getAuthContext(c);
   const count = await dynamoRepo.markAllAsRead(userId);
   return c.json({ marked: count });
+});
+
+// ── Activity feed (#462 Phase 3) ─────────────────────────────────
+
+// GET /api/v1/me/activity — chronological merge of diary + devices + images
+// the caller owns. See docs/TEST-STRATEGY-462.md §4 and the Pi-auth comment
+// on #462 for the OR-predicate driving the image source.
+router.get('/activity', async (c) => {
+  const { userId } = getAuthContext(c);
+  const parsed = ActivityFeedQuerySchema.safeParse({
+    cursor: c.req.query('cursor'),
+    limit: c.req.query('limit'),
+  });
+  if (!parsed.success) {
+    throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid query');
+  }
+  const { cursor, limit } = parsed.data;
+
+  let result;
+  try {
+    result = await dynamoRepo.getActivityForUser(userId, limit, cursor);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'ValidationException') {
+      throw new ValidationError(err.message);
+    }
+    throw err;
+  }
+
+  return c.json({
+    items: result.items,
+    next_cursor: result.nextCursor,
+    total_count: result.totalCount,
+  });
 });
 
 export default router;

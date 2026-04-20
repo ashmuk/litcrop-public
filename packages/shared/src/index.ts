@@ -36,6 +36,12 @@ export type {
   DiaryEntryResponse,
   NotificationType,
   Notification,
+  ActivityItemType,
+  ActivityItem,
+  DiaryActivityItem,
+  DeviceActivityItem,
+  ImageActivityItem,
+  ActivityFeedResponse,
 } from './types/domain';
 
 // API response/error types
@@ -168,6 +174,13 @@ export {
   DiaryEntryResponseSchema,
   DiaryListResponseSchema,
   FarmVisibilitySchema,
+  ActivityItemTypeSchema,
+  DiaryActivityItemSchema,
+  DeviceActivityItemSchema,
+  ImageActivityItemSchema,
+  ActivityItemSchema,
+  ActivityFeedResponseSchema,
+  ActivityFeedQuerySchema,
 } from './schemas/index';
 
 // Crop library — shared types and data (#274)

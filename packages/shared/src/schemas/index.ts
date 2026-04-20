@@ -684,3 +684,61 @@ export const ProfilePictureResponseSchema = z.object({
   profile_picture_url: z.string(),
   profile_picture_thumb_url: z.string(),
 });
+
+// ── #462 Phase 3: User activity feed schemas ─────────────────────
+
+export const ActivityItemTypeSchema = z.enum(['diary', 'device', 'image']);
+
+const ActivityItemBaseSchema = z.object({
+  id: z.string(),
+  timestamp: z.string(),
+  farm_id: z.string(),
+  farm_name: z.string().nullable(),
+  actor_id: z.string().nullable(),
+  actor_name: z.string().nullable(),
+  deep_link: z.string(),
+});
+
+export const DiaryActivityItemSchema = ActivityItemBaseSchema.extend({
+  type: z.literal('diary'),
+  diary_category: DiaryCategorySchema,
+  diary_entry_type: DiaryEntryTypeSchema,
+  description: z.string(),
+  bed_id: z.string().nullable(),
+  bed_name: z.string().nullable(),
+});
+
+export const DeviceActivityItemSchema = ActivityItemBaseSchema.extend({
+  type: z.literal('device'),
+  device_id: z.string(),
+  node_name: z.string(),
+  bed_id: z.string(),
+  bed_name: z.string().nullable(),
+});
+
+export const ImageActivityItemSchema = ActivityItemBaseSchema.extend({
+  type: z.literal('image'),
+  image_id: z.string(),
+  bed_id: z.string(),
+  bed_name: z.string().nullable(),
+  trigger: TriggerTypeSchema,
+  thumbnail_key: z.string().nullable(),
+});
+
+export const ActivityItemSchema = z.discriminatedUnion('type', [
+  DiaryActivityItemSchema,
+  DeviceActivityItemSchema,
+  ImageActivityItemSchema,
+]);
+
+export const ActivityFeedResponseSchema = z.object({
+  items: z.array(ActivityItemSchema),
+  next_cursor: z.string().nullable(),
+  total_count: z.number().int().nonnegative(),
+});
+
+/** Query params for GET /api/v1/me/activity */
+export const ActivityFeedQuerySchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});

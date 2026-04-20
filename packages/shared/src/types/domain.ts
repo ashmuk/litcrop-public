@@ -296,3 +296,65 @@ export interface DiaryEntryResponse extends DiaryEntry {
   cost_total: number;
   created_by_name: string | null;
 }
+
+// ── #462 Phase 3: User Activity Feed ─────────────────────────────
+
+/**
+ * Discriminator for ActivityItem. The feed chronologically merges three
+ * sources the authenticated user owns: diary entries they authored, devices
+ * they registered, and images attributed to them (manual uploads or Pi
+ * captures from beds whose device they registered — see #462 issue comment
+ * chain for the Pi-auth reality that drives the OR predicate).
+ */
+export type ActivityItemType = 'diary' | 'device' | 'image';
+
+interface ActivityItemBase {
+  /** Stable compound id: `<type>:<sourceId>` — unique across the feed, safe for list keys */
+  id: string;
+  type: ActivityItemType;
+  /** ISO 8601; drives the DESC merge across sources */
+  timestamp: string;
+  farm_id: string;
+  farm_name: string | null;
+  /** Cognito sub of the acting user (self by definition; included for display-name resolution + future audit) */
+  actor_id: string | null;
+  actor_name: string | null;
+  /** Client-facing relative URL for the feature's deep-link target */
+  deep_link: string;
+}
+
+export interface DiaryActivityItem extends ActivityItemBase {
+  type: 'diary';
+  diary_category: DiaryCategory;
+  diary_entry_type: DiaryEntryType;
+  /** Short — callers may truncate for list display */
+  description: string;
+  bed_id: string | null;
+  bed_name: string | null;
+}
+
+export interface DeviceActivityItem extends ActivityItemBase {
+  type: 'device';
+  device_id: string;
+  node_name: string;
+  bed_id: string;
+  bed_name: string | null;
+}
+
+export interface ImageActivityItem extends ActivityItemBase {
+  type: 'image';
+  image_id: string;
+  bed_id: string;
+  bed_name: string | null;
+  trigger: TriggerType;
+  thumbnail_key: string | null;
+}
+
+export type ActivityItem = DiaryActivityItem | DeviceActivityItem | ImageActivityItem;
+
+/** Response envelope for GET /api/v1/me/activity */
+export interface ActivityFeedResponse {
+  items: ActivityItem[];
+  next_cursor: string | null;
+  total_count: number;
+}
