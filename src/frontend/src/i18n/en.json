@@ -80,6 +80,13 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0996_5_item_1": "Your capture-interval setting from the web now actually controls how often your Pi takes photos",
+    "v0996_5_item_2": "Device status refreshes every 5 minutes on the device card (was every 30)",
+    "v0996_3_item_1": "A bare Pi Zero WH without a battery HAT is now correctly classified as Class-1 (was showing as Class-2 incorrectly)",
+    "v0996_2_item_1": "WiFi signal shows as bars alongside the dBm reading, like the signal icon on your phone",
+    "v0996_2_item_2": "Storage shows actual GB used and free with a progress bar, not just OK / LOW / FULL",
+    "v0996_2_item_3": "Class-1 devices without a battery sensor now clearly show \"No sensor\" instead of an unexplained dash",
+    "v0996_1_item_1": "Device install script now works reliably: `curl -sL https://litcrop.com/install.sh | bash`",
     "v0996_item_1": "Behind-the-scenes test and documentation improvements — no visible changes to the app",
     "v0996_item_2": "Tab keyboard navigation is more reliable on slower devices",
     "v0995_item_1": "Your display name now follows you across devices from sign-up",
