@@ -82,19 +82,34 @@ export async function getImageById(imageId: string): Promise<Image> {
 }
 
 /**
- * #462 Phase 1 deferred finding #5 (re-deferred 2026-04-20 to v0.99.7.4):
- * the `Omit<Image, 'id' | 'bed_id'>` + `...image` spread lets any future
- * optional field on Image flow into the DDB Item silently. Tighten by
- * explicitly enumerating the write-item fields (matches createDevice's
- * style) — tracked for the next patch cycle.
+ * Write fields the image route owns at creation time. `thumbnail_key` is
+ * intentionally absent — it's filled async by the thumbnail Lambda via
+ * `updateImageThumbnailKey` once the derivative is generated.
  */
+export interface CreateImageData {
+  node_id: string;
+  captured_at: string;
+  uploaded_at: string;
+  storage_key: string;
+  trigger: Image['trigger'];
+  content_type: string;
+  size_bytes: number;
+  metadata?: Record<string, unknown>;
+  /** Cognito sub of the uploader. Optional on the write path because
+   *  pre-v0.99.7.3 records + some test fixtures don't set it; production
+   *  POST /beds/:bedId/images always passes it per the Phase 1 contract. */
+  uploaded_by?: string | null;
+}
+
 export async function createImage(
   bedId: string,
   imageId: string,
-  data: Omit<Image, 'id' | 'bed_id'>,
+  data: CreateImageData,
 ): Promise<Image> {
-  const image: Image = { id: imageId, bed_id: bedId, ...data };
-
+  // Enumerate the write-item fields explicitly (matches createDevice's style)
+  // so any future optional field added to Image must be opted in here before
+  // it lands in DDB — avoids silent schema drift at the write path.
+  // Resolves #462 Phase 1 finding #5.
   await ddb.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -103,12 +118,36 @@ export async function createImage(
         SK: sk.image(data.captured_at, imageId),
         GSI1PK: pk.image(imageId),
         GSI1SK: sk.meta(),
-        ...image,
+        id: imageId,
+        bed_id: bedId,
+        node_id: data.node_id,
+        captured_at: data.captured_at,
+        uploaded_at: data.uploaded_at,
+        storage_key: data.storage_key,
+        trigger: data.trigger,
+        content_type: data.content_type,
+        size_bytes: data.size_bytes,
+        // metadata and uploaded_by may be undefined/null — removeUndefinedValues
+        // on the marshaller drops undefined, and null is stored as-is.
+        metadata: data.metadata,
+        uploaded_by: data.uploaded_by,
       },
     }),
   );
 
-  return image;
+  return {
+    id: imageId,
+    bed_id: bedId,
+    node_id: data.node_id,
+    captured_at: data.captured_at,
+    uploaded_at: data.uploaded_at,
+    storage_key: data.storage_key,
+    trigger: data.trigger,
+    content_type: data.content_type,
+    size_bytes: data.size_bytes,
+    metadata: data.metadata,
+    uploaded_by: data.uploaded_by,
+  };
 }
 
 export async function updateImageThumbnailKey(imageId: string, thumbnailKey: string): Promise<void> {
