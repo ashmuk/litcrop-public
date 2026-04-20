@@ -408,11 +408,10 @@ export default function ProfileYouTab({
         </div>
       )}
 
-      <ProfileActivityList />
-
-      <ChangePasswordSection />
-
-      <div style="border-top:var(--border-default);padding-top:var(--space-4);margin-top:var(--space-2)">
+      {/* Logout kept above the activity feed so a long paginated feed can't
+          push it below the fold. Account-management sections (Change Password,
+          Delete Account) stay in the bottom cluster where users expect them. */}
+      <div style="border-top:var(--border-default);padding-top:var(--space-4);margin-top:var(--space-2);margin-bottom:var(--space-4)">
         <button
           type="button"
           class="btn-secondary"
@@ -422,6 +421,10 @@ export default function ProfileYouTab({
           {t('auth.logout')}
         </button>
       </div>
+
+      <ProfileActivityList />
+
+      <ChangePasswordSection />
 
       <DeleteAccountSection farms={farms} />
     </section>
