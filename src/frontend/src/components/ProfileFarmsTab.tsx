@@ -188,6 +188,14 @@ export default function ProfileFarmsTab({
                         </span>
                       )}
                     </div>
+                    {farm.description && (
+                      <div
+                        style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                        title={farm.description}
+                      >
+                        {farm.description}
+                      </div>
+                    )}
                   </div>
                   <div style="display:flex;align-items:center;gap:var(--space-2)">
                     {!isActive && (
@@ -276,6 +284,12 @@ export default function ProfileFarmsTab({
                           farmName={farm.name}
                         />
                       </div>
+                      )}
+                      {farm.description && (
+                        <div style="margin-bottom:var(--space-2)">
+                          <div style="color:var(--color-gray-500);font-size:var(--font-size-xs);margin-bottom:2px">{t('profile.description')}</div>
+                          <div style="white-space:pre-wrap;word-break:break-word">{farm.description}</div>
+                        </div>
                       )}
                       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
                         <div>

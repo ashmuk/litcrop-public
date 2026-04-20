@@ -350,6 +350,7 @@
     "demote": "Demote",
     "demote_confirm": "Yes, demote to Staff",
     "farm_limit": "Free plan: up to 2 farms",
+    "description": "Description",
     "location": "Location",
     "elevation": "Elevation",
     "elevation_short": "elev",

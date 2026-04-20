@@ -350,6 +350,7 @@
     "demote": "降格",
     "demote_confirm": "スタッフに降格しますか？",
     "farm_limit": "フリープラン: 農園は2つまで",
+    "description": "説明",
     "location": "位置",
     "elevation": "標高",
     "elevation_short": "標高",
