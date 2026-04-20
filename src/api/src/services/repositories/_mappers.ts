@@ -54,6 +54,8 @@ export function itemToImage(item: Record<string, unknown>, imageId: string): Ima
     content_type: item['content_type'] as string,
     size_bytes: item['size_bytes'] as number,
     metadata: item['metadata'] as Record<string, unknown> | undefined,
+    // --- #462 activity-feed attribution ---
+    uploaded_by: (item['uploaded_by'] as string | null) ?? null,
   };
 }
 

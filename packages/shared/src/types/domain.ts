@@ -96,6 +96,14 @@ export interface Image {
   content_type: string;
   size_bytes: number;
   metadata?: Record<string, unknown>;
+  /**
+   * Cognito sub of the user on whose auth the image was uploaded. For
+   * Pi-device uploads this is the device's registrant user; for manual
+   * UI uploads it's the user themselves. Null on records created before
+   * v0.99.7.3 — backfill migration leaves historical uploads unattributed
+   * (see ADR / #462 Q1). Powers the user activity feed (#462).
+   */
+  uploaded_by?: string | null;
 }
 
 export interface Tag {
@@ -194,6 +202,13 @@ export interface Device {
   // or null; never omitted from the response envelope.
   last_config_polled_at?: string | null;
   effective_config?: EffectiveConfig | null;
+  /**
+   * Cognito sub of the user who ran the Register Device flow. Null on
+   * records created before v0.99.7.3 — backfill migration leaves
+   * historical devices unattributed (see ADR / #462 Q1). Powers the user
+   * activity feed (#462).
+   */
+  registered_by?: string | null;
   created_at: string;
   updated_at: string;
 }

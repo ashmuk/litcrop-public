@@ -242,6 +242,10 @@ export const ImageDetailResponseSchema = z.object({
   size_bytes: z.number(),
   metadata: z.record(z.unknown()).nullable(),
   tags: z.array(TagInImageSchema),
+  // --- #462 activity-feed attribution ---
+  // Cognito sub of the uploader (device registrant for Pi uploads, the
+  // user for manual UI uploads). Nullable for pre-v0.99.7.3 records.
+  uploaded_by: z.string().nullable().optional(),
 });
 
 // ── Tag create schema ─────────────────────────────────────────────
@@ -488,6 +492,10 @@ export const DeviceListItemSchema = z.object({
   // --- #406 config-propagation visibility ---
   last_config_polled_at: z.string().nullable().optional(),
   effective_config: EffectiveConfigSchema.nullable().optional(),
+  // --- #462 activity-feed attribution ---
+  // Cognito sub of the user who ran Register Device. Nullable so list
+  // responses covering pre-v0.99.7.3 records still validate.
+  registered_by: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
