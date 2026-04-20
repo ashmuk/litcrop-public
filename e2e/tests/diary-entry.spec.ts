@@ -17,6 +17,7 @@ import {
   API_BEDS,
   API_ME,
 } from '../fixtures/mock-data';
+import { expectNoSeriousA11y } from '../helpers/axe-scan';
 
 // ── Local constants ──────────────────────────────────────────────
 
@@ -154,5 +155,10 @@ test.describe('Diary Page', () => {
     await calBtn.click();
     // After click: Calendar button should become active
     await expect(calBtn).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
+  });
+
+  // R-008 + R-012 (#442): axe-core a11y scan for Diary page.
+  test('axe: /diary passes WCAG 2.1 A + AA critical checks', async ({ authenticatedPage }) => {
+    await expectNoSeriousA11y(authenticatedPage);
   });
 });

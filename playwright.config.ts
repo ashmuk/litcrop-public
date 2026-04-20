@@ -26,6 +26,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // R-008: cross-engine coverage — WebKit catches the hydration/layout
+      // races that are platform-specific (Safari's pre-hydration paint,
+      // focus semantics differences). Added in #442.
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
 
   webServer: {

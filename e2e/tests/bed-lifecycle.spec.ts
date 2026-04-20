@@ -17,6 +17,7 @@ import {
   API_WEATHER_STUB,
   API_EMPTY_IMAGES,
 } from '../fixtures/mock-data';
+import { expectNoSeriousA11y } from '../helpers/axe-scan';
 
 // ── Local constants ──────────────────────────────────────────────
 
@@ -131,5 +132,10 @@ test.describe('Bed Lifecycle', () => {
     // For an empty bed the BedDetail shows the no-crop placeholder
     // (i18n key 'bed.no_crop' renders as something like "No crop assigned")
     await expect(authenticatedPage.locator('.crop-info')).toContainText(/no crop|empty|assign/i);
+  });
+
+  // R-008 + R-012 (#442): axe-core a11y scan for Bed detail page.
+  test('axe: bed lifecycle page passes WCAG 2.1 A + AA critical checks', async ({ authenticatedPage }) => {
+    await expectNoSeriousA11y(authenticatedPage);
   });
 });

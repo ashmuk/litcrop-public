@@ -16,6 +16,7 @@ import {
   API_BEDS,
   API_ME,
 } from '../fixtures/mock-data';
+import { expectNoSeriousA11y } from '../helpers/axe-scan';
 
 // ── Local constants ──────────────────────────────────────────────
 
@@ -163,5 +164,10 @@ test.describe('Device Management', () => {
     // .key-warning block should contain a one-time key warning
     await authenticatedPage.waitForSelector('.key-warning', { timeout: 8_000 });
     await expect(authenticatedPage.locator('.key-warning')).toBeVisible();
+  });
+
+  // R-008 + R-012 (#442): axe-core a11y scan for Devices page.
+  test('axe: devices page passes WCAG 2.1 A + AA critical checks', async ({ authenticatedPage }) => {
+    await expectNoSeriousA11y(authenticatedPage);
   });
 });

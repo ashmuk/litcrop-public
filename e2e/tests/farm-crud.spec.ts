@@ -19,6 +19,7 @@ import {
   API_ME,
   API_WEATHER_STUB,
 } from '../fixtures/mock-data';
+import { expectNoSeriousA11y } from '../helpers/axe-scan';
 
 // ── Farm Overview ─────────────────────────────────────────────────
 
@@ -107,5 +108,10 @@ test.describe('Farm Creation', () => {
     // Should render some form element (wizard or profile setup)
     const hasFormInput = await authenticatedPage.locator('input, select, textarea').first().isVisible().catch(() => false);
     expect(hasFormInput).toBe(true);
+  });
+
+  // R-008 + R-012 (#442): axe-core a11y scan for Farm Overview.
+  test('axe: / passes WCAG 2.1 A + AA critical checks', async ({ authenticatedPage }) => {
+    await expectNoSeriousA11y(authenticatedPage);
   });
 });

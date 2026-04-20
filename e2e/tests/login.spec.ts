@@ -9,6 +9,7 @@
 import { test, expect } from '@playwright/test';
 import { TEST_USER, myFarmsResponse } from '../fixtures/mock-data';
 import { MOCK_ID_TOKEN } from '../fixtures/auth';
+import { expectNoSeriousA11y } from '../helpers/axe-scan';
 
 const COGNITO_SUCCESS_BODY = {
   AuthenticationResult: {
@@ -121,5 +122,10 @@ test.describe('Login Page', () => {
     await registerLink.click();
     await page.waitForURL('**/register');
     expect(page.url()).toContain('/register');
+  });
+
+  // R-008 + R-012: axe-core a11y scan for the /login entry page.
+  test('axe: /login passes WCAG 2.1 A + AA critical checks', async ({ page }) => {
+    await expectNoSeriousA11y(page);
   });
 });
