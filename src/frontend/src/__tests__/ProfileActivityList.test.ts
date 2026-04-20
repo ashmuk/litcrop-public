@@ -208,12 +208,14 @@ describe('F2: renders 1 diary item with icon, summary, and timestamp', () => {
     html = render({ items: [DIARY_ITEM], initialLoading: false, error: null, totalCount: 1 });
   });
 
-  it('renders the diary icon emoji (📔)', () => {
-    expect(html).toContain('📔');
+  it('renders the actual-diary icon emoji (📗 green book)', () => {
+    // DIARY_ITEM fixture uses diary_entry_type: 'actual' → ICON_DIARY_ACTUAL
+    expect(html).toContain('📗');
+    expect(html).not.toContain('📔');
   });
 
-  it('renders the icon aria-label "Diary entry"', () => {
-    expect(html).toContain('aria-label="Diary entry"');
+  it('renders the icon aria-label "Diary entry (actual)"', () => {
+    expect(html).toContain('aria-label="Diary entry (actual)"');
   });
 
   it('renders the diary category label (Watering)', () => {

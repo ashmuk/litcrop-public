@@ -403,7 +403,8 @@
       "load_more": "Load more",
       "item": {
         "diary": {
-          "icon_label": "Diary entry"
+          "icon_label_reserved": "Diary entry (planned)",
+          "icon_label_actual": "Diary entry (actual)"
         },
         "device": {
           "icon_label": "Device registration"

@@ -3,8 +3,11 @@ import { t } from '../i18n/i18n';
 import type { ActivityItem } from '@litcrop/shared';
 
 // Icon per discriminant — emoji keeps the dep footprint zero and matches the
-// existing project style (diary/device UI use emoji throughout).
-const ICON_DIARY = '📔';
+// existing project style (diary/device UI use emoji throughout). Diary
+// uses two icons to distinguish planned (📔) from actual (📗 green book)
+// at a glance — parity with how users think about reserved vs logged work.
+const ICON_DIARY_RESERVED = '📔';
+const ICON_DIARY_ACTUAL = '📗';
 const ICON_DEVICE = '📡';
 const ICON_IMAGE = '📷';
 
@@ -36,7 +39,18 @@ function RelativeTime({ iso }: { iso: string }) {
 
 function iconMeta(item: ActivityItem): { icon: string; label: string } {
   if (item.type === 'diary') {
-    return { icon: ICON_DIARY, label: t('profile.activity.item.diary.icon_label') };
+    // Color carries the planned-vs-actual distinction for sighted users; the
+    // aria-label carries it for screen readers (WCAG-compliant — color is
+    // never the sole conveyor of meaning).
+    const isActual = item.diary_entry_type === 'actual';
+    return {
+      icon: isActual ? ICON_DIARY_ACTUAL : ICON_DIARY_RESERVED,
+      label: t(
+        isActual
+          ? 'profile.activity.item.diary.icon_label_actual'
+          : 'profile.activity.item.diary.icon_label_reserved',
+      ),
+    };
   }
   if (item.type === 'device') {
     return { icon: ICON_DEVICE, label: t('profile.activity.item.device.icon_label') };
