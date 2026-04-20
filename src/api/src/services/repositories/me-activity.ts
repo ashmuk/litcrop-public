@@ -8,6 +8,7 @@ import type {
   DiaryCategory,
   DiaryEntryType,
   TriggerType,
+  Bed,
 } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { ddb, TABLE_NAME, pk } from './_infrastructure';
@@ -157,13 +158,15 @@ async function queryDevicesForUserInFarm(
  * user's activity when EITHER `uploaded_by = me` (manual UI upload) OR
  * `trigger = 'scheduled'` AND the bed's device was `registered_by = me`
  * (Pi capture under the shared service-user JWT).
+ *
+ * `beds` is passed in (not fetched here) so the caller can reuse it for
+ * the bed-name resolution map — avoids a second DDB query per farm.
  */
 async function queryImagesForUserInFarm(
-  farmId: string,
   userId: string,
   piBedIds: Set<string>,
+  beds: Bed[],
 ): Promise<Array<{ id: string; timestamp: string; bed_id: string; trigger: TriggerType; thumbnail_key: string | null }>> {
-  const beds = await getBedsForFarm(farmId);
   const out: Array<{ id: string; timestamp: string; bed_id: string; trigger: TriggerType; thumbnail_key: string | null }> = [];
   for (const bed of beds) {
     const items: Record<string, unknown>[] = [];
@@ -223,24 +226,18 @@ export async function getActivityForUser(
     const farm = await getFarm(farmId).catch(() => null);
     const farmName = farm?.name ?? null;
 
-    // Device query doubles as the source of Pi-bed IDs for the image query.
-    const [diary, devices] = await Promise.all([
+    // Fan out diary + devices + bed list in parallel. Bed list is reused
+    // downstream for both the image query (needs bed enumeration for
+    // partition scans) and the bed-name resolution map — one DDB query
+    // instead of two per farm.
+    const [diary, devices, beds] = await Promise.all([
       queryDiaryForUserInFarm(farmId, userId),
       queryDevicesForUserInFarm(farmId, userId),
+      getBedsForFarm(farmId),
     ]);
     const piBedIds = new Set(devices.map((d) => d.bed_id));
-    const images = await queryImagesForUserInFarm(farmId, userId, piBedIds);
-
-    // Build bed-name map lazily — only for beds referenced by items we'll keep.
-    const bedIdsNeeded = new Set<string>();
-    for (const d of diary) if (d.bed_id) bedIdsNeeded.add(d.bed_id);
-    for (const d of devices) bedIdsNeeded.add(d.bed_id);
-    for (const i of images) bedIdsNeeded.add(i.bed_id);
-    let bedNameByBedId = new Map<string, string>();
-    if (bedIdsNeeded.size > 0) {
-      const beds = await getBedsForFarm(farmId);
-      bedNameByBedId = new Map(beds.map((b) => [b.id, b.name]));
-    }
+    const images = await queryImagesForUserInFarm(userId, piBedIds, beds);
+    const bedNameByBedId = new Map(beds.map((b) => [b.id, b.name]));
 
     for (const d of diary) {
       const item: DiaryActivityItem = {

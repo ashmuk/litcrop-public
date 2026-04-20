@@ -81,6 +81,13 @@ export async function getImageById(imageId: string): Promise<Image> {
   return itemToImage(item, imageId);
 }
 
+/**
+ * #462 Phase 1 deferred finding #5 (re-deferred 2026-04-20 to v0.99.7.4):
+ * the `Omit<Image, 'id' | 'bed_id'>` + `...image` spread lets any future
+ * optional field on Image flow into the DDB Item silently. Tighten by
+ * explicitly enumerating the write-item fields (matches createDevice's
+ * style) — tracked for the next patch cycle.
+ */
 export async function createImage(
   bedId: string,
   imageId: string,

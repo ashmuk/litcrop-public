@@ -318,8 +318,11 @@ router.get('/activity', async (c) => {
   try {
     result = await dynamoRepo.getActivityForUser(userId, limit, cursor);
   } catch (err) {
+    // R3 (strategy doc): surface a generic 400 — never echo internal cursor
+    // internals (user_id mismatch, enum values, payload shape). Confirming
+    // which field caused rejection is reconnaissance value for forgery.
     if (err instanceof Error && err.name === 'ValidationException') {
-      throw new ValidationError(err.message);
+      throw new ValidationError('Invalid cursor');
     }
     throw err;
   }

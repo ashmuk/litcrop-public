@@ -263,3 +263,136 @@ No safety gate required.
 The MUST-FIX is a contract-honesty problem, not a code bug — the write-path behavior is stable, but the JSDoc and commit-message claim about it misrepresent the Pi-auth reality, which will mis-calibrate Phase 3's implementation. The SHOULD-FIX items (especially zero test coverage) accumulate into real risk across the remaining three phases. The NITs are optional.
 
 Route this to `/cc-remediate` → my-builder with preference for **Option 1** in the MUST-FIX above (document accurately), and fold the SHOULD-FIXes into the same remediation commit if cheap.
+
+---
+
+# #462 Phase 3 review (2026-04-20)
+
+> Scope: commit `811910b` on `develop` — `feat(api,shared): #462 Phase 3 — GET /me/activity endpoint + tests`. 9 files, +1617/-1 LOC.
+> Reviewer role: my-reviewer, read-only.
+> Consumer: `/cc-remediate` → my-builder, if MUST-FIX present; else tag `v0.99.7.3`.
+> Files reviewed (source): `packages/shared/src/types/domain.ts` (new ActivityItem union L300-360), `packages/shared/src/schemas/index.ts` (new Zod L688-744), `packages/shared/src/index.ts` (exports), `src/api/src/services/repositories/me-activity.ts` (new, 325 LOC), `src/api/src/services/dynamodb.ts` (+4 LOC facade wiring L18/L162-163), `src/api/src/routes/me.ts` (+29 LOC activity handler L301-332).
+> Files reviewed (tests): `packages/shared/src/__tests__/schemas.test.ts` (+220 LOC C1+C2), `src/api/src/__tests__/services/me-activity.test.ts` (new, 461 LOC: U1 U2 U3 U4 U5 + I4/I5 repo-level), `src/api/src/__tests__/routes/me-activity.test.ts` (new, 440 LOC: I1-I10).
+> Auxiliary files consulted (for pattern comparison): `src/api/src/services/repositories/diary.ts`, `images.ts`, `devices.ts`, `members.ts`, `users.ts`, `farms.ts`, `beds.ts`, `_infrastructure.ts`, `src/api/src/middleware/auth.ts`, `src/api/src/errors.ts`, `packages/shared/src/constants.ts` (DDB_KEY_PREFIXES).
+> Strategy doc: `docs/TEST-STRATEGY-462.md` §4 (the 13 MUST + 5 SHOULD test matrix for Phase 3).
+> Phase 1 context: `docs/feedback/REMEDIATION-462-PHASE1.md` (deferred #4 uploaded_by_name resolution, deferred #5 createImage spread-Omit).
+
+## C1. Overview — verdict summary
+
+The deliverable faithfully implements the design per §4 of the test strategy and the Pi-auth reality comment (#462 issue comment 4280185580). All 13 MUST-tests and 4 of 5 SHOULD-tests are present; E1 is correctly deferred to Phase 4 (no UI exists). The I4 OR-predicate is correctly wired, I5 legacy-null is naturally handled via strict `=== userId`, I8 cursor cross-user defense is in place, and the response envelope matches `ActivityFeedResponseSchema`. No MUST-FIX findings.
+
+The SHOULD-FIX findings are mostly honesty-of-semantics issues: one error-message info-leak, one missing I5-for-diary coverage, one redundant `getBedsForFarm` call (the NIT flagged in the task brief becomes a SHOULD-FIX when you trace the fan-out cost), and the Phase-1-deferred #5 (createImage spread-Omit) remains unaddressed.
+
+## C2. Findings
+
+### MUST-FIX
+
+**None.**
+
+After full audit against the my-reviewer checklist (alignment, security, quality, safety), the Pi-auth OR predicate, legacy-null handling, cursor user-scope, and chronological merge are all correct. The cross-cutting risks R1 (Pi-auth mis-match), R2 (legacy-null leak), and R3 (cursor cross-user leak) identified in the strategy doc are each guarded by at least one test, and the behavior under test matches the specification.
+
+| Check                                                    | Verdict |
+|----------------------------------------------------------|---------|
+| I4 Pi-auth OR predicate: `uploaded_by === me` OR (`trigger==='scheduled'` AND `piBedIds.has(bedId)`) | ✅  (L189-190 of me-activity.ts — no short-circuit slippage; `isManualMatch` requires non-null `uploaded_by`) |
+| I5 Legacy-null: strict `=== userId` filters on diary, device, image | ✅  (L112, L145, L189 — `null === userId` is `false`; no regex/truthy branch exists) |
+| I8 Cursor cross-user defense: route passes JWT sub as expectedUserId | ✅  (me.ts:319 → me-activity.ts:211 → `decodeActivityCursor(cursor, userId)`; userId only sourced from `getAuthContext(c)`, never from query string — confirmed by I6 test "passes the authenticated userId") |
+| Chronological merge direction: DESC by timestamp, stable tiebreak on id DESC | ✅  (L301-304 — comparator is correct; U3 test validates tie behavior) |
+| Total count: computed before pagination (all matching items) | ✅  (L306 — `totalCount = allItems.length` BEFORE cursor filter at L308) |
+| Response shape: `{ items, next_cursor, total_count }` (snake_case) | ✅  (me.ts:327-331 matches ActivityFeedResponseSchema L734-738) |
+| Deep-link injection safety: all builders use `encodeURIComponent` | ✅  (L76, L80, L84) |
+| No admin privilege escalation: route ignores `?userId=` | ✅  (I6 test line 261-276 explicitly verifies) |
+| Limit bounds: min 1, max 100, default 20 | ✅  (schemas/index.ts:741-744; I9 tests boundaries) |
+| JWT sub never cast away: userId flows as `string` from getAuthContext | ✅  |
+| No `any` casts added: only `as <specific-type>` after `unknown`-narrowing | ✅  |
+| Tests deterministic: no real DDB, no real network, no timers | ✅  (both test files use `aws-sdk-client-mock` + `vi.mock` on sibling repos) |
+
+### SHOULD-FIX
+
+| # | File:Line | Issue | Why it matters | Suggested remediation |
+|---|-----------|-------|----------------|----------------------|
+| 1 | `src/api/src/routes/me.ts:322` | `ValidationError(err.message)` re-surfaces the repo's internal cursor message verbatim: `"Invalid cursor: user mismatch"`, `"Invalid cursor: unknown type"`, `"Invalid cursor payload"`. This leaks to the client that (a) the cursor format is base64url-JSON with `user_id`/`ts`/`type`/`id` fields and (b) user-scope was the cause of rejection. An attacker who crafts a cursor and sees "user mismatch" learns their cursor parsed successfully — useful reconnaissance when paired with cursor-forgery attempts. | Confidentiality of the pagination protocol. Aligns with R3 mitigation which says "either 400 ValidationError or server silently ignores the cursor". The strategy doc's I8 test accepts either 400-with-generic-message or silent-ignore; the current impl does 400-with-specific-message. | Narrow the surfaced message in the route's catch block to a single generic string (e.g. `throw new ValidationError('Invalid cursor')`). Keep the specific message in the repo as internal-log detail (via `console.warn` or the `details` arg on `AppError` — that `details` object is emitted in API responses only if the error handler opts in; check `src/api/src/app.ts` error serializer before trusting it). The I8 integration test asserts only `status === 400` and `body.error` presence, so it won't break. |
+| 2 | `src/api/src/__tests__/services/me-activity.test.ts` (I5 describe block, L426-461) | I5 coverage is present for device (null `registered_by`) and image (null `uploaded_by`), but **missing for diary** (null `created_by`). The repo's L112 `filter((it) => it['created_by'] === userId)` handles it correctly by strict equality, but without a test a future "filter instead by truthiness" refactor would silently regress. | R2 (legacy-null leak) is listed as "three sources the authenticated user owns: diary entries they authored, devices they registered, and images attributed to them" — the defense must be equally tested across all three. | Add one test in the I5 describe block: seed a diary item with `created_by: null`, assert `result.items.filter(it => it.type === 'diary')).toHaveLength(0)`. ~10 LOC. Mirror of the device and image cases already there. |
+| 3 | `src/api/src/services/repositories/me-activity.ts:166` and `:241` | `getBedsForFarm(farmId)` is called twice per farm in the happy path: once inside `queryImagesForUserInFarm` (L166, to enumerate beds for the image query), once again in `getActivityForUser` (L241, to build the bed-name resolution map). These are identical calls returning identical data. At pilot scale (≤20 beds/farm, 4 users, ≤2 farms/user) this is 2 DDB queries per farm-with-activity — doubled from what it needs to be. Post-pilot this compounds into the R5 concern. | The task brief explicitly asked whether this is a NIT or SHOULD-FIX; the answer is SHOULD-FIX because it's a trivial and mechanical fix that improves both latency and DDB RCU spend measurably (halves the per-farm read cost for the dominant query class). Not a blocker for v0.99.7.3. | Hoist the `getBedsForFarm(farmId)` call into `getActivityForUser` before `queryImagesForUserInFarm`, pass the `beds` array (or a `Map<bedId, bedName>`) down as a parameter, and reuse it for both the image fan-out and the name map. ~15 LOC churn. Keep the function signature change internal to the module. |
+| 4 | `src/api/src/services/repositories/images.ts:84-105` (`createImage` — carried over from Phase 1 deferred finding #5) | The `Omit<Image, 'id' \| 'bed_id'>` + `...image` spread at L99 was flagged in the Phase 1 review as "speculative" and deferred to Phase 3 audit (per `docs/feedback/REMEDIATION-462-PHASE1.md` L18). Phase 3 does not touch the write path, so this is still open. It's relevant now because Phase 3 reads these images and filters on `uploaded_by`; if a future Phase adds a new optional field to `Image` and forgets to exclude it from the DDB Item, it silently flows in, and the activity feed's attribute-based filters (e.g. a future `source='auto'` field) could behave unexpectedly. | The deferred finding has not been re-evaluated as the Phase 1 remediation said it would be. Either act on it or re-defer with justification. | Two options: (a) explicitly enumerate the write-item fields in `createImage` (safest, matches `createDevice`'s style); (b) re-defer to a dedicated "createImage write-path audit" task with a written rationale. Pick whichever the author prefers, but don't leave the flag dangling through a third phase. |
+
+### NIT
+
+| # | File:Line | Issue | Rationale for NIT severity |
+|---|-----------|-------|---------------------------|
+| N1 | `src/api/src/services/repositories/me-activity.ts:75-85` | Three deep-link builders are co-located but not exported. If Phase 4's frontend ever needs to reproduce the same URL format (e.g. to invalidate a cache key), it will either re-implement or reach inside this module. Not a correctness issue — just a future-refactor seam. | Private-by-default is fine for a first implementation; extract only when a second caller appears. |
+| N2 | `src/api/src/routes/me.ts:319` | `let result;` (untyped) is declared outside the try block to bring it into scope for the `return c.json(...)`. Typing it (`let result: Awaited<ReturnType<typeof dynamoRepo.getActivityForUser>>;`) would make the code slightly more self-documenting, but TS infers correctly via the assignment and the existing code reads fine. | Zero risk; purely stylistic. |
+| N3 | `src/api/src/__tests__/routes/me-activity.test.ts:14-16` | `vi.hoisted(() => { process.env['ADMIN_EMAILS'] = 'admin@litcrop.test'; });` mutates `process.env` without restoring it. Subsequent test files that import `config.ts` and expect the default `ADMIN_EMAILS_SET` will see the test value. In practice `config.ts` is imported once per Vitest worker and the set is built then, so the cross-test pollution is limited — but a cleanup in `afterAll` would be defensive. | The pattern is already used in other test files that depend on `ADMIN_EMAILS`; deferring to that existing convention is fine. Not worth changing just here. |
+| N4 | `packages/shared/src/types/domain.ts:319-321` | `actor_id: string \| null` — documented "self by definition" yet the type admits null, and the repo does set null when `getUserProfile(userId)` succeeds but returns a profile the user hasn't created yet. This creates a documented-but-permissive field. Not wrong, just surprising. | The Zod schema matches (`z.string().nullable()`), so the contract is honest; only the JSDoc claim "self by definition" is slightly aspirational. Minor doc nit. |
+| N5 | `src/api/src/services/repositories/me-activity.ts:65-69` | `decodeActivityCursor` checks `c.type !== 'diary' && c.type !== 'device' && c.type !== 'image'`. If a new `ActivityItemType` is added (e.g. `'tag'` in a future phase), this list must be updated manually — no TS exhaustiveness check pins it. | Acceptable at this scale; a `Set<ActivityItemType>` constant imported from domain.ts would be the cleanest fix, but it's a 3-way enum with a union type that's unlikely to churn. Low impact. |
+
+## C3. Positive observations
+
+- **I4 test pair is load-bearing and correct**. Both directions are tested: (a) scheduled image with `uploaded_by = PI_SERVICE_ACCOUNT` ≠ user, bed has user-registered device → included; (b) scheduled image where the device was registered by `OTHER_USER` → excluded. This is the R1 guard from the strategy doc and it's exactly right. `docs/feedback/REVIEW-FINDINGS.md` §B5 "decide whether Phase 3/4 will need `uploaded_by_name` resolution on the API (consistent with diary) or push resolution to the frontend" is answered here: the API resolves `actor_name` via `getUserProfile(userId)` once per request (line 217), so Phase 4 does not need to redo it. The Phase-1-deferred finding #4 is effectively resolved.
+- **Cursor design is defensible**. Encoding `{ user_id, ts, type, id }` is narrower than DynamoDB's native `LastEvaluatedKey` — the cursor cannot be used as a DDB pagination key at all, which sidesteps the entire class of "craft a cursor to query a different partition" attacks. The user-scope assertion at L60-64 closes R3 cleanly. This is a good deviation from the `_infrastructure.ts:decodeCursor` pattern used by diary/images (which does trust a DDB LastEvaluatedKey), and the deviation is correct for this endpoint.
+- **Chronological merge is algorithmically straightforward**. All items go into `allItems`, then a single sort, then cursor-filter, then slice. No interleaved-merge algorithm to debug. At pilot scale the in-memory sort is trivial (O(N log N) on N ≤ ~400 items worst case), and `totalCount` is computed from `allItems.length` BEFORE pagination — exactly what the strategy doc's I7 + U1 tests assume.
+- **Test pyramid is healthy for this phase**. Unit (repo-level): U1/U2/U3/U4/U5 + I4/I5 at unit level = 10 tests. Integration (route): I1-I10 = 15 test cases. Contract (schemas): C1/C2 = 18 test cases. Total 43 tests in 3 files (the commit says 59 assertions — matches "18 MUST + 4 SHOULD" test matrix from §9 of the strategy doc with E1 correctly deferred). Roughly 30% unit / 55% integration / 15% contract, skewed integration-heavy because the route is where Pi-auth / legacy-null / cursor-cross-user converge — appropriate.
+- **`vi.clearAllMocks()` in `beforeEach` and `ddbMock.reset()`** prevent the cross-test state leak that's the #1 source of flakiness in repository tests using `aws-sdk-client-mock`. Noted.
+- **`vi.hoisted` pattern for `ADMIN_EMAILS`** (me-activity.test.ts L14-16) correctly sequences before the app.ts import so `ADMIN_EMAILS_SET` builds with the test value. Subtle but right.
+- **Deep-link builders use `encodeURIComponent` on every dynamic segment** — no XSS/SSRF concern even if a bed_id or farm_id ever contains `&` or `#`. The current ID generators (UUID-like strings) don't, but defense-in-depth.
+- **Diff scope is minimal**: 9 files, 1 net new repo module, 1 new handler, 3 shared-package additions, 3 test files. No changes to auth middleware, no changes to error-serialization, no changes to other repos. Clean landing.
+- **The Pi-auth JSDoc in `domain.ts:99-108`** (rewritten during Phase 1 remediation) correctly describes the MVP shared-JWT reality AND prescribes the Phase 3 reconciliation ("combining `uploaded_by = me` OR `bed belongs to a device where registered_by = me`") — which is exactly what the code now does. Contract and implementation are in sync.
+
+## C4. Security sub-review
+
+- **Cross-user pagination leak (R3)**: closed. `decodeActivityCursor` asserts `user_id === expectedUserId`; route passes `userId = getAuthContext(c).userId` (JWT sub, never query param). Verified by walking route → repo → decoder. I8 route test asserts 400 response; U5 unit test asserts the actual mechanism. Two layers of coverage.
+- **Cursor tampering**: any mutation to the base64url payload that still decodes to valid JSON with wrong `user_id` → 400 (U5 tests two variants: random string, decoded plain JSON). Any mutation that decodes to a different user's `user_id` → 400 (U5 + I8). Any mutation to `type` → 400 if invalid enum value (U5 third test).
+- **SSRF / injection in deep_link**: not a concern. Deep links are strings returned in the JSON body; the server never fetches them. `encodeURIComponent` is belt-and-braces.
+- **Information disclosure**: minor — see SHOULD-FIX #1 about error messages.
+- **Authentication bypass**: not possible. Route is mounted under `/api/v1/me/*` (confirmed by surrounding routes), which uses `authMiddleware`. The test I1 second case verifies 401 on missing token.
+- **Authorization (admin-elevation)**: the endpoint is strictly self-scoped. No `userId` query parameter exists; no admin escape. I6 tests confirm.
+- **Secrets in logs**: no `console.log` / `console.error` exposes the cursor or user id in `me-activity.ts` or `me.ts`.
+- **Input validation**: limit bounded [1, 100]; cursor type-checked at Zod layer (`z.string().optional()`) and structurally validated in decoder. Good.
+
+No MUST-FIX security findings.
+
+## C5. Performance sub-review
+
+The task brief already notes R5 ("fine at pilot scale, revisit post-pilot") as accepted. Verifying the code matches the stated stance:
+
+- Fan-out: for each farm the user is a member of, one DDB query each for diary + devices, then N queries for N beds (one per bed's image range). Total per request: `2 × numFarms + numBeds` DDB queries. For a pilot user on 1 farm with 4 beds, that's 6 DDB queries per `/me/activity` request. Acceptable.
+- The double-read of `getBedsForFarm(farmId)` adds +numFarms queries unnecessarily (SHOULD-FIX #3 above). Fixing it brings the cost to `2 × numFarms + numBeds + 1` per farm (since `getBedsForFarm` returns all beds in one query). Small win but easy.
+- Pagination: the full three-source scan happens on EVERY page request (not just page 1). There's no Redis / DDB-cursor optimization — each page re-scans, re-sorts, then cursor-filters. This is an N² pattern in # of pages, but at pilot scale (most users will have <100 total activity items) one page is the whole set. Acceptable per R5; flag for revisit when pilot hits 50+ users or any single user exceeds ~500 activity items.
+- No unnecessary `await` on independent promises. The `Promise.all` at L227-230 correctly parallelizes diary and device queries. The subsequent `queryImagesForUserInFarm` needs the device-derived `piBedIds` so it cannot be parallelized with the device query — that sequencing is correct.
+
+## C6. Contract / consistency sub-review
+
+- **Response envelope**: `{ items, next_cursor, total_count }` in snake_case — matches `ActivityFeedResponseSchema` at `packages/shared/src/schemas/index.ts:734-738`. I10 tests confirm at runtime.
+- **Discriminated-union shape**: `ActivityItem` has a `type: 'diary'|'device'|'image'` discriminant; the Zod schema uses `z.discriminatedUnion('type', [...])`; TS type is a union of interfaces each with a literal `type` field. Frontend consumers (Phase 4) will narrow on `type` cleanly. C1 tests (11 cases) cover every required-field rejection and every valid shape.
+- **Nullability policy**: `farm_name`, `actor_id`, `actor_name`, `bed_name` are `| null` in the TS type and `.nullable()` in Zod — consistent with the project convention (`created_by_name` on diary, etc.). `thumbnail_key: string | null` on image items matches the underlying `Image.thumbnail_key?: string` field's optionality-meets-nullability.
+- **Phase 1 deferred #4 (uploaded_by_name resolution)**: **resolved** — see Positive observations above. The API resolves `actor_name` at repo-build time via one `getUserProfile(userId)` call.
+- **Phase 1 deferred #5 (createImage spread-Omit audit)**: **still open** — escalated to SHOULD-FIX #4 above.
+
+## C7. Safety approval
+
+N/A. This change is:
+- Not destructive (no deletes, no migrations, no schema version bumps — only new fields in new responses)
+- Not irreversible (reverting `811910b` removes the route + repo + shared types cleanly; no data is stored by this feature)
+- Not auth/authz-critical (uses existing authMiddleware; does NOT add new permission gates, does NOT relax existing ones)
+- Not infra-touching (no CDK changes, no new DDB GSIs, no IAM changes)
+
+No safety gate required.
+
+## C8. Verification needed before tagging v0.99.7.3
+
+- [ ] Decide whether SHOULD-FIX #1 (error-message leak) is in-scope for the v0.99.7.3 patch or deferred to v0.99.7.4. It's a trivial 2-line change and the I8 test won't break, so I lean toward "fold in".
+- [ ] Decide whether SHOULD-FIX #3 (double `getBedsForFarm`) is in-scope. Larger churn (~15 LOC) but mechanical. Could defer, but it's the kind of small perf win that's cheaper now than later.
+- [ ] Decide the fate of SHOULD-FIX #4 (Phase-1 deferred createImage audit). Either do it, or document the explicit deferral again in a comment on `images.ts:84` so it's not re-discovered by the next review.
+- [ ] Add the missing I5-diary test (SHOULD-FIX #2). ~10 LOC, no risk, closes an otherwise quiet gap.
+- [ ] Confirm full test suite still green: `pnpm -r test --run` and `pnpm -r typecheck`.
+- [ ] Confirm the deep-link format `/beds/<bedId>?image=<imageId>` matches what Phase 4's frontend router will understand (this is a Phase-3/4 contract; worth a note in the issue thread before tagging).
+
+## C9. Decision
+
+**Status**: **ACCEPTED WITH CONDITIONS** — approved for tagging `v0.99.7.3` if SHOULD-FIX #1 and #2 are folded in (they're both <15 LOC, zero-risk, and close R3/R2 gaps more cleanly). SHOULD-FIX #3 and #4 can ship in v0.99.7.4 without reviewer pushback, as long as #4 is re-tracked rather than silently deferred for a fourth time.
+
+Pipeline routing recommendation:
+- **If v0.99.7.3 must ship today as-is**: accept all 4 SHOULD-FIX as known carry-over, tag, and file the remediation as the opening work of v0.99.7.4. No MUST-FIX, so there is no gating reason to block.
+- **If v0.99.7.3 can absorb one short remediation cycle**: route to `/cc-remediate` → my-builder for SHOULD-FIX #1 and #2 (cheapest + best-leverage), re-review (2nd cycle), then tag. That's the preferred path if the schedule allows.
+
+The 5 NITs can be addressed at the author's discretion any time.
+

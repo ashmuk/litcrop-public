@@ -424,6 +424,22 @@ describe('I4 (repository-level) — Pi-auth: scheduled images from user-register
 // ── I5 (repository layer): legacy-null non-leakage ───────────────
 
 describe('I5 (repository-level) — legacy-null: items with null attribution are excluded', () => {
+  it('excludes a diary entry with created_by = null from the activity', async () => {
+    // Mirror of the device and image cases below — closes I5 coverage across
+    // all three sources. Strict `=== userId` naturally drops null; this test
+    // guards against a future "filter by truthiness" refactor regressing it.
+    ddbMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [makeDiaryItem({ created_by: null })],
+      })
+      .resolvesOnce({ Items: [] }) // devices
+      .resolvesOnce({ Items: [] }); // images
+
+    const result = await getActivityForUser(USER_A, 20);
+    expect(result.items.filter((it) => it.type === 'diary')).toHaveLength(0);
+  });
+
   it('excludes a device with registered_by = null from the activity', async () => {
     ddbMock
       .on(QueryCommand)
