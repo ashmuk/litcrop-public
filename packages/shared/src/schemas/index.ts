@@ -275,16 +275,27 @@ const DailyForecastSchema = z.object({
   condition_icon: z.string(),
 });
 
+const WeatherImpactParamsSchema = z
+  .object({
+    low: z.number().optional(),
+    high: z.number().optional(),
+    mm: z.number().optional(),
+    date: z.string().optional(),
+  })
+  .optional();
+
 const WeatherAlertSchema = z.object({
   type: z.enum(['frost', 'heavy_rain', 'extreme_heat']),
   severity: z.enum(['warning', 'danger']),
   message: z.string(),
+  params: WeatherImpactParamsSchema,
 });
 
 const CropImpactCardSchema = z.object({
   severity: z.enum(['danger', 'warning', 'good', 'info']),
   title: z.string(),
   description: z.string(),
+  params: WeatherImpactParamsSchema,
   affected_beds: z.array(
     z.object({
       id: z.string(),

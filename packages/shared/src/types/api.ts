@@ -173,16 +173,31 @@ export interface DailyForecast {
   condition_icon: string;
 }
 
+/**
+ * Structured parameters for weather impact messages. The API emits numeric
+ * + date values here so the frontend can interpolate them into either
+ * locale's translated template, rather than shipping a pre-formatted
+ * English string that loses information on translation.
+ */
+export interface WeatherImpactParams {
+  low?: number;
+  high?: number;
+  mm?: number;
+  date?: string; // ISO YYYY-MM-DD
+}
+
 export interface WeatherAlert {
   type: 'frost' | 'heavy_rain' | 'extreme_heat';
   severity: 'warning' | 'danger';
-  message: string;
+  message: string; // Legacy English text — kept for backward compat.
+  params?: WeatherImpactParams;
 }
 
 export interface CropImpactCard {
   severity: 'danger' | 'warning' | 'good' | 'info';
   title: string;
-  description: string;
+  description: string; // Legacy English text — kept for backward compat.
+  params?: WeatherImpactParams;
   affected_beds: { id: string; name: string; crop_type: string }[];
 }
 

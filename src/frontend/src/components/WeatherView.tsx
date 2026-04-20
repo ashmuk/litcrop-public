@@ -10,6 +10,7 @@ import { createTranslator } from '../i18n/i18n';
 import { useLocalFarmId, formatTemp } from '../lib/hooks';
 import { degreeToCardinal, conditionToEmoji, translateCondition } from '../lib/format';
 import { getCropName } from '../lib/crops';
+import { ALERT_I18N, IMPACT_I18N, translateWithInterpolation } from '../lib/weather-i18n';
 import FarmLocationMap from './FarmLocationMap';
 
 // Cache reverse geocode results across mount/unmount cycles
@@ -21,29 +22,6 @@ const IMPACT_CSS: Record<CropImpactCard['severity'], string> = {
   good: 'status-healthy',
   info: 'status-nodata',
 };
-
-/** Maps for translating weather impact titles, descriptions, and alert messages. */
-const IMPACT_I18N: Record<string, { title: string; desc: string }> = {
-  'Frost Risk': { title: 'weather.impact_frost_risk', desc: 'weather.impact_frost_desc' },
-  'Heat Stress': { title: 'weather.impact_heat_stress', desc: 'weather.impact_heat_desc' },
-  'Heavy Rain': { title: 'weather.impact_heavy_rain', desc: 'weather.impact_rain_desc' },
-};
-
-const ALERT_I18N: Record<string, string> = {
-  frost: 'weather.alert_frost',
-  heat: 'weather.alert_heat',
-  rain: 'weather.alert_rain',
-};
-
-/**
- * Translate a string using an i18n key. If the key is not found in the map
- * or the translation returns the key itself (missing), fall back to the original text.
- */
-function translateWithFallback(i18nKey: string | undefined, fallback: string, tl: (key: string) => string): string {
-  if (!i18nKey) return fallback;
-  const translated = tl(i18nKey);
-  return translated === i18nKey ? fallback : translated;
-}
 
 function formatHour(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', hour12: false });
@@ -200,7 +178,7 @@ export default function WeatherView({ farmId }: Props) {
           aria-live="assertive"
         >
           <span aria-hidden="true">{alert.severity === 'danger' ? '🚨' : '⚠️'}</span>
-          <span>{translateWithFallback(ALERT_I18N[alert.type], alert.message, tl)}</span>
+          <span>{translateWithInterpolation(ALERT_I18N[alert.type], alert.message, tl, alert.params, locale)}</span>
         </div>
       ))}
 
@@ -345,9 +323,9 @@ export default function WeatherView({ farmId }: Props) {
                   role="region"
                   aria-label={card.title}
                 >
-                  <div style="font-weight:var(--font-weight-semibold)">{translateWithFallback(IMPACT_I18N[card.title]?.title, card.title, tl)}</div>
+                  <div style="font-weight:var(--font-weight-semibold)">{translateWithInterpolation(IMPACT_I18N[card.title]?.title, card.title, tl, undefined, locale)}</div>
                   <div style="font-size:var(--font-size-sm);margin-top:var(--space-1)">
-                    {translateWithFallback(IMPACT_I18N[card.title]?.desc, card.description, tl)}
+                    {translateWithInterpolation(IMPACT_I18N[card.title]?.desc, card.description, tl, card.params, locale)}
                   </div>
                   {card.affected_beds.length > 0 && (
                     <div style="font-size:var(--font-size-xs);margin-top:var(--space-2);opacity:0.9">

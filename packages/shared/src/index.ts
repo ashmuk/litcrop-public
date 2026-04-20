@@ -56,6 +56,7 @@ export type {
   HourlyForecast,
   DailyForecast,
   WeatherAlert,
+  WeatherImpactParams,
   CropImpactCard,
   ChatRequest,
   ChatResponse,

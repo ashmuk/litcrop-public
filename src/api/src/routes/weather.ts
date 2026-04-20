@@ -234,17 +234,19 @@ function computeCropImpact(
       if (affectedBeds.length > 0) {
         const severity = day.low < 0 ? 'danger' : 'warning';
         const message = `Frost-sensitive crops are at risk. Expected low: ${day.low}°C on ${day.date}.`;
+        const params = { low: day.low, date: day.date };
         impacts.push({
           severity,
           title: 'Frost Risk',
           description: message,
+          params,
           affected_beds: affectedBeds.map((b) => ({
             id: b.id,
             name: b.name,
             crop_type: b.crop_type!,
           })),
         });
-        alerts.push({ type: 'frost', severity, message });
+        alerts.push({ type: 'frost', severity, message, params });
         break; // report first occurrence only
       }
     }
@@ -259,17 +261,19 @@ function computeCropImpact(
       });
       if (affectedBeds.length > 0) {
         const message = `High temperatures may stress crops. Expected high: ${day.high}°C on ${day.date}.`;
+        const params = { high: day.high, date: day.date };
         impacts.push({
           severity: 'warning',
           title: 'Heat Stress',
           description: message,
+          params,
           affected_beds: affectedBeds.map((b) => ({
             id: b.id,
             name: b.name,
             crop_type: b.crop_type!,
           })),
         });
-        alerts.push({ type: 'extreme_heat', severity: 'warning', message });
+        alerts.push({ type: 'extreme_heat', severity: 'warning', message, params });
         break;
       }
     }
@@ -279,17 +283,19 @@ function computeCropImpact(
   for (const day of daily) {
     if (day.rain_sum_mm > 30) {
       const message = `Heavy rainfall expected: ${day.rain_sum_mm}mm on ${day.date}.`;
+      const params = { mm: day.rain_sum_mm, date: day.date };
       impacts.push({
         severity: 'warning',
         title: 'Heavy Rain',
         description: message,
+        params,
         affected_beds: croppedBeds.map((b) => ({
           id: b.id,
           name: b.name,
           crop_type: b.crop_type!,
         })),
       });
-      alerts.push({ type: 'heavy_rain', severity: 'warning', message });
+      alerts.push({ type: 'heavy_rain', severity: 'warning', message, params });
       break;
     }
   }
