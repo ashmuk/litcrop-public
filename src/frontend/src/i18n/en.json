@@ -80,6 +80,9 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0997_item_1": "LICENSE file added (MIT) — the project now has a clear open-source licence",
+    "v0997_item_2": "Resolved 9 security advisories in our dependencies (no known exploit impact for LitCrop users)",
+    "v0997_item_3": "Added SECURITY.md with a private disclosure channel for reporting vulnerabilities",
     "v0996_5_item_1": "Your capture-interval setting from the web now actually controls how often your Pi takes photos",
     "v0996_5_item_2": "Device status refreshes every 5 minutes on the device card (was every 30)",
     "v0996_3_item_1": "A bare Pi Zero WH without a battery HAT is now correctly classified as Class-1 (was showing as Class-2 incorrectly)",
