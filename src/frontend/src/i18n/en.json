@@ -421,8 +421,7 @@
       "summary": {
         "device_registered": "Registered",
         "image_scheduled": "Pi capture on",
-        "image_motion": "Motion capture on",
-        "image_manual": "Uploaded to"
+        "image_motion": "Motion capture on"
       }
     }
   },

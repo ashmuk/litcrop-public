@@ -116,7 +116,7 @@ const THREE_ITEMS: ActivityItem[] = [
     image_id: 'snap-img-001',
     bed_id: BED_ID,
     bed_name: 'Bed A1',
-    trigger: 'manual',
+    trigger: 'motion',
     thumbnail_key: null,
   },
 ];

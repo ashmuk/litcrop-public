@@ -396,3 +396,154 @@ Pipeline routing recommendation:
 
 The 5 NITs can be addressed at the author's discretion any time.
 
+---
+
+# #462 Phase 4 review (2026-04-21)
+
+> Scope: commit `e28fe5b` on `develop` — `feat(frontend): #462 Phase 4 — ProfileActivityList + useMeActivity`. 11 files, +1529/−3 LOC.
+> Reviewer role: my-reviewer, read-only.
+> Consumer: `/cc-remediate` → my-builder, if MUST-FIX present; else tag `v0.99.7.4`.
+> Files reviewed (source): `src/frontend/src/components/ProfileActivityList.tsx` (new, 181 LOC), `src/frontend/src/lib/useMeActivity.ts` (new, 80 LOC), `src/frontend/src/lib/api.ts` (+19 LOC — `getMyActivity` at L723-738), `src/frontend/src/components/ProfileYouTab.tsx` (+3 LOC wire-up at L9 + L411), `src/frontend/src/i18n/en.json` (+33 LOC `profile.activity.*` sub-tree at L397-427), `src/frontend/src/i18n/ja.json` (+33 LOC matching sub-tree at L397-427), `tools/load-test/k6-baseline.js` (+60 LOC `meActivity` scenario).
+> Files reviewed (tests): `src/frontend/src/__tests__/ProfileActivityList.test.ts` (new, 533 LOC — F1-F4, F6-F8, F11), `src/frontend/src/__tests__/ProfileActivityList.snapshot.test.ts` (new, 243 LOC — F9, F10), `src/frontend/src/__tests__/useMeActivity.test.ts` (new, 342 LOC — F5), `src/frontend/src/__tests__/__snapshots__/ProfileActivityList.snapshot.test.ts.snap` (new, 5 LOC — 2 snapshots).
+> Auxiliary files consulted: `src/frontend/src/lib/hooks.ts` (placement comparison), `src/frontend/src/lib/api.ts:request` (auth wrapper contract), `packages/shared/src/types/domain.ts:344-353` (ActivityItem shape), `packages/shared/src/schemas/index.ts:719-738` (Zod), `src/api/src/services/repositories/me-activity.ts:73-190` (deep-link format source + trigger emission), `src/api/src/routes/beds.ts:286-358` (manual upload trigger-value constraint), `src/frontend/src/styles/` (CSS reference check), `.github/workflows/pr-checks.yml` (CI coverage).
+> Strategy doc: `docs/TEST-STRATEGY-462.md` §5 (Phase 4 test matrix F1-F13) + §6 (cross-cutting risks R4 i18n, R5 perf).
+> Phase 3 context: `docs/feedback/REMEDIATION-462-PHASE3.md` (createImage spread-Omit deferred to v0.99.7.4).
+
+## D1. Overview — verdict summary
+
+The deliverable faithfully implements Phase 4 per §5 of the test strategy and consumes Phase 3's endpoint cleanly. Zod validation at the boundary, opaque-cursor handling, i18n parity (EN + JA), and the discriminated-union render path all look correct. 10 of 13 strategy-doc tests (F1-F11 excluding F5 = 8 MUST + F6 + F9 + F10 = 3 SHOULD) are present; F12 + F13 are correctly deferred to Playwright E2E scope. The k6 scenario closes the R5 perf-baseline gate.
+
+**Two SHOULD-FIX findings worth attention before tagging v0.99.7.4:**
+1. The `image_manual` i18n key + its component branch are **unreachable with real server data** — the discriminator (`trigger` field) only carries `'scheduled' | 'motion'` and never `'manual'`. The tests fabricate `trigger: 'manual'` to hit the branch; production never will. This is either dead code + dead translations, or a latent UX bug where manually-uploaded images get labeled "Pi capture on ..." incorrectly.
+2. The CSS classes referenced by the component (`profile-activity`, `activity-list`, `activity-item`, `activity-item__link`, `activity-item__icon`, `activity-item__body`, `activity-item__summary`, `activity-item__meta`, `activity-item__time`, `activity-item__dot`, `activity-item__farm`, `activity-skeleton`, `activity-skeleton__line`, `activity-error`, `activity-empty`, `activity-footer`, `activity-count`) are **defined nowhere in the CSS layer**. The component will render but be visually unstyled (no grid layout, no spacing, no skeleton shimmer) except for the inline-style overrides and inherited `btn-secondary` / `auth-server-error__icon` / `sr-only` helpers.
+
+Neither rises to MUST-FIX because: (1) the unreachable branch doesn't cause incorrect behavior in any current code path (the component silently produces labels for the two valid cases that exist); (2) the missing CSS degrades visual polish but not functionality — accessibility and text flow are intact via HTML semantics.
+
+No MUST-FIX security or correctness issues. Zod validation is sound, the opaque cursor is round-tripped verbatim, `loadMore()` re-entry is correctly guarded, `retry()` does reset `items` on success, and i18n parity is tight.
+
+## D2. Findings
+
+### MUST-FIX
+
+**None.**
+
+After auditing the component, hook, i18n deltas, tests, and k6 scenario against the my-reviewer checklist, no blocking issues exist. The cross-cutting risks R4 (i18n drift) and R5 (perf baseline) are each guarded — R4 by F9/F10/F11 + matching EN/JA key structure, R5 by the k6 `meActivity` scenario with a p(95)<1500ms threshold tied to pilot-scale fan-out.
+
+| Check                                                    | Verdict |
+|----------------------------------------------------------|---------|
+| Zod `safeParse` path: rejects invalid shapes without masking fetch errors | Pass — `parse_error` and `fetch_error` are distinct error codes; finally block still clears loading state (`useMeActivity.ts:44-59`) |
+| `hasMore = next_cursor !== null` derivation | Pass — matches server contract (server only emits `null` when no more pages; server-side `""` is impossible per `me-activity.ts:302-305`) |
+| Deep-link format matches server (`*.deep_link` field) | Pass — component at L78 just renders `item.deep_link` verbatim; zero UI-side URL construction; server builders at `me-activity.ts:73-83` use `encodeURIComponent` per Phase 3 review |
+| `loadMore()` re-entry guard | Pass — `if (!cursor \|\| loading) return` (L70); Preact useCallback closes over current-render `loading`, not stale; safe for double-click |
+| `retry()` resets items on success | Pass — `setReloadKey` triggers effect → `fetchPage(null, false)` → `setItems` with `append=false` replaces wholesale at L50 |
+| No auth logic in component | Pass — delegated to `request()` wrapper which handles Bearer injection + 401 refresh + login redirect |
+| Error surface is generic i18n key | Pass — component renders `t('profile.activity.error')` = "Couldn't load activity" / "読み込めませんでした"; no server-message echo |
+| All user-visible strings via `t()` | Pass — every rendered text token (title, empty, loading, error, retry, load_more, icon aria-labels, summaries, time suffix) goes through `t()` |
+| EN + JA structural parity | Pass — both locales have identical `profile.activity.*` key tree (title, empty, loading, error, retry, load_more, item.{diary,device,image}.icon_label, time.{just_now,m_ago,h_ago,d_ago}, summary.{device_registered,image_scheduled,image_motion,image_manual}) |
+| JA translations are real (not placeholders or EN fallbacks) | Pass — each string is native Japanese (e.g. "アクティビティ", "まだアクティビティはありません", "読み込めませんでした", "再試行", "さらに読み込む") |
+| `diary.categories.*` already present in both locales | Pass — en.json:893-903, ja.json:893-903 have all 10 category keys (seeding, planting, watering, fertilizing, harvesting, weeding, pest_control, maintenance, purchase, other) |
+| No secrets / PII in component or hook | Pass — userId is never rendered client-side; actor_name is optional and safe |
+| Tests deterministic | Pass — `vi.useFakeTimers()` + `vi.setSystemTime()` fix relative time; `vi.mock` stubs hook and api module; no real network |
+
+### SHOULD-FIX
+
+| # | File:Line | Issue | Why it matters | Suggested remediation |
+|---|-----------|-------|----------------|----------------------|
+| 1 | `src/frontend/src/components/ProfileActivityList.tsx:62-70` + `src/frontend/src/i18n/en.json:425` + `ja.json:425` | The `image_manual` branch (`"Uploaded to"` / `"手動アップロード:"`) is **unreachable with production data**. The discriminator `item.trigger` is typed as `TriggerType = 'scheduled' \| 'motion'` (`packages/shared/src/types/domain.ts:22`) and constrained by `TriggerTypeSchema = z.enum(['scheduled', 'motion'])` (`packages/shared/src/schemas/index.ts:27`). POST /beds/:bedId/images validates client input against `isValidTriggerType` and rejects any other string (`routes/beds.ts:315-317`). Every image in DDB has either `trigger='scheduled'` or `trigger='motion'`, so the fallback branch's `image_manual` key can never fire. The tests (`ProfileActivityList.test.ts:145`, `ProfileActivityList.snapshot.test.ts:119`) fabricate `trigger: 'manual'` to hit the branch — but that's test-only fiction. | Two independent sub-problems: (a) dead code + dead i18n (minor waste), (b) **latent UX bug**: a user who manually uploads an image through the UI with `trigger='scheduled'` will see it labeled "Pi capture on Bed A1" — misleading. The design intent, based on the `image_manual` key's existence, clearly was to distinguish manual-upload from Pi-capture. The component fails to implement that distinction. | Pick one: **(a)** Implement the intended semantic: `image_manual` fires when `item.uploaded_by === item.actor_id` (i.e. the image row shows the caller as both uploader and actor — manual UI upload). The `trigger` field then only chooses between `image_scheduled` and `image_motion` for the non-manual case. Requires `uploaded_by` to be on the `ImageActivityItem` (currently isn't — only `actor_id`/`actor_name` are). **(b)** Remove the unreachable branch + delete the `image_manual` EN + JA keys + update tests to use `trigger: 'motion'` instead of `trigger: 'manual'` (Phase 4 still has valid MUST/SHOULD coverage). **(c)** Document the semantic gap as a known limitation and ship as-is, tracking (a) as a v0.99.8 UX item. The minimum-risk path for shipping v0.99.7.4 is (b) — removes dead code — but (a) is the correct long-term fix. |
+| 2 | `src/frontend/src/styles/components.css` (and `global.css`, `auth.css`) — none of them | The 17+ CSS classes the component emits (`profile-activity`, `activity-list`, `activity-item`, `activity-item__link`, `activity-item__icon`, `activity-item__body`, `activity-item__summary`, `activity-item__meta`, `activity-item__time`, `activity-item__dot`, `activity-item__farm`, `activity-skeleton`, `activity-skeleton__line`, `activity-error`, `activity-empty`, `activity-footer`, `activity-count`) have **zero definitions in the styles directory** — `grep -r "activity-item\|profile-activity" src/frontend/src/styles/` returns nothing. The component renders with only its inline-`style` rules on the `<section>`, `<h3>`, `<ul>`, `<div class="activity-footer">`, and `<div class="activity-empty">` elements. Items get list layout from the `<ul>`'s inline `display:flex; flex-direction:column; gap:var(--space-2)`, but items themselves (the `<li>`, icon, body, summary, meta, time, dot, farm-name) have zero CSS rules. | Cosmetic degradation: the activity list will visually be a plain stacked list with no icon sizing, no meta-line alignment, no skeleton shimmer animation, no error-container padding. Reads fine for a screen reader (the HTML semantics and inline styles cover layout basics), but does NOT match the visual polish of other profile sections. Also misleading for future contributors: the class tokens look like they reference a styled component library that doesn't exist. | Add a CSS block to `src/frontend/src/styles/components.css` covering at minimum: `.activity-item` (flex row), `.activity-item__icon` (size + alignment), `.activity-item__body` (flex 1), `.activity-item__summary` (font weight, line-clamp), `.activity-item__meta` (secondary color, gap), `.activity-skeleton__line` (shimmer animation or solid gray block), `.activity-error` (padding + color), `.activity-empty` (already has inline styles — confirm or consolidate), `.activity-footer` (already has inline styles). ~40 lines of CSS. Alternatively, if the intent was inline-only (like `ChangePasswordSection`), drop all the class-name references and keep only the inline styles; then adjust tests to assert on data attributes / element structure instead of class names. |
+
+### NIT
+
+| # | File:Line | Issue | Rationale for NIT severity |
+|---|-----------|-------|---------------------------|
+| N1 | `src/frontend/src/lib/useMeActivity.ts:44-47` | When `safeParse` fails, `parsed.error` (ZodError with detailed path info) is discarded and the user only sees a generic `'parse_error'`. Observability gap: in production, a schema drift between server and client can't be diagnosed from user reports without server logs. A `console.warn('[useMeActivity] parse failed', parsed.error.issues)` (dev-only via `import.meta.env.DEV`) would help. | Dev-facing telemetry only; no user impact; consistent with the rest of the frontend's "fail generically" pattern. Optional. |
+| N2 | `src/frontend/src/components/ProfileActivityList.tsx:14-22` | `relativeTimeSuffix` recomputes via `Date.now()` on every render. For each item, `RelativeTime` runs a division + comparison chain. At 20 items × a few renders per interaction this is unmeasurable, but if the component ever ends up in a parent that re-renders frequently (e.g. on typing in a neighbouring form), it becomes O(n) busywork per keystroke. `useMemo` keyed on `iso + current-minute-bucket` would avoid recomputing when the numbers haven't changed. | Pilot-scale no-op. The strategy doc's R5 risk is covered by k6, not by per-render memoization. Flag only as future-proofing. |
+| N3 | `src/frontend/src/lib/useMeActivity.ts` | Placement: the file sits as its own module (`lib/useMeActivity.ts`) rather than in `lib/hooks.ts`. The commit message flags this as deliberate. Looking at `lib/hooks.ts`: it's a grab-bag of localStorage utilities, *non*-hook "useX" misnamed helpers (`useLocalFarmId` reads localStorage synchronously without `useState`), and a `formatTemp` formatter. It is NOT a preact-hooks module in the React sense. Placing a real hook in its own file is arguably cleaner than cramming it into that file. Matches the codebase's "one concept per file" lib-dir convention (e.g. `diary.ts`, `status.ts`, `device-config-status.ts`). | No action needed — the choice is defensible. Flag only to acknowledge the commit message's self-awareness on it. |
+| N4 | `src/frontend/src/components/ProfileActivityList.tsx:14-22` | `relativeTimeSuffix` never emits "week / month / year" — an item 90 days ago renders `90d ago`. For pilot scale this is fine (most users will see items from the last week). Post-pilot with years of history this gets ugly. Not a correctness issue; tracks to a future v1.0+ enhancement. | Scope is clearly pilot-level; a format like "2w ago / 3mo ago / 1y ago" is a v0.99.8 polish item. Out of Phase 4 scope. |
+| N5 | `src/frontend/src/components/ProfileActivityList.tsx:43-47` | `iconLabel` returns a single "Image" label for all three image states (scheduled / motion / manual). A more informative aria-label would distinguish "Pi capture" / "Motion capture" / "Manual upload" for screen-reader users. The visual summary text already carries that distinction, so assistive users get the info from the summary below the icon — but a dedicated icon_label differentiation would be friendlier. | Accessibility best-practice, not a correctness issue. Pairs naturally with SHOULD-FIX #1's remediation. Optional. |
+| N6 | `src/frontend/src/lib/useMeActivity.ts:65-67` | `useEffect(() => { void fetchPage(null, false); }, [fetchPage, reloadKey])` — `fetchPage` is itself memoized against `[initialLimit]`, so the effect deps collapse to `[reloadKey]` in practice. This is fine but the `fetchPage` dep is technically redundant noise; `useCallback`-returned reference stability means React treats it as unchanged across renders. | Stylistic; the lint rule `react-hooks/exhaustive-deps` typically demands `fetchPage` in the array, so removing it would fight the linter. Leave as-is. |
+| N7 | `src/frontend/src/__tests__/ProfileActivityList.test.ts:145` + `.snapshot.test.ts:119` | Test fixtures set `trigger: 'manual'` which violates the `TriggerType` constraint. See SHOULD-FIX #1 — if the unreachable branch is removed per option (b), the fixtures must also change. If kept per options (a)/(c), the fixtures still need reconsideration because `'manual'` is not a valid discriminator value. | Coupled to SHOULD-FIX #1's resolution path. |
+
+## D3. Positive observations
+
+- **Zod validation is correctly placed at the network boundary** — `ActivityFeedResponseSchema.safeParse(raw)` in `useMeActivity.ts:44` runs before the hook mutates state. A schema-broken server response surfaces as `'parse_error'` instead of rendering garbage. This is exactly the right posture for a typed frontend consuming a typed API via JSON.
+- **Opaque cursor handling is impeccable**. `next_cursor` is passed through `getMyActivity({cursor})` verbatim and never inspected. R3 mitigation (which lives on the server per Phase 3's `decodeActivityCursor`) is preserved end-to-end.
+- **Deep-link format is consumed from the server field, not re-constructed on the client**. Component just renders `item.deep_link`. Zero URL-construction logic on the UI side → zero risk of UI-side URL mangling. If the server ever changes the link format, the UI just keeps working.
+- **i18n coverage is thorough and linguistically real**. JA strings are fluent native Japanese (not MT-grade). `diary.categories.*` reuse is noted and verified present in both locales. `profile.activity.*` key tree is structurally identical between `en.json` and `ja.json`. R4 (EN/JA drift) is well-guarded.
+- **F11 test is the strongest i18n guard the codebase has**. 16 assertions that specifically check for absence of EN bleed-through AND presence of JA strings. If a future contributor adds a raw English literal to the component, F11 will catch it even if the component still "works".
+- **F9 + F10 snapshot pair with a structural-skeleton comparator** — `structuralSkeleton()` strips text and aria-label (locale-sensitive) but preserves everything else, then asserts the skeleton is byte-for-byte identical between EN and JA. This is a clever and cheap way to guarantee structural parity.
+- **k6 `meActivity` scenario** fills the R5 gate: exercises first-page AND one load-more cycle, so the fan-out cost is captured in both cold and warm states. The 1500ms threshold is well-calibrated: above hot-path (1000ms) because of the multi-source fan-out, below admin-stats (5000ms) which is a known scale-cliff. Scenario naming (`me-activity`) matches the dash-case convention of `cold-path`, `hot-path`, `admin-stats`. Tags + `http_req_duration{scenario:me-activity}` threshold are wired correctly.
+- **Hook return-shape test (useMeActivity.test.ts:205-263)** guarantees the public API surface doesn't drift silently. Eight keys asserted.
+- **Mocking strategy is idiomatic**. `vi.mock('../lib/useMeActivity', () => { const mockFn = vi.fn(); return { useMeActivity: mockFn }; })` is hoisted above component import via Vitest's auto-hoisting of `vi.mock` — enables `mockReturnValue` per-test without polluting module-level state. Clean.
+- **Fake timers pattern is correct**: `vi.useFakeTimers() + vi.setSystemTime(SYSTEM_TIME)` in `beforeAll`, `vi.useRealTimers()` in `afterAll`. Timestamps are chosen relative to the anchor so "5m ago" etc. are deterministic.
+- **Wire-up in `ProfileYouTab` is minimal** — 3 lines (1 import + 1 render insertion + no prop plumbing because the new component is self-fetching). This is the right shape: self-contained embeddable.
+- **Component composition is idiomatic for the codebase**. Hooks at top, helper functions in module scope, JSX last. Uses inline `style` with CSS custom properties (matches `ProfileYouTab`'s own `ChangePasswordSection`). Uses emoji for icons (matches the project's established "📔 / 📡 / 📷" motif per commit context).
+- **No regressions on Phase 1 or Phase 3**. `uploaded_by` / `registered_by` fields, `/me/activity` endpoint, and Phase 3 SHOULD-FIX remediations are all untouched. Phase 4 strictly adds; it doesn't edit anything in Phase 3 territory.
+
+## D4. Security sub-review
+
+- **No new auth surface**: component relies on the existing `request()` helper in `api.ts` which handles Bearer injection + 401 refresh + login redirect. Hook never touches tokens directly.
+- **No injection vectors**: component's only interpolations are `item.deep_link` into `href` (server-built via `encodeURIComponent`), `item.node_name` / `item.bed_name` / `item.farm_name` / `item.description` into text nodes (Preact auto-escapes). No raw-HTML sinks, no `innerHTML`, no `eval`.
+- **No secrets in logs**: no `console.log` / `console.error` in either the component or the hook. `parse_error` is silent (no telemetry), see N1.
+- **Error surface confidentiality**: generic i18n keys, never server message. Matches Phase 3 SHOULD-FIX #1's mitigation on the server (though Phase 3's remediation chose a specific-message path; the UI's generic path does not leak that back regardless).
+- **XSS via `item.description`**: if a malicious diary description contained script-tag markup, Preact escapes it to text. Verified by the rendering path `{summaryFor(item)}` → text node, not raw HTML.
+- **No timezone or clock leak**: `Date.now() - new Date(iso).getTime()` is a pure numeric diff; the ISO timestamp is UTC; the difference is timezone-independent. No Intl.DateTimeFormat or timezone API that might leak locale.
+- **No CORS assumptions**: `getMyActivity` uses the same `request()` helper as every other authenticated endpoint. Nothing hard-coded about origins.
+
+No MUST-FIX security findings.
+
+## D5. Performance sub-review
+
+- **Zod `safeParse` per page**: on a 20-item response with a discriminated-union schema, safeParse performs ~20 × (4 base fields + 3-6 specialised fields) = ~100-200 field validations per page. At ~1µs per field in modern V8, ~100-200µs total — imperceptible. Even at 100 items it's well under 1ms. Not a concern at pilot scale; flag only as a future polish (N2).
+- **Per-render `Date.now()` in `relativeTimeSuffix`**: called once per item per render. 20 items × sub-µs arithmetic = imperceptible. If the parent component re-renders on every keystroke in an adjacent input, this becomes 20 × keystrokes sub-µs = still imperceptible. Memoization would reduce re-work but is pure optimization.
+- **No unnecessary refetch on `loadMore`**: the re-entry guard (`if (!cursor \|\| loading) return`) correctly prevents double-fetches on rapid clicks. React batches the state updates from `fetchPage`'s setters.
+- **k6 threshold well-calibrated**: `p(95)<1500ms` has pilot headroom (Lambda cold starts typically 500-1000ms) while still flagging a real regression. Lower than admin-stats's 5000ms because `/me/activity` is called interactively and user-facing.
+- **k6 scenario structurally correct**: 5 VUs × 90s = ~450 requests; tests both page 1 (cold) and page 2 (warm) fan-out; tags `scenario=me-activity` correctly; latency `Trend` metrics `me_activity_first_page_duration` and `me_activity_load_more_duration` will give per-stage breakdown.
+
+## D6. Contract / i18n sub-review
+
+### Contract
+- **Response envelope consumption**: hook destructures `body.items`, `body.next_cursor`, `body.total_count` from the Zod-parsed object — all three are required fields in the schema. `next_cursor` is `.nullable()` → matches TS `string | null`. `total_count` is `z.number().int().nonnegative()` → matches `number`. Perfect alignment.
+- **Discriminated-union render**: component narrows on `item.type` ∈ `'diary' | 'device' | 'image'`. If a future `ActivityItemType` (e.g. `'tag'`) is added, TS exhaustiveness won't catch it (the component falls through to the image branch). Low risk today (domain.ts defines only 3).
+- **Deep-link format**: UI renders server-built string; zero contract surface on the UI side.
+- **`getMyActivity` query string**: `URLSearchParams` correctly encodes `cursor` and `limit`. `cursor=` is only appended when truthy (guards against empty-string cursor appending a stray `?cursor=`).
+
+### i18n (R4)
+- **Key-tree parity**: en.json L397-427 and ja.json L397-427 are byte-for-byte parallel in key structure. Manually diffed — no missing keys in either direction.
+- **Component has zero raw English literals**: every text token goes through `t()`. F11 test enforces this for the most common strings. An automated "grep for anything between `>` and `<` that looks like English words" would give broader coverage but is a general-linting issue, not Phase 4-specific.
+- **`diary.categories.*` reuse (from `summaryFor`)**: the component leverages the existing `diary.categories.watering` etc. keys. Both locales have all 10 categories (en.json:893-903, ja.json:893-903). No missing key risk.
+- **Time suffix formatting**: renders `{n}{t(unitKey)}` without interpolation (i18n.ts doesn't support `{0}` placeholders here). EN key values are `"m ago"`, `"h ago"`, `"d ago"` — concatenation produces `"5m ago"`, `"2h ago"`, `"1d ago"` which reads naturally. JA values are `"分前"`, `"時間前"`, `"日前"` — concatenation produces `"5分前"`, `"2時間前"`, `"1日前"` which also reads naturally. Good call to design around concatenation rather than i18n interpolation.
+- **JA strings are real translations, not placeholders**: spot-checked "アクティビティ" (activity), "まだアクティビティはありません" (no activity yet), "再試行" (retry), "さらに読み込む" (load more), "自動撮影" (automatic capture = Pi capture), "動体検出" (motion detection), "手動アップロード" (manual upload) — all are native Japanese phrasing.
+
+## D7. Safety approval
+
+N/A. This change is:
+- Not destructive (no deletes, no migrations, no schema bumps — only new UI component + new hook + additive i18n keys)
+- Not irreversible (reverting `e28fe5b` removes the 11-file diff cleanly; no data stored by this feature)
+- Not auth/authz-critical (uses existing `request()` auth wrapper; does NOT add new permission gates, does NOT relax existing ones)
+- Not infra-touching (no CDK, no new IAM, no new DDB indexes, no new Lambda; the k6 scenario is a tools-only addition — executable against staging out-of-band, not wired into any deploy pipeline)
+
+No safety gate required.
+
+## D8. Verification needed before tagging v0.99.7.4
+
+- [ ] Decide on SHOULD-FIX #1 (`image_manual` dead branch + keys): option (a) semantic fix, (b) delete dead code, or (c) accept known-limitation and defer. I lean toward (b) for v0.99.7.4 and (a) as a v0.99.8 tracked item, because (a) requires adding `uploaded_by` to the ImageActivityItem type (server-side change), which is more than a frontend-only patch.
+- [ ] Decide on SHOULD-FIX #2 (missing CSS classes): add ~40 lines of CSS in `components.css`, OR delete the class-name references and rely on inline styles + data attributes. The snapshot tests currently assert on class names, so option-to-delete requires updating snapshots too.
+- [ ] Decide on the Phase 3 carry-over (createImage spread-Omit, tracked as #19 pending): explicitly closed or re-deferred for the third cycle. It's a SEPARATE task from Phase 4 per the review brief, but since v0.99.7.4 is the version the carry-over was promised to, it should be closed or re-tracked now. Not a Phase 4 blocker.
+- [ ] Run the test suite: `pnpm -r test --run` should show 1135 tests passing (1067 + 68 new).
+- [ ] Run `npx astro check` (or `npx tsc --noEmit` scoped to `src/frontend/src`) once to verify the `trigger: 'manual'` test-fixture type violations are the only TS errors, and that no production code has any new TS errors.
+- [ ] If CSS is added (SHOULD-FIX #2): run `npm run build -w src/frontend` to confirm Astro bundles the new rules.
+- [ ] Manual visual check on Profile → You tab with seeded activity data to confirm the component doesn't look broken. (The missing CSS is the main visual risk.)
+
+## D9. Decision
+
+**Status**: **ACCEPTED WITH CONDITIONS** — approved for tagging `v0.99.7.4` if SHOULD-FIX #2 (missing CSS) is addressed, either by adding the ~40 lines of CSS or by removing the unused class names. Shipping the component with no CSS would be a visible-polish regression on a user-facing page.
+
+SHOULD-FIX #1 (unreachable `image_manual` branch) is acceptable to defer if a known-limitation note is added somewhere traceable (commit message, PLANS.md, or a code comment) — the UX gap is real but low-severity, and the right fix is not frontend-only. Pipeline routing recommendation:
+
+- **If v0.99.7.4 must ship today**: route to `/cc-remediate` → my-builder for SHOULD-FIX #2 minimum (deletion path is fastest: ~5 LOC + snapshot regeneration). SHOULD-FIX #1 as a tracked follow-up with either option (b) in v0.99.7.5 or option (a) escalated to my-architect for an ADR-worthy semantic decision.
+- **If v0.99.7.4 can absorb one short cycle**: `/cc-remediate` handles SHOULD-FIX #1(b) + #2 together. Deletes the dead branch + keys + test fixture, then regenerates snapshots. One reviewer re-pass. Ship.
+
+The Phase 1 carry-over (createImage spread-Omit audit) is still open per task #19, but as noted in the review brief and confirmed by `REMEDIATION-462-PHASE3.md:43-48`, this is expected carry-over, not a Phase 4 blocker. Flag it for v0.99.7.4's remediation sweep if that remediation happens; otherwise re-track to v0.99.7.5.
+
+The 7 NITs can be addressed at the author's discretion any time.

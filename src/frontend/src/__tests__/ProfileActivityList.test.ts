@@ -142,7 +142,7 @@ const IMAGE_ITEM: ImageActivityItem = {
   image_id: IMAGE_ID,
   bed_id: BED_ID,
   bed_name: 'Bed A1',
-  trigger: 'manual',
+  trigger: 'motion',
   thumbnail_key: null,
 };
 
@@ -471,24 +471,24 @@ describe('F11: JA locale — no raw English strings from profile.activity.* name
     expect(html).toContain('さらに読み込む');
   });
 
-  it('image summary does not contain EN "Uploaded to"', () => {
+  it('image summary does not contain EN "Motion capture"', () => {
     const html = renderJa({
       items: [IMAGE_ITEM],
       initialLoading: false,
       error: null,
       totalCount: 1,
     });
-    expect(html).not.toContain('Uploaded to');
+    expect(html).not.toContain('Motion capture');
   });
 
-  it('image summary contains JA "手動アップロード:"', () => {
+  it('image summary contains JA "動体検出:"', () => {
     const html = renderJa({
       items: [IMAGE_ITEM],
       initialLoading: false,
       error: null,
       totalCount: 1,
     });
-    expect(html).toContain('手動アップロード:');
+    expect(html).toContain('動体検出:');
   });
 
   it('device summary does not contain EN "Registered"', () => {

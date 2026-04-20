@@ -421,8 +421,7 @@
       "summary": {
         "device_registered": "登録:",
         "image_scheduled": "自動撮影:",
-        "image_motion": "動体検出:",
-        "image_manual": "手動アップロード:"
+        "image_motion": "動体検出:"
       }
     }
   },

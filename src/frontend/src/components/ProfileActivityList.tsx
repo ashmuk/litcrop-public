@@ -59,15 +59,16 @@ function summaryFor(item: ActivityItem): string {
     // identifier (user-assigned), not translatable.
     return `${t('profile.activity.summary.device_registered')} ${item.node_name}`;
   }
-  // Image — distinguish Pi vs manual via the trigger field.
+  // Image summary — label by capture mode. TriggerType is 'scheduled' |
+  // 'motion', so those two branches are exhaustive. We don't distinguish
+  // Pi vs manual UI upload here because `trigger` doesn't carry that
+  // information (the Phase 3 OR-predicate separates them via
+  // uploaded_by / bed.device.registered_by, which the UI doesn't receive).
   const bedLabel = item.bed_name ?? item.bed_id;
-  if (item.trigger === 'scheduled') {
-    return `${t('profile.activity.summary.image_scheduled')} ${bedLabel}`;
-  }
   if (item.trigger === 'motion') {
     return `${t('profile.activity.summary.image_motion')} ${bedLabel}`;
   }
-  return `${t('profile.activity.summary.image_manual')} ${bedLabel}`;
+  return `${t('profile.activity.summary.image_scheduled')} ${bedLabel}`;
 }
 
 function ItemRow({ item }: { item: ActivityItem }) {
