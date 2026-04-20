@@ -143,6 +143,37 @@ describe('GET /api/v1/images/:imageId', () => {
     expect(body.tags).toHaveLength(1);
     expect(body.tags[0].tag).toBe('healthy');
   });
+
+  // #462 Phase 1 tail — response contract for uploaded_by
+  // Phase 3/4 will consume uploaded_by from this endpoint. These two cases
+  // guard the response shape: a value is returned as-is, and a legacy record
+  // (uploaded_by absent from DDB) returns explicit null, not undefined.
+  it('includes uploaded_by in response when set (#462)', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue({
+      ...imageFixture,
+      uploaded_by: 'some-cognito-sub',
+    });
+    vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['uploaded_by']).toBe('some-cognito-sub');
+  });
+
+  it('returns uploaded_by: null for legacy records without the field (#462)', async () => {
+    // imageFixture has no uploaded_by (simulates pre-v0.99.7.3 DDB record)
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    vi.mocked(dynamoRepo.getTagsForImage).mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, { headers: authHeaders() });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    // Must be explicit null — not undefined, not absent — so Phase 3 can
+    // distinguish "not set" from "missing" when building the activity feed.
+    expect(Object.prototype.hasOwnProperty.call(body, 'uploaded_by')).toBe(true);
+    expect(body['uploaded_by']).toBeNull();
+  });
 });
 
 // ── POST /api/v1/images/:imageId/tags ────────────────────────────

@@ -8,6 +8,7 @@ import {
   UpdateBedRequestSchema,
   ImageDetailResponseSchema,
   TagCreateResponseSchema,
+  DeviceListItemSchema,
 } from '../schemas/index';
 
 // ── BedStatusSchema ───────────────────────────────────────────────
@@ -297,5 +298,94 @@ describe('TagCreateResponseSchema', () => {
     expect(
       TagCreateResponseSchema.safeParse({ ...validTag, tag: 'no_data' }).success,
     ).toBe(false);
+  });
+});
+
+// ── #462 attribution fields — nullable().optional() contract ──────
+//
+// Guards the migration-shape contract for the two attribution fields.
+// Both are declared .nullable().optional() so that:
+//   - present-null  (legacy records) parses ✅
+//   - absent        (pre-v0.99.7.3 DDB Items that have no attribute at all) parses ✅
+//   - present-string (new records) parses ✅
+// A future schema tightening to .optional() without .nullable() (or vice versa)
+// would break one of the first two cases and must fail CI.
+
+describe('#462 uploaded_by nullability — ImageDetailResponseSchema', () => {
+  const validImageDetail = {
+    id: 'img-1',
+    bed_id: 'bed-1',
+    node_id: 'node-1',
+    captured_at: '2026-01-01T10:00:00Z',
+    uploaded_at: '2026-01-01T10:01:00Z',
+    url: 'https://example.com/img.jpg',
+    thumbnail_url: null,
+    trigger: 'scheduled',
+    content_type: 'image/jpeg',
+    size_bytes: 204800,
+    metadata: null,
+    tags: [],
+  };
+
+  it('accepts uploaded_by: null (legacy record, field present but null)', () => {
+    expect(
+      ImageDetailResponseSchema.safeParse({ ...validImageDetail, uploaded_by: null }).success,
+    ).toBe(true);
+  });
+
+  it('accepts uploaded_by absent (pre-v0.99.7.3 DDB record, field not present)', () => {
+    // validImageDetail has no uploaded_by key — omission must be valid
+    expect(
+      ImageDetailResponseSchema.safeParse(validImageDetail).success,
+    ).toBe(true);
+  });
+
+  it('accepts uploaded_by as a non-empty string (new record)', () => {
+    expect(
+      ImageDetailResponseSchema.safeParse({ ...validImageDetail, uploaded_by: 'cognito-sub-abc' }).success,
+    ).toBe(true);
+  });
+});
+
+describe('#462 registered_by nullability — DeviceListItemSchema', () => {
+  const validDevice = {
+    device_id: 'dev-001',
+    farm_id: 'farm-1',
+    bed_id: 'bed-1',
+    bed_name: 'A1',
+    node_name: 'Test Cam',
+    status: 'online',
+    capture_interval: 1800,
+    resolution: '1920x1080',
+    jpeg_quality: 85,
+    active_window: { start: '05:00', end: '20:00' },
+    trigger_type: 'scheduled',
+    last_seen_at: null,
+    battery_level: null,
+    wifi_signal_dbm: null,
+    storage_status: null,
+    capabilities: null,
+    test_shot_requested: false,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  it('accepts registered_by: null (legacy record, field present but null)', () => {
+    expect(
+      DeviceListItemSchema.safeParse({ ...validDevice, registered_by: null }).success,
+    ).toBe(true);
+  });
+
+  it('accepts registered_by absent (pre-v0.99.7.3 DDB record, field not present)', () => {
+    // validDevice has no registered_by key — omission must be valid
+    expect(
+      DeviceListItemSchema.safeParse(validDevice).success,
+    ).toBe(true);
+  });
+
+  it('accepts registered_by as a non-empty string (new record)', () => {
+    expect(
+      DeviceListItemSchema.safeParse({ ...validDevice, registered_by: 'cognito-sub-xyz' }).success,
+    ).toBe(true);
   });
 });

@@ -239,6 +239,28 @@ describe('POST /api/v1/farms/:farmId/devices', () => {
 
     expect(res.status).toBe(401);
   });
+
+  // #462 Phase 1 tail — route wires auth-context userId into registered_by
+  // Symmetric to the uploaded_by test in beds.test.ts: the dynamodb.test.ts
+  // layer confirms persistence given a value, but does not verify the route
+  // passes the JWT sub through. A regression silently writing undefined would
+  // break Phase 3's device-activity attribution.
+  it('passes auth-context userId as registered_by to createDevice (#462)', async () => {
+    mockRepo.getDevicesForFarm.mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/devices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...makeAuthHeaders('test-user-sub') },
+      body: JSON.stringify({ node_name: 'North Cam', bed_id: BED_ID }),
+    });
+
+    expect(res.status).toBe(201);
+
+    expect(mockRepo.createDevice).toHaveBeenCalledOnce();
+    const callArgs = mockRepo.createDevice.mock.calls[0];
+    // createDevice signature: (farmId, deviceId, data) — registered_by is in data
+    expect(callArgs[2]).toMatchObject({ registered_by: 'test-user-sub' });
+  });
 });
 
 // ── GET /api/v1/farms/:farmId/devices ────────────────────────────

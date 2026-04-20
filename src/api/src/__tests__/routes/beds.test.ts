@@ -416,4 +416,45 @@ describe('POST /api/v1/beds/:bedId/images', () => {
     });
     expect(res.status).toBe(404);
   });
+
+  // #462 Phase 1 tail — route wires auth-context userId into uploaded_by
+  // The dynamodb.test.ts layer confirms persistence given a value; this test
+  // verifies the route actually passes the JWT sub — not undefined — to the
+  // repo call. A silent regression (e.g. `uploaded_by: undefined`) would still
+  // pass the lower-level test but silently break Phase 3's activity feed.
+  it('passes auth-context userId as uploaded_by to createImage (#462)', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
+    const { uploadImage } = await import('../../services/s3');
+    vi.mocked(uploadImage).mockResolvedValue('farms/f0/beds/bd0/new-img.jpg');
+    vi.mocked(dynamoRepo.createImage).mockResolvedValue({
+      id: 'new-img-id',
+      bed_id: BED_ID,
+      node_id: 'node-01',
+      captured_at: '2026-03-20T10:00:00.000Z',
+      uploaded_at: '2026-03-20T10:01:00.000Z',
+      storage_key: 'farms/f0/beds/bd0/new-img.jpg',
+      trigger: 'scheduled',
+      content_type: 'image/jpeg',
+      size_bytes: 256,
+    });
+
+    const formData = new FormData();
+    formData.append('image', makeJpegBlob(), 'test.jpg');
+    formData.append('captured_at', '2026-03-20T10:00:00.000Z');
+    formData.append('node_id', 'node-01');
+    formData.append('trigger', 'scheduled');
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images`, {
+      method: 'POST',
+      headers: makeAuthHeaders('test-user-sub'),
+      body: formData,
+    });
+    expect(res.status).toBe(201);
+
+    // The fourth argument to createImage is the data object; uploaded_by must
+    // equal the JWT sub from the Authorization header — never undefined.
+    expect(dynamoRepo.createImage).toHaveBeenCalledOnce();
+    const callArgs = vi.mocked(dynamoRepo.createImage).mock.calls[0];
+    expect(callArgs[2]).toMatchObject({ uploaded_by: 'test-user-sub' });
+  });
 });
