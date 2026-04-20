@@ -206,6 +206,31 @@ else
 fi
 
 # =============================================================================
+# Claude memory bridge (host ↔ container)
+# =============================================================================
+# The devcontainer.json `mounts` block binds the host's
+# ~/.claude/projects/-workspace/memory directory into the container at the
+# same path. Memory files written by Claude in either environment are
+# immediately visible in the other — context survives container rebuilds
+# and flows to host-side Claude sessions.
+#
+# This block just reports bridge state so the operator can tell at a glance
+# whether memory seeded correctly. Seed procedure (first rebuild) is
+# documented in CLAUDE.md > "Claude memory persistence (DevContainer ↔ host)".
+
+MEMORY_DIR="${HOME_DIR}/.claude/projects/-workspace/memory"
+if [ -d "$MEMORY_DIR" ]; then
+    MEMORY_COUNT=$(find "$MEMORY_DIR" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$MEMORY_COUNT" -gt 0 ]; then
+        echo "[post-create] Claude memory bridge: ${MEMORY_COUNT} file(s) visible from host"
+    else
+        echo "[post-create] Claude memory bridge: mounted but host dir is empty"
+        echo "[post-create]   (first-run on this host is normal; seed from prior"
+        echo "[post-create]    session via ${WORKSPACE}/.cache/claude-memory-backup/ if present)"
+    fi
+fi
+
+# =============================================================================
 # Complete
 # =============================================================================
 

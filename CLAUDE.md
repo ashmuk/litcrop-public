@@ -168,3 +168,57 @@ Example: Choosing between authentication methods, selecting a database, CI/CD pi
 - **Stable rules**: RULES.md
 - **Tech stack & statistics**: README.md (Tech Stack section)
 - **ADR template**: .agent/skills/cc-adr.md
+
+## Claude memory persistence (DevContainer ↔ host)
+
+Claude writes to `~/.claude/projects/<project>/memory/*.md` to accumulate context across sessions (user preferences, project decisions, restart points, feedback). In a DevContainer, `$HOME` is inside the container and disappears on rebuild — so without a sync, memory drifts between host-side and container-side Claude, and every rebuild wipes the container's memory.
+
+### How this template handles it
+
+`.devcontainer/devcontainer.json` binds **only** the memory subdirectory — not the whole `.claude/` tree — between host and container:
+
+```jsonc
+"mounts": [
+  // ... other mounts ...
+  "source=${localEnv:HOME}/.claude/projects/-workspace/memory,target=/home/developer/.claude/projects/-workspace/memory,type=bind,consistency=cached"
+]
+```
+
+This gives:
+- **Survives rebuilds** — memory is on the host filesystem, not in an ephemeral container layer.
+- **Host / container parity** — running `claude` on the host macOS or inside the container sees the same memory files.
+- **Isolation preserved** — credentials, settings, caches, transcripts, plugins stay container-scoped (not bind-mounted).
+- **No lock fighting** — `.claude/*.lock` runtime coordination files are already in `.gitignore` and stay container-local.
+
+### Seeding on first rebuild after adding this mount
+
+When you first rebuild a container that HAS container-side memory but EMPTY host-side memory (e.g. the first rebuild after adopting this template), the bind mount will replace the container's memory dir with the host's (empty) version — losing the container's prior memory.
+
+**Before rebuilding:** from inside the running container, snapshot the memory to a workspace-visible location (workspace is always bind-mounted):
+
+```bash
+mkdir -p .cache/claude-memory-backup
+cp -R ~/.claude/projects/-workspace/memory/. .cache/claude-memory-backup/
+```
+
+**Then on host** (macOS terminal, NOT container):
+
+```bash
+mkdir -p ~/.claude/projects/-workspace/memory
+cp -R <repo>/.cache/claude-memory-backup/. ~/.claude/projects/-workspace/memory/
+```
+
+**Then rebuild** the container (VS Code → "Dev Containers: Rebuild Container", or `make devcontainer-rebuild`).
+
+`post-create.sh` reports the memory bridge state at the end of its run, so you can verify the bind is working:
+```
+[post-create] Claude memory bridge: 36 file(s) visible from host
+```
+
+### Concurrent-access caveat
+
+If you run host-side Claude AND container-side Claude simultaneously, both may try to write `MEMORY.md` at the same time. Memory file writes are small and atomic (via `Write`), so this is low-risk but not zero-risk. Recommended pattern: use one environment at a time, or accept the occasional last-writer-wins if both are active.
+
+### Scope note
+
+This pattern is specific to `workspaceFolder: "/workspace"` (which this template uses). Claude Code derives the project directory name from the workspace path by replacing `/` with `-`, so `/workspace` becomes `-workspace`. If you adapt this template for a different workspace path, update the `-workspace` segment in both the mount source/target AND in the `initializeCommand` `mkdir -p` step.
