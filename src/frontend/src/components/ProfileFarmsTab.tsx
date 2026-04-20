@@ -123,7 +123,7 @@ export default function ProfileFarmsTab({
             return (
               <div key={farm.id}>
               <div
-                style={`cursor:pointer;border-radius:${expandedFarm === farm.id ? 'var(--radius-md) var(--radius-md) 0 0' : 'var(--radius-md)'};border:2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-gray-200)'};background:${isActive ? 'var(--color-primary-light)' : 'var(--color-surface)'};overflow:hidden`}
+                style={`cursor:pointer;border-radius:${expandedFarm === farm.id ? 'var(--radius-md) var(--radius-md) 0 0' : 'var(--radius-md)'};border:2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-gray-200)'};background:${isActive ? 'var(--color-primary)' : 'var(--color-primary-light)'};color:${isActive ? '#fff' : 'inherit'};overflow:hidden`}
                 onClick={() => onToggleFarmDetail(farm.id)}
               >
                 <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
@@ -168,7 +168,7 @@ export default function ProfileFarmsTab({
                         {t(`profile.role_${farm.role}`)}
                       </span>
                       {isActive && (
-                        <span style="font-size:var(--font-size-xs);color:var(--color-primary);font-weight:var(--font-weight-semibold)">
+                        <span style="font-size:var(--font-size-xs);color:#fff;font-weight:var(--font-weight-semibold)">
                           {t('profile.active')}
                         </span>
                       )}
@@ -183,7 +183,7 @@ export default function ProfileFarmsTab({
                       {farm.elevation_m != null && ' · '}
                       {farm.grid_rows}×{farm.grid_cols} {t('profile.beds')}
                       {isAdmin && pendingCounts[farm.id] > 0 && (
-                        <span style="color:var(--color-primary);font-weight:var(--font-weight-semibold)">
+                        <span style={`color:${isActive ? '#fff' : 'var(--color-primary)'};font-weight:var(--font-weight-semibold)`}>
                           {' · '}{pendingCounts[farm.id]} {t('join_requests.pending_count')}
                         </span>
                       )}
