@@ -729,10 +729,9 @@ export async function markAllNotificationsRead(): Promise<number> {
 export async function getMyActivity(
   options: { cursor?: string; limit?: number } = {},
 ): Promise<import('@litcrop/shared').ActivityFeedResponse> {
-  const params = new URLSearchParams();
-  if (options.cursor) params.set('cursor', options.cursor);
-  if (options.limit) params.set('limit', String(options.limit));
-  const qs = params.toString();
-  const path = qs ? `/me/activity?${qs}` : '/me/activity';
-  return request<import('@litcrop/shared').ActivityFeedResponse>('GET', path);
+  const query = new URLSearchParams();
+  if (options.cursor) query.set('cursor', options.cursor);
+  if (options.limit) query.set('limit', String(options.limit));
+  const qs = query.toString();
+  return request<import('@litcrop/shared').ActivityFeedResponse>('GET', `/me/activity${qs ? `?${qs}` : ''}`);
 }

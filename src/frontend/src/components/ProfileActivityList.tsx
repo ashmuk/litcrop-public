@@ -1,6 +1,6 @@
 import { useMeActivity } from '../lib/useMeActivity';
 import { t } from '../i18n/i18n';
-import type { ActivityItem, DiaryCategory } from '@litcrop/shared';
+import type { ActivityItem } from '@litcrop/shared';
 
 // Icon per discriminant — emoji keeps the dep footprint zero and matches the
 // existing project style (diary/device UI use emoji throughout).
@@ -34,16 +34,14 @@ function RelativeTime({ iso }: { iso: string }) {
   );
 }
 
-function iconFor(item: ActivityItem): string {
-  if (item.type === 'diary') return ICON_DIARY;
-  if (item.type === 'device') return ICON_DEVICE;
-  return ICON_IMAGE;
-}
-
-function iconLabel(item: ActivityItem): string {
-  if (item.type === 'diary') return t('profile.activity.item.diary.icon_label');
-  if (item.type === 'device') return t('profile.activity.item.device.icon_label');
-  return t('profile.activity.item.image.icon_label');
+function iconMeta(item: ActivityItem): { icon: string; label: string } {
+  if (item.type === 'diary') {
+    return { icon: ICON_DIARY, label: t('profile.activity.item.diary.icon_label') };
+  }
+  if (item.type === 'device') {
+    return { icon: ICON_DEVICE, label: t('profile.activity.item.device.icon_label') };
+  }
+  return { icon: ICON_IMAGE, label: t('profile.activity.item.image.icon_label') };
 }
 
 function summaryFor(item: ActivityItem): string {
@@ -51,7 +49,7 @@ function summaryFor(item: ActivityItem): string {
     // Composition: `<category>: <description>`. Category label comes from
     // the existing diary namespace so we inherit the EN + JA keys already in
     // place (no new diary strings required here).
-    const categoryLabel = t(`diary.categories.${item.diary_category as DiaryCategory}`);
+    const categoryLabel = t(`diary.categories.${item.diary_category}`);
     return `${categoryLabel}: ${item.description}`;
   }
   if (item.type === 'device') {
@@ -72,6 +70,7 @@ function summaryFor(item: ActivityItem): string {
 }
 
 function ItemRow({ item }: { item: ActivityItem }) {
+  const { icon, label } = iconMeta(item);
   return (
     <li class="activity-item" data-activity-type={item.type}>
       <a
@@ -79,8 +78,8 @@ function ItemRow({ item }: { item: ActivityItem }) {
         href={item.deep_link}
         data-activity-id={item.id}
       >
-        <span class="activity-item__icon" aria-label={iconLabel(item)} role="img">
-          {iconFor(item)}
+        <span class="activity-item__icon" aria-label={label} role="img">
+          {icon}
         </span>
         <div class="activity-item__body">
           <div class="activity-item__summary">{summaryFor(item)}</div>
