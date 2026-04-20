@@ -359,7 +359,7 @@ router.post('/:bedId/images', async (c) => {
       content_type: contentType,
       size_bytes: imageFile.size,
       metadata,
-      uploaded_by: userId, // #462: powers the activity feed
+      uploaded_by: userId,
     });
   } catch (err) {
     console.error('[dynamo createImage error]', err);

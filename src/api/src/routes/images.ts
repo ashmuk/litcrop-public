@@ -91,7 +91,7 @@ router.get('/:imageId', async (c) => {
     content_type: image.content_type,
     size_bytes: image.size_bytes,
     metadata: image.metadata ?? null,
-    uploaded_by: image.uploaded_by ?? null, // #462 activity-feed attribution
+    uploaded_by: image.uploaded_by ?? null,
     tags: tags.map((t) => ({
       id: t.id,
       tag: t.tag,

@@ -30,7 +30,6 @@ function itemToDevice(item: Record<string, unknown>, deviceId: string): Device {
     // --- #406 config-propagation visibility ---
     last_config_polled_at: (item['last_config_polled_at'] as string) ?? null,
     effective_config: (item['effective_config'] as EffectiveConfig) ?? null,
-    // --- #462 activity-feed attribution ---
     registered_by: (item['registered_by'] as string | null) ?? null,
     created_at: item['created_at'] as string,
     updated_at: item['updated_at'] as string,
@@ -49,7 +48,6 @@ export async function createDevice(
     jpeg_quality: number;
     active_window_start: string;
     active_window_end: string;
-    /** Cognito sub of the registering user — powers the activity feed (#462). */
     registered_by: string | null;
   },
 ): Promise<void> {

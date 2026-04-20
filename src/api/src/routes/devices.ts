@@ -81,7 +81,7 @@ farmDevicesRouter.post('/:farmId/devices', async (c) => {
     bed_id: parsed.bed_id,
     node_name: parsed.node_name,
     device_api_key_hash: keyHash,
-    registered_by: userId, // #462: powers the activity feed
+    registered_by: userId,
     ...DEVICE_DEFAULTS,
   });
 
