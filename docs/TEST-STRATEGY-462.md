@@ -45,21 +45,27 @@ Ratio is **heavy unit, moderate integration, lean E2E** — appropriate for a Pr
 
 ---
 
-## 3. Phase 2 — backfill diagnostic script (test strategy)
+## 3. Phase 2 — backfill diagnostic script — **SKIPPED (2026-04-20)**
 
-### Scope recap
-The current design decision (per #462 Q1 = "leave null") means Phase 2 is likely **skipped or minimal**. If implemented, the script is one-shot, diagnostic-only, counting pre-v0.99.7.3 records.
+### Decision
 
-### Test approach: **minimal — unit the pure logic, skip orchestration**
+Phase 2 is explicitly **skipped**, not merely deferred. Rationale:
 
-| Test | Level | Priority | Rationale |
-|------|-------|----------|-----------|
-| Filter function: "is this record pre-v0.99.7.3?" given a DDB Item | unit | **MUST** if script ships | Pure logic; trivial to test. |
-| Aggregator: totals per table match sum of per-partition scans | unit | **SHOULD** | Catches off-by-one in the roll-up. |
-| Dry-run mode produces report but performs zero writes | unit | **MUST** if script ships | Safety invariant for a migration-adjacent tool. |
-| End-to-end with LocalStack or `aws-sdk-client-mock` | integration | **COULD** | Over-investment for a one-shot script. Skip unless we see divergence in staging dry-run. |
+- Q1 policy from the design decisions (`/home/developer/.claude/projects/-workspace/memory/project_bed_crop_1n_scope.md` and #462 issue comment chain) is **"leave null for pre-v0.99.7.3 records"**. There is no data to migrate.
+- `itemToDevice` and `itemToImage` default the new fields to `null` via `?? null` on deserialization. Pre-v0.99.7.3 DDB records naturally produce null values in the API layer; no DB-side mutation is needed.
+- A diagnostic-only script (counting legacy records) has no concrete signal of value right now — we'd spend the effort on speculative future-proofing.
 
-**Decision**: target 3 unit tests total. No CI wiring; script is invoked manually from `tools/` with a runbook entry. If Phase 2 is skipped entirely (our current recommendation), no tests needed.
+### Revisit criteria
+
+Phase 2 may be revived if any of the following becomes true:
+
+1. Pilot feedback says "I want to see my historical diary/device/image entries in the activity feed" → retroactive attribution policy change → migration becomes required.
+2. Storage cost audit flags the null-sparse attribute as a concern at scale (unlikely at pilot scale).
+3. A future feature needs the count of pre-v0.99.7.3 records for UX (e.g. "36 items pre-date author tracking" banner).
+
+### What this means for tests
+
+**Zero tests added for Phase 2.** The test-count budget from §10 drops from ~700 LOC to ~640 LOC across the remaining phases (Phase 1 tail + Phase 3 + Phase 4 + k6 scenario).
 
 ---
 
