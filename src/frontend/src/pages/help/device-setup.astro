@@ -11,7 +11,7 @@
  *   2. Prerequisites
  *   3. How it works (CSS-only animated diagram — was #242)
  *   4. Hardware tiers (Class 1/2/3)
- *   5. Setup steps (links to technical runbook)
+ *   5. Setup steps (links to technical runbook) + Troubleshooting (#464)
  *   6. Images (placeholder refs — real assets tracked in #410)
  *
  * i18n: bilingual EN/JA, dual-rendered in the same HTML and toggled at
@@ -19,6 +19,16 @@
  * The root-attribute is set pre-paint by /scripts/auth-locale-restore.js
  * loaded by AuthLayout. Translators: keep element order 1:1 between the
  * two locales and preserve <strong>/<em>/<code> inside the translation.
+ *
+ * Missing-picture TODOs (tracked in #464 / #410 — swap in as assets arrive):
+ *   - Section 5, Step 2: camera ribbon orientation & routing (most common
+ *     first-boot friction point)
+ *   - Section 5, Step 2: HAT connection orientation (Class 2/3)
+ *   - Section 5, Step 5: LED pattern during first capture (what "success"
+ *     looks like on the device itself)
+ *   - Section 5, Step 5: terminal output of a successful ./capture.sh run
+ *   - Section 6, all three: assembled camera / example bed capture /
+ *     weatherproof enclosure (placeholder slots exist)
  */
 import AuthLayout from '../../layouts/AuthLayout.astro';
 ---
@@ -337,8 +347,11 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
           <code>.env</code> file.
         </li>
         <li>
-          <strong>Copy config to the Pi.</strong> Paste the <code>.env</code> into
-          <code>~/litcrop/.env</code>, then run <code>curl -fsSL https://litcrop.com/install.sh | bash</code>.
+          <strong>Copy config to the Pi.</strong> SSH into the Pi (the
+          Raspberry Pi Imager's "advanced options" step lets you enable SSH
+          and set the password ahead of time). Paste the <code>.env</code>
+          into <code>~/litcrop/.env</code>, then run
+          <code>curl -fsSL https://litcrop.com/install.sh | bash</code>.
           install.sh auto-detects your HAT/sensor and installs a systemd timer
           (or cron on older images).
         </li>
@@ -360,12 +373,67 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
           <strong>LitCropに登録する。</strong>デバイスページで<em>「デバイスを登録」</em>をクリックし、Piに名前を付けて、生成された<code>.env</code>ファイルをダウンロードします。
         </li>
         <li>
-          <strong>設定をPiにコピーする。</strong><code>.env</code>を<code>~/litcrop/.env</code>に配置し、<code>curl -fsSL https://litcrop.com/install.sh | bash</code>を実行します。install.shはHAT／センサーを自動検出し、systemdタイマー（旧イメージではcron）を設定します。
+          <strong>設定をPiにコピーする。</strong>PiにSSH接続します（Raspberry Pi Imagerの「詳細オプション」で事前にSSHを有効化し、パスワードを設定できます）。<code>.env</code>を<code>~/litcrop/.env</code>に配置し、<code>curl -fsSL https://litcrop.com/install.sh | bash</code>を実行します。install.shはHAT／センサーを自動検出し、systemdタイマー（旧イメージではcron）を設定します。
         </li>
         <li>
           <strong>初回撮影を確認する。</strong>デバイスページでは、最初のハートビート受信から約60秒以内にバッジが<em>「検出中」</em>からクラス表示に切り替わります。各デバイスの<em>「テスト撮影」</em>ボタンを使えば、アクティブウィンドウに関わらずその場で撮影を確認できます。
         </li>
       </ol>
+
+      <!-- Troubleshooting (added for #464): addresses the most common first-boot friction points surfaced by pilot users. -->
+      <h3 class="help-section__subtitle" data-lang="en">If something looks wrong</h3>
+      <h3 class="help-section__subtitle" data-lang="ja">うまくいかないときは</h3>
+
+      <dl class="help-troubleshoot" data-lang="en">
+        <dt>Camera not detected after <code>./capture.sh</code></dt>
+        <dd>
+          Power down, reseat the camera ribbon cable — the silver/blue tab
+          on the ribbon must face the <em>right direction</em> at both ends
+          (toward the board contacts). Ribbon mis-orientation is the most
+          common first-boot failure and does not damage anything.
+        </dd>
+        <dt><code>install.sh</code> fails with a permissions error</dt>
+        <dd>
+          Run as a normal user, <em>not</em> <code>sudo</code> — the script
+          escalates internally only when it needs to (installing the systemd
+          unit). Running the whole curl-bash as root will abort.
+        </dd>
+        <dt>No heartbeat visible on the Devices page after 5 minutes</dt>
+        <dd>
+          Check three things, in order: (1) the Pi is connected to Wi-Fi
+          (<code>ip addr</code> shows a <code>wlan0</code> inet address),
+          (2) <code>~/litcrop/.env</code> contains the values from the
+          Register Device download, not placeholders, and
+          (3) <code>systemctl --user status litcrop-capture.timer</code>
+          shows <em>active (waiting)</em>. Re-run <code>install.sh</code>
+          if the timer is missing.
+        </dd>
+        <dt>Battery level shows as <code>—</code> on a Class 2 device</dt>
+        <dd>
+          The HAT's I²C interface is only read on the capture cycle, so the
+          first battery reading appears after the next scheduled capture —
+          not immediately on heartbeat. Wait one full capture interval.
+        </dd>
+      </dl>
+
+      <dl class="help-troubleshoot" data-lang="ja">
+        <dt><code>./capture.sh</code>実行後にカメラが検出されない</dt>
+        <dd>
+          電源を切り、カメラリボンケーブルを差し直してください。リボンの銀色／青色のタブは、両端とも<em>正しい向き</em>（基板のコンタクト側）である必要があります。リボンの向き間違いは初回起動時に最も多い失敗ですが、機材を壊すことはありません。
+        </dd>
+        <dt><code>install.sh</code>が権限エラーで失敗する</dt>
+        <dd>
+          通常ユーザーで実行してください（<code>sudo</code>ではありません）。スクリプトは必要なとき（systemdユニットの登録時）にのみ内部で権限昇格します。curl-bash全体をroot実行すると中断されます。
+        </dd>
+        <dt>5分経ってもデバイスページにハートビートが表示されない</dt>
+        <dd>
+          以下を順に確認してください: (1) PiがWi-Fiに接続されているか（<code>ip addr</code>で<code>wlan0</code>にIPアドレスが表示される）、 (2) <code>~/litcrop/.env</code>に「デバイス登録」で取得した値が入っており、プレースホルダのままでないか、 (3) <code>systemctl --user status litcrop-capture.timer</code>で<em>active (waiting)</em>になっているか。タイマーが無ければ<code>install.sh</code>を再実行します。
+        </dd>
+        <dt>Class 2デバイスでバッテリー残量が<code>—</code>と表示される</dt>
+        <dd>
+          HATのI²Cインタフェースは撮影サイクル時にのみ読み取るため、最初のバッテリー値はハートビート直後ではなく、次の定期撮影後に表示されます。1サイクル分お待ちください。
+        </dd>
+      </dl>
 
       <div class="help-callout help-callout--muted" data-lang="en">
         Technical runbook: <a
@@ -584,6 +652,32 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
   }
   .help-list--numbered {
     list-style: decimal;
+  }
+
+  /* ── Section 5: troubleshooting dl (added for #464) ──────────────── */
+  .help-section__subtitle {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    margin: var(--space-4) 0 var(--space-2);
+    color: var(--color-gray-800);
+  }
+  .help-troubleshoot {
+    margin: 0 0 var(--space-4);
+    padding: 0;
+  }
+  .help-troubleshoot dt {
+    font-weight: var(--font-weight-semibold);
+    margin-top: var(--space-3);
+    color: var(--color-text);
+  }
+  .help-troubleshoot dt:first-of-type {
+    margin-top: 0;
+  }
+  .help-troubleshoot dd {
+    margin: var(--space-1) 0 0;
+    padding-left: 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-700);
   }
 
   .help-callout {
