@@ -230,6 +230,16 @@ CI/CD: GitHub Actions runs on push to `main` via `.github/workflows/deploy.yml` 
 - See [RULES.md](RULES.md) for stable project policy
 - See [CLAUDE.md](CLAUDE.md) for AI assistant guidelines
 
+## Development & AI Assistance
+
+This project is developed with [Claude Code](https://claude.com/claude-code) assisting on implementation, code review, and documentation.
+
+- **Human authorship.** All AI-suggested code is reviewed by a human maintainer before commit. Commits carry a `Co-Authored-By: Claude …` trailer to document the collaboration, but the committer is always a human and bears authorship responsibility.
+- **Agent contracts.** The [`.agent/`](.agent/) directory is the source of truth for agent definitions — subagents, skills, and slash commands. A `make sync` propagates them to Claude Code, Cursor, and Codex configuration. See [CLAUDE.md](CLAUDE.md) for the coordination workflow.
+- **Review gates.** Per the [Guidelines](#guidelines) above, no AI-assisted change reaches `main` without the maintainer review step and a green CI run. Architectural decisions are captured in [docs/decisions/](docs/decisions/) ADRs.
+
+See [RULES.md](RULES.md) for the stable policy on AI-generated contributions.
+
 ## License
 
 Private — All rights reserved.
