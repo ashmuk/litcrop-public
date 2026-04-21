@@ -158,7 +158,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install chromium webkit --with-deps
 
       - name: Build shared package
         run: npm run build -w packages/shared
