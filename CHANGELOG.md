@@ -11,7 +11,51 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ## [Unreleased]
 
-_No unreleased changes — see [0.99.7.3] scope tracking in [#462](https://github.com/ashmuk/litcrop/issues/462)._
+_No unreleased changes._
+
+---
+
+## [0.99.7.4] - 2026-04-21 — *#462 Phase 4: ProfileActivityList + carry-over audit + UX polish*
+
+### Added
+- `<ProfileActivityList />` Preact component on the Profile → You tab — chronologically merged activity list with distinct icons per source (📔 planned-diary / 📗 actual-diary / 📡 device / 📷 image), i18n'd summaries, relative timestamps, deep-link anchors, and Load-more pagination (#462 Phase 4).
+- `useMeActivity(limit=10)` fetch hook with opaque cursor pagination and `ActivityFeedResponseSchema` Zod validation; generic `"Couldn't load activity"` error surface, no server-message echo.
+- `profile.activity.*` i18n namespace in `en.json` + `ja.json`; F11 key-coverage test enforces no raw English in component source.
+- ~65 LOC of component CSS in `components.css` (skeleton keyframe animation, item flex layout, hover, error banner).
+- `meActivity` k6 scenario in `tools/load-test/k6-baseline.js` with `p(95)<1500ms` threshold — captures the fan-out baseline before pilot-scale growth (R5).
+
+### Changed
+- Profile "You" tab anchors the Activity feed at the end: all finite-length sections (Logout, Change Password, Delete Account) sit above it so no account action drifts below the fold as the feed paginates.
+- Default activity page size 20 → 10 — shorter first paint on mobile viewports.
+- Diary-entry icon now distinguishes planned (📔) vs actual (📗 green book) in the activity feed; both color and aria-label carry the distinction (WCAG-compliant).
+- Profile Farms tab inverts selected/unselected farm-card colors: the active card now uses `--color-primary` (same as the `+ New Farm` CTA) with white text; inactive cards use `--color-primary-light`. Active card has stronger visual weight than inactive siblings.
+
+### Fixed
+- `createImage` write path tightened — introduced `CreateImageData` interface and enumerated the `PutCommand` Item fields explicitly, eliminating the `Omit<Image> + spread` pattern that silently drifted new optional fields into DDB. Resolves the #462 Phase 1 deferred finding #5, carried over through three phases.
+- Selected farm-card inner-text contrast restored: description, metadata, farm-ID, Delete, Leave, and edit ✏️ now use high-contrast white / rgba-white variants when rendered on the `--color-primary` background (Delete additionally gets an underline to preserve its destructive signal without relying on red). Staging-feedback follow-up to the color inversion.
+- Generic `"Invalid cursor"` error message on `/me/activity` replaces the repo's internal messages (`"user mismatch"`, `"unknown type"`) — R3 cursor-forgery reconnaissance hardening.
+
+### Tests
+- 1067 → 1135 vitest tests (+68 across `ProfileActivityList.test.ts`, `ProfileActivityList.snapshot.test.ts`, `useMeActivity.test.ts`).
+- 8 MUST + 5 SHOULD F-matrix tests from `docs/TEST-STRATEGY-462.md` §5 (F1–F11 implemented; F12 axe-core + F13 Playwright E2E tracked separately).
+
+---
+
+## [0.99.7.3] - 2026-04-20 — *#462 Phase 3: GET /me/activity endpoint*
+
+### Added
+- `GET /api/v1/me/activity?cursor=&limit=20` endpoint — chronologically merged feed of the caller's diary entries, registered devices, and attributed images. Response shape `{ items: ActivityItem[], next_cursor, total_count }` with `ActivityItem` as a discriminated union on `type: 'diary' | 'device' | 'image'` (#462 Phase 3).
+- Pi-auth OR-predicate on the image source: `uploaded_by = me` OR (`trigger = 'scheduled'` AND `bed.device.registered_by = me`). Pi captures via the shared service-user JWT now attribute to the registering operator — see [#462 "Pi-auth reality correction" comment](https://github.com/ashmuk/litcrop/issues/462#issuecomment-4280185580).
+- Opaque user-scoped cursor with I8 defense: `decodeActivityCursor(cursor, expectedUserId)` rejects a cursor whose encoded `user_id` does not match the requesting JWT sub (400 Invalid cursor). Legacy-null records (pre-v0.99.7.3) naturally drop out via strict `=== userId` filters.
+- `ActivityItem` + `ActivityFeedResponseSchema` Zod schema in `@litcrop/shared` for frontend consumption.
+
+### Changed
+- /cc-review cycle on Phase 3: 3 SHOULD-FIX resolved (generic 400 on cursor rejection, diary-null I5 coverage parity, de-duplicated `getBedsForFarm` call per farm); 1 SHOULD-FIX re-deferred to v0.99.7.4 with a JSDoc marker.
+- /simplify pass: `badCursor` + `scanAllByPrefix` helpers, named row aliases (`DiaryRow` / `DeviceRow` / `ImageRow`), typed route-handler `result`. Net −14 LOC.
+- Phase 2 (backfill migration) explicitly **SKIPPED** per [2026-04-20 decision](https://github.com/ashmuk/litcrop/issues/462#issuecomment-4283023847) — Q1 policy is "leave null on pre-v0.99.7.3 records"; revisit triggers documented.
+
+### Tests
+- 1007 → 1067 vitest tests (+60 across repository, route, and schema-contract tests; 13 MUST + 4 SHOULD per `docs/TEST-STRATEGY-462.md` §4). E1 Playwright tracked as E2E scope.
 
 ---
 
@@ -255,7 +299,9 @@ _No unreleased changes — see [0.99.7.3] scope tracking in [#462](https://githu
 
 ---
 
-[Unreleased]: https://github.com/ashmuk/litcrop/compare/v0.99.7.2...HEAD
+[Unreleased]: https://github.com/ashmuk/litcrop/compare/v0.99.7.4...HEAD
+[0.99.7.4]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.4
+[0.99.7.3]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.3
 [0.99.7.2]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.2
 [0.99.7.1]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.1
 [0.99.7]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7
