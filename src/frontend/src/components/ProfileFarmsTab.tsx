@@ -155,7 +155,7 @@ export default function ProfileFarmsTab({
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setEditingFarmName(farm.id); setFarmNameDraft(farm.name); }}
-                          style="font-size:var(--font-size-xs);background:none;border:none;cursor:pointer;padding:0 2px;color:var(--color-gray-500)"
+                          style={`font-size:var(--font-size-xs);background:none;border:none;cursor:pointer;padding:0 2px;color:${isActive ? 'rgba(255,255,255,0.9)' : 'var(--color-gray-500)'}`}
                           aria-label="Edit farm name"
                         >✏️</button>
                       )}
@@ -173,12 +173,12 @@ export default function ProfileFarmsTab({
                         </span>
                       )}
                       {!isDemoFarm && (
-                        <span style="font-size:var(--font-size-xs);color:var(--color-gray-400);font-family:monospace">
+                        <span style={`font-size:var(--font-size-xs);color:${isActive ? 'rgba(255,255,255,0.75)' : 'var(--color-gray-400)'};font-family:monospace`}>
                           {farm.id.slice(0, 8)}
                         </span>
                       )}
                     </div>
-                    <div style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px">
+                    <div style={`font-size:var(--font-size-xs);color:${isActive ? 'rgba(255,255,255,0.85)' : 'var(--color-gray-500)'};margin-top:2px`}>
                       {farm.elevation_m != null && `${Math.round(farm.elevation_m)}m ${t('profile.elevation_short')}`}
                       {farm.elevation_m != null && ' · '}
                       {farm.grid_rows}×{farm.grid_cols} {t('profile.beds')}
@@ -190,7 +190,7 @@ export default function ProfileFarmsTab({
                     </div>
                     {farm.description && (
                       <div
-                        style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin-top:2px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                        style={`font-size:var(--font-size-xs);color:${isActive ? 'rgba(255,255,255,0.85)' : 'var(--color-gray-500)'};margin-top:2px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`}
                         title={farm.description}
                       >
                         {farm.description}
@@ -210,7 +210,7 @@ export default function ProfileFarmsTab({
                     {isAdmin && !isDemoFarm && (
                       <button
                         type="button"
-                        style="font-size:var(--font-size-sm);color:var(--color-error,#dc2626);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
+                        style={`font-size:var(--font-size-sm);color:${isActive ? '#fff' : 'var(--color-error,#dc2626)'};background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2);text-decoration:${isActive ? 'underline' : 'none'}`}
                         onClick={(e) => { e.stopPropagation(); setConfirmDelete(isConfirming ? null : farm.id); }}
                       >
                         {t('profile.delete_farm')}
@@ -219,7 +219,7 @@ export default function ProfileFarmsTab({
                     {!isDemoFarm && !isSystemAdmin && currentUser && farm.user_id !== currentUser.sub && (
                       <button
                         type="button"
-                        style="font-size:var(--font-size-sm);color:var(--color-gray-600);background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)"
+                        style={`font-size:var(--font-size-sm);color:${isActive ? 'rgba(255,255,255,0.9)' : 'var(--color-gray-600)'};background:none;border:none;cursor:pointer;padding:var(--space-1) var(--space-2)`}
                         onClick={(e) => { e.stopPropagation(); setConfirmLeave(isConfirmingLeave ? null : farm.id); }}
                       >
                         {t('profile.leave_farm')}
