@@ -71,6 +71,54 @@ All deployed via IaC (CDK), reproducible and CI/CD-ready.
 
 ---
 
+## Production Path to v1.0 (decided 2026-04-22)
+
+The post-MVP path is scoped into three distinct version streams, each with a different delivery character and an explicit gate before the next can begin. Gates prevent scope creep between streams and make the v1.0 ship decision data-driven rather than date-driven.
+
+### Stream 1 — v0.99.7.x: **Hardening** (deterministic)
+
+Small, discrete cleanup items in the audit-report R-series that don't depend on usage signal. Each lands as a patch tag (v0.99.7.5, v0.99.7.6, etc.). Items:
+
+- `#443` — k6 empirical baseline (harness landed in v0.99.7.2; run against staging to capture pilot-scale numbers).
+- `#445` — extract `useProfileSettings` + `usePendingRegistration` hooks from `ProfilePage` (R-001 refactor).
+- `#448` — schedule quarterly incident tabletop drills (R-011 ops).
+- `#464` — Pi camera setup guide polish (pictures + copy).
+
+Perf batch (`#381`–`#385`, F-25/F-26/F-27/F-28/F-29) is **intentionally NOT in this stream** — those are speculative optimizations that should only ship if the k6 empirical run (#443) surfaces a concrete latency regression. Otherwise they add risk for no gain at pilot scale.
+
+**Gate to Stream 2**: R-series tail closed (priority:high R- items count = 0); k6 empirical numbers recorded; no open bugs from v0.99.7.4 staging feedback.
+
+### Stream 2 — v0.99.8.x: **Scale** (feature-pulled)
+
+`#279` 1:N bed-to-crop relationship as the sole minor-version scope. Size L with schema changes across shared + api + frontend — enough surface area on its own. Follows the same multi-phase pipeline that #462 used (design → shared → API → UI → tests → review → simplify → tag).
+
+Adjacent crop-intelligence items (`#323` seasonal advisory, `#324` location-aware defaults, `#333` BYOK AI) are deliberately NOT bundled — if they fall out of #279's groundwork naturally, they ship as `0.99.8.1+` patches. Don't force them into the minor-version scope.
+
+**Gate to Stream 3**: #279 shipped to prod; at least one real user exercising the 1:N flow without regressions in existing activity / farm paths; any discovered follow-ups triaged into 0.99.8.1+ or deferred.
+
+### Stream 3 — v0.99.9.x: **v1.0 RC Prep** (data-driven)
+
+Not just "another audit" — this stream's goal is to *pass the v1.0 ship gate*. The audit is the *vehicle*; production-readiness is the *destination*. Scope candidates:
+
+- Second audit pass generating `AUDIT-REPORT-v0.99.9.md` analogous to v0.99.6's R-series.
+- Explicit SLOs (latency, availability, error rate) backed by CloudWatch alarms.
+- Incident runbooks (operational + on-call playbooks).
+- DR rehearsal (restore-from-backup exercise, documented).
+- Capacity headroom review (DDB throughput, Lambda concurrency, S3 bandwidth).
+- Monitoring + alerting coverage audit.
+
+**Gate to v1.0 GA**: all audit findings zeroed or explicitly deferred with rationale; runbooks live; DR restore tested end-to-end; 24h staging soak without incident; signoff from a human reviewer.
+
+### Why this shape
+
+- **Stream 1 is safe to ship** because its items don't depend on usage signal — they're ready-to-close backlog.
+- **Stream 2 is a single bet** because 1:N is the only user-pulled feature still open; bundling other crop items would widen blast radius without corresponding value.
+- **Stream 3 is the v1.0 ship gate**, not a feature stream — success is measured by "would I be on-call for this?" not by lines-of-code shipped.
+
+Each stream has an explicit gate so scope from a later stream can't leak into an earlier one. If the gate fails, the stream re-iterates; if it passes, the next stream opens.
+
+---
+
 ## PoC Summary (completed)
 
 ### PoC Deliverables (all met)
