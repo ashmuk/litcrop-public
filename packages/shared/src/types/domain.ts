@@ -84,6 +84,36 @@ export interface Bed {
   completed_at?: string;     // ISO 8601 date — current crop cycle done
 }
 
+/**
+ * BedCrop status (#279 Wave B) — lifecycle state of a single crop cycle.
+ * `planned` and `active` count toward the 5-cap; `harvested` and `failed` are history.
+ */
+export type BedCropStatus = 'planned' | 'active' | 'harvested' | 'failed';
+
+/**
+ * BedCrop — one crop cycle attached to a bed (#279).
+ *
+ * Replaces the 1:1 crop fields on `Bed` with a 1:N association. Intercropping
+ * (concurrent crops on the same bed) and succession (sequential crops across
+ * time) both use this model — differentiation is via date overlap, not entity
+ * variants. See `docs/design/DESIGN-279-bed-crop-1n.md` §3.1.
+ */
+export interface BedCrop {
+  id: string;
+  bed_id: string;               // FK → Bed.id
+  farm_id: string;              // FK → Farm.id (denormalized for auth + query)
+  crop_type: string;            // canonical id from CROP_LIBRARY
+  crop_variety?: string;
+  planted_at?: string;          // ISO 8601 date
+  expected_harvest?: string;    // ISO 8601 date
+  completed_at?: string;        // ISO 8601 date — set when status → harvested/failed
+  status: BedCropStatus;
+  notes?: string;               // crop-cycle-specific (separate from Bed.notes)
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Image {
   id: string;
   bed_id: string;

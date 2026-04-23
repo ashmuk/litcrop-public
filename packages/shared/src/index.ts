@@ -42,6 +42,8 @@ export type {
   DeviceActivityItem,
   ImageActivityItem,
   ActivityFeedResponse,
+  BedCrop,
+  BedCropStatus,
 } from './types/domain';
 
 // API response/error types
@@ -106,6 +108,7 @@ export {
   FREE_PLAN_MAX_MEMBERSHIPS,
   CROP_TYPES,
   DDB_KEY_PREFIXES,
+  MAX_ACTIVE_CROPS_PER_BED,
   ACTIVITY_TTL_DAYS,
   NOTIFICATION_TTL_DAYS,
   ENV_ADMIN_EMAILS,
@@ -181,6 +184,8 @@ export {
   ActivityItemSchema,
   ActivityFeedResponseSchema,
   ActivityFeedQuerySchema,
+  BedCropStatusSchema,
+  BedCropSchema,
 } from './schemas/index';
 
 // Crop library — shared types and data (#274)

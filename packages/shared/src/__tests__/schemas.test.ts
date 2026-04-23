@@ -14,6 +14,8 @@ import {
   DiaryActivityItemSchema,
   DeviceActivityItemSchema,
   ImageActivityItemSchema,
+  BedCropStatusSchema,
+  BedCropSchema,
 } from '../schemas/index';
 
 // ── BedStatusSchema ───────────────────────────────────────────────
@@ -607,5 +609,83 @@ describe('C2 — ActivityFeedResponseSchema: response envelope stability', () =>
       total_count: 3,
     });
     expect(result.success).toBe(true);
+  });
+});
+
+// ── BedCrop schemas (#279 Wave B) ────────────────────────────────
+
+describe('BedCropStatusSchema', () => {
+  it('accepts all four lifecycle statuses', () => {
+    for (const v of ['planned', 'active', 'harvested', 'failed']) {
+      expect(BedCropStatusSchema.safeParse(v).success).toBe(true);
+    }
+  });
+
+  it('rejects unknown status strings', () => {
+    expect(BedCropStatusSchema.safeParse('growing').success).toBe(false);
+    expect(BedCropStatusSchema.safeParse('').success).toBe(false);
+  });
+
+  it('rejects non-string values', () => {
+    expect(BedCropStatusSchema.safeParse(null).success).toBe(false);
+    expect(BedCropStatusSchema.safeParse(0).success).toBe(false);
+  });
+});
+
+describe('BedCropSchema', () => {
+  const validActive = {
+    id: 'crop-1',
+    bed_id: 'bed-a1',
+    farm_id: 'farm-1',
+    crop_type: 'tomato',
+    crop_variety: 'Brandywine',
+    planted_at: '2026-04-01',
+    expected_harvest: '2026-07-15',
+    completed_at: null,
+    status: 'active',
+    notes: null,
+    created_by: 'user-1',
+    created_at: '2026-04-01T10:00:00Z',
+    updated_at: '2026-04-01T10:00:00Z',
+  };
+
+  it('accepts a fully-populated active BedCrop', () => {
+    expect(BedCropSchema.safeParse(validActive).success).toBe(true);
+  });
+
+  it('accepts a minimal BedCrop with only required fields', () => {
+    const minimal = {
+      id: 'crop-1',
+      bed_id: 'bed-a1',
+      farm_id: 'farm-1',
+      crop_type: 'lettuce',
+      status: 'planned',
+      created_by: 'user-1',
+      created_at: '2026-04-01T10:00:00Z',
+      updated_at: '2026-04-01T10:00:00Z',
+    };
+    expect(BedCropSchema.safeParse(minimal).success).toBe(true);
+  });
+
+  it('rejects empty crop_type', () => {
+    expect(BedCropSchema.safeParse({ ...validActive, crop_type: '' }).success).toBe(false);
+  });
+
+  it('rejects crop_type longer than 100 chars', () => {
+    expect(BedCropSchema.safeParse({ ...validActive, crop_type: 'x'.repeat(101) }).success).toBe(false);
+  });
+
+  it('rejects unknown status', () => {
+    expect(BedCropSchema.safeParse({ ...validActive, status: 'growing' }).success).toBe(false);
+  });
+
+  it('accepts harvested crop with completed_at set', () => {
+    const harvested = { ...validActive, status: 'harvested', completed_at: '2026-07-15' };
+    expect(BedCropSchema.safeParse(harvested).success).toBe(true);
+  });
+
+  it('rejects missing required keys', () => {
+    const { bed_id: _omit, ...missing_bed_id } = validActive;
+    expect(BedCropSchema.safeParse(missing_bed_id).success).toBe(false);
   });
 });

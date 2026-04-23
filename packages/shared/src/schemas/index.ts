@@ -742,3 +742,29 @@ export const ActivityFeedQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+// ── BedCrop schemas (#279 Wave B) ────────────────────────────────
+
+/**
+ * BedCrop lifecycle state.
+ * `planned` + `active` count toward MAX_ACTIVE_CROPS_PER_BED;
+ * `harvested` + `failed` are history and unbounded.
+ */
+export const BedCropStatusSchema = z.enum(['planned', 'active', 'harvested', 'failed']);
+
+/** Full BedCrop item shape (response + DDB row, excluding internal PK/SK keys). */
+export const BedCropSchema = z.object({
+  id: z.string(),
+  bed_id: z.string(),
+  farm_id: z.string(),
+  crop_type: z.string().min(1).max(100),
+  crop_variety: z.string().max(100).nullable().optional(),
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  status: BedCropStatusSchema,
+  notes: z.string().max(500).nullable().optional(),
+  created_by: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});

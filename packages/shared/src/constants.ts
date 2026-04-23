@@ -99,11 +99,20 @@ export type CropType = typeof CROP_TYPES[number];
 // ── Admin Designation ───────────────────────────────────────────
 export const ENV_ADMIN_EMAILS = 'ADMIN_EMAILS';
 
+// ── BedCrop Cap (#279 Wave B, scope-memory constraint 2) ─────────
+/**
+ * Maximum active + planned crops per bed (free tier).
+ * Tier flag is a future one-liner swap to `{ free: 5, paid: N }`.
+ * History (status: harvested | failed) is unbounded.
+ */
+export const MAX_ACTIVE_CROPS_PER_BED = 5;
+
 // ── DynamoDB Key Prefixes ────────────────────────────────────────
 
 export const DDB_KEY_PREFIXES = {
   FARM: 'FARM#',
   BED: 'BED#',
+  CROP: 'CROP#',             // #279 Wave B — BedCrop SK/GSI1SK prefix
   IMG: 'IMG#',
   TAG: 'TAG#',
   CONV: 'CONV#',
