@@ -872,6 +872,8 @@
     "all_beds": "All beds",
     "no_bed": "No bed assigned",
     "all_categories": "All categories",
+    "filter_by_bed": "Filter by bed",
+    "filter_by_category": "Filter by category",
     "no_matches": "No entries match the current filters",
     "remove_cost": "Remove cost row",
     "save_success": "Entry saved",

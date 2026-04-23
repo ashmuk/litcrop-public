@@ -872,6 +872,8 @@
     "all_beds": "すべての畝",
     "no_bed": "畝なし",
     "all_categories": "すべてのカテゴリ",
+    "filter_by_bed": "畝で絞り込む",
+    "filter_by_category": "カテゴリで絞り込む",
     "no_matches": "フィルターに一致する記録がありません",
     "remove_cost": "費用を削除",
     "save_success": "記録を保存しました",

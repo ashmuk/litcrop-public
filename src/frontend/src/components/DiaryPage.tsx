@@ -551,6 +551,7 @@ export default function DiaryPage() {
         <div class="diary-filter-bar">
           <select
             class="form-select diary-filter-bar__select"
+            aria-label={t('diary.filter_by_bed')}
             value={filterBed}
             onChange={(e) => updateFilter(setFilterBed, LS_FILTER_BED, (e.target as HTMLSelectElement).value)}
           >
@@ -562,6 +563,7 @@ export default function DiaryPage() {
           </select>
           <select
             class="form-select diary-filter-bar__select"
+            aria-label={t('diary.filter_by_category')}
             value={filterCategory}
             onChange={(e) => updateFilter(setFilterCategory, LS_FILTER_CAT, (e.target as HTMLSelectElement).value)}
           >
