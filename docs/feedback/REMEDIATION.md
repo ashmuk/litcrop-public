@@ -1,3 +1,25 @@
+# Remediation Report — Stream 2 Kickoff (2026-04-23)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` Session 4
+- Iterations: 1 of 3 max
+- Status: RESOLVED — 3/3 SHOULD-FIX addressed; 0 MUST-FIX to begin with
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| S4-1 | `DESIGN-279-bed-crop-1n.md` §4.2 + §4.3 — compat-shim contradiction. The design claimed backward-compat via a shim but the §4.3 `FarmBed` type block removed the inline legacy fields, forcing any caller reading `bed.crop_type` directly to break on Wave B. | SHOULD-FIX | FIXED | §4.3 now keeps `crop_type`/`crop_variety`/`planted_at`/`expected_harvest`/`completed_at` populated during Wave B → D with `@deprecated` JSDoc tags; removal deferred to Wave E. §4.2 rewords the two affected rows to "Backward-compatible during the shim window; breaking at Wave E (coordinated with a frontend that has migrated)". |
+| S4-2 | `DESIGN-279-bed-crop-1n.md` §3.4 — missing mandatory GSI filter. BedCrop queries against `GSI1PK=BED#<bedId>` would collide with the bed's own `#META` row if a Wave B developer omitted the `begins_with(SK, 'CROP#')` predicate. | SHOULD-FIX | FIXED | Added an explicit mandate: every BedCrop query MUST include `begins_with(GSI1SK, 'CROP#')`. Prescribed enforcement via a shared `queryByBedCrops(bedId)` helper in `bed-crops.ts`; raw `queryByGSI1` with `PK=BED#<b>` alone must not be exposed to Wave B callers. |
+| S4-3 | `DESIGN-279-bed-crop-1n.md` §6 — Wave E ordering hazard. The old text listed three Wave E bullets without specifying order; reversing migrate-first vs remove-fallback would leave live traffic returning `null` for un-promoted beds. | SHOULD-FIX | FIXED | §6 now prescribes a fixed 4-step order (promote → verify ≥ 2 weeks → remove fallback → remove inline fields), mandates a `created_from_legacy: true` idempotency marker on promoted rows, and states the failure mode of reversing any adjacent step pair. |
+
+## Pipeline Status
+- Pre-review code (`a4329f1` Wave A refactor): no changes — review was already ACCEPT for the shipped code.
+- Remediated files: `docs/design/DESIGN-279-bed-crop-1n.md` only.
+- Next step: `/cc-test` — no code delta means the coverage note simply verifies the 1135+ baseline is still green post-Wave-A refactor.
+
+---
+
 # Remediation Report — Beta-6
 
 ## Summary

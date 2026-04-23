@@ -116,6 +116,7 @@ BedCrop:
 - GSI1 pattern `(BED#<b>, CROP#<c>)` is the primary access path: `query GSI1 where PK=BED#<b> and begins_with(SK, 'CROP#')` returns all crops for a bed in one round-trip.
 - Constant `'CROP#'` added to `packages/shared/src/constants.ts` alongside existing `BED#`, `IMG#`, etc.
 - **No new GSI required** — GSI1 is shared across entities via prefix differentiation, matching the existing pattern.
+- **Mandatory GSI filter**: every BedCrop query against GSI1 MUST include `begins_with(GSI1SK, 'CROP#')`. The bed's own `#META` row shares `GSI1PK=BED#<bedId>` (disambiguation is by SK prefix only). A query that omits the prefix filter will return the `#META` row mixed with BedCrop rows. Enforce via a single shared helper `queryByBedCrops(bedId)` in `src/api/src/services/repositories/bed-crops.ts`; never expose a raw `queryByGSI1` call with `PK=BED#<b>` alone to Wave B callers.
 
 ### 3.5 5-crop cap (scope memory constraint 2)
 
@@ -142,14 +143,14 @@ Ownership is checked by looking up the parent bed → farm membership (mirrors t
 
 | Endpoint | Change | Breaking? |
 |----------|--------|-----------|
-| `GET /farms/:farmId` | `beds[].crop_type`/`planted_at`/`expected_harvest`/`completed_at` removed. `beds[].active_crop: BedCrop \| null` added (inlined from the single active crop for backward-compat). | Backward-compatible via compat shim (see §4.3). |
-| `GET /beds/:bedId` | Same: remove fields, add `active_crop` + `crops: BedCrop[]`. | Backward-compatible. |
+| `GET /farms/:farmId` | Adds `beds[].active_crop: BedCrop \| null`. Existing inline fields (`crop_type`, `crop_variety`, `planted_at`, `expected_harvest`, `completed_at`) stay populated from the active crop **during the shim window (Wave B → D)** and are removed in Wave E. | **Backward-compatible during the shim window**; breaking at Wave E (coordinated with a frontend that has migrated to `bed.active_crop`). |
+| `GET /beds/:bedId` | Same additive change: inline fields preserved during the shim window; `active_crop` + `crops: BedCrop[]` added. | **Backward-compatible during the shim window**; breaking at Wave E. |
 | `PATCH /beds/:bedId` | `UpdateBedRequest` loses the 5 crop fields. Bed-level notes + `latest_status` stay. | **Breaking** for any caller that sent crop updates — but the only caller today is BedDetail.tsx which moves to the new endpoints in Wave C. |
 | `POST /diary` | Accepts `bed_crop_id: string \| null` in Wave D. Legacy entries default to `null`. | Non-breaking (additive nullable field). |
 
 ### 4.3 Backward-compat shim
 
-Per ADR §3, the `FarmBed` response will expose an **`active_crop`** field with the same shape as the old inline crop fields, avoiding hard frontend breakage:
+Per ADR §3, the `FarmBed` response adds an **`active_crop`** field while keeping the legacy inline fields populated throughout the shim window (Wave B → D). This avoids any frontend breakage during the phased rollout; a hard break only happens at Wave E, by which time all internal consumers have moved to `active_crop`:
 
 ```typescript
 interface FarmBed {
@@ -157,6 +158,21 @@ interface FarmBed {
   row: number; col: number; name: string;
   notes?: string;
   latest_status: BedStatus;
+
+  // Wave B → D: legacy inline fields stay populated from the active crop for
+  // backward compat. Removed in Wave E after all consumers migrate to active_crop.
+  /** @deprecated Use `active_crop.crop_type`. Removed in Wave E. */
+  crop_type?: string;
+  /** @deprecated Use `active_crop.crop_variety`. Removed in Wave E. */
+  crop_variety?: string;
+  /** @deprecated Use `active_crop.planted_at`. Removed in Wave E. */
+  planted_at?: string;
+  /** @deprecated Use `active_crop.expected_harvest`. Removed in Wave E. */
+  expected_harvest?: string;
+  /** @deprecated Null while active; set when the active crop completes. Removed in Wave E. */
+  completed_at?: string;
+
+  // Wave B: canonical reference to the bed's active crop cycle.
   active_crop: {
     id: string;
     crop_type: string;
@@ -208,10 +224,14 @@ async function getActiveCropForBed(bedId: string): Promise<BedCrop | null> {
 }
 ```
 
-Wave E (post-Wave D stabilization) will:
-- Write a persist-virtual-crops maintenance job that promotes all legacy inline fields to real `BedCrop` items.
-- Remove the inline crop fields from the `Bed` DDB items.
-- Remove the fallback branch from `getActiveCropForBed`.
+Wave E (post-Wave D stabilization) executes in a **fixed order** — do not reverse:
+
+1. **Promote first**: run a persist-virtual-crops maintenance job that scans all beds with non-null inline `crop_type` and creates a real `BedCrop` item for each. The job MUST be idempotent — every persisted row carries a `created_from_legacy: true` marker so re-running is a no-op. Verify via dry-run mode before the live run.
+2. **Verify coverage**: confirm the lazy-materialize fallback branch is never hit in production logs for ≥ 2 weeks (per the Wave D → E gate) — this is the "all live beds have real BedCrop items" check.
+3. **Remove fallback branch** from `getActiveCropForBed` only after step 2 is clean.
+4. **Remove inline crop fields** from the `Bed` DDB items (via a second maintenance job) and from the `Bed` domain type (breaking release — coordinated with a frontend that has already migrated).
+
+Reversing steps 1 and 3 opens a window where live traffic sees `null` for beds whose crops haven't been promoted yet. Reversing steps 3 and 4 leaves the API reading stale inline fields after the fallback is gone. The order above is the only safe sequence.
 
 ## 7. Phased plan
 
