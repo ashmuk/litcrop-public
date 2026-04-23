@@ -15,6 +15,26 @@ _No unreleased changes._
 
 ---
 
+## [0.99.7.5] - 2026-04-23 — *Stream 1 Hardening close-out*
+
+### Added
+- Quarterly incident tabletop drills policy at `docs/ops/INCIDENT-DRILLS.md` — 8 scenarios mapped 1:1 to `RUNBOOKS.md` runbooks via anchor links, pre/post checklists, and a drill-log template scoped to `docs/ops/drill-logs/YYYY-QN-<slug>.md` (R-011, #448).
+- Two troubleshooting entries in `/help/device-setup` §5: undervoltage warnings during capture (≥ 2.5 A supply guidance for Pi Zero WH) and stale-dashboard-photo debug chain (`journalctl` + hard-refresh). Bilingual EN + JA with element-order parity (#464).
+- "Est. 30 min" / "所要 約30分" time-estimate pill on `/help/device-setup` §5 header — sets setup-time expectations before the user begins (#464).
+- `.help-section kbd` CSS rule in `/help/device-setup` — styles `<kbd>` tags as direct siblings of `<code>` (gray-100 bg, `radius-sm`, key-cap `border` + `box-shadow`). Addresses cc-review SHOULD-FIX #1, resolved in cc-remediate iteration 1 (#464).
+- `docs/feedback/COVERAGE-NOTE-stream1.md` — records the Stream 1 coverage assessment: hook extraction is refactor-neutral, test-env limitation (node, no JSDOM) is architectural rather than a regression, ship recommendation documented.
+
+### Changed
+- `ProfilePage.tsx` refactored 512 → 394 lines via extraction of two dedicated hooks: `useProfileSettings` (locale + tempUnit + theme sync, 143 ln) and `usePendingRegistration` (displayName + picture + admin flag + preferred role, 79 ln). Pure refactor — 1135/1135 vitest green pre and post, cross-validated via `git show d1884da` diff comparison (R-001, #445).
+- `docs/reports/LOAD-TEST-BASELINE.md` gains a pre-run checklist (k6 install, `.env` fill-in, staging health, test-user data, load authorization, optional admin token) and a 4-scenario template with SLO column (cold-path / hot-path / admin-stats / me-activity) (#443).
+- `tools/load-test/README.md` expanded to 4 scenarios with `p95 < 1500 ms` me-activity threshold (R5, per `docs/TEST-STRATEGY-462.md` §6) and `< 5%` failure-rate threshold; runtime target 10 min for a full baseline (#443).
+
+### Tests
+- 1135/1135 vitest green maintained across all Stream 1 edits (pre-session baseline, post-#445 verify, post-#448+#464, post-remediation, final close-out — five runs, no count drift, no flakes).
+- Pipeline artifacts preserved as ledger entries: `docs/feedback/REVIEW-FINDINGS.md` session 3, `docs/feedback/REMEDIATION.md` Stream 1 entry, and the new coverage note.
+
+---
+
 ## [0.99.7.4] - 2026-04-21 — *#462 Phase 4: ProfileActivityList + carry-over audit + UX polish*
 
 ### Added
@@ -299,7 +319,8 @@ _No unreleased changes._
 
 ---
 
-[Unreleased]: https://github.com/ashmuk/litcrop/compare/v0.99.7.4...HEAD
+[Unreleased]: https://github.com/ashmuk/litcrop/compare/v0.99.7.5...HEAD
+[0.99.7.5]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.5
 [0.99.7.4]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.4
 [0.99.7.3]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.3
 [0.99.7.2]: https://github.com/ashmuk/litcrop/releases/tag/v0.99.7.2
