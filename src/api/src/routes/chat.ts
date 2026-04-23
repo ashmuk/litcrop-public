@@ -12,6 +12,7 @@ import {
   CHAT_MODEL,
 } from '../services/budget';
 import { assertFarmAccess } from './_helpers';
+import { hasActiveCrop } from '@litcrop/shared';
 import type { Farm, Bed } from '@litcrop/shared';
 
 const router = new Hono();
@@ -90,7 +91,7 @@ SUGGESTIONS: ["What soil pH do tomatoes need?", "When to harvest cucumbers?"]`;
   if (!farm) return base;
 
   const cropList = beds
-    .filter((b) => b.crop_type)
+    .filter(hasActiveCrop)
     .map((b) => `- ${b.name}: ${b.crop_type} (${b.crop_variety ?? 'unknown'}), planted ${b.planted_at ?? 'unknown'}`)
     .join('\n');
 

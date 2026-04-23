@@ -21,6 +21,7 @@ import {
   UpdateDiaryEntrySchema,
   DiaryListQuerySchema,
   estimateHarvestDate,
+  hasActiveCrop,
 } from '@litcrop/shared';
 import type { DiaryEntry } from '@litcrop/shared';
 
@@ -170,7 +171,7 @@ async function syncBedDatesFromDiary(
 
     if (category === 'planting') {
       const updates: Record<string, unknown> = { planted_at: date };
-      if (date && bed.crop_type) {
+      if (date && hasActiveCrop(bed)) {
         const harvest = estimateHarvestDate(date, bed.crop_type);
         if (harvest) updates['expected_harvest'] = harvest;
       } else if (date === null) {

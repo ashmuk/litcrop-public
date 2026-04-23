@@ -190,6 +190,9 @@ export type { CropPropagation } from './crop-library';
 export { getDeviceClass } from './devices';
 export type { DeviceClass } from './devices';
 
+// Bed-crop helpers (#279 Wave A — pre-Wave B shims)
+export { hasActiveCrop } from './bed-crop';
+
 // Timezone utilities
 export { getTimezoneOffsetFromCoords } from './timezone';
 

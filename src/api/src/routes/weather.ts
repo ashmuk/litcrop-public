@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
 import { UpstreamError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
-import { WEATHER_CACHE_TTL_SECONDS } from '@litcrop/shared';
+import { WEATHER_CACHE_TTL_SECONDS, hasActiveCrop } from '@litcrop/shared';
 import type { Farm, Bed, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
 import { assertFarmAccess } from './_helpers';
 
@@ -222,13 +222,13 @@ function computeCropImpact(
   const alerts: WeatherAlert[] = [];
 
   // Only consider beds that have a crop assigned
-  const croppedBeds = beds.filter((b) => b.crop_type);
+  const croppedBeds = beds.filter(hasActiveCrop);
 
   // Check frost risk
   for (const day of daily) {
     if (day.low < 2) {
       const affectedBeds = croppedBeds.filter((b) => {
-        const tol = getCropTolerance(b.crop_type!);
+        const tol = getCropTolerance(b.crop_type);
         return tol.frostSensitive && day.low < tol.minTemp;
       });
       if (affectedBeds.length > 0) {
@@ -243,7 +243,7 @@ function computeCropImpact(
           affected_beds: affectedBeds.map((b) => ({
             id: b.id,
             name: b.name,
-            crop_type: b.crop_type!,
+            crop_type: b.crop_type,
           })),
         });
         alerts.push({ type: 'frost', severity, message, params });
@@ -256,7 +256,7 @@ function computeCropImpact(
   for (const day of daily) {
     if (day.high > 35) {
       const affectedBeds = croppedBeds.filter((b) => {
-        const tol = getCropTolerance(b.crop_type!);
+        const tol = getCropTolerance(b.crop_type);
         return day.high > tol.maxTemp;
       });
       if (affectedBeds.length > 0) {
@@ -270,7 +270,7 @@ function computeCropImpact(
           affected_beds: affectedBeds.map((b) => ({
             id: b.id,
             name: b.name,
-            crop_type: b.crop_type!,
+            crop_type: b.crop_type,
           })),
         });
         alerts.push({ type: 'extreme_heat', severity: 'warning', message, params });
@@ -292,7 +292,7 @@ function computeCropImpact(
         affected_beds: croppedBeds.map((b) => ({
           id: b.id,
           name: b.name,
-          crop_type: b.crop_type!,
+          crop_type: b.crop_type,
         })),
       });
       alerts.push({ type: 'heavy_rain', severity: 'warning', message, params });
