@@ -327,9 +327,11 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
     <section class="help-section" aria-labelledby="s5-en s5-ja">
       <h2 id="s5-en" class="help-section__title" data-lang="en">
         <span class="help-section__num">5</span> Setup in five steps
+        <span class="help-section__time">Est. 30 min</span>
       </h2>
       <h2 id="s5-ja" class="help-section__title" data-lang="ja">
         <span class="help-section__num">5</span> 5ステップで始めるセットアップ
+        <span class="help-section__time">所要 約30分</span>
       </h2>
       <ol class="help-list help-list--numbered" data-lang="en">
         <li>
@@ -414,6 +416,25 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
           first battery reading appears after the next scheduled capture —
           not immediately on heartbeat. Wait one full capture interval.
         </dd>
+        <dt>Undervoltage warnings during capture (corrupt or noisy images)</dt>
+        <dd>
+          A lightning icon in the top-right of an attached display, or kernel
+          log lines like <code>Under-voltage detected!</code>, mean the 5V USB
+          supply cannot meet peak current while the camera is active. Use a
+          supply rated <strong>≥ 2.5 A</strong> for Pi Zero WH (or ≥ 3 A for
+          Pi 4/5) and a short, thick USB cable. The photo may still upload
+          but can be noisy or partially corrupt.
+        </dd>
+        <dt>Dashboard keeps showing an old photo after the next capture</dt>
+        <dd>
+          Two likely causes, in order: (1) capture cycle ran but upload failed
+          — check <code>journalctl --user -u litcrop-capture.service -n 50</code>
+          on the Pi for S3 errors; (2) the signed image URL in your browser is
+          cached past its 15-minute window. Hard-refresh with
+          <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>.
+          If signed-URL expiry is the cause, the Devices page will show fresh
+          results within one more capture interval.
+        </dd>
       </dl>
 
       <dl class="help-troubleshoot" data-lang="ja">
@@ -432,6 +453,14 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
         <dt>Class 2デバイスでバッテリー残量が<code>—</code>と表示される</dt>
         <dd>
           HATのI²Cインタフェースは撮影サイクル時にのみ読み取るため、最初のバッテリー値はハートビート直後ではなく、次の定期撮影後に表示されます。1サイクル分お待ちください。
+        </dd>
+        <dt>撮影中に電圧不足警告が出る（画像にノイズや破損）</dt>
+        <dd>
+          ディスプレイ接続時に右上へ稲妻アイコンが表示される、またはカーネルログに<code>Under-voltage detected!</code>が出る場合、5V USB電源がカメラ動作時のピーク電流に追いつけていません。Pi Zero WHなら<strong>2.5A以上</strong>、Pi 4／5なら3A以上の電源と、短く太いUSBケーブルを使用してください。アップロード自体は成功することもありますが、画像にノイズや部分的な破損が出る場合があります。
+        </dd>
+        <dt>次の撮影予定時刻を過ぎてもダッシュボードに古い写真が表示され続ける</dt>
+        <dd>
+          原因は2つ考えられます: (1) 撮影は実行されたがアップロードが失敗した — Pi側で<code>journalctl --user -u litcrop-capture.service -n 50</code>を実行しS3エラーを確認。 (2) ブラウザが署名付き画像URLを15分の有効期限を超えてキャッシュしている — <kbd>Cmd</kbd>／<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>でハードリロードしてください。有効期限が原因であれば、次の撮影サイクル以降にデバイスページで最新画像が表示されます。
         </dd>
       </dl>
 
@@ -642,6 +671,16 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
     background: var(--color-gray-100);
     color: var(--color-gray-900);
   }
+  .help-section kbd {
+    font-family: var(--font-family-mono, ui-monospace, Menlo, monospace);
+    font-size: 0.92em;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-gray-100);
+    color: var(--color-gray-900);
+    border: 1px solid var(--color-gray-200);
+    box-shadow: 0 1px 0 var(--color-gray-300);
+  }
 
   .help-list {
     margin: var(--space-2) 0 var(--space-4);
@@ -652,6 +691,18 @@ import AuthLayout from '../../layouts/AuthLayout.astro';
   }
   .help-list--numbered {
     list-style: decimal;
+  }
+
+  /* ── Section 5: time-estimate pill (added for #464) ──────────────── */
+  .help-section__time {
+    margin-left: auto;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-full, 999px);
+    background: var(--color-gray-100);
+    color: var(--color-gray-600);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-normal);
+    white-space: nowrap;
   }
 
   /* ── Section 5: troubleshooting dl (added for #464) ──────────────── */
