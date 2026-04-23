@@ -15,6 +15,28 @@ _No unreleased changes._
 
 ---
 
+## [0.99.7.6] - 2026-04-24 — *Stream 2 kickoff — #279 Wave A prep*
+
+### Added
+
+- `hasActiveCrop<T extends { crop_type?: string | null }>` type guard in `@litcrop/shared` — pre-Wave B shim that narrows `crop_type` from `string | null | undefined` to `string` for downstream consumers. Post-Wave B this will resolve against the `BedCrop` entity without changing caller-side signatures (#279).
+- Unit test covering all 5 branches of the type guard (truthy, missing key, explicit undefined, null, empty string) + narrowed-field preservation.
+- `docs/design/DESIGN-279-bed-crop-1n.md` — phased build plan for Issue #279 (bed-to-crop 1:N): Wave A (prep) → B (data) → C (UI) → D (diary) → E (cleanup). Locks `BedCrop` as canonical entity name, specifies the DDB key layout (`PK=FARM`, `SK=CROP#<bedId>#<bedCropId>`, GSI1 `PK=BED#<bedId>` with mandatory `begins_with(GSI1SK, 'CROP#')`), 5-crop cap enforcement, lazy-materialize migration per #462 precedent, and a backward-compatible `FarmBed` shim that keeps the legacy inline crop fields populated during Wave B → D.
+- `docs/feedback/COVERAGE-NOTE-stream2.md` — cc-test coverage note for the Wave A prep.
+- `docs/feedback/REVIEW-FINDINGS.md` Session 4 entry (ACCEPT, 0 MUST-FIX / 3 SHOULD-FIX — all design-doc clarifications, remediated in the same release).
+- `docs/feedback/REMEDIATION.md` Stream 2 kickoff entry documenting the three design-doc clarifications applied (§3.4 GSI guardrail, §4.2+§4.3 compat-shim contradiction, §6 Wave E ordering).
+
+### Changed
+
+- `src/api/src/routes/weather.ts`, `chat.ts`, `diary.ts` — 3 call sites migrated from inline `bed.crop_type` truthy checks to the new `hasActiveCrop` type guard. Removes 5 `b.crop_type!` non-null assertions without changing behavior. Internal refactor; zero user-visible impact.
+- `TASKS.md` — regenerated via `/cc-issue-sync` after PR #468 closed #443/#445/#448/#464. Open count 19 → 15 (9 Production + 6 Backlog).
+
+### Tests
+
+- 1135 → 1140 vitest tests (+5 for `hasActiveCrop` branch coverage). All existing route tests in `weather.test.ts` / `chat.test.ts` / `diary.test.ts` green, confirming the call-site substitution is behavior-neutral. Zero flakes across the pipeline.
+
+---
+
 ## [0.99.7.5] - 2026-04-23 — *Stream 1 Hardening close-out*
 
 ### Added
