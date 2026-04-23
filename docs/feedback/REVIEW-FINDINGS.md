@@ -547,3 +547,129 @@ SHOULD-FIX #1 (unreachable `image_manual` branch) is acceptable to defer if a kn
 The Phase 1 carry-over (createImage spread-Omit audit) is still open per task #19, but as noted in the review brief and confirmed by `REMEDIATION-462-PHASE3.md:43-48`, this is expected carry-over, not a Phase 4 blocker. Flag it for v0.99.7.4's remediation sweep if that remediation happens; otherwise re-track to v0.99.7.5.
 
 The 7 NITs can be addressed at the author's discretion any time.
+
+---
+
+# Review Findings — Stream 1 Hardening (2026-04-23)
+
+> Scope: Stream 1 Hardening diff since commit `d1884da` on `develop`.
+> Baseline: 1135 vitest tests passing; verified green three times (pre-edits, post-#448 + #464, post-simplify).
+> Reviewer policy: `.agent/subagents/my-reviewer.md`.
+> Pipeline stage: `/simplify` ✅ → `/cc-review` ← **here** → `/cc-remediate` (conditional) → `/cc-test`.
+
+## S1. Scope reviewed
+
+| File | Change | Issue |
+|------|--------|-------|
+| `src/frontend/src/components/ProfilePage.tsx` | Reduced 512 → 394 lines via hook extraction | #445 |
+| `src/frontend/src/lib/useProfileSettings.ts` | NEW — 143 lines | #445 |
+| `src/frontend/src/lib/usePendingRegistration.ts` | NEW — 79 lines | #445 |
+| `src/frontend/src/pages/help/device-setup.astro` | +41 lines (2 troubleshooting entries + time pill) | #464 |
+| `docs/ops/INCIDENT-DRILLS.md` | NEW — quarterly tabletop drills doc | #448 |
+| `docs/reports/LOAD-TEST-BASELINE.md` | Pre-run checklist + 4-scenario template | #443 |
+| `tools/load-test/README.md` | 4-scenario + me-activity threshold | #443 |
+
+Code-simplifier pass already ran — no simplifications were deemed worth making.
+
+---
+
+## S2. MUST-FIX findings
+
+**None.**
+
+Full my-reviewer checklist pass. Findings breakdown:
+
+| Check                                                            | Verdict |
+|------------------------------------------------------------------|---------|
+| Alignment with Stream 1 scope (R-001 + R-011 + R-008+ patches)  | ✅       |
+| No auth bypass or privilege escalation surface                    | ✅ (client-side gating only; server-side authz out of diff) |
+| No secrets / credentials exposed                                  | ✅       |
+| No new XSS / injection vectors                                    | ✅       |
+| Input validation at trust boundaries                              | ✅ (`isValidLocale`, `'C'/'F'` literal guards, `pendingRole` enum check) |
+| Tests cover new hooks' behavior                                   | ✅ (1135/1135; hook extraction is pure refactor — no new code paths) |
+| Rollback: each file is independently revertible                   | ✅       |
+| No auth/authz modifications                                       | ✅       |
+| No destructive / irreversible operations                          | ✅       |
+
+---
+
+## S3. SHOULD-FIX findings
+
+| # | File:Line | Issue | Severity |
+|---|-----------|-------|----------|
+| 1 | `src/frontend/src/pages/help/device-setup.astro:434, 463` | New `<kbd>` tags are the only `<kbd>` usage in the entire frontend. No CSS rule exists for `kbd`, so browsers render them in bare monospace with no background/padding — visually disjoint from the `.help-section code` style (gray-100 bg, `radius-sm`, padding) that appears in the same `<dd>`. Inconsistent polish on a user-facing help page. | SHOULD-FIX |
+
+---
+
+## S4. Suggestions (SUGGESTION)
+
+- **S1** — `src/frontend/src/lib/usePendingRegistration.ts:52`: `if (p.is_admin) setIsSystemAdmin(true)` writes only the truthy case, asymmetric with `setCachedIsAdmin(p.is_admin === true)` on line 53. Not reachable today (mount-once), but tightens against future re-invocation.
+- **S2** — `docs/ops/INCIDENT-DRILLS.md:72, 81`: Template points drill logs at `docs/ops/drill-logs/YYYY-QN-<slug>.md`, but that directory doesn't exist. First drill author will `mkdir` before commit — minor friction. Consider `.gitkeep` or mention in post-drill checklist.
+- **S3** — `src/frontend/src/lib/useProfileSettings.ts:111`: `console.error('[settings] sync failed — API may not be deployed', err)` logs the full error object. Fetch errors typically don't contain PII but could expose endpoint paths to anyone reading devtools. Narrow to `err?.message ?? 'unknown'` for defense-in-depth. Pre-existing from refactor, not a regression.
+
+---
+
+## S5. Verified clean (positive findings)
+
+1. **`applyFarmLocaleIfUnset` is a faithful refactor, not a regression.** Diffed against `git show d1884da:src/frontend/src/components/ProfilePage.tsx` lines 119-127. Pre- and post-refactor execute identical side effects (`setLocale` + `localStorage.setItem` + `setAttribute('data-locale')`) with identical gating. Neither version dispatches `locale-changed` or sets `lang` on auto-apply — behavior preserved bit-for-bit.
+2. **Hook API surface stable.** `useProfileSettings` exports `{ locale, tempUnit, applyLocale, applyTempUnit, applyFarmLocaleIfUnset }`; `usePendingRegistration` exports `{ displayName, setDisplayName, profilePictureUrl, isSystemAdmin, preferredRole }`. Both mirror exactly what ProfilePage consumes; no broader surface leaked. `applyFarmLocaleIfUnset` is the narrowest escape hatch that avoids re-exposing `setLocale`, honoring the resume-anchor design constraint.
+3. **Bilingual EN/JA element-order parity** in `device-setup.astro`: 6 `<dt>` (EN) + 6 `<dt>` (JA) = 12, at matching positions. Time-pill appended to both h2s at the same position. File-header constraint respected.
+4. **INCIDENT-DRILLS.md anchor slugs** are a perfect 1:1 match with RUNBOOKS.md section headers (verified mechanically). Zero link rot.
+5. **`settingsDirty` ref correctly gates in-flight settings sync** — user-choice wins if `applyLocale` is called during the mount-effect's `getMySettings` round-trip.
+6. **No stale imports, unused state, or dead code** in the 394-line `ProfilePage.tsx`. Code-simplifier pass independently confirmed.
+7. **Doc-only changes coherent** — SLO thresholds agree between `LOAD-TEST-BASELINE.md` and `tools/load-test/README.md` (hot-path p95 < 1000ms, cold-path p99 < 3000ms, admin-stats p95 < 5000ms, me-activity p95 < 1500ms).
+
+---
+
+## S6. Recommendations
+
+### SHOULD-FIX #1 — `<kbd>` styling
+
+Two options; prefer A:
+
+**Option A** — add a `.help-section kbd` rule matching the adjacent `code` treatment (with border + shadow for key-cap cue):
+
+```css
+.help-section kbd {
+  font-family: var(--font-family-mono, ui-monospace, Menlo, monospace);
+  font-size: 0.92em;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: 0 1px 0 var(--color-gray-300);
+}
+```
+
+**Option B** — swap `<kbd>` for `<code>` in both EN and JA `<dd>` blocks. Loses the semantic tag; zero new CSS. Not preferred — `<kbd>` is W3C-correct for keyboard shortcuts, and the five-line fix preserves semantics.
+
+---
+
+## S7. Safety approval
+
+- [x] Impact understood: pure UI + docs diff. No auth / data / infra changes. Tests green throughout.
+- [x] Rollback verified: each of the 7 files is independently revertible (3 new files can be deleted; 4 modified files revert cleanly to `d1884da`).
+- [x] **Approved for execution: YES**, conditional on SHOULD-FIX #1 being routed through `/cc-remediate`.
+
+---
+
+## S8. Verification needed (handed to /cc-test)
+
+- [ ] Full vitest run remains at 1135/1135 passing after any remediation
+- [ ] `docs/ops/INCIDENT-DRILLS.md` renders cleanly on GitHub (anchor-link click test)
+- [ ] `src/frontend/src/pages/help/device-setup.astro` renders correctly with locale toggle; kbd styling appears if SHOULD-FIX #1 Option A is applied
+- [ ] Mobile layout at 320px — confirm `.help-section__time` pill doesn't break Section 5 header flex layout
+
+---
+
+## S9. Decision
+
+**Status**: **ACCEPTED WITH CONDITIONS** — approved for the pipeline's next step (`/cc-remediate` for SHOULD-FIX #1) once the `<kbd>` styling is addressed. Suggestions S1–S3 are at author's discretion.
+
+- **If remediation happens now**: route `/cc-remediate` → my-builder for SHOULD-FIX #1 (five-line CSS addition). Then `/cc-test` → final-suite confirmation.
+- **If Stream 1 must ship as-is**: SHOULD-FIX #1 is a user-facing polish regression on a help page; not a blocker, but it should be tracked as a follow-up issue in the same release cycle. Suggestions S1–S3 can be deferred indefinitely without cost.
+
+## S10. Issue integration note
+
+PROJECT.yaml has `github_issues.auto_post: true`, but `gh auth status` reports "not logged into any GitHub hosts" in this DevContainer (upstream-template bug tracked in memory). Per cc-review skill policy, issue posting is **skipped** — findings live only here until the user manually mirrors them to #445 / #464 / #448 / #443 if desired.

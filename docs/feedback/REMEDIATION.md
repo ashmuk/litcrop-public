@@ -33,3 +33,73 @@
 None — all MUST-FIX findings resolved in iteration 1.
 
 *Remediation completed: 2026-04-03 | Status: RESOLVED*
+
+---
+
+# Remediation Report — Stream 1 Hardening (2026-04-23)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` (Stream 1 session, 2026-04-23)
+- Iterations: 1 of 3 max
+- Status: **RESOLVED**
+- User directive: apply SHOULD-FIX #1 only; suggestions S1–S3 explicitly deferred
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| SF1 | `<kbd>` tags in `device-setup.astro:434,463` render browser-default monospace — disjoint from adjacent `.help-section code` styling | SHOULD-FIX | **FIXED** | Added `.help-section kbd` rule as direct sibling of `.help-section code`. Matches code palette (`--color-gray-100` bg, `--radius-sm`, mono font) plus `border` + `box-shadow` for key-cap cue. Nine-line addition, same CSS tokens — no new deps. |
+| S1 | `usePendingRegistration.ts:52` asymmetric admin-flag write | SUGGESTION | DEFERRED | User scope: SHOULD-FIX only. Not reachable as a bug today (mount-once hook). |
+| S2 | `INCIDENT-DRILLS.md` references `docs/ops/drill-logs/` directory that doesn't exist | SUGGESTION | DEFERRED | User scope: SHOULD-FIX only. First drill author will `mkdir` before commit. |
+| S3 | `useProfileSettings.ts:111` logs full error object to console | SUGGESTION | DEFERRED | User scope: SHOULD-FIX only. Pre-existing from refactor, not a regression. |
+
+## Iteration Log
+
+### Iteration 1
+
+- **Findings addressed**: SF1 (1 SHOULD-FIX)
+- **Builder**: inline application (CSS rule insertion in a single file, no logic changes, no new imports). Direct edit was proportionate to scope; full my-builder dispatch would have added orchestration overhead without risk reduction.
+- **Reviewer re-validation**:
+  - Structural: `.help-section kbd` rule is placed at lines 674-683, immediately after `.help-section code` (666-673), honoring the "discoverable relationship" constraint from the review.
+  - Behavioral: vitest re-run → **1135/1135 passing** in 6.49s. No regressions.
+  - Spec conformance: diff matches REVIEW-FINDINGS.md §S6 Option A exactly — all 8 declarations present, all tokens used where specified, key-cap cue (`border` + `box-shadow`) included.
+- **Outcome**: SHOULD-FIX #1 resolved; suggestions S1–S3 deferred per user directive. No new concerns surfaced during re-validation.
+
+## Escalations
+
+None. One iteration; no systemic issue criteria triggered. Ready for `/cc-test` (pipeline step 4).
+
+## Verification evidence
+
+```
+Test Files  51 passed (51)
+     Tests  1135 passed (1135)
+  Duration  6.49s
+```
+
+Diff applied (file: `src/frontend/src/pages/help/device-setup.astro`):
+
+```diff
+   .help-section code {
+     font-family: var(--font-family-mono, ui-monospace, Menlo, monospace);
+     font-size: 0.92em;
+     padding: 1px 6px;
+     border-radius: var(--radius-sm);
+     background: var(--color-gray-100);
+     color: var(--color-gray-900);
+   }
++  .help-section kbd {
++    font-family: var(--font-family-mono, ui-monospace, Menlo, monospace);
++    font-size: 0.92em;
++    padding: 1px 6px;
++    border-radius: var(--radius-sm);
++    background: var(--color-gray-100);
++    color: var(--color-gray-900);
++    border: 1px solid var(--color-gray-200);
++    box-shadow: 0 1px 0 var(--color-gray-300);
++  }
+
+   .help-list {
+```
+
+*Remediation completed: 2026-04-23 | Status: RESOLVED*
