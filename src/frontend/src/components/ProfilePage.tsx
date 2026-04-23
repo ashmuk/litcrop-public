@@ -1,16 +1,23 @@
 /**
  * ProfilePage — tab shell
- * Holds all data-loading state and handlers; renders the tab bar
- * and delegates panel content to ProfileFarmsTab, ProfileYouTab,
+ * Holds farm-loading state and tab-switching handlers; renders the tab
+ * bar and delegates panel content to ProfileFarmsTab, ProfileYouTab,
  * ProfileSystemTab.
+ *
+ * Identity + settings lifecycles live in dedicated hooks to keep this
+ * component focused on the tablist + farm-membership concerns:
+ *   - useProfileSettings       → locale + temp unit + theme sync
+ *   - usePendingRegistration   → display name, picture, preferred role
  */
 
-import { useState, useEffect, useRef } from 'preact/hooks';
-import type { FarmRole, Locale } from '@litcrop/shared';
-import { LOCALE_OPTIONS, DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS, DEFAULT_THEME } from '@litcrop/shared';
-import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, getMyProfile, updateMyProfile, getMySettings, updateMySettings, getJoinRequests, changeMemberRole } from '../lib/api';
+import { useState, useEffect } from 'preact/hooks';
+import type { FarmRole } from '@litcrop/shared';
+import { DEMO_FARM_ID, FREE_PLAN_MAX_OWNED_FARMS } from '@litcrop/shared';
+import { getMyFarms, deleteFarm, leaveFarm, getFarmMembers, updateFarm, updateMyProfile, getJoinRequests, changeMemberRole } from '../lib/api';
 import type { FarmMemberItem } from '../lib/api';
-import { useLocalFarmId, setLocalFarmId, setLocalFarmList, setCachedIsAdmin, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
+import { useLocalFarmId, setLocalFarmId, setLocalFarmList, LS_FARM_NAME, LS_FARM_ID } from '../lib/hooks';
+import { useProfileSettings } from '../lib/useProfileSettings';
+import { usePendingRegistration } from '../lib/usePendingRegistration';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import { getCurrentUser, signOut } from '../lib/auth';
@@ -19,22 +26,7 @@ import ProfileFarmsTab from './ProfileFarmsTab';
 import ProfileYouTab from './ProfileYouTab';
 import ProfileSystemTab from './ProfileSystemTab';
 
-const LOCALE_STORAGE_KEY = 'litcrop-locale';
-const TEMP_UNIT_STORAGE_KEY = 'litcrop-temp-unit';
-const THEME_STORAGE_KEY = 'litcrop-theme';
-
 type TabName = 'farms' | 'you' | 'system';
-
-function isValidLocale(value: string): value is Locale {
-  return (LOCALE_OPTIONS as ReadonlyArray<string>).includes(value);
-}
-
-function translateNavLabels(): void {
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const key = el.getAttribute('data-i18n');
-    if (key) el.textContent = t(key);
-  });
-}
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<TabName>('farms');
@@ -48,12 +40,8 @@ export default function ProfilePage() {
   const [farmMembers, setFarmMembers] = useState<FarmMemberItem[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState('');
-  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
-  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
-  const [preferredRole, setPreferredRole] = useState<'owner' | 'staff' | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   // Tracks a keyboard-driven tab switch so the focus shift can happen in a
   // useEffect AFTER Preact re-renders the tablist — decouples focus from
@@ -62,9 +50,9 @@ export default function ProfilePage() {
   const [keyboardFocusTarget, setKeyboardFocusTarget] = useState<TabName | null>(null);
   const activeFarmId = useLocalFarmId('');
 
-  const settingsDirty = useRef(false);
-  const [locale, setLocale] = useState<Locale>('en');
-  const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
+  const { locale, tempUnit, applyLocale, applyTempUnit, applyFarmLocaleIfUnset } = useProfileSettings();
+  const { displayName, setDisplayName, profilePictureUrl, isSystemAdmin, preferredRole } = usePendingRegistration();
+
   const currentUser = getCurrentUser();
 
   // Read ?tab= from URL on mount
@@ -119,12 +107,7 @@ export default function ProfilePage() {
         setLocalFarmList(list);
         const currentFarmId = localStorage.getItem(LS_FARM_ID) ?? '';
         const activeFarm = list.find((f) => f.id === currentFarmId) as FarmWithRole | undefined;
-        const existingLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
-        if (activeFarm && !existingLocale && activeFarm.locale && isValidLocale(activeFarm.locale)) {
-          setLocale(activeFarm.locale);
-          try { localStorage.setItem(LOCALE_STORAGE_KEY, activeFarm.locale); } catch {}
-          document.documentElement.setAttribute('data-locale', activeFarm.locale);
-        }
+        if (activeFarm) applyFarmLocaleIfUnset(activeFarm.locale);
         const adminFarms = (list as FarmWithRole[]).filter((f) => f.role === 'admin' || f.role === 'owner');
         if (adminFarms.length > 0) {
           Promise.all(
@@ -142,88 +125,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     refreshFarms();
-
     if (currentUser) setUserEmail(currentUser.email);
-
-    const pendingRole = localStorage.getItem('litcrop-pendingRole');
-    const pendingName = localStorage.getItem('litcrop-pendingName');
-    getMyProfile().then(p => {
-      if (p.display_name) setDisplayName(p.display_name);
-      if (p.profile_picture_thumb_url) setProfilePictureUrl(p.profile_picture_thumb_url);
-      if (p.is_admin) setIsSystemAdmin(true);
-      setCachedIsAdmin(p.is_admin === true);
-      if (pendingRole || pendingName) {
-        const updates: Record<string, string> = {};
-        if (pendingRole && (pendingRole === 'owner' || pendingRole === 'staff')) {
-          setPreferredRole(pendingRole);
-          updates['preferred_role'] = pendingRole;
-        }
-        if (pendingName) {
-          setDisplayName(pendingName);
-          updates['display_name'] = pendingName;
-        }
-        if (Object.keys(updates).length > 0) {
-          updateMyProfile(updates)
-            .then(() => {
-              localStorage.removeItem('litcrop-pendingRole');
-              localStorage.removeItem('litcrop-pendingName');
-            })
-            .catch(() => {});
-        }
-      } else if (p.preferred_role) {
-        setPreferredRole(p.preferred_role);
-      }
-    }).catch(() => {});
-
-    try {
-      const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
-      if (storedLocale && isValidLocale(storedLocale)) {
-        setLocale(storedLocale);
-      } else {
-        const attr = document.documentElement.getAttribute('data-locale');
-        if (attr && isValidLocale(attr)) setLocale(attr);
-      }
-      const storedUnit = localStorage.getItem(TEMP_UNIT_STORAGE_KEY);
-      if (storedUnit === 'C' || storedUnit === 'F') setTempUnit(storedUnit);
-    } catch {}
-
-    const pendingLocale = localStorage.getItem('litcrop-pendingLocale');
-    const pendingTempUnit = localStorage.getItem('litcrop-pendingTempUnit');
-    const hasPending = pendingLocale || pendingTempUnit;
-    const settingsToSync: Record<string, string> = {};
-    if (pendingLocale && isValidLocale(pendingLocale)) settingsToSync['locale'] = pendingLocale;
-    if (pendingTempUnit && (pendingTempUnit === 'C' || pendingTempUnit === 'F')) settingsToSync['temp_unit'] = pendingTempUnit;
-    if (hasPending) settingsToSync['theme'] = DEFAULT_THEME;
-    const pendingSettingsPromise = Object.keys(settingsToSync).length > 0
-      ? updateMySettings(settingsToSync).then(() => {
-          localStorage.removeItem('litcrop-pendingLocale');
-          localStorage.removeItem('litcrop-pendingTempUnit');
-        }).catch(() => {})
-      : Promise.resolve();
-
-    const initialLocale = document.documentElement.getAttribute('data-locale') || 'en';
-    pendingSettingsPromise.then(() => getMySettings()).then(s => {
-      if (settingsDirty.current) return;
-      if (s.locale && isValidLocale(s.locale)) {
-        setLocale(s.locale);
-        document.documentElement.setAttribute('data-locale', s.locale);
-        document.documentElement.setAttribute('lang', s.locale === 'ja' ? 'ja' : 'en');
-        try { localStorage.setItem(LOCALE_STORAGE_KEY, s.locale); } catch {}
-        if (s.locale !== initialLocale) {
-          translateNavLabels();
-          window.dispatchEvent(new CustomEvent('litcrop:locale-changed'));
-        }
-      }
-      if (s.temp_unit === 'C' || s.temp_unit === 'F') {
-        setTempUnit(s.temp_unit);
-        try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, s.temp_unit); } catch {}
-      }
-      if (s.theme) {
-        document.documentElement.setAttribute('data-theme', s.theme);
-        try { localStorage.setItem(THEME_STORAGE_KEY, s.theme); } catch {}
-      }
-      window.dispatchEvent(new CustomEvent('litcrop:settings-synced'));
-    }).catch((err) => console.error('[settings] sync failed — API may not be deployed', err));
   }, []);
 
   function handleSwitchFarm(farmId: string) {
@@ -306,26 +208,6 @@ export default function ProfilePage() {
     } finally {
       setDetailLoading(false);
     }
-  }
-
-  function applyLocale(next: Locale) {
-    settingsDirty.current = true;
-    setLocale(next);
-    document.documentElement.setAttribute('data-locale', next);
-    document.documentElement.setAttribute('lang', next === 'ja' ? 'ja' : 'en');
-    try { localStorage.setItem(LOCALE_STORAGE_KEY, next); } catch {}
-    updateMySettings({ locale: next }).catch((err) => console.error('[settings] locale save failed', err));
-    translateNavLabels();
-    window.dispatchEvent(new CustomEvent('litcrop:locale-changed'));
-    showToast(t('settings.save_success'), 'success');
-  }
-
-  function applyTempUnit(next: 'C' | 'F') {
-    settingsDirty.current = true;
-    setTempUnit(next);
-    try { localStorage.setItem(TEMP_UNIT_STORAGE_KEY, next); } catch {}
-    updateMySettings({ temp_unit: next }).catch((err) => console.error('[settings] temp_unit save failed', err));
-    showToast(t('settings.save_success'), 'success');
   }
 
   async function handleSaveFarmName(farmId: string, name: string) {
