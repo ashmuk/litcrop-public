@@ -80,6 +80,12 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0997_5_item_1": "Pi camera setup guide now shows estimated setup time (≈30 min) and guidance for capture issues (undervoltage, stale previews)",
+    "v0997_5_item_2": "Behind-the-scenes: Profile page refactored for maintainability, plus load-test groundwork laid for performance work",
+    "v0997_4_item_1": "Profile → You tab: new activity feed mixing diary entries, devices, and camera captures in date order — tap any item to jump back into context",
+    "v0997_4_item_2": "Profile → Farms tab: the active farm now uses the primary colour highlight for clearer selection",
+    "v0997_4_item_3": "Profile → You tab: Logout, Change Password, and Delete Account stay above the activity feed so they never scroll out of reach",
+    "v0997_3_item_1": "Behind-the-scenes: activity-feed backend added — the groundwork for the Profile → You timeline arriving in v0.99.7.4",
     "v0997_2_item_1": "Farm description now visible on your Profile → Farms tab",
     "v0997_2_item_2": "Pi camera setup guide: new troubleshooting section and clearer SSH step",
     "v0997_1_item_1": "Weather forecast warnings now fully translated to Japanese with localised dates",
