@@ -15,7 +15,7 @@ Baseline and regression harness for LitCrop's API surface, per R-010 audit findi
 ```
 tools/load-test/
 ├── README.md                  — this file
-├── k6-baseline.js             — the scenarios (auth cold-path, farm hot-path, admin stats)
+├── k6-baseline.js             — the scenarios (auth cold-path, farm hot-path, admin stats, me-activity fan-out)
 └── .env.example               — environment variables the script reads
 ```
 
@@ -43,12 +43,14 @@ k6 run --env-file .env --tag scenario=hot-path k6-baseline.js
 
 ## Target characteristics
 
-- **Total runtime: under 5 minutes** for a full baseline run (per R-010 acceptance).
-- **Concurrency**: 10 virtual users sustained for 2 minutes per scenario — models "pilot + modest growth".
-- **Thresholds**:
-  - p95 latency under 1s for hot-path reads (farm list, bed listing).
-  - p99 under 3s for cold-path auth (SignUp → SignIn → /me/profile).
-  - p95 under 5s for getStats (scale-cliff target; #383 optimization will tighten this).
+- **Total runtime: under 10 minutes** for a full baseline run (four scenarios run sequentially, per R-010 acceptance).
+- **Concurrency**: 3–10 virtual users per scenario for 60–120s — models "pilot + modest growth".
+- **Thresholds** (encoded in the script as k6 `thresholds` — a run fails if any are breached):
+  - p95 under 1s for hot-path reads (farm list, detail, beds).
+  - p99 under 3s for cold-path auth (SignIn → /me/profile).
+  - p95 under 5s for `/admin/stats` (scale-cliff target; #383 optimization will tighten this).
+  - p95 under 1.5s for `/me/activity` (R5 fan-out regression watch, per `docs/TEST-STRATEGY-462.md` §6).
+  - Request failure rate under 5%.
 
 ## Baseline snapshots
 

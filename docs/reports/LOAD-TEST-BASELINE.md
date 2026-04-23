@@ -1,8 +1,19 @@
 # Load Test Baseline — LitCrop API
 
-Tracking document for R-010 (issue #443). Each baseline entry captures p50/p95/p99 latency, DynamoDB consumption, and cost-per-1k-requests for the three scenarios in `tools/load-test/k6-baseline.js`.
+Tracking document for R-010 (issue #443). Each baseline entry captures p50/p95/p99 latency, DynamoDB consumption, and cost-per-1k-requests for the four scenarios in `tools/load-test/k6-baseline.js` (auth cold-path, farm hot-path, admin stats, me-activity fan-out).
 
 **Status:** Harness scaffolded 2026-04-20 (#443); **no empirical baseline captured yet**. First run scheduled against staging after next deploy.
+
+## Pre-run checklist
+
+Before running the harness against staging, confirm:
+
+- [ ] `k6` binary is installed locally (`brew install k6` / `apt install k6`).
+- [ ] `tools/load-test/.env` is filled in from `.env.example` (staging API URL, Cognito client ID, region, and a pre-created test user).
+- [ ] The staging deploy under test is live and healthy (check CloudWatch alarm state and the staging deploy's last-good commit SHA).
+- [ ] The test user has at least one farm with beds + images so the hot-path and me-activity scenarios return non-empty data.
+- [ ] You are OK with ~10 minutes of sustained synthetic load against staging (see scenario concurrency below).
+- [ ] (Optional) `ADMIN_ID_TOKEN` is exported if you want the admin-stats scenario to run against a real admin user; otherwise it falls back to the test user and will 403, which is still a valid latency sample.
 
 ## How to update this file
 
@@ -21,16 +32,17 @@ Then paste the summary stats into a new section below following the template.
 ## Baseline — YYYY-MM-DD — vX.YY.Z @ <git-sha>
 
 - **Duration**: <total minutes>
-- **Concurrency**: cold-path 5 VUs / hot-path 10 VUs / admin-stats 3 VUs
+- **Concurrency**: cold-path 5 VUs / hot-path 10 VUs / admin-stats 3 VUs / me-activity 5 VUs
 - **Commit under test**: `<sha>` (`<branch>`)
 
 ### Latency
 
-| Scenario     | p50 | p95 | p99 | Fail % |
-|--------------|-----|-----|-----|--------|
-| Cold-path    |     |     |     |        |
-| Hot-path     |     |     |     |        |
-| Admin stats  |     |     |     |        |
+| Scenario     | p50 | p95 | p99 | Fail % | SLO                |
+|--------------|-----|-----|-----|--------|--------------------|
+| Cold-path    |     |     |     |        | p99 < 3000 ms      |
+| Hot-path     |     |     |     |        | p95 < 1000 ms      |
+| Admin stats  |     |     |     |        | p95 < 5000 ms      |
+| Me-activity  |     |     |     |        | p95 < 1500 ms (R5) |
 
 ### DynamoDB consumption (from CloudWatch, peak 1-minute)
 
