@@ -1,3 +1,86 @@
+# Review Findings — Session 4 (2026-04-23) — Stream 2 kickoff
+
+> Scope: Stream 2 (Scale) kickoff — #279 bed-to-crop 1:N design doc + Wave A prep refactor on `develop`.
+> Baseline: `afbc931` (post-v0.99.7.5 neutral anchor). Two commits reviewed: `c4375cd` (design doc) and `a4329f1` (Wave A refactor).
+> Reviewer policy: `.agent/subagents/my-reviewer.md` (confidence-filtered — MUST-FIX and high-signal SHOULD-FIX only; no nitpicks).
+> Pipeline stage: `/cc-review` → `/cc-remediate` if MUST-FIX, else `/cc-test`.
+
+## S4.1. Scope reviewed
+
+### Commit `c4375cd` — design doc
+- `docs/design/DESIGN-279-bed-crop-1n.md` (+278 lines, new)
+
+### Commit `a4329f1` — Wave A prep refactor (behavior-neutral)
+- `packages/shared/src/bed-crop.ts` (NEW, 23 lines) — `hasActiveCrop<T>` type guard
+- `packages/shared/src/__tests__/bed-crop.test.ts` (NEW, 35 lines, 5 cases)
+- `packages/shared/src/index.ts` (+3 lines — export block under `// Bed-crop helpers (#279 Wave A)`)
+- `src/api/src/routes/weather.ts` — 1 filter substitution, 5 `!` non-null assertions removed
+- `src/api/src/routes/chat.ts` — 1 filter substitution, 1 import line
+- `src/api/src/routes/diary.ts` — 1 condition substitution at `syncBedDatesFromDiary`, 1 import line
+
+**Cross-checks performed**:
+- ADR `ADR-20260406-1n-bed-crop-impact-analysis.md` — P3 prep item matches shipped scope (type-guard helper only; no Bed→BedCrop split yet).
+- `src/api/src/services/repositories/_infrastructure.ts` — GSI1 layout (`BED#<id>` + `#META`) is what the design targets for Wave B's `CROP#<bedId>#<bedCropId>` differentiation. No collision with existing `DDB_KEY_PREFIXES` (`CONV#`, `BED#`, `IMG#`, `TAG#`, `USER#`, `DIARY#`, `NOTIF#`, `DEVICE#`).
+- `src/api/src/services/repositories/beds.ts:25` — `getBedById` returns `Promise<Bed>` (throws `NotFoundError` if missing). Confirms `diary.ts:174` `hasActiveCrop(bed)` is safe.
+- `packages/shared/src/schemas/index.ts:187` — `UpdateBedRequestSchema.crop_type: z.string().min(1).max(100).nullable().optional()`. Whitespace-only `' '` passes `min(1)`; guard returns `true`. Same behavior as the old `(b) => b.crop_type` truthy check — no regression.
+- `npx tsc --noEmit -p packages/shared` → clean.
+- `npx tsc --noEmit -p src/api` → clean.
+- `npx vitest run packages/shared/src/__tests__/bed-crop.test.ts` → 5/5 pass.
+- Global grep `crop_type!` → 0 hits. All non-null assertions removed as claimed.
+- Global grep `\.crop_type` in API source (non-test) → all remaining usages are `?? null`, optional-chain, or Zod-validated; no unsafe reads.
+
+## S4.2. MUST-FIX findings
+
+**None.**
+
+After full my-reviewer audit (alignment, security, quality, safety), no MUST-FIX-severity issues. Breakdown:
+
+| Check                                                          | Verdict |
+|----------------------------------------------------------------|---------|
+| Design doc matches ADR advancement decision + scope memory     | ✅       |
+| Type guard narrows correctly for `Bed`, `FarmBed`, `FarmBedItem` | ✅     |
+| All 5 `!` non-null assertions removed; type-check clean        | ✅       |
+| `getBedById` non-null contract preserves `hasActiveCrop` safety | ✅      |
+| No new injection, auth-bypass, or data-exposure surface        | ✅       |
+| Refactor is behavior-neutral (truthy check semantics unchanged)| ✅       |
+| Test coverage hits all branches of the guard                   | ✅       |
+| Commit messages follow conventional format + ref-links #279    | ✅       |
+| File naming + export placement match repo conventions          | ✅       |
+| No frontend-facing breakage (Wave A is API-side only)          | ✅       |
+
+## S4.3. SHOULD-FIX findings
+
+| # | Severity   | Location                                  | Issue                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Suggested fix |
+|---|------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| 1 | SHOULD-FIX | `DESIGN-279-bed-crop-1n.md` §4.2 + §4.3   | "Backward-compatible via compat shim" is self-contradicting. The §4.3 `FarmBed` type block shows `crop_type`/`planted_at`/`expected_harvest`/`completed_at` **removed** from the top level and replaced by `active_crop: {...} \| null`. Any consumer that reads `bed.crop_type` directly (external API clients, cached mobile apps, or any frontend component that hasn't yet migrated to `bed.active_crop.crop_type`) will break when Wave B ships. This makes the §4.2 "Breaking?" column inaccurate and the "avoiding hard frontend breakage" phrasing misleading. Implementers will plan Wave B → C sequencing incorrectly if they trust the current wording. | Either (a) clarify that the shim keeps inline `crop_type`/`planted_at`/`expected_harvest` fields populated alongside `active_crop` during a transition window (documented removal in Wave E), OR (b) state explicitly that Wave B cannot deploy to production ahead of Wave C frontend. Fix the §4.2 table row for `GET /farms/:farmId` to say "Breaking for external consumers; internal FE migrates in Wave C". |
+| 2 | SHOULD-FIX | `DESIGN-279-bed-crop-1n.md` §3.4          | The design proposes `GSI1PK=BED#<bedId>, GSI1SK=CROP#<bedCropId>` for BedCrop, but the existing bed meta row also uses `GSI1PK=BED#<bedId>` with `GSI1SK=#META`. That's fine — `begins_with(SK, 'CROP#')` disambiguates. However, the design doesn't explicitly call out that the existing bed meta row **cannot be mistakenly returned** when Wave B's `getActiveCropForBed` does `query GSI1 PK=BED#<b>`. If someone writes a Wave B query without the `begins_with(SK, 'CROP#')` filter, they get the bed itself back. | Add a one-line note in §3.4 mandating `begins_with(GSI1SK, 'CROP#')` on every BedCrop query to prevent mixing with the `#META` row. Trivial but worth an explicit guardrail since the same GSI is now multi-tenant by prefix. |
+| 3 | SHOULD-FIX | `DESIGN-279-bed-crop-1n.md` §6            | The lazy-materialize helper `getActiveCropForBed` has an ordering risk on a bed that is transitioning from legacy (inline crop_type) to Wave B (real BedCrop): if two concurrent writes both hit the fallback branch simultaneously, both synthesize a virtual crop with the same deterministic id (`bed-legacy-<bedId>` per §9 mitigation). The synthesized record isn't persisted, so this isn't a data-integrity hazard — but if Wave E's migration job runs concurrently with live traffic, there IS a window where the job writes a real BedCrop row while a request reads the legacy fields and returns a virtual one. The design §6 says "Wave E ... removes the fallback branch" but doesn't specify ordering: **migrate first, then remove fallback** vs the reverse. | §6 should add an explicit ordering note: Wave E promotes legacy beds to real BedCrop rows **before** removing the lazy-materialize fallback, and the migration job should be idempotent (re-running produces no duplicates — probably via a `created_from_legacy: true` marker on the persisted row). |
+
+## S4.4. Suggestions (skipped per policy)
+
+Per task brief "only report MUST-FIX and high-signal SHOULD-FIX; no nitpicks". Suggestions omitted. One low-signal observation kept in reviewer notes for future sessions: the test file could add a whitespace-only case (`{ crop_type: '  ' }`) to pin the contract explicitly — but since this is zero-regression-from-old-behavior, it's not load-bearing.
+
+## S4.5. Verification needed before `/cc-test`
+
+- [x] Type-check clean in `packages/shared` and `src/api` (verified by reviewer)
+- [x] Unit tests green for the new guard (5/5 vitest)
+- [ ] No MUST-FIX to remediate — skip `/cc-remediate`
+- [ ] Wave A claims "zero user-visible change". Confirm by running the full API test suite (`npx vitest run src/api`) to ensure the 3 call-site substitutions didn't regress existing tests. The diff scope is tiny, but the weather `croppedBeds.filter` nested arrow + the diary bridge are in test-covered paths — worth the sanity pass.
+
+## S4.6. Safety approval
+
+- [x] Impact understood: additive shared helper + 3 call-site substitutions; no schema, DDB, or API-surface change.
+- [x] Rollback verified: `git revert a4329f1` restores the exact prior behavior; no data migration to unwind.
+- [x] Approved for execution: **YES** — no MUST-FIX.
+
+## S4.7. Decision
+
+**Status**: **ACCEPT** — 0 MUST-FIX. 3 SHOULD-FIX findings all target the design doc (not the shipped code); they are documentation clarifications for Wave B's author, not blockers on Wave A's merge or on the current pipeline stage. Proceed to `/cc-test`. `/cc-remediate` is not required; the SHOULD-FIX items can be folded into the design doc at Wave B kickoff.
+
+**Counts**: MUST-FIX: 0 · SHOULD-FIX: 3 · Verdict: **ACCEPT**
+
+---
+
 # Review Findings — Session 099.x (2026-04-18)
 
 > Scope: Three features shipped this session on `develop`.
