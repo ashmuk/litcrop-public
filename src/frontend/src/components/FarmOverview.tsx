@@ -201,12 +201,14 @@ export default function FarmOverview({ farmId }: Props) {
               // Wave C (#279) — prefer canonical active_crop fields; shim keeps legacy inline in sync, Wave E drops inline.
               const cropType = bed.active_crop?.crop_type ?? bed.crop_type;
               const cropVariety = bed.active_crop?.crop_variety ?? bed.crop_variety;
+              const activeCount = bed.active_crops_count ?? 0;
+              const overflow = activeCount > 1 ? activeCount - 1 : 0;
               return (
               <a
                 key={bed.id}
                 href={`/beds/view?id=${bed.id}`}
                 class="plot-tile"
-                aria-label={`${bed.name}${cropType ? ` — ${getCropName(cropType)}` : ''}, ${t(`status.${bed.latest_status}`)}`}
+                aria-label={`${bed.name}${cropType ? ` — ${getCropName(cropType)}` : ''}${overflow > 0 ? ` +${overflow}` : ''}, ${t(`status.${bed.latest_status}`)}`}
               >
                 <div class="plot-tile__thumb">
                   {hasImageSrc(bed.latest_image) ? (
@@ -218,6 +220,9 @@ export default function FarmOverview({ farmId }: Props) {
                 <div class="plot-tile__info">
                   <div class="plot-tile__crop-name">
                     {getCropDisplay(cropType) || t('bed.empty')}
+                    {overflow > 0 && (
+                      <span style="color:var(--color-gray-500);font-weight:var(--font-weight-normal);margin-left:var(--space-1)">+{overflow}</span>
+                    )}
                   </div>
                   <div class="plot-tile__plot-label">
                     {bed.name}{cropVariety ? ` — ${cropVariety}` : ''}

@@ -77,6 +77,11 @@ export interface FarmBed {
    * null when the bed has no active or planned crop.
    */
   active_crop?: BedActiveCropSummary | null;
+  /**
+   * Wave C (#279) — count of active+planned BedCrops for this bed, including
+   * any legacy inline active crop. Tile-view UIs render "+N" from this count.
+   */
+  active_crops_count?: number;
 }
 
 /** GET /api/v1/farms/{farmId} */

@@ -15,6 +15,7 @@ import {
   DEMO_FARM_ID,
   FREE_PLAN_MAX_OWNED_FARMS,
   toBedActiveCropSummary,
+  hasActiveCrop,
 } from '@litcrop/shared';
 import type { Farm, FarmRole, Bed, BedCrop } from '@litcrop/shared';
 import { isConditionalCheckFailed, isTransactionCanceled, makeLatestImage, assertFarmAccess, parseBody } from './_helpers';
@@ -51,7 +52,7 @@ function farmToResponse(farm: Farm) {
  * backward-compat contract described in DESIGN-279 §4.3 so consumers reading
  * `bed.crop_type` see the same value as the canonical `bed.active_crop.crop_type`.
  */
-function bedToSummary(bed: Bed, activeCrop: BedCrop | null) {
+function bedToSummary(bed: Bed, activeCrop: BedCrop | null, activeCropsCount: number) {
   const summary = toBedActiveCropSummary(activeCrop);
   return {
     id: bed.id,
@@ -68,6 +69,7 @@ function bedToSummary(bed: Bed, activeCrop: BedCrop | null) {
     // completed_at: null to prevent the `active_crop && bed.completed_at` contradiction.
     completed_at: summary ? null : (bed.completed_at ?? null),
     active_crop: summary,
+    active_crops_count: activeCropsCount,
   };
 }
 
@@ -164,10 +166,16 @@ router.get('/:farmId', async (c) => {
   const beds = await dynamoRepo.getBedsForFarm(farmId);
 
   // Wave B (#279) — resolve each bed's active crop for the FarmBed compat shim.
+  // Wave C (#279) — also count active+planned crops for the tile-view "+N" indicator.
   const bedsWithActive = await Promise.all(
     beds.map(async (bed) => {
-      const activeCrop = await dynamoRepo.getActiveCropForBed(bed.id);
-      return bedToSummary(bed, activeCrop);
+      const [activeCrop, allCrops] = await Promise.all([
+        dynamoRepo.getActiveCropForBed(bed.id),
+        dynamoRepo.listBedCropsByBed(bed.id),
+      ]);
+      const realActive = allCrops.filter((c) => c.status === 'active' || c.status === 'planned').length;
+      const legacyActive = hasActiveCrop(bed) && !bed.completed_at ? 1 : 0;
+      return bedToSummary(bed, activeCrop, realActive + legacyActive);
     }),
   );
 
@@ -189,12 +197,15 @@ router.get('/:farmId/beds', async (c) => {
 
   const data = await Promise.all(
     beds.map(async (bed: Bed) => {
-      const [latestImage, activeCrop] = await Promise.all([
+      const [latestImage, activeCrop, allCrops] = await Promise.all([
         dynamoRepo.getLatestImageForBed(bed.id),
         dynamoRepo.getActiveCropForBed(bed.id),
+        dynamoRepo.listBedCropsByBed(bed.id),
       ]);
+      const realActive = allCrops.filter((c) => c.status === 'active' || c.status === 'planned').length;
+      const legacyActive = hasActiveCrop(bed) && !bed.completed_at ? 1 : 0;
       return {
-        ...bedToSummary(bed, activeCrop),
+        ...bedToSummary(bed, activeCrop, realActive + legacyActive),
         latest_image: latestImage ? await makeLatestImage(latestImage) : null,
       };
     }),

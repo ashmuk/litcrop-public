@@ -116,13 +116,15 @@ export default function FarmLayoutView({ farmId }: Props) {
             }
             // Wave C (#279) — prefer canonical active_crop; shim mirrors legacy until Wave E.
             const cropType = bed.active_crop?.crop_type ?? bed.crop_type;
+            const activeCount = bed.active_crops_count ?? 0;
+            const overflow = activeCount > 1 ? activeCount - 1 : 0;
             return (
               <a
                 key={bed.id}
                 href={`/beds/view?id=${bed.id}`}
                 class={STATUS_CSS[bed.latest_status]}
                 style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80px;border-radius:var(--radius-md);padding:var(--space-2);text-decoration:none;gap:var(--space-1);border:2px solid transparent"
-                aria-label={`${bed.name}${cropType ? ` — ${getCropName(cropType)}` : ''}, ${t(`status.${bed.latest_status}`)}`}
+                aria-label={`${bed.name}${cropType ? ` — ${getCropName(cropType)}` : ''}${overflow > 0 ? ` +${overflow}` : ''}, ${t(`status.${bed.latest_status}`)}`}
               >
                 <span style="font-size:20px;line-height:1" aria-hidden="true">
                   {STATUS_ICONS[bed.latest_status]}
@@ -136,6 +138,7 @@ export default function FarmLayoutView({ farmId }: Props) {
                   style="font-size:var(--font-size-xs);text-align:center;line-height:1.2;color:var(--color-gray-700)"
                 >
                   {getCropDisplay(cropType) || t('bed.empty')}
+                  {overflow > 0 && ` +${overflow}`}
                 </span>
               </a>
             );

@@ -96,6 +96,8 @@ export const FarmBedSchema = z.object({
   completed_at: z.string().nullable().optional(),
   /** #279 Wave B compat shim. Null when no active/planned crop exists. */
   active_crop: BedActiveCropSummarySchema.nullable().optional(),
+  /** #279 Wave C — count of active+planned BedCrops (includes legacy inline). */
+  active_crops_count: z.number().int().nonnegative().optional(),
 });
 
 /** GET /api/v1/farms/:farmId — farm with flat beds array */
@@ -165,6 +167,8 @@ export const FarmBedItemSchema = z.object({
   completed_at: z.string().nullable().optional(),
   /** #279 Wave B compat shim. Null when no active/planned crop exists. */
   active_crop: BedActiveCropSummarySchema.nullable().optional(),
+  /** #279 Wave C — count of active+planned BedCrops (includes legacy inline). */
+  active_crops_count: z.number().int().nonnegative().optional(),
 });
 
 /** GET /api/v1/farms/:farmId/beds — envelope */

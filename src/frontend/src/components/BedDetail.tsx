@@ -269,19 +269,21 @@ export default function BedDetail() {
     setCropModalMode('add');
   }
 
-  function openEditModal() {
-    const active = bed?.active_crop;
+  /**
+   * Open the Edit modal for a specific crop (#279 Wave C).
+   * Pass a real BedCrop to edit it via /beds/:id/crops/:cropId.
+   * Pass null to edit the virtual legacy projection via /beds/:id.
+   */
+  function openEditModal(crop: BedCrop | null) {
+    const active = crop ?? bed?.active_crop ?? null;
     if (!active) return;
-    // Real crops: full BedCrop.notes lives on the list we loaded at mount.
-    // Virtual legacy projection (id prefix 'bed-legacy-'): notes live on bed.notes.
-    const isVirtual = active.id.startsWith('bed-legacy-');
-    const fullCrop = isVirtual ? null : crops.find((c) => c.id === active.id);
+    const isVirtual = !crop;
     setCropForm({
       crop_type: active.crop_type,
       crop_variety: active.crop_variety ?? '',
       planted_at: active.planted_at ?? '',
       expected_harvest: active.expected_harvest ?? '',
-      notes: isVirtual ? (bed?.notes ?? '') : (fullCrop?.notes ?? ''),
+      notes: isVirtual ? (bed?.notes ?? '') : (crop?.notes ?? ''),
     });
     setEditingCropId(active.id);
     const propagation = getCropPropagation(active.crop_type);
@@ -445,24 +447,22 @@ export default function BedDetail() {
   }
 
   /**
-   * Complete-cycle handler (#279 Wave C).
-   *
-   * Real BedCrop: PATCH status='harvested' — server auto-sets completed_at
-   * (bed-crops.ts:160-166 S5-1). Virtual legacy: PATCH /beds/:id with
-   * completed_at=today.
+   * Complete a specific crop's cycle (#279 Wave C).
+   * Pass a real BedCrop to PATCH status='harvested' (server auto-sets
+   * completed_at via S5-1 remediation). Pass null to complete the virtual
+   * legacy projection via PATCH /beds/:id.
    */
-  async function handleCompleteCycle() {
-    const active = bed?.active_crop;
-    if (!active || !bedId) return;
+  async function handleCompleteCycle(crop: BedCrop | null) {
+    if (!bedId) return;
     setCompleting(true);
     try {
-      if (active.id.startsWith('bed-legacy-')) {
+      if (!crop) {
         const today = new Date().toISOString().slice(0, 10);
         const updated = await updateBed(bedId, { completed_at: today });
         setBed(updated);
       } else {
-        const updated = await updateBedCrop(bedId, active.id, { status: 'harvested' });
-        setCrops((prev) => prev.map((c) => (c.id === active.id ? updated : c)));
+        const updated = await updateBedCrop(bedId, crop.id, { status: 'harvested' });
+        setCrops((prev) => prev.map((c) => (c.id === crop.id ? updated : c)));
         const latest = await getBed(bedId);
         setBed(latest);
       }
@@ -517,11 +517,43 @@ export default function BedDetail() {
     );
   }
 
-  const activeCrop = bed.active_crop ?? null;
+  // Wave C (#279) — multi-crop rendering: iterate real active/planned BedCrops,
+  // fall back to the virtual legacy projection (bed.active_crop) when no real
+  // crops exist yet. primaryCrop drives the page title.
+  const realActiveCrops = crops.filter((c) => c.status === 'active' || c.status === 'planned');
+  const virtualActive = realActiveCrops.length === 0 && bed.active_crop ? bed.active_crop : null;
+  const primaryCrop = realActiveCrops[0] ?? virtualActive ?? null;
   const historyCrops = crops.filter((c) => c.status === 'harvested' || c.status === 'failed');
-  const activeCount = bed.active_crops_count ?? (activeCrop ? 1 : 0);
+  const activeCount = bed.active_crops_count ?? (primaryCrop ? 1 : 0);
   const canAddCrop = !isCropReadOnly && activeCount < MAX_ACTIVE_CROPS_PER_BED;
-  const cropLabel = activeCrop ? getCropDisplay(activeCrop.crop_type) : t('bed.no_crop');
+  const cropLabel = primaryCrop ? getCropDisplay(primaryCrop.crop_type) : t('bed.no_crop');
+  // View-models for the card iteration. Virtual legacy case maps to a single
+  // card whose Edit/Complete handlers route through the legacy path (crop=null).
+  const activeCards = realActiveCrops.length > 0
+    ? realActiveCrops.map((c) => ({
+        key: c.id,
+        status: c.status,
+        crop_type: c.crop_type,
+        crop_variety: c.crop_variety,
+        planted_at: c.planted_at,
+        expected_harvest: c.expected_harvest,
+        notes: c.notes,
+        onEdit: () => openEditModal(c),
+        onComplete: () => handleCompleteCycle(c),
+      }))
+    : virtualActive
+    ? [{
+        key: virtualActive.id,
+        status: virtualActive.status,
+        crop_type: virtualActive.crop_type,
+        crop_variety: virtualActive.crop_variety,
+        planted_at: virtualActive.planted_at,
+        expected_harvest: virtualActive.expected_harvest,
+        notes: bed.notes,
+        onEdit: () => openEditModal(null),
+        onComplete: () => handleCompleteCycle(null),
+      }]
+    : [];
   const dayGroups = groupByDay(images);
 
   return (
@@ -565,61 +597,65 @@ export default function BedDetail() {
 
       {/* -- Island 2: Bed/Crop Metadata (Wave C #279) -- */}
       <div class="crop-info">
-        <h1 class="crop-info__title">{bed.name}{activeCrop ? ` — ${cropLabel}` : ''}</h1>
+        <h1 class="crop-info__title">{bed.name}{primaryCrop ? ` — ${cropLabel}` : ''}</h1>
 
-        {activeCrop ? (
-          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
-            <div>
-              <span
-                class={`crop-status-pill crop-status-pill--${activeCrop.status}`}
-                style="display:inline-block;font-size:var(--font-size-xs);padding:2px 8px;border-radius:var(--radius-sm);background:var(--color-gray-100);color:var(--color-gray-700)"
-              >
-                {t(`bed.crop_status.${activeCrop.status}`)}
-              </span>
-            </div>
-            <dl>
-              <dt>{t('plot.crop_type')}</dt>
-              <dd>{getCropDisplay(activeCrop.crop_type)}</dd>
-              {activeCrop.crop_variety && (
-                <>
-                  <dt>{t('plot.crop_variety')}</dt>
-                  <dd>{activeCrop.crop_variety}</dd>
-                </>
-              )}
-              {activeCrop.planted_at && (
-                <>
-                  <dt>{t('plot.planted')}</dt>
-                  <dd>{formatDateShort(activeCrop.planted_at)}</dd>
-                </>
-              )}
-              {activeCrop.expected_harvest && (
-                <>
-                  <dt>{t('plot.harvest')}</dt>
-                  <dd>{formatDateShort(activeCrop.expected_harvest)}</dd>
-                </>
-              )}
-              {bed.notes && (
-                <>
-                  <dt>{t('plot.notes')}</dt>
-                  <dd>{bed.notes}</dd>
-                </>
-              )}
-            </dl>
-            {!isCropReadOnly && (
-              <div style="display:flex;gap:var(--space-2);margin-top:var(--space-1)">
-                <button class="btn-secondary" style="font-size:var(--font-size-sm)" onClick={openEditModal}>
-                  {t('bed.edit_crop')}
-                </button>
-                <button
-                  class="btn-secondary"
-                  style="font-size:var(--font-size-sm)"
-                  onClick={handleCompleteCycle}
-                  disabled={completing}
-                >
-                  {completing ? '...' : t('bed.complete_cycle')}
-                </button>
+        {activeCards.length > 0 ? (
+          <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+            {activeCards.map((card) => (
+              <div key={card.key} style="display:flex;flex-direction:column;gap:var(--space-2)">
+                <div>
+                  <span
+                    class={`crop-status-pill crop-status-pill--${card.status}`}
+                    style="display:inline-block;font-size:var(--font-size-xs);padding:2px 8px;border-radius:var(--radius-sm);background:var(--color-gray-100);color:var(--color-gray-700)"
+                  >
+                    {t(`bed.crop_status.${card.status}`)}
+                  </span>
+                </div>
+                <dl>
+                  <dt>{t('plot.crop_type')}</dt>
+                  <dd>{getCropDisplay(card.crop_type)}</dd>
+                  {card.crop_variety && (
+                    <>
+                      <dt>{t('plot.crop_variety')}</dt>
+                      <dd>{card.crop_variety}</dd>
+                    </>
+                  )}
+                  {card.planted_at && (
+                    <>
+                      <dt>{t('plot.planted')}</dt>
+                      <dd>{formatDateShort(card.planted_at)}</dd>
+                    </>
+                  )}
+                  {card.expected_harvest && (
+                    <>
+                      <dt>{t('plot.harvest')}</dt>
+                      <dd>{formatDateShort(card.expected_harvest)}</dd>
+                    </>
+                  )}
+                  {card.notes && (
+                    <>
+                      <dt>{t('plot.notes')}</dt>
+                      <dd>{card.notes}</dd>
+                    </>
+                  )}
+                </dl>
+                {!isCropReadOnly && (
+                  <div style="display:flex;gap:var(--space-2);margin-top:var(--space-1)">
+                    <button class="btn-secondary" style="font-size:var(--font-size-sm)" onClick={card.onEdit}>
+                      {t('bed.edit_crop')}
+                    </button>
+                    <button
+                      class="btn-secondary"
+                      style="font-size:var(--font-size-sm)"
+                      onClick={card.onComplete}
+                      disabled={completing}
+                    >
+                      {completing ? '...' : t('bed.complete_cycle')}
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
         ) : (
           <div style="color:var(--color-gray-500);font-style:italic;padding:var(--space-2) 0">
