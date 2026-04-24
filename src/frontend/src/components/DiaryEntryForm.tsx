@@ -13,11 +13,12 @@
  */
 
 import { useState, useEffect, useRef } from 'preact/hooks';
-import type { FarmBedItem } from '@litcrop/shared';
+import type { FarmBedItem, BedCrop } from '@litcrop/shared';
 import {
   getBeds,
   createDiaryEntry,
   updateDiaryEntry,
+  listBedCrops,
   type DiaryEntryResponse,
 } from '../lib/api';
 import { t } from '../i18n/i18n';
@@ -81,6 +82,9 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
     entry?.time_spent_minutes != null ? String(entry.time_spent_minutes) : '',
   );
   const [bedId, setBedId] = useState(entry?.bed_id ?? '');
+  // Wave D (#279) — per-crop attribution. Empty string = no crop (bed-only or
+  // no-bed); a uuid = real BedCrop. Coerced to null on submit.
+  const [bedCropId, setBedCropId] = useState(entry?.bed_crop_id ?? '');
   const [costs, setCosts] = useState<CostRow[]>(
     entry?.costs.length
       ? entry.costs.map((c) => ({ item: c.item, amount: String(c.amount), currency: c.currency }))
@@ -102,6 +106,8 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
   // ── Beds ──────────────────────────────────────────────────────
   const [beds, setBeds] = useState<FarmBedItem[]>([]);
   const [bedsLoading, setBedsLoading] = useState(true);
+  // Wave D (#279) — per-bed crops for the combined bed-crop selector.
+  const [bedCropsMap, setBedCropsMap] = useState<Record<string, BedCrop[]>>({});
 
   // ── Submit state ──────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false);
@@ -116,6 +122,26 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
       .finally(() => { if (!cancelled) setBedsLoading(false); });
     return () => { cancelled = true; };
   }, [farmId]);
+
+  // Wave D (#279) — load per-bed crops for the attribution selector.
+  // Individual failures degrade to []; the user still sees a bed-only option.
+  useEffect(() => {
+    if (beds.length === 0) { setBedCropsMap({}); return; }
+    let cancelled = false;
+    Promise.all(
+      beds.map((b) =>
+        listBedCrops(b.id, 'all')
+          .then((crops) => ({ bedId: b.id, crops }))
+          .catch(() => ({ bedId: b.id, crops: [] as BedCrop[] })),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const map: Record<string, BedCrop[]> = {};
+      for (const { bedId: bid, crops } of results) map[bid] = crops;
+      setBedCropsMap(map);
+    });
+    return () => { cancelled = true; };
+  }, [beds]);
 
   // Trap focus inside sheet and close on Escape
   useEffect(() => {
@@ -198,6 +224,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
       description: description.trim(),
       time_spent_minutes: timeSpent ? parseInt(timeSpent, 10) || null : null,
       bed_id: bedId || null,
+      bed_crop_id: bedCropId || null,
       photo_ids: entry?.photo_ids ?? [],
       costs: parsedCosts,
       // Harvest fields (Beta-10)
@@ -453,39 +480,65 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
               </fieldset>
             </div>
 
-            {/* Bed (optional) */}
+            {/* Bed + crop (optional) — Wave D #279 flat selector. Each option
+                encodes "<bedId>|<cropId?>"; empty cropId = bed-only. */}
             <div class="form-group">
               <label class="form-label" for="diary-bed">{t('diary.bed_optional')}</label>
               <select
                 id="diary-bed"
                 class="form-select"
-                value={bedId}
-                onChange={(e) => setBedId((e.target as HTMLSelectElement).value)}
+                value={bedId ? `${bedId}|${bedCropId}` : ''}
+                onChange={(e) => {
+                  const raw = (e.target as HTMLSelectElement).value;
+                  if (!raw) { setBedId(''); setBedCropId(''); return; }
+                  const [bid, cid] = raw.split('|');
+                  setBedId(bid);
+                  setBedCropId(cid || '');
+                }}
                 disabled={bedsLoading}
               >
                 <option value="">— {t('diary.bed_optional')} —</option>
-                {beds.map((bed) => (
-                  <option key={bed.id} value={bed.id}>
-                    {bed.name ?? bed.id}{bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}
-                  </option>
-                ))}
+                {beds.flatMap((bed) => {
+                  const crops = bedCropsMap[bed.id] ?? [];
+                  const activeCrops = crops.filter((c) => c.status === 'active' || c.status === 'planned');
+                  const bedLabel = bed.name ?? bed.id;
+                  // Bed-only option — always present. For legacy beds with no
+                  // real BedCrops but an inline crop_type, show that name so
+                  // the legacy UX is preserved.
+                  const bedOnlyLabel = activeCrops.length === 0 && bed.crop_type
+                    ? `${bedLabel} — ${getCropName(bed.crop_type)}`
+                    : bedLabel;
+                  return [
+                    <option key={`${bed.id}|`} value={`${bed.id}|`}>
+                      {bedOnlyLabel}
+                    </option>,
+                    ...activeCrops.map((c) => (
+                      <option key={`${bed.id}|${c.id}`} value={`${bed.id}|${c.id}`}>
+                        {bedLabel} — {getCropName(c.crop_type)}
+                      </option>
+                    )),
+                  ];
+                })}
               </select>
             </div>
 
-            {/* Smart default hint (#287) — covers both planting and seeding (#313) */}
+            {/* Smart default hint (#287) — now uses the selected crop's type
+                when a specific crop is picked, falling back to active_crop /
+                legacy inline when only the bed is picked. */}
             {entryType === 'reserved' && (category === 'planting' || category === 'seeding') && bedId && (() => {
               const bed = beds.find((b) => b.id === bedId);
-              if (!bed?.crop_type) return null;
-              // Use bed's planted_at if available (more accurate), otherwise fall back to diary entry date
-              const plantingDate = bed.planted_at ?? date;
-              // For seeding category, include nursery days in the estimate
+              const crops = bedCropsMap[bedId] ?? [];
+              const selectedCrop = bedCropId ? crops.find((c) => c.id === bedCropId) : null;
+              const cropType = selectedCrop?.crop_type ?? bed?.active_crop?.crop_type ?? bed?.crop_type;
+              if (!cropType) return null;
+              const plantingDate = selectedCrop?.planted_at ?? bed?.active_crop?.planted_at ?? bed?.planted_at ?? date;
               const plantMethod = category === 'seeding' ? 'seed' : 'seedling';
-              const harvestDate = estimateHarvestDate(plantingDate, bed.crop_type, plantMethod);
+              const harvestDate = estimateHarvestDate(plantingDate, cropType, plantMethod);
               if (!harvestDate) return null;
               return (
                 <div class="diary-smart-hint">
                   <span>💡</span>
-                  <span>{bed.crop_type}: {t('diary.harvest_estimate')} <strong>{harvestDate}</strong></span>
+                  <span>{cropType}: {t('diary.harvest_estimate')} <strong>{harvestDate}</strong></span>
                 </div>
               );
             })()}
