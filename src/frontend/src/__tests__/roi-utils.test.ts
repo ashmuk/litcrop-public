@@ -855,4 +855,132 @@ describe('computeRoiByBedCrop', () => {
     const keys = result.map((r) => r.key).sort();
     expect(keys).toEqual(['__farm__', 'bed:bed-1', 'crop:crop-1']);
   });
+
+  // T-D5-01: regression-lock for R-D5-002 — bed-scope label parity with D4
+  it('T-D5-01: bed-scope: bed with active BedCrop + legacy crop_type → crop_type null (prefers (All))', () => {
+    const beds = [makeBed({ id: 'bed-1', name: 'Bed 1', crop_type: 'tomato' })];
+    const activeCrop = makeBedCrop({ id: 'crop-active', bed_id: 'bed-1', crop_type: 'tomato', status: 'active' });
+    const bedCropsMap = { 'bed-1': [activeCrop] };
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-04-01', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: null,
+        costs: [{ item: 'seeds', amount: 500, currency: 'JPY' }],
+      }),
+    ];
+    const result = computeRoiByBedCrop(entries, beds, bedCropsMap, 'JPY');
+    expect(result).toHaveLength(1);
+    expect(result[0].scope).toBe('bed');
+    // When the bed has active/planned BedCrops the aggregator must suppress the legacy
+    // crop_type so the table renders "(All)" rather than "— Tomato" (D4 parity).
+    expect(result[0].crop_type).toBeNull();
+    expect(result[0].crop_emoji).toBeNull();
+  });
+
+  it('T-D5-01b: bed-scope: bed with only harvested BedCrops + legacy crop_type → crop_type retained', () => {
+    const beds = [makeBed({ id: 'bed-1', name: 'Bed 1', crop_type: 'tomato' })];
+    const harvestedCrop = makeBedCrop({ id: 'crop-done', bed_id: 'bed-1', crop_type: 'tomato', status: 'harvested' });
+    const bedCropsMap = { 'bed-1': [harvestedCrop] };
+    const entries = [
+      makeEntry({
+        id: 'e1', date: '2026-04-01', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: null,
+        costs: [{ item: 'seeds', amount: 400, currency: 'JPY' }],
+      }),
+    ];
+    const result = computeRoiByBedCrop(entries, beds, bedCropsMap, 'JPY');
+    expect(result).toHaveLength(1);
+    expect(result[0].scope).toBe('bed');
+    // No active/planned crops → legacy fallback still applies.
+    expect(result[0].crop_type).toBe('tomato');
+    expect(result[0].crop_emoji).toBeTruthy();
+  });
+
+  // T-D5-02: multi-crop sibling isolation — two BedCrops on the same bed
+  it('T-D5-02: multi-crop sibling isolation: costs do not bleed between sibling BedCrops', () => {
+    const beds = [makeBed({ id: 'bed-1', name: 'Bed 1' })];
+    const cropA = makeBedCrop({ id: 'crop-A', bed_id: 'bed-1', crop_type: 'tomato' });
+    const cropB = makeBedCrop({ id: 'crop-B', bed_id: 'bed-1', crop_type: 'basil' });
+    const bedCropsMap = { 'bed-1': [cropA, cropB] };
+    const entries = [
+      makeEntry({
+        id: 'eA1', date: '2026-04-01', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: 'crop-A',
+        costs: [{ item: 'tomato seed', amount: 300, currency: 'JPY' }],
+      }),
+      makeEntry({
+        id: 'eA2', date: '2026-04-05', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: 'crop-A',
+        costs: [{ item: 'tomato fertiliser', amount: 200, currency: 'JPY' }],
+      }),
+      makeEntry({
+        id: 'eA3', date: '2026-07-01', category: 'harvesting',
+        bed_id: 'bed-1', bed_crop_id: 'crop-A',
+        revenue: 2000, revenue_currency: 'JPY',
+      }),
+      makeEntry({
+        id: 'eB1', date: '2026-04-02', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: 'crop-B',
+        costs: [{ item: 'basil seed', amount: 150, currency: 'JPY' }],
+      }),
+      makeEntry({
+        id: 'eB2', date: '2026-07-15', category: 'harvesting',
+        bed_id: 'bed-1', bed_crop_id: 'crop-B',
+        revenue: 600, revenue_currency: 'JPY',
+      }),
+    ];
+    const result = computeRoiByBedCrop(entries, beds, bedCropsMap, 'JPY');
+    // Exactly two rows — one per BedCrop
+    expect(result).toHaveLength(2);
+    const rowA = result.find((r) => r.bed_crop_id === 'crop-A')!;
+    const rowB = result.find((r) => r.bed_crop_id === 'crop-B')!;
+    expect(rowA).toBeDefined();
+    expect(rowB).toBeDefined();
+    // Keys are unique
+    expect(rowA.key).toBe('crop:crop-A');
+    expect(rowB.key).toBe('crop:crop-B');
+    // No cost bleed: crop-A total = 300 + 200 only; crop-B total = 150 only
+    expect(rowA.total_cost).toBe(500);
+    expect(rowA.total_revenue).toBe(2000);
+    expect(rowB.total_cost).toBe(150);
+    expect(rowB.total_revenue).toBe(600);
+    // Sort order: higher cost first
+    expect(result[0].total_cost).toBeGreaterThan(result[1].total_cost);
+  });
+
+  // T-D5-03: per-bucket excluded_entry_count isolation
+  it('T-D5-03: excluded_entry_count is isolated per bucket — does not leak across crops', () => {
+    const beds = [makeBed({ id: 'bed-1', name: 'Bed 1' })];
+    const cropA = makeBedCrop({ id: 'crop-A', bed_id: 'bed-1', crop_type: 'tomato' });
+    const cropB = makeBedCrop({ id: 'crop-B', bed_id: 'bed-1', crop_type: 'basil' });
+    const bedCropsMap = { 'bed-1': [cropA, cropB] };
+    // crop-A entry: JPY + USD costs → excluded when queried as JPY (has non-matching USD)
+    const entries = [
+      makeEntry({
+        id: 'eA1', date: '2026-04-01', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: 'crop-A',
+        costs: [
+          { item: 'jpy-cost', amount: 500, currency: 'JPY' },
+          { item: 'usd-noise', amount: 5, currency: 'USD' },
+        ],
+      }),
+      // crop-B entry: pure JPY → NOT excluded when queried as JPY
+      makeEntry({
+        id: 'eB1', date: '2026-04-02', category: 'purchase',
+        bed_id: 'bed-1', bed_crop_id: 'crop-B',
+        costs: [{ item: 'pure-jpy', amount: 300, currency: 'JPY' }],
+      }),
+    ];
+    const result = computeRoiByBedCrop(entries, beds, bedCropsMap, 'JPY');
+    expect(result).toHaveLength(2);
+    const rowA = result.find((r) => r.bed_crop_id === 'crop-A')!;
+    const rowB = result.find((r) => r.bed_crop_id === 'crop-B')!;
+    // crop-A has 1 entry with non-matching currency → excluded
+    expect(rowA.excluded_entry_count).toBe(1);
+    // crop-A JPY cost still accumulates
+    expect(rowA.total_cost).toBe(500);
+    // crop-B has no non-matching currency → not excluded; counter does not leak from crop-A
+    expect(rowB.excluded_entry_count).toBe(0);
+    expect(rowB.total_cost).toBe(300);
+  });
 });
