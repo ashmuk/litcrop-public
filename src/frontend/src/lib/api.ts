@@ -627,6 +627,8 @@ export interface DiaryEntryResponse {
   time_spent_minutes: number | null;
   bed_id: string | null;
   bed_name: string | null;
+  // Wave D (#279): per-crop attribution when the bed has a real BedCrop.
+  bed_crop_id: string | null;
   photo_ids: string[];
   costs: { item: string; amount: number; currency: 'JPY' | 'USD' }[];
   cost_total: number;

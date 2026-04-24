@@ -1,3 +1,51 @@
+# Remediation Report — Wave D D5 (2026-04-24)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` (Wave D D5 session)
+- Iterations: 1 of 3 max
+- Status: RESOLVED — 3/3 SHOULD-FIX addressed; 0 MUST-FIX; 3 SUGGESTION items deferred per scope directive
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| R-D5-001 | `SortHeader` declared inside `RoiByBedCropTable` body — fresh component type each render loses keyboard focus and aria-sort on sort click | SHOULD-FIX | FIXED | Hoisted `SortHeader` to module scope with explicit `SortHeaderProps` (`sortBy`, `label`, `numeric`, `activeKey`, `activeDir`, `onSort`). `aria-sort` computed from props. Five call sites updated. |
+| R-D5-002 | Bed-scope label drift: D4 shows `"D1 (All)"` when bed has active BedCrops; D5 showed `"D1 — Tomato"` for same bed — user sees two names for one bucket | SHOULD-FIX | FIXED | In `computeRoiByBedCrop` bed-scope branch, check `bedCropsMap[entry.bed_id]` for any `active\|planned` crop; if found, set `crop_type = null` (renders "(All)"). Legacy `bed.crop_type` fallback only when no active/planned crops exist. |
+| R-D5-003 | Missing test coverage for (a) `crop.bed_id` vs `entry.bed_id` divergence and (b) BedCrop with unknown bed_id fallback | SHOULD-FIX | FIXED | Added 2 new vitest cases to `roi-utils.test.ts` `computeRoiByBedCrop` describe block documenting both contracts. |
+| R-D5-004 | Abort controller on `listBedCrops` fan-out | SUGGESTION | DEFERRED | Out of D5 scope per user directive |
+| R-D5-005 | `cropMap` dev-mode collision warning | SUGGESTION | DEFERRED | Out of D5 scope per user directive |
+| R-D5-006 | `農園全体` QA note | SUGGESTION | DEFERRED | Documentation only, no code change needed |
+
+## Iteration Log
+
+### Iteration 1
+- Findings addressed: R-D5-001 (component identity), R-D5-002 (label parity), R-D5-003 (test coverage)
+- Outcome: All 3 SHOULD-FIX resolved. Vitest 1207/1207 passing (+2 new tests). Typecheck 20 errors (pre-existing ceiling, no new errors).
+
+## Verification
+
+```
+Test Files  54 passed (54)
+     Tests  1207 passed (1207)  ← baseline 1205 + 2 new
+  Duration  7.01s
+
+tsc --noEmit src/ error count: 20  ← pre-existing ceiling, no regressions
+```
+
+Files changed:
+- `src/frontend/src/components/roi/RoiByBedCropTable.tsx` — R-D5-001
+- `src/frontend/src/lib/roi-utils.ts` — R-D5-002
+- `src/frontend/src/__tests__/roi-utils.test.ts` — R-D5-003
+
+LOC delta: +38 net (+28 in tsx/ts, +10 in test)
+
+## Escalations
+None. No MUST-FIX findings; 3 SHOULD-FIX resolved in one iteration. Suggestions deferred by scope directive.
+
+*Remediation completed: 2026-04-24 | Status: RESOLVED*
+
+---
+
 # Remediation Report — Wave B Close (2026-04-24)
 
 ## Summary

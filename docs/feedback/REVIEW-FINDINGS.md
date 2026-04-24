@@ -1,3 +1,35 @@
+# Review Findings — Session 6 (2026-04-24) — Wave D D5 per-crop ROI (#279)
+
+Scope: uncommitted changes on `develop` for per-crop ROI aggregation
+(`RoiByBedCropTable` + `computeRoiByBedCrop` + supporting types, i18n, tests).
+
+| ID | Severity | Location | Finding | Recommendation |
+|---|---|---|---|---|
+| R-D5-001 | SHOULD-FIX | `src/frontend/src/components/roi/RoiByBedCropTable.tsx:112-126` | `SortHeader` is declared **inside** the `RoiByBedCropTable` component body, so Preact gets a fresh component type each render. Rendered `<th>` elements (with `tabIndex={0}`, `role="button"`, `aria-sort`) will unmount/remount on every `setSortKey` / `setSortDir` — keyboard focus is lost after every sort click, and ARIA-live screen readers may re-announce. The pre-existing `RoiByBedTable` inlines `<th>` directly to avoid this. | Either lift `SortHeader` out of the component (pass `sortKey`, `sortDir`, `onSort` as explicit props) or inline the five `<th>` elements like `RoiByBedTable` does. Lifting is cleaner if you want the extraction; inlining keeps parity with the sibling table. |
+| R-D5-002 | SHOULD-FIX | `src/frontend/src/lib/roi-utils.ts:247-261` + `components/roi/RoiByBedCropTable.tsx:46` | Label inconsistency between D4 and D5 for the "legacy bed with real BedCrops" hybrid case. In D4's DiaryEntryForm, a bed with ANY active BedCrop shows `"{bed} (All)"` as its bed-only option (regardless of `bed.crop_type`). In D5, the bed-scope row uses `bed.crop_type` whenever it's set — so a legacy bed that later gained a real BedCrop will display `"D1 — Tomato"` in the ROI table even though the form labelled the same bucket `"D1 (All)"`. User sees two different names for the same bucket in adjacent views. | In `metaFor`'s bed-scope branch, prefer the "(All)" treatment when `bedCropsMap[entry.bed_id]` has ≥1 active/planned crop; fall back to `bed.crop_type` only when there are no modern crops on the bed (true legacy). Alternatively, drop the legacy `crop_type` carry entirely and always render bed-scope rows with the "(All)" suffix — simpler and still readable. Add a test that mirrors the mixed case: legacy `bed.crop_type='tomato'` + one active BedCrop, entry `bed_crop_id: null`. |
+| R-D5-003 | SHOULD-FIX | `src/frontend/src/__tests__/roi-utils.test.ts` (new `computeRoiByBedCrop` block) | Test suite covers the five documented scopes well but is missing two edge cases: (a) `crop.bed_id` differs from `entry.bed_id` — current code uses `crop.bed_id` for `bed_id`/`bed_name` (intentional: trust the crop's own FK), but this is uncovered and a future refactor could flip it silently; (b) a BedCrop whose `bed_id` is NOT present in the `beds` array → `bed_name` falls back to `crop.bed_id` (raw UUID shown). | Add two tests: one asserting `bed_id === crop.bed_id` when those disagree, and one asserting `bed_name === crop.bed_id` when the bed isn't in `beds` (documents the graceful-degradation contract and prevents regressions during the shim window). |
+| R-D5-004 | SUGGESTION | `src/frontend/src/components/RoiDashboard.tsx:71-87` | The bed-crops fan-out useEffect depends on the `beds` prop (array reference). `DiaryPage` stores beds in `useState`, so identity is stable today — but any future refactor that rebuilds `beds` on each render (e.g. filtering inline in JSX) would re-fire N API calls per render. Also no abort-controller on `listBedCrops`: if `beds` changes mid-flight, `cancelled` is flagged but in-flight requests still complete server-side. | Low priority. Consider (a) depending on `beds.map(b => b.id).join(',')` to pin identity to the set of bed ids, and (b) wiring `AbortSignal` through `listBedCrops` / `request` if that infra already exists elsewhere. If neither is cheap, add a comment documenting the reference-identity assumption. |
+| R-D5-005 | SUGGESTION | `src/frontend/src/lib/roi-utils.ts:235-238` | The per-call `cropMap` is built by flattening `Object.values(bedCropsMap)` on every invocation. With `useMemo` in the caller this runs only when inputs change, so perf is fine. If two BedCrops in different beds ever shared an id (should not happen — ids are UUIDs), last-write-wins silently. The JSDoc already notes `bedCropsMap` is keyed by bed, so a collision would be a backend bug, not a frontend bug. | Optional: add an `if (cropMap.has(c.id)) console.warn(...)` in dev builds, or a defensive assertion in the next hardening pass. Not blocking. |
+| R-D5-006 | SUGGESTION | `src/frontend/src/i18n/ja.json:855` | The rename `農場全体 → 農園全体` in `diary.farm_level` is a string change that will invalidate any in-flight translations/screenshots that reference the old wording. Confirmed zero remaining matches of `農場全体` under `/workspace` (json/ts/tsx/md). Good. | None required — flagged for visibility so QA knows the vocabulary is now uniform ("農園" everywhere). |
+
+## Verification performed
+
+- `git diff` reviewed for all 7 in-scope files; new file `RoiByBedCropTable.tsx` read in full.
+- `grep -rn 農場全体 /workspace --include={json,ts,tsx,md}` → zero matches. Rename is complete.
+- `DiaryEntryResponse` construction sites checked (`grep -rn "DiaryEntryResponse" src/frontend/src`): only three locations build full literals — all three test helpers (`roi-utils.test.ts:25`, `diary-utils.test.ts:22`, `:318`, `:427`) now include `bed_crop_id: null`. All other sites type network responses, so the server supplies the field.
+- `BucketMeta = Omit<BedCropRoiSummary, keyof RoiSummary>` verified: leaves exactly the seven bucket-identity fields. Spread order in `results.push({ ...computeRoi(group, currency), ...meta })` is safe (disjoint keys, meta-last).
+- XSS surface: `rowLabel` output flows through Preact `{label}` (auto-escaped). `getCropName` maps canonical ids through a static `CROP_MAP`; it does not render HTML. `BedCrop.crop_type` is a canonical id from `CROP_LIBRARY`, not free text. `bed.name` is user-controlled but rendered as text, not HTML. No injection vector.
+- Graceful degradation on unresolved `bed_crop_id`: covered by test `"crop-scope: unresolved bed_crop_id degrades to bed-scope row under entry.bed_id"` — matches `DiaryEntryForm`'s fallback pattern.
+- Currency filter per-bucket: covered by the `currency filtering` test — `excluded_entry_count` propagates correctly.
+- Sort stability: `.sort((a, b) => b.total_cost - a.total_cost)` is the same pattern as `computeRoiByBed`; V8/SpiderMonkey `Array.prototype.sort` is stable as of ES2019. Good.
+- `listBedCrops(b.id, 'all')` correctly pulls harvested/failed crops for historical ROI.
+
+## Accept / Block
+
+No MUST-FIX. **D5 is acceptable to commit** as-is; the three SHOULD-FIX items are quality/polish concerns that can be addressed in a follow-up commit on the same wave if desired. R-D5-002 (label consistency between D4 and D5) is the most user-visible of the three and is the one I'd prioritize before closing Wave D.
+
+---
+
 # Review Findings — Session 5 (2026-04-24) — Wave B data-layer
 
 > Scope: Wave B of #279 bed-to-crop 1:N — BedCrop types/schema + DDB repo + API routes + compat shim + diary bridge + /simplify pass.

@@ -13,12 +13,13 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'preact/hooks';
-import type { FarmBedItem } from '@litcrop/shared';
-import { getDiaryEntries, getFarm, type DiaryEntryResponse } from '../lib/api';
+import type { FarmBedItem, BedCrop } from '@litcrop/shared';
+import { getDiaryEntries, getFarm, listBedCrops, type DiaryEntryResponse } from '../lib/api';
 import { t } from '../i18n/i18n';
 import {
   computeRoi,
   computeRoiByBed,
+  computeRoiByBedCrop,
   computeCostByCategory,
   computeMonthlyTrend,
 } from '../lib/roi-utils';
@@ -27,6 +28,7 @@ import RoiSummaryCards from './roi/RoiSummaryCards';
 import CostByCategoryChart from './roi/CostByCategoryChart';
 import MonthlyTrendChart from './roi/MonthlyTrendChart';
 import RoiByBedTable from './roi/RoiByBedTable';
+import RoiByBedCropTable from './roi/RoiByBedCropTable';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ export default function RoiDashboard({ farmId, beds }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [farmCurrency, setFarmCurrency] = useState<'JPY' | 'USD'>('JPY');
+  // Wave D-5 (#279) — per-bed crops for the by-crop ROI table.
+  const [bedCropsMap, setBedCropsMap] = useState<Record<string, BedCrop[]>>({});
 
   const handleRetry = useCallback(() => setRetryCount((c) => c + 1), []);
 
@@ -60,6 +64,27 @@ export default function RoiDashboard({ farmId, beds }: Props) {
       .catch(() => { /* fallback to JPY */ });
     return () => { cancelled = true; };
   }, [farmId]);
+
+  // Wave D-5 (#279) — fan-out per-bed crops. Individual failures degrade to []
+  // so the table still renders (crop-attributed entries fall back to bed-scope
+  // rows, same pattern as DiaryEntryForm).
+  useEffect(() => {
+    if (beds.length === 0) { setBedCropsMap({}); return; }
+    let cancelled = false;
+    Promise.all(
+      beds.map((b) =>
+        listBedCrops(b.id, 'all')
+          .then((crops) => ({ bedId: b.id, crops }))
+          .catch(() => ({ bedId: b.id, crops: [] as BedCrop[] })),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const map: Record<string, BedCrop[]> = {};
+      for (const { bedId, crops } of results) map[bedId] = crops;
+      setBedCropsMap(map);
+    });
+    return () => { cancelled = true; };
+  }, [beds]);
 
   // Fetch diary entries for the selected year (auto-paginate)
   useEffect(() => {
@@ -103,6 +128,11 @@ export default function RoiDashboard({ farmId, beds }: Props) {
   const byBed = useMemo(
     () => computeRoiByBed(entries, beds, farmCurrency),
     [entries, beds, farmCurrency],
+  );
+
+  const byBedCrop = useMemo(
+    () => computeRoiByBedCrop(entries, beds, bedCropsMap, farmCurrency),
+    [entries, beds, bedCropsMap, farmCurrency],
   );
 
   const byCategory = useMemo(
@@ -207,6 +237,7 @@ export default function RoiDashboard({ farmId, beds }: Props) {
           <CostByCategoryChart data={byCategory} currency={farmCurrency} />
           <MonthlyTrendChart data={monthly} currency={farmCurrency} currentMonth={currentMonth} />
           <RoiByBedTable data={byBed} currency={farmCurrency} />
+          <RoiByBedCropTable data={byBedCrop} currency={farmCurrency} />
         </>
       )}
     </div>

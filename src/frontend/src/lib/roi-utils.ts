@@ -6,7 +6,7 @@
  */
 
 import type { DiaryEntryResponse } from './api';
-import type { FarmBedItem } from '@litcrop/shared';
+import type { FarmBedItem, BedCrop } from '@litcrop/shared';
 import { getCropEmoji } from './crops';
 
 // ── Result types ───────────────────────────────────────────────────
@@ -23,6 +23,24 @@ export interface RoiSummary {
 export interface BedRoiSummary extends RoiSummary {
   bed_id: string;
   bed_name: string;
+  crop_type: string | null;
+  crop_emoji: string | null;
+}
+
+export type RoiScope = 'farm' | 'bed' | 'crop';
+
+/**
+ * Row-level ROI summary for the per-crop table (Wave D-5). One row per
+ * (scope, target) tuple: one `farm` row when any entries have no bed_id,
+ * one `bed` row per bed that holds bed-level or legacy entries (bed_crop_id
+ * null), and one `crop` row per real BedCrop that has entries.
+ */
+export interface BedCropRoiSummary extends RoiSummary {
+  key: string;                    // stable row id
+  scope: RoiScope;
+  bed_id: string | null;          // null only when scope === 'farm'
+  bed_name: string;               // '' when scope === 'farm'
+  bed_crop_id: string | null;     // set only when scope === 'crop'
   crop_type: string | null;
   crop_emoji: string | null;
 }
@@ -180,6 +198,110 @@ export function computeRoiByBed(
   }
 
   // Default sort: highest cost first
+  results.sort((a, b) => b.total_cost - a.total_cost);
+
+  return results;
+}
+
+// ── computeRoiByBedCrop ────────────────────────────────────────────
+
+const FARM_SCOPE_KEY = '__farm__';
+
+/** Identity + display metadata for a bucket; filled once at bucket creation. */
+type BucketMeta = Omit<BedCropRoiSummary, keyof RoiSummary>;
+
+/**
+ * Compute per-(bed, crop) ROI summaries — Wave D-5.
+ *
+ * Bucketing:
+ *   - entry.bed_crop_id set AND matches a real BedCrop → crop-scope row
+ *     (one per bed_crop_id); crop_type/emoji sourced from BedCrop.
+ *   - entry.bed_crop_id null, entry.bed_id set → bed-scope row (one per bed).
+ *     crop_type falls back to bed.crop_type (legacy) so the label carries
+ *     meaning for pre-Wave-D data; null otherwise.
+ *   - entry.bed_id null → single farm-scope row.
+ *   - entry.bed_crop_id points to a crop missing from bedCropsMap → graceful
+ *     degradation to bed-scope bucket under the entry's bed_id (matches the
+ *     "failure degrades to bed-only" pattern in DiaryEntryForm).
+ */
+export function computeRoiByBedCrop(
+  entries: DiaryEntryResponse[],
+  beds: FarmBedItem[],
+  bedCropsMap: Record<string, BedCrop[]>,
+  currency: string,
+): BedCropRoiSummary[] {
+  const bedMap = new Map<string, FarmBedItem>();
+  for (const bed of beds) bedMap.set(bed.id, bed);
+
+  const cropMap = new Map<string, BedCrop>();
+  for (const crops of Object.values(bedCropsMap)) {
+    for (const c of crops) cropMap.set(c.id, c);
+  }
+
+  function metaFor(entry: DiaryEntryResponse): BucketMeta {
+    const crop = entry.bed_crop_id ? cropMap.get(entry.bed_crop_id) : undefined;
+
+    if (crop) {
+      const bed = bedMap.get(crop.bed_id);
+      return {
+        key: `crop:${crop.id}`,
+        scope: 'crop',
+        bed_id: crop.bed_id,
+        bed_name: bed?.name ?? crop.bed_id,
+        bed_crop_id: crop.id,
+        crop_type: crop.crop_type,
+        crop_emoji: getCropEmoji(crop.crop_type),
+      };
+    }
+
+    if (entry.bed_id) {
+      const bed = bedMap.get(entry.bed_id);
+      // If the bed has any active/planned BedCrops, show "(All)" (crop_type null)
+      // to match the D4 DiaryEntryForm label. Only fall back to bed.crop_type for
+      // true legacy beds that have never had a BedCrop record.
+      const bedCrops = bedCropsMap[entry.bed_id];
+      const hasActiveCrops = bedCrops?.some(
+        (c) => c.status === 'active' || c.status === 'planned',
+      ) ?? false;
+      const legacyCropType = hasActiveCrops ? null : (bed?.crop_type ?? null);
+      return {
+        key: `bed:${entry.bed_id}`,
+        scope: 'bed',
+        bed_id: entry.bed_id,
+        bed_name: bed?.name ?? entry.bed_id,
+        bed_crop_id: null,
+        crop_type: legacyCropType,
+        crop_emoji: legacyCropType ? getCropEmoji(legacyCropType) : null,
+      };
+    }
+
+    return {
+      key: FARM_SCOPE_KEY,
+      scope: 'farm',
+      bed_id: null,
+      bed_name: '',
+      bed_crop_id: null,
+      crop_type: null,
+      crop_emoji: null,
+    };
+  }
+
+  const groups = new Map<string, { entries: DiaryEntryResponse[]; meta: BucketMeta }>();
+  for (const entry of entries) {
+    const meta = metaFor(entry);
+    const existing = groups.get(meta.key);
+    if (existing) {
+      existing.entries.push(entry);
+    } else {
+      groups.set(meta.key, { entries: [entry], meta });
+    }
+  }
+
+  const results: BedCropRoiSummary[] = [];
+  for (const { entries: group, meta } of groups.values()) {
+    results.push({ ...computeRoi(group, currency), ...meta });
+  }
+
   results.sort((a, b) => b.total_cost - a.total_cost);
 
   return results;
