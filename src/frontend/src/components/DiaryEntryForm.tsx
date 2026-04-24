@@ -497,7 +497,7 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                 }}
                 disabled={bedsLoading}
               >
-                <option value="">— {t('diary.bed_optional')} —</option>
+                <option value="">{t('diary.farm_level')}</option>
                 {beds.flatMap((bed) => {
                   const crops = bedCropsMap[bed.id] ?? [];
                   const activeCrops = crops.filter((c) => c.status === 'active' || c.status === 'planned');

@@ -852,6 +852,7 @@
     "time_minutes": "{{count}} min",
     "bed": "Bed",
     "bed_optional": "Bed (optional)",
+    "farm_level": "Farm-level (no specific bed)",
     "bed_deleted": "(deleted bed)",
     "costs": "Costs",
     "cost_add": "Add Cost",
