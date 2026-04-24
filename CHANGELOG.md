@@ -15,6 +15,54 @@ _No unreleased changes._
 
 ---
 
+## [0.99.8.0] - 2026-04-24 — *#279 — 1:N bed-to-crop (Waves B + C)*
+
+### Added
+
+- `BedCrop` domain entity — replaces the 1:1 bed↔crop pairing with a proper 1:N association. Each bed now supports up to 5 concurrent active/planned crop cycles (intercropping + succession) plus unbounded historical cycles (harvested/failed). Driven by a real user who hit the multi-crop need (#279 Wave B).
+- `BedCropStatus` enum: `'planned' | 'active' | 'harvested' | 'failed'`. Terminal transitions auto-set `completed_at` server-side (Wave B S5-1 remediation).
+- BedCrop CRUD API routes at `/api/v1/beds/:bedId/crops[/:bedCropId]` (POST/GET/PATCH/DELETE) with 5-crop cap enforcement and farm-member ownership checks. Mandatory GSI1 prefix guard (`begins_with(GSI1SK, 'CROP#')`) is a tested invariant (Wave B).
+- `FarmBed.active_crop` — canonical reference to a bed's active BedCrop, served as a compact `BedActiveCropSummary` projection on `GET /farms/:id`, `GET /farms/:id/beds`, `GET /beds/:id`. Legacy inline crop fields continue to mirror `active_crop` throughout the shim window (Wave B → D); removed in Wave E.
+- `active_crops_count` on `BedDetailResponse`, `FarmBed`, and `FarmBedItem` — count of active+planned crops including any legacy inline active. Drives the "(N/5)" 5-cap indicator and the "+N" tile-view overflow badge (Wave C).
+- `BedActiveCropSummary.status` — exposes `BedCropStatus` on the summary so UIs can visually distinguish planned vs active crops (Wave C).
+- BedDetail.tsx modal-based Add / Edit flow (uses `Modal.tsx` portal primitive): inline edit toggle replaced with "Add new planting" modal + per-crop active cards (status pill, Edit, Complete cycle) + lazy-loaded history accordion showing harvested/failed crops with completion dates + per-cycle notes. Cards iterate real BedCrops; legacy virtual projection falls back to a single card.
+- FarmOverview + FarmLayoutView tile views show a "+N" overflow indicator next to the primary crop name when a bed carries more than one active crop (aria-label carries the same suffix for screen-reader parity).
+- GanttChart + CropTimeline — one row per crop cycle. Multi-crop beds produce multiple rows with independent reserved/actual bars and per-row mark-done / undo-done actions. Row id is stable (`${bedId}:${cropId ?? 'legacy'}`); legacy virtual projection collapses to a single row.
+- `createBedCrop` / `listBedCrops` / `updateBedCrop` / `deleteBedCrop` on the frontend API client; matching `CreateBedCropRequest` / `UpdateBedCropRequest` types re-exported from `@litcrop/shared`.
+- 12 new i18n keys in the `bed.*` namespace (EN + JA): `no_active_crop`, `add_new_planting`, `complete_cycle`, `cycle_completed`, `crop_added`, `cap_reached`, `show_history`, `hide_history`, `no_history`, `completed_on`, `history`, `crop_status.{planned,active,harvested,failed}`.
+
+### Changed
+
+- `GET /api/v1/farms/:farmId`, `GET /api/v1/farms/:farmId/beds`, `GET /api/v1/beds/:bedId` — additive: responses now include `active_crop` and `active_crops_count` on each bed. No existing fields removed during the shim window.
+- BedDetail.tsx crop-write path — migrated from legacy `PATCH /beds/:id` (inline crop fields) to `POST/PATCH /api/v1/beds/:id/crops[/:cropId]`. Legacy endpoint preserved for external callers and for non-crop fields; removed in Wave E.
+- `syncBedDatesFromDiary` (Wave B) — prefers real `BedCrop` rows when both a real and a legacy inline crop exist for a bed. Legacy-only path preserved.
+- FarmOverview + FarmLayoutView tile read path — prefers `bed.active_crop?.crop_type ?? bed.crop_type` via extract-to-local pattern. Values are identical during the shim window; the change future-proofs Wave E's inline-field drop.
+- DiaryPage `handleMarkDone` / `handleUndoDone` — now accept a `cropId`. Real BedCrops route to `updateBedCrop` status transitions; legacy virtual falls back to `updateBed` `completed_at` toggle.
+- `BedCropStatusSchema` relocated to the top of `packages/shared/src/schemas/index.ts` (previously defined at the bottom alongside BedCrop schemas) to resolve a forward-reference from `BedActiveCropSummarySchema`.
+
+### Fixed
+
+- `BedDetailResponse` TS interface drift — the Zod schema already inherited `active_crop` via `FarmBedSchema.extend`, but the TS interface extended `Bed` (which doesn't have it). Frontend received `active_crop` at runtime but had to cast. Interface now explicitly declares the field (Wave C Gap 1 of the API contract review).
+- Wave B S5-1: PATCH /beds/:id/crops/:cropId auto-manages `completed_at` on terminal status transitions so callers don't need to pass it explicitly on "Complete cycle" flows.
+- Wave B S5-2: DELETE on terminal-status BedCrops is a no-op — prevents the shim from overwriting the historical completed_at with `now`.
+- Wave B S5-3: `GET /beds/:id` forces `completed_at: null` whenever `active_crop` is non-null — eliminates the `active_crop && completed_at` contradiction.
+- Wave B S5-4: 5-crop cap-check formula includes any legacy inline active crop — prevents a "legacy tomato + 5 real active" overrun during the shim window.
+
+### Tests
+
+- 1140 → 1194 vitest tests (+54 net).
+  - Wave B: +36 — schemas (10 BedCropSchema contract), bed-crops repo (11), bed-crops routes (15, incl. 4 S5-1..4 remediation).
+  - Wave C: +18 — `toBedActiveCropSummary` projection (5), `BedActiveCropSummarySchema` contract (7), `BedDetailResponseSchema` active_crop + active_crops_count (6).
+- Pre-commit typecheck green across all workspaces. CI "Deploy to Staging" green on every push — Wave C deployed to staging through five pipeline runs, verified multi-crop UX in browser (BedDetail modal/accordion, tile "+N" indicator, Gantt multi-row).
+
+### Documentation
+
+- `docs/design/DESIGN-279-bed-crop-1n.md` — phased plan A → E, terminology lock-in, DynamoDB key layout, 5-cap constraint, lazy-materialize migration, shim contract, risks + test strategy.
+- `docs/feedback/COVERAGE-NOTE-waveb.md` — Wave B coverage assessment post-`/cc-test`.
+- `docs/feedback/REVIEW-FINDINGS.md` Session 5 entry (ACCEPT, 0 MUST-FIX / 4 SHOULD-FIX) + Wave B remediation ledger entry documenting the S5-1..4 resolutions.
+
+---
+
 ## [0.99.7.6] - 2026-04-24 — *Stream 2 kickoff — #279 Wave A prep*
 
 ### Added
