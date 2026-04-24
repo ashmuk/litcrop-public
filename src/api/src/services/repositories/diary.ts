@@ -38,6 +38,7 @@ export async function createDiaryEntry(
     description: string;
     time_spent_minutes: number | null;
     bed_id: string | null;
+    bed_crop_id: string | null;
     photo_ids: string[];
     costs: CostItem[];
     harvest_amount?: number | null;
@@ -61,6 +62,7 @@ export async function createDiaryEntry(
     description: data.description,
     time_spent_minutes: data.time_spent_minutes,
     bed_id: data.bed_id,
+    bed_crop_id: data.bed_crop_id,
     photo_ids: data.photo_ids,
     costs: data.costs,
     created_by: data.created_by,
@@ -151,6 +153,7 @@ export async function updateDiaryEntry(
     description: string;
     time_spent_minutes: number | null;
     bed_id: string | null;
+    bed_crop_id: string | null;
     photo_ids: string[];
     costs: CostItem[];
     harvest_amount: number | null;

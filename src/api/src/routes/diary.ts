@@ -212,7 +212,7 @@ diaryRouter.post('/:farmId/diary', async (c) => {
   const body = await c.req.json<Record<string, unknown>>();
   const parsed = parseBody(CreateDiaryEntrySchema, body);
 
-  const { bed_id, photo_ids } = parsed;
+  const { bed_id, bed_crop_id, photo_ids } = parsed;
 
   if (bed_id) {
     let bed;
@@ -226,6 +226,22 @@ diaryRouter.post('/:farmId/diary', async (c) => {
     }
     if (bed.farm_id !== farmId) {
       throw new ValidationError('Bed not found in this farm');
+    }
+  }
+
+  // Wave D (#279) — per-crop attribution: bed_crop_id must belong to bed_id.
+  // Null is always allowed (leave-null / no attribution).
+  if (bed_crop_id) {
+    if (!bed_id) {
+      throw new ValidationError('bed_crop_id requires bed_id');
+    }
+    try {
+      await dynamoRepo.getBedCrop(bed_id, bed_crop_id);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        throw new ValidationError('bed_crop_id does not belong to the given bed');
+      }
+      throw new ServiceUnavailableError('Storage service unavailable');
     }
   }
 
@@ -259,6 +275,7 @@ diaryRouter.post('/:farmId/diary', async (c) => {
       photo_ids: parsed.photo_ids ?? [],
       costs: parsed.costs ?? [],
       bed_id: parsed.bed_id ?? null,
+      bed_crop_id: parsed.bed_crop_id ?? null,
       time_spent_minutes: parsed.time_spent_minutes ?? null,
       created_by: userId,
     });
@@ -388,6 +405,24 @@ diaryRouter.patch('/:farmId/diary/:entryId', async (c) => {
     }
     if (bed.farm_id !== farmId) {
       throw new ValidationError('Bed not found in this farm');
+    }
+  }
+
+  // Wave D (#279) — bed_crop_id must belong to the effective bed (patched or
+  // existing). Null is always allowed. Skip this when bed_crop_id is being
+  // cleared (parsed.bed_crop_id === null).
+  if (parsed.bed_crop_id !== undefined && parsed.bed_crop_id !== null) {
+    const effectiveBedId = parsed.bed_id ?? entry.bed_id;
+    if (!effectiveBedId) {
+      throw new ValidationError('bed_crop_id requires bed_id');
+    }
+    try {
+      await dynamoRepo.getBedCrop(effectiveBedId, parsed.bed_crop_id);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        throw new ValidationError('bed_crop_id does not belong to the given bed');
+      }
+      throw new ServiceUnavailableError('Storage service unavailable');
     }
   }
 
