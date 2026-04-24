@@ -186,6 +186,8 @@ export {
   ActivityFeedQuerySchema,
   BedCropStatusSchema,
   BedCropSchema,
+  CreateBedCropRequestSchema,
+  UpdateBedCropRequestSchema,
 } from './schemas/index';
 
 // Crop library — shared types and data (#274)

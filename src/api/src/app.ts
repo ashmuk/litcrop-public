@@ -15,6 +15,7 @@ import meRouter from './routes/me';
 import { farmDevicesRouter, deviceRouter } from './routes/devices';
 import diaryRouter from './routes/diary';
 import cropLibraryRouter from './routes/crop-library';
+import bedCropsRouter from './routes/bed-crops';
 
 // ── Notification subscriptions (must import to initialize) ──────
 // This side-effect import registers all event subscribers at module load time.
@@ -168,6 +169,11 @@ app.route('/api/v1/farms', weatherRouter);
 // GET|PATCH /api/v1/beds/:bedId
 // GET|POST /api/v1/beds/:bedId/images
 app.route('/api/v1/beds', bedsRouter);
+
+// #279 Wave B — BedCrop CRUD (nested under /beds/:bedId/crops)
+// POST|GET /api/v1/beds/:bedId/crops
+// PATCH|DELETE /api/v1/beds/:bedId/crops/:bedCropId
+app.route('/api/v1/beds', bedCropsRouter);
 
 // GET /api/v1/plots/:plotId (410 Gone)
 // GET|POST /api/v1/plots/:plotId/images (410 Gone)

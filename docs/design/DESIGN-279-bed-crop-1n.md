@@ -134,8 +134,10 @@ Enforced in the API at `POST /beds/:bedId/crops`:
 |-------------|---------|----------|
 | `POST /beds/:bedId/crops` | Create a new BedCrop. Enforces 5-cap. | `201 BedCrop` |
 | `GET /beds/:bedId/crops?status=active\|planned\|harvested\|failed\|all` | List BedCrops for a bed, optionally filtered. Defaults to `all`. | `200 { items: BedCrop[] }` |
-| `PATCH /crops/:bedCropId` | Update a BedCrop (dates, status, notes). | `200 BedCrop` |
-| `DELETE /crops/:bedCropId` | Soft-delete by setting `status='failed'` + `completed_at`. Hard delete only if `status='planned'`. | `204` |
+| `PATCH /beds/:bedId/crops/:bedCropId` | Update a BedCrop (dates, status, notes). | `200 BedCrop` |
+| `DELETE /beds/:bedId/crops/:bedCropId` | Soft-delete by setting `status='failed'` + `completed_at`. Hard delete only if `status='planned'`. | `204` |
+
+All four paths are nested under `/beds/:bedId` so that (a) ownership can be checked via the parent bed with a single `dynamoRepo.getBedById(bedId)` call, and (b) every BedCrop query routes through the repo's single `GSI1PK=BED#<b>` entrypoint — no need for a secondary GSI keyed on `bedCropId` alone.
 
 Ownership is checked by looking up the parent bed → farm membership (mirrors the pattern at `src/api/src/middleware/ownership.ts`).
 

@@ -768,3 +768,24 @@ export const BedCropSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
 });
+
+/** POST /api/v1/beds/:bedId/crops — create body. Status defaults to 'planned'. */
+export const CreateBedCropRequestSchema = z.object({
+  crop_type: z.string().trim().min(1).max(100),
+  crop_variety: z.string().trim().max(100).optional(),
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
+  status: BedCropStatusSchema.optional().default('planned'),
+  notes: z.string().max(500).optional(),
+});
+
+/** PATCH /api/v1/beds/:bedId/crops/:bedCropId — update body. All fields optional; null ⇒ REMOVE. */
+export const UpdateBedCropRequestSchema = z.object({
+  crop_type: z.string().trim().min(1).max(100).optional(),
+  crop_variety: z.string().trim().max(100).nullable().optional(),
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  status: BedCropStatusSchema.optional(),
+  notes: z.string().max(500).nullable().optional(),
+});
