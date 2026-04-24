@@ -97,6 +97,7 @@ async function buildEntryResponse(
     time_spent_minutes: entry.time_spent_minutes,
     bed_id: entry.bed_id,
     bed_name,
+    bed_crop_id: entry.bed_crop_id,
     photo_ids: entry.photo_ids,
     costs: entry.costs,
     cost_total: calcCostTotal(entry),
@@ -245,6 +246,30 @@ diaryRouter.post('/:farmId/diary', async (c) => {
     }
   }
 
+  // Wave D D3 (#279) — harvest auto-default: when the user logs a harvest
+  // on a bed with one active real BedCrop and doesn't name a crop, attribute
+  // to that crop. Zero-extra-click flow for the unambiguous case. Virtual
+  // legacy (bed-legacy-*) is skipped; only status='active' qualifies (planned
+  // crops are pre-plant — harvesting them makes no sense). No need to
+  // re-validate the resolved id via getBedCrop: getActiveCropForBed's GSI1
+  // query is already scoped to bed_id, so (bed_id, active.id) is valid by
+  // construction. PATCH deliberately does NOT auto-default (user edit).
+  let effectiveBedCropId: string | null = bed_crop_id ?? null;
+  if (!effectiveBedCropId && parsed.category === 'harvesting' && bed_id) {
+    try {
+      const active = await dynamoRepo.getActiveCropForBed(bed_id);
+      if (active && active.status === 'active' && !active.id.startsWith('bed-legacy-')) {
+        effectiveBedCropId = active.id;
+      }
+    } catch (err) {
+      // Lookup failure: leave effectiveBedCropId null — D3 is a convenience,
+      // not a requirement (leave-null semantics per DESIGN-279 §3.3). Log so
+      // outage-time silent degradation is observable (mirrors the pattern in
+      // syncBedDatesFromDiary).
+      console.warn(`[D3 auto-default] getActiveCropForBed failed for bed ${bed_id}:`, err);
+    }
+  }
+
   if (photo_ids && photo_ids.length > 0) {
     await Promise.all(photo_ids.map(async (imageId) => {
       let image;
@@ -275,7 +300,7 @@ diaryRouter.post('/:farmId/diary', async (c) => {
       photo_ids: parsed.photo_ids ?? [],
       costs: parsed.costs ?? [],
       bed_id: parsed.bed_id ?? null,
-      bed_crop_id: parsed.bed_crop_id ?? null,
+      bed_crop_id: effectiveBedCropId,
       time_spent_minutes: parsed.time_spent_minutes ?? null,
       created_by: userId,
     });

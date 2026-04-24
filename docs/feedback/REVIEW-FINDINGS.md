@@ -1,3 +1,33 @@
+# Review Findings — Session 8 (2026-04-24) — Wave D D3 harvest auto-default (#279)
+
+Summary: MUST-FIX: 0 · SHOULD-FIX: 2 · SUGGESTION: 2
+
+Scope: uncommitted POST-only auto-default for `bed_crop_id` when a harvest entry names a bed but omits the crop. Two files, 20 + 168 lines added.
+
+| ID | Severity | Location | Finding | Recommendation |
+|---|---|---|---|---|
+| R-D3-001 | SHOULD-FIX | `src/api/src/routes/diary.ts:256-258` + `services/repositories/bed-crops.ts:137` | `getActiveCropForBed` returns the first crop whose status is `'active'` **OR `'planned'`**. D3 auto-attributes to whatever it returns. A user logs a harvest on a bed whose current crop is still in `planned` state (seedling ordered, not yet planted) and the entry silently attaches to that planned crop — semantically incorrect (you cannot harvest something not yet planted) and confusing in ROI / Gantt views. In the D4 DiaryEntryForm, the UI shows `planned` crops as selectable because the user can still *assign* intent; but on the server-auto path the intent is absent. D5 RoiByBedCropTable aggregates by `crop.id` regardless of status → a harvest will sit under a "planned-state" crop row, which reads wrong. | Narrow the auto-default gate to `active.status === 'active'` only. Either inline the check: `if (active && active.status === 'active' && !active.id.startsWith('bed-legacy-'))`, or add a sibling repo helper `getActiveCropForBed(bedId, { statuses: ['active'] })`. Prefer inline — cheap, local, one line. Add a test: `status: 'planned'` → no auto-attribution. |
+| R-D3-002 | SHOULD-FIX | `src/api/src/routes/diary.ts:260-263` catch block | The bare `catch { }` swallows everything — including bugs (TypeError from a future refactor, permission errors, timeouts). Contrast the sibling explicit-`bed_crop_id` block (lines 238-245) which distinguishes `NotFoundError → 400` from others → 503. Silent tolerance is the correct design (D3 is convenience, not requirement — per DESIGN-279 §3.3), but losing all observability means a regional DDB outage degrades harvest attribution site-wide with zero telemetry signal. Same pattern as `syncBedDatesFromDiary` at line 201 which **does** `console.warn`. | Add a one-line `console.warn('[D3 auto-default] getActiveCropForBed failed for bed ${bed_id}:', err)` inside the catch. Keeps the leave-null semantics (no throw) but restores observability. Mirrors the bridge pattern already established in this file. |
+| R-D3-003 | SUGGESTION | `src/api/src/__tests__/routes/diary.test.ts:404-567` test suite | Two coverage gaps: (a) no test locks in the PATCH-does-NOT-auto-default decision — a future contributor copy-pasting the D3 block into the PATCH handler would pass all 6 new tests. (b) No test asserts `expected_harvest`-less "completed" crops aren't auto-attributed (status invariant depends on R-D3-001 being fixed first). Happy path, virtual-legacy, non-harvest, explicit-value, no-bed_id, and lookup-failure cases are all solid — the `expect(getActiveCropForBed).not.toHaveBeenCalled()` guards prevent over-firing regressions. | Add one PATCH regression test: `PATCH /diary/:id` with `{category: 'harvesting'}` on an entry whose `bed_crop_id` is null → assert `updateDiaryEntry` called with `bed_crop_id: undefined` (or null, depending on the PATCH contract) AND `getActiveCropForBed` not called. 8 lines, locks the design forever. |
+| R-D3-004 | SUGGESTION | `src/api/src/routes/diary.ts:253-264` | Minor: the auto-defaulted `effectiveBedCropId` skips re-validation via `getBedCrop`. This is safe by construction (the id was just returned by `getActiveCropForBed(bed_id)`, so the bed↔crop relationship is authoritative), but there's no assertion or comment saying so. A future reader refactoring the auto-default path might worry. | Add a short comment: `// Safe to skip getBedCrop re-validation: `active.id` came from `getActiveCropForBed(bed_id)`, which queries GSI1 scoped to this bed.` One line, prevents a future defensive round-trip. |
+
+## Verification performed
+
+- **Sentinel string**: `grep -n "bed-legacy-" src/api/src/services/repositories/bed-crops.ts` → single source site at line 145 (`id: `bed-legacy-${bed.id}``). The D3 prefix check `!active.id.startsWith('bed-legacy-')` at line 257 matches verbatim.
+- **PATCH exclusion**: `grep -n "getActiveCropForBed\|bed-legacy-" src/api/src/routes/diary.ts` → only line 256/257 in POST; PATCH handler (lines 403-472) is untouched. Design intent respected.
+- **Order hazard**: explicit-value block (lines 234-246) executes before the D3 block (lines 253-264); `effectiveBedCropId` starts `= bed_crop_id ?? null`, and the D3 `if (!effectiveBedCropId ...)` short-circuits when the user supplied a value. Test `respects an explicitly-supplied bed_crop_id` confirms with `expect(getActiveCropForBed).not.toHaveBeenCalled()`.
+- **Authz chain**: POST reaches D3 only after `assertFarmAccess(farmId, userId, undefined, isAdmin)` at line 210. `bed_id` is validated to be in this farm at lines 217-230 before the D3 block runs. `getActiveCropForBed(bed_id)` is therefore already farm-scoped. No IDOR vector; D3 does not widen the attack surface.
+- **Mock robustness**: `beforeEach` sets `getActiveCropForBed.mockResolvedValue(null)` and `getBedCrop.mockRejectedValue(new NotFoundError(...))`. Existing non-D3 tests post `bed_crop_id: null` → never hit `getBedCrop` path → default rejection is harmless. Per-test `mockResolvedValueOnce` overrides are clean.
+- **Status enum reachability**: `getActiveCropForBed` filters to `status === 'active' || status === 'planned'`. Both values exit the same branch into D3 with no downstream status check — root cause of R-D3-001.
+- **Idempotency**: a retried harvest POST sees the same active crop (no mutation between calls); auto-attribution is stable. No double-write risk from retries.
+- **Type safety**: `effectiveBedCropId: string | null` matches `createDiaryEntry` input's `bed_crop_id` field. `parsed.category === 'harvesting'` narrows the Zod discriminated union literal correctly.
+
+## Accept / Block
+
+No MUST-FIX; D3 is functionally correct and the tests genuinely guard the branches. **Acceptable to commit** after addressing R-D3-001 (one-line status narrowing + one test) and R-D3-002 (one-line `console.warn`). R-D3-003 and R-D3-004 are worth squashing in but can defer to a Wave-D close-out pass. The 6 new tests are a clean pattern — per-test `mockResolvedValueOnce` overrides with `beforeEach` defaults is the right shape for this suite.
+
+---
+
 # Review Findings — Session 7 (2026-04-24) — Wave D D6 per-crop diary overlay (#279)
 
 Summary: MUST-FIX: 0 · SHOULD-FIX: 1 · SUGGESTION: 2

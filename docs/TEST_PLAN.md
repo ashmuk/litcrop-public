@@ -110,3 +110,43 @@ Existing coverage reviewed:
 
 - target: `GanttRow.cropId` sentinel-string safety (`'legacy'` as a Map key)
   reason: Confirmed by direct inspection: `DiaryPage.tsx:505-534` sets `cropId: crop.id` (uuid) or `cropId: null` exclusively. The `'legacy'` sentinel is concatenated into `row.id` only (`${bed.id}:legacy` at line 526). `row.cropId` is never `'legacy'`; a sentinel string can never reach `actualMap.get()` as a key. TypeScript's `string | null` typing enforces the shape at compile time.
+
+## Wave D D3 — Coverage Gap Analysis
+
+Target artifact:
+- `src/api/src/routes/diary.ts:256-270` — POST harvest auto-default block between bed_crop_id validation and `createDiaryEntry`.
+
+Existing coverage reviewed:
+- 8 Wave D D3 tests in `src/api/src/__tests__/routes/diary.test.ts:407-619` covering: active-crop attribution, virtual-legacy skip, planned-crop skip (R-D3-001), non-harvest no-fire, explicit-value preservation, no-bed no-fire, DDB-failure tolerance (R-D3-002), PATCH no-auto-default (R-D3-003).
+- Call-not-made guards on tests #4/#5/#6 pin down the three early-exit branches.
+- Default mock `getActiveCropForBed.mockResolvedValue(null)` + `getBedCrop.mockRejectedValue(NotFoundError)` reset per test.
+- Bridge interaction: `syncBedDatesFromDiary` (diary.ts:159-203) does not read `bed_crop_id`; D3 is orthogonal to the #273 bed-date sync path. No interaction test needed.
+
+### MUST-ADD
+- None. All five D3-block branches are exercised (explicit-skip, category-skip, no-bed-skip, active-crop-attribute, status-narrowing), plus the failure-tolerance and PATCH-regression guards. **Pass signal: Wave D D3 can ship to main on current coverage.**
+
+### SHOULD-ADD
+- id: T-D3-01
+  target: `diaryRouter.post` D3 block — `getActiveCropForBed` called and returns `null` (no active or planned crop on the bed)
+  gap: All six "no-fire" cases today take branches BEFORE `getActiveCropForBed` is invoked (non-harvest, no bed_id, explicit bed_crop_id) or the function rejects (test #7). No test exercises the path where the function IS called, resolves `null`, and the `if (active && ...)` guard short-circuits on the first conjunct. A future refactor that replaces `active && active.status === 'active'` with `active.status === 'active'` (optional-chaining drop) would throw only on this untested path.
+  rationale: One-line fixture addition (`mockResolvedValue(null)` is already the default; just need a harvest POST with bed_id that asserts `bed_crop_id: null` AND `getActiveCropForBed` was called exactly once). Locks the null-guard down as an explicit contract.
+  effort: S
+
+- id: T-D3-02
+  target: `diaryRouter.post` D3 block — response shape reflects auto-defaulted `bed_crop_id` end-to-end
+  gap: Test #1 asserts `createDiaryEntry` receives the correct `bed_crop_id` argument, but does not read the HTTP response body to confirm the field round-trips through `buildEntryResponse` to the client. Current `createDiaryEntry` mock returns a fixture with `bed_crop_id: ACTIVE_CROP_ID` pre-set, so the wire-level contract that the client sees the auto-defaulted id is not directly asserted. Note: `buildEntryResponse` (diary.ts:83-112) does NOT currently emit `bed_crop_id` in the response object — grep confirms no `bed_crop_id:` in the return literal. This is a real response-shape gap worth verifying before shipping.
+  rationale: Consumers of the POST response (frontend `DiaryEntryForm` optimistic update, potential mobile clients) may rely on the auto-defaulted id echoing back. If `buildEntryResponse` omits the field, the client cannot distinguish "server auto-attributed" from "no attribution" without a follow-up GET. Either add the field to `buildEntryResponse` (and test it) or deliberately document the omission.
+  effort: S
+
+### NO-TEST-NEEDED (with reason)
+- target: D3 interaction with `syncBedDatesFromDiary` bridge
+  reason: `syncBedDatesFromDiary` (diary.ts:159-203) reads only `category`, `bed_id`, `date`, `entry_type` — grep confirms no `bed_crop_id` reference in its body. The bridge operates on bed-level inline fields or on `listBedCropsByBed` lookups, both orthogonal to the POST handler's `effectiveBedCropId` resolution. A dedicated interaction test would exercise code paths already covered separately by #273 bridge tests (diary.test.ts:1038-1168) and D3 tests above.
+
+- target: D3 × D5 cross-wave aggregation (harvest auto-defaulted by D3 surfaces in `computeRoiByBedCrop`)
+  reason: Wave boundary. D5's `computeRoiByBedCrop` unit tests read `entry.bed_crop_id` directly from fixtures; whether the value arrived via user input or D3 server-side default is transparent to the aggregator. D3's contract is "POST writes the correct `bed_crop_id` to DDB"; D5's contract is "aggregator groups by whatever `bed_crop_id` is stored." Both sides are independently tested. An integration test crossing the boundary would require spinning up DDB Local + frontend fetch — infrastructure the project has declined for Wave D.
+
+- target: Concurrency — two simultaneous harvest POSTs on the same bed auto-default to the same BedCrop
+  reason: DDB last-writer-wins semantics; both POSTs read the same `getActiveCropForBed` result (or read it at slightly different times — still the same active crop id while it remains active). The two writes produce two diary entries both pointing at the same `bed_crop_id`, which is the intended behavior. No race condition exists because `effectiveBedCropId` is a request-scoped local and `createDiaryEntry` writes a fresh row keyed by `entryId = randomUUID()`. A concurrency test would validate DDB semantics, not D3 logic.
+
+- target: `active.status === 'harvested'` / `'failed'` skip branch
+  reason: `getActiveCropForBed`'s GSI1 query (per repo contract) surfaces only `status ∈ {active, planned}` crops; harvested/failed crops never reach the D3 block. The `active.status === 'active'` narrow is defensive against the planned case (tested in #3), not against harvested/failed which cannot arrive here. A test asserting "harvested crop is skipped" would require forcing the mock to violate the repo contract — exercising a condition the production code cannot observe.

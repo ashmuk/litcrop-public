@@ -1,3 +1,53 @@
+# Remediation Report — Wave D D3 (2026-04-24)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` Session 8 (Wave D D3)
+- Iterations: 1 of 3 max
+- Status: RESOLVED — 2/2 SHOULD-FIX + 2/2 SUGGESTION addressed; 0 MUST-FIX
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| R-D3-001 | `getActiveCropForBed` returns status ∈ {active, planned}; D3 was mis-attributing harvests to planned-but-not-planted crops | SHOULD-FIX | FIXED | Narrowed condition in `diary.ts` to `active.status === 'active' && !active.id.startsWith('bed-legacy-')`. Added test: "does NOT auto-attribute to a planned (not-yet-planted) BedCrop". |
+| R-D3-002 | Bare `catch {}` swallowed all errors silently — no observability on outage-time degradation | SHOULD-FIX | FIXED | Added `console.warn('[D3 auto-default] getActiveCropForBed failed for bed ${bed_id}:', err)` mirroring `syncBedDatesFromDiary` pattern. Existing lookup-failure test upgraded with `vi.spyOn(console, 'warn')` + assertion that the warn fires. |
+| R-D3-003 | No PATCH regression guard — a future copy-paste of D3 into PATCH would pass all 6 POST tests | SUGGESTION | FIXED | Added PATCH-specific test asserting `getActiveCropForBed` is NOT called during `PATCH /diary/:entryId`. |
+| R-D3-004 | Auto-defaulted id skips `getBedCrop` re-validation; safe but undocumented | SUGGESTION | FIXED | Added a sentence to the D3 JSDoc explaining the skip is safe because `getActiveCropForBed`'s GSI1 query is already scoped to `bed_id`. |
+
+## Iteration Log
+
+### Iteration 1
+- Findings addressed: R-D3-001 (correctness narrowing), R-D3-002 (observability), R-D3-003 (regression guard), R-D3-004 (doc comment)
+- Builder: inline application — all four are proportionate to scope (1 conditional clause, 1 log line, 1 doc comment, 2 tests). Full my-builder dispatch would have added orchestration overhead without risk reduction.
+- Outcome: All SHOULD-FIX + SUGGESTION resolved. Vitest 1226 → 1228 (+2 new regression tests). Typecheck clean (shared + api).
+
+### Iteration 2 (discovered via /cc-test)
+- my-analyst's D3 coverage gap analysis (`docs/TEST_PLAN.md` § Wave D D3) surfaced T-D3-02 as a test-shaped gap that on inspection was a **source-code contract bug**: `buildEntryResponse` (diary.ts:83-112) omitted `bed_crop_id` from the returned object, so D1/D2/D3 persistence was invisible to clients. Pre-dated D3 — D1 added the domain + schema + DDB mapper fields but never updated the outgoing response shape.
+- Fix: added `bed_crop_id: entry.bed_crop_id` to `buildEntryResponse` return literal.
+- Plus added T-D3-01 (null-return short-circuit) + T-D3-02 (response-echo assertion) from the /cc-test strategy.
+- Outcome: vitest 1228 → 1230 (+2 new tests). Contract now consistent with the Zod `DiaryEntryResponseSchema` (requires `bed_crop_id`) and the frontend local type (updated in D5 commit `72c77aa`).
+
+## Verification
+
+```
+Test Files  54 passed (54)
+     Tests  1228 passed (1228)   ← baseline 1226 + 2 new
+  Duration  5.80s
+```
+
+Files changed:
+- `src/api/src/routes/diary.ts` — R-D3-001 + R-D3-002 + R-D3-004 + buildEntryResponse contract fix (T-D3-02)
+- `src/api/src/__tests__/routes/diary.test.ts` — R-D3-001 test + R-D3-002 assertion + R-D3-003 test + T-D3-01 test + T-D3-02 test
+
+LOC delta: +94 / -4.
+
+## Escalations
+None. 0 MUST-FIX; all 2 SHOULD-FIX resolved; both SUGGESTIONS folded in since they were trivial.
+
+*Remediation completed: 2026-04-24 | Status: RESOLVED*
+
+---
+
 # Remediation Report — Wave D D6 (2026-04-24)
 
 ## Summary

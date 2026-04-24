@@ -26,6 +26,9 @@ vi.mock('../../services/dynamodb', () => ({
     // #279 Wave B — diary bridge now prefers real BedCrop over bed inline fields
     listBedCropsByBed: vi.fn(),
     updateBedCrop: vi.fn(),
+    // #279 Wave D — bed_crop_id validation (D2) + harvest auto-default (D3)
+    getBedCrop: vi.fn(),
+    getActiveCropForBed: vi.fn(),
   },
 }));
 
@@ -111,6 +114,9 @@ beforeEach(() => {
   mockRepo.getUserProfile.mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Test Farmer', preferred_role: 'staff', created_at: '2026-04-01T00:00:00Z' });
   // #279 Wave B — default to no persisted BedCrops (legacy bed inline path)
   mockRepo.listBedCropsByBed.mockResolvedValue([]);
+  // #279 Wave D — default: no active crop; getBedCrop rejects (not found).
+  mockRepo.getActiveCropForBed.mockResolvedValue(null);
+  mockRepo.getBedCrop.mockRejectedValue(new NotFoundError('BedCrop not found'));
 });
 
 // ── Harvest entry fixture (Beta-10) ──────────────────────────────
@@ -393,6 +399,272 @@ describe('Beta-10: POST /api/v1/farms/:farmId/diary — harvest fields', () => {
     expect(res.status).toBe(201);
     const body = await res.json() as Record<string, unknown>;
     expect(body['revenue']).toBe(5000);
+  });
+});
+
+// ── #279 Wave D D3: harvest-category auto-default for bed_crop_id ──
+
+describe('Wave D D3: POST harvest auto-default bed_crop_id', () => {
+  const ACTIVE_CROP_ID = 'c1c1c1c1-0000-0000-0000-000000000001';
+
+  const activeBedCropFixture = {
+    id: ACTIVE_CROP_ID,
+    bed_id: BED_ID,
+    farm_id: FARM_ID,
+    crop_type: 'tomato',
+    status: 'active' as const,
+    created_by: TEST_USER_ID,
+    created_at: '2026-04-01T00:00:00Z',
+    updated_at: '2026-04-01T00:00:00Z',
+  };
+
+  it('auto-attributes a harvest entry to the bed\'s active real BedCrop when bed_crop_id is omitted', async () => {
+    mockRepo.getActiveCropForBed.mockResolvedValue(activeBedCropFixture);
+    mockRepo.createDiaryEntry.mockResolvedValue({
+      ...harvestEntryFixture,
+      bed_crop_id: ACTIVE_CROP_ID,
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvested tomatoes',
+        bed_id: BED_ID,
+        harvest_amount: 5.2,
+        harvest_unit: 'kg',
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: ACTIVE_CROP_ID }),
+    );
+  });
+
+  it('does NOT auto-attribute to a planned (not-yet-planted) BedCrop', async () => {
+    // getActiveCropForBed can surface status='planned' crops too; harvesting
+    // a crop that hasn't been planted is semantically wrong, so D3 must skip.
+    const plannedCrop = { ...activeBedCropFixture, status: 'planned' as const };
+    mockRepo.getActiveCropForBed.mockResolvedValue(plannedCrop);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvested a planned crop?',
+        bed_id: BED_ID,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: null }),
+    );
+  });
+
+  it('does NOT auto-attribute for a harvest on a bed with only a virtual-legacy active crop', async () => {
+    const virtualLegacy = { ...activeBedCropFixture, id: `bed-legacy-${BED_ID}` };
+    mockRepo.getActiveCropForBed.mockResolvedValue(virtualLegacy);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvested legacy bed',
+        bed_id: BED_ID,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: null }),
+    );
+  });
+
+  it('does NOT auto-default for non-harvest categories (planting, watering, etc.)', async () => {
+    mockRepo.getActiveCropForBed.mockResolvedValue(activeBedCropFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-04-01',
+        category: 'planting',
+        description: 'Planted seedlings',
+        bed_id: BED_ID,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: null }),
+    );
+    // Guard: getActiveCropForBed should not have been called for non-harvest
+    expect(mockRepo.getActiveCropForBed).not.toHaveBeenCalled();
+  });
+
+  it('respects an explicitly-supplied bed_crop_id (does not overwrite user intent)', async () => {
+    const EXPLICIT_CROP = 'c2c2c2c2-0000-0000-0000-000000000042';
+    mockRepo.getBedCrop.mockResolvedValueOnce({ ...activeBedCropFixture, id: EXPLICIT_CROP });
+    // Even though there's an active crop, user's explicit value wins.
+    mockRepo.getActiveCropForBed.mockResolvedValue(activeBedCropFixture);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvested specific crop',
+        bed_id: BED_ID,
+        bed_crop_id: EXPLICIT_CROP,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: EXPLICIT_CROP }),
+    );
+    // Guard: when user supplied bed_crop_id, auto-default path is skipped.
+    expect(mockRepo.getActiveCropForBed).not.toHaveBeenCalled();
+  });
+
+  it('does NOT auto-default when bed_id is absent (farm-level harvest)', async () => {
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Farm-wide harvest note',
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: null, bed_id: null }),
+    );
+    expect(mockRepo.getActiveCropForBed).not.toHaveBeenCalled();
+  });
+
+  it('tolerates a getActiveCropForBed lookup failure by leaving bed_crop_id null', async () => {
+    mockRepo.getActiveCropForBed.mockRejectedValue(new Error('DDB unavailable'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvest during outage',
+        bed_id: BED_ID,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: null }),
+    );
+    // R-D3-002: outage-time silent degradation is observable via console.warn.
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[D3 auto-default]'),
+      expect.any(Error),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('T-D3-01: does NOT auto-attribute when getActiveCropForBed returns null (no active crop on bed)', async () => {
+    // Exercises the `active && ...` first-conjunct short-circuit that all
+    // other no-fire tests bypass via short-circuit higher up the if-chain.
+    mockRepo.getActiveCropForBed.mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvest on bed with no active crop',
+        bed_id: BED_ID,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRepo.getActiveCropForBed).toHaveBeenCalledWith(BED_ID);
+    expect(mockRepo.createDiaryEntry).toHaveBeenCalledWith(
+      FARM_ID,
+      expect.any(String),
+      expect.objectContaining({ bed_crop_id: null }),
+    );
+  });
+
+  it('T-D3-02: POST response echoes the auto-defaulted bed_crop_id back to the client', async () => {
+    // Regression guard: buildEntryResponse must include bed_crop_id so
+    // clients see the server-side auto-attribution without a follow-up GET.
+    mockRepo.getActiveCropForBed.mockResolvedValue(activeBedCropFixture);
+    mockRepo.createDiaryEntry.mockResolvedValue({
+      ...harvestEntryFixture,
+      bed_crop_id: ACTIVE_CROP_ID,
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: '2026-07-01',
+        category: 'harvesting',
+        description: 'Harvest auto-attributed',
+        bed_id: BED_ID,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body['bed_crop_id']).toBe(ACTIVE_CROP_ID);
+  });
+
+  it('PATCH deliberately does NOT auto-default bed_crop_id (user edits are not overwritten)', async () => {
+    // Regression guard (R-D3-003): a future copy-paste of D3 into PATCH
+    // would silently change semantics. Lock it in.
+    mockRepo.getActiveCropForBed.mockResolvedValue(activeBedCropFixture);
+    mockRepo.getDiaryEntryById.mockResolvedValue({
+      ...harvestEntryFixture,
+      bed_crop_id: null,
+    });
+
+    const res = await app.request(`/api/v1/farms/${FARM_ID}/diary/${ENTRY_ID}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // Change description; don't touch bed_crop_id. Must stay null.
+        description: 'Edited harvest note',
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockRepo.getActiveCropForBed).not.toHaveBeenCalled();
   });
 });
 
