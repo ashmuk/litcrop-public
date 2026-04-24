@@ -14,6 +14,7 @@ import {
   DiaryActivityItemSchema,
   DeviceActivityItemSchema,
   ImageActivityItemSchema,
+  BedActiveCropSummarySchema,
   BedCropStatusSchema,
   BedCropSchema,
 } from '../schemas/index';
@@ -147,6 +148,62 @@ describe('FarmBedSchema', () => {
   });
 });
 
+// ── BedActiveCropSummarySchema (#279 Wave C) ──────────────────────
+
+describe('BedActiveCropSummarySchema', () => {
+  const validSummary = {
+    id: 'crop-1',
+    status: 'active',
+    crop_type: 'tomato',
+    crop_variety: null,
+    planted_at: '2026-04-01',
+    expected_harvest: '2026-07-15',
+  };
+
+  it('accepts a valid summary with all fields', () => {
+    expect(BedActiveCropSummarySchema.safeParse(validSummary).success).toBe(true);
+  });
+
+  it('accepts a summary with only required fields (id, status, crop_type)', () => {
+    expect(
+      BedActiveCropSummarySchema.safeParse({
+        id: 'crop-1',
+        status: 'planned',
+        crop_type: 'carrot',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects missing status — Wave C UI needs it to distinguish planned vs active', () => {
+    const { status: _s, ...rest } = validSummary;
+    expect(BedActiveCropSummarySchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects invalid status value', () => {
+    expect(
+      BedActiveCropSummarySchema.safeParse({ ...validSummary, status: 'ongoing' }).success,
+    ).toBe(false);
+  });
+
+  it('accepts all four valid BedCropStatus values', () => {
+    for (const status of ['planned', 'active', 'harvested', 'failed']) {
+      expect(
+        BedActiveCropSummarySchema.safeParse({ ...validSummary, status }).success,
+      ).toBe(true);
+    }
+  });
+
+  it('rejects missing id', () => {
+    const { id: _i, ...rest } = validSummary;
+    expect(BedActiveCropSummarySchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('rejects missing crop_type', () => {
+    const { crop_type: _c, ...rest } = validSummary;
+    expect(BedActiveCropSummarySchema.safeParse(rest).success).toBe(false);
+  });
+});
+
 // ── BedDetailResponseSchema ───────────────────────────────────────
 
 describe('BedDetailResponseSchema', () => {
@@ -173,6 +230,59 @@ describe('BedDetailResponseSchema', () => {
   it('rejects missing farm_id', () => {
     const { farm_id: _f, ...rest } = validBedDetail;
     expect(BedDetailResponseSchema.safeParse(rest).success).toBe(false);
+  });
+
+  // ── #279 Wave C — active_crop and active_crops_count ─────────────
+
+  it('accepts detail with a populated active_crop (including required status)', () => {
+    const withActive = {
+      ...validBedDetail,
+      crop_type: 'tomato',
+      crop_variety: 'san marzano',
+      planted_at: '2026-04-01',
+      expected_harvest: '2026-07-15',
+      active_crop: {
+        id: 'crop-1',
+        status: 'active',
+        crop_type: 'tomato',
+        crop_variety: 'san marzano',
+        planted_at: '2026-04-01',
+        expected_harvest: '2026-07-15',
+      },
+    };
+    expect(BedDetailResponseSchema.safeParse(withActive).success).toBe(true);
+  });
+
+  it('accepts detail with active_crop: null (no active crop)', () => {
+    expect(
+      BedDetailResponseSchema.safeParse({ ...validBedDetail, active_crop: null }).success,
+    ).toBe(true);
+  });
+
+  it('accepts non-negative integer active_crops_count', () => {
+    expect(
+      BedDetailResponseSchema.safeParse({ ...validBedDetail, active_crops_count: 3 }).success,
+    ).toBe(true);
+    expect(
+      BedDetailResponseSchema.safeParse({ ...validBedDetail, active_crops_count: 0 }).success,
+    ).toBe(true);
+  });
+
+  it('rejects negative active_crops_count', () => {
+    expect(
+      BedDetailResponseSchema.safeParse({ ...validBedDetail, active_crops_count: -1 }).success,
+    ).toBe(false);
+  });
+
+  it('rejects non-integer active_crops_count', () => {
+    expect(
+      BedDetailResponseSchema.safeParse({ ...validBedDetail, active_crops_count: 2.5 }).success,
+    ).toBe(false);
+  });
+
+  it('accepts active_crops_count absent (field is optional during shim window)', () => {
+    // validBedDetail has no active_crops_count key — omission must be valid.
+    expect(BedDetailResponseSchema.safeParse(validBedDetail).success).toBe(true);
   });
 });
 

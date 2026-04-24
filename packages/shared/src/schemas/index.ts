@@ -65,10 +65,18 @@ export const FarmBaseSchema = z.object({
   visibility: FarmVisibilitySchema.optional(),
 });
 
+/**
+ * BedCrop lifecycle state (#279 Wave B).
+ * `planned` + `active` count toward MAX_ACTIVE_CROPS_PER_BED;
+ * `harvested` + `failed` are history and unbounded.
+ */
+export const BedCropStatusSchema = z.enum(['planned', 'active', 'harvested', 'failed']);
+
 /** Bed summary within GET /farms/:farmId response */
 /** #279 Wave B — compact projection of a bed's active BedCrop. */
 export const BedActiveCropSummarySchema = z.object({
   id: z.string(),
+  status: BedCropStatusSchema,
   crop_type: z.string(),
   crop_variety: z.string().nullable().optional(),
   planted_at: z.string().nullable().optional(),
@@ -192,6 +200,7 @@ export const BedDetailResponseSchema = FarmBedSchema.extend({
   expected_harvest: z.string().nullable(),
   completed_at: z.string().nullable(),
   notes: z.string().nullable(),
+  active_crops_count: z.number().int().nonnegative().optional(),
   latest_image: BedDetailImageSchema.nullable(),
 });
 
@@ -757,13 +766,6 @@ export const ActivityFeedQuerySchema = z.object({
 });
 
 // ── BedCrop schemas (#279 Wave B) ────────────────────────────────
-
-/**
- * BedCrop lifecycle state.
- * `planned` + `active` count toward MAX_ACTIVE_CROPS_PER_BED;
- * `harvested` + `failed` are history and unbounded.
- */
-export const BedCropStatusSchema = z.enum(['planned', 'active', 'harvested', 'failed']);
 
 /** Full BedCrop item shape (response + DDB row, excluding internal PK/SK keys). */
 export const BedCropSchema = z.object({

@@ -4,7 +4,7 @@
  * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
-import type { Farm, Bed, Image, Tag, BedStatus, TriggerType, TagValue } from './domain';
+import type { Farm, Bed, Image, Tag, BedStatus, BedCropStatus, TriggerType, TagValue } from './domain';
 
 // ── Response Envelopes ───────────────────────────────────────────
 
@@ -51,6 +51,7 @@ export type ErrorCode =
 /** Projection of the bed's active BedCrop — Wave B compat shim (#279). */
 export interface BedActiveCropSummary {
   id: string;
+  status: BedCropStatus;
   crop_type: string;
   crop_variety?: string;
   planted_at?: string;
@@ -96,6 +97,10 @@ export interface FarmBedItem extends FarmBed {
 
 /** GET /api/v1/beds/{bedId} */
 export interface BedDetailResponse extends Bed {
+  /** #279 Wave B — canonical reference to the bed's active BedCrop; null when no active/planned crop. */
+  active_crop?: BedActiveCropSummary | null;
+  /** #279 Wave C — count of active+planned BedCrops plus any legacy inline active crop; used to gate the 5-cap UI. */
+  active_crops_count?: number;
   latest_image: {
     id: string;
     captured_at: string;

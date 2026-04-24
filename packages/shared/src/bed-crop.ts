@@ -35,6 +35,7 @@ export function toBedActiveCropSummary(
   if (!bc) return null;
   return {
     id: bc.id,
+    status: bc.status,
     crop_type: bc.crop_type,
     crop_variety: bc.crop_variety,
     planted_at: bc.planted_at,
