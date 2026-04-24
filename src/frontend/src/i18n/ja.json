@@ -853,6 +853,7 @@
     "bed": "畝",
     "bed_optional": "畝（任意）",
     "farm_level": "農場全体（特定の畝なし）",
+    "bed_all": "全体",
     "bed_deleted": "（削除済み）",
     "costs": "費用",
     "cost_add": "費用を追加",

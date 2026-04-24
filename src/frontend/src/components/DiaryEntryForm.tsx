@@ -502,12 +502,16 @@ export default function DiaryEntryForm({ farmId, entry, onSave, onCancel }: Prop
                   const crops = bedCropsMap[bed.id] ?? [];
                   const activeCrops = crops.filter((c) => c.status === 'active' || c.status === 'planned');
                   const bedLabel = bed.name ?? bed.id;
-                  // Bed-only option — always present. For legacy beds with no
-                  // real BedCrops but an inline crop_type, show that name so
-                  // the legacy UX is preserved.
-                  const bedOnlyLabel = activeCrops.length === 0 && bed.crop_type
-                    ? `${bedLabel} — ${getCropName(bed.crop_type)}`
-                    : bedLabel;
+                  // Bed-only option — always present. Legacy beds (no real
+                  // BedCrops but inline crop_type) preserve the pre-Wave-D
+                  // shim label "D3 — Tomato". Modern beds with real crops
+                  // get "(All)" to signal bed-level attribution parallels
+                  // farm-level's "(no specific bed)" pattern.
+                  const bedOnlyLabel = activeCrops.length > 0
+                    ? `${bedLabel} (${t('diary.bed_all')})`
+                    : bed.crop_type
+                      ? `${bedLabel} — ${getCropName(bed.crop_type)}`
+                      : bedLabel;
                   return [
                     <option key={`${bed.id}|`} value={`${bed.id}|`}>
                       {bedOnlyLabel}
