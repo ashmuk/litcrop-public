@@ -15,6 +15,43 @@ _No unreleased changes._
 
 ---
 
+## [0.99.8.1] - 2026-04-24 — *#279 — 1:N bed-to-crop (Wave D — diary FK)*
+
+### Added
+
+- `DiaryEntry.bed_crop_id: string | null` — per-crop attribution field on diary entries. Contract landed in shared types + Zod (`DiaryEntryFieldsSchema`, `DiaryEntryResponseSchema`) and DDB mapper with `null` fallback (D1). POST + PATCH `/api/v1/farms/:farmId/diary` accept, validate (via `getBedCrop(bed_id, bed_crop_id)`), and persist the field (D2). Null is always allowed — leave-null semantics per DESIGN-279 §3.3.
+- `DiaryEntryForm.tsx` flat bed-crop selector (D4) — single dropdown with a 3-tier hierarchy: "Farm-level (no specific bed)" → "{Bed} (All)" for bed-level attribution on modern beds → "{Bed} — {Crop}" for each active/planned BedCrop. Legacy beds without real BedCrops keep the "— {Crop}" shim label. Each option encodes `<bedId>|<cropId?>`; empty cropId = bed-only. `listBedCrops(bedId, 'all')` fan-out per bed populates the selector.
+- `computeRoiByBedCrop` aggregator + `BedCropRoiSummary` type + `RoiByBedCropTable.tsx` component (D5) — new "ROI by Crop" table rendered below the existing by-bed rollup. Buckets entries into three scopes: crop (`bed_crop_id` resolves to a real BedCrop), bed (legacy / unattributed entries), farm (no `bed_id`). Matches D4's label vocabulary ("Farm-wide", "(All)", "— {crop}") so the hierarchy is consistent between input and output.
+- Gantt/Timeline per-crop diary overlay (D6) — `buildActualDatesMap` and `buildEventDotMap` in `diary-utils.ts` now key on `bed_crop_id ?? bed_id`; `GanttChart.tsx` + `CropTimeline.tsx` cascade via `row.cropId ?? row.bedId`. Multi-crop beds render independent "actual" bars and event dots per crop; virtual-legacy rows (cropId=null) still pick up pre-Wave-D entries via the bed-level fallback. Closes the last Wave C visible limitation (shared diary overlay across stacked rows).
+- Server-side harvest auto-default (D3) — POST `/diary` with `category='harvesting'` + `bed_id` + omitted `bed_crop_id` auto-attributes to the bed's ACTIVE real BedCrop. Planned BedCrops and virtual legacy (`bed-legacy-*`) are skipped (can't harvest what wasn't planted). Lookup failure is tolerated (leaves null + `console.warn`). PATCH is deliberately excluded — user edits don't get overwritten.
+- 3 new `roi.*` i18n keys: `roi_by_crop`, `bed_crop_column`, `farm_wide`.
+
+### Changed
+
+- `buildEntryResponse` now emits `bed_crop_id` in diary responses — closes a pre-existing contract gap where D1/D2 persistence was invisible to clients because the response builder stripped the field. Frontend local `DiaryEntryResponse` also updated to require the field (was relying on runtime success since D4).
+- JA vocabulary polish: `農場全体` → `農園全体` in `diary.farm_level` and `roi.farm_wide` — consistent with the app's 農園 usage elsewhere.
+
+### Tests
+
+- 1194 → 1230 vitest tests (+36 net).
+  - D5: +13 — `computeRoiByBedCrop` contract, scope bucketing, currency isolation, sibling bucket keys, label-parity regression locks (T-D5-01/02/03).
+  - D6: +9 — `buildActualDatesMap` + `buildEventDotMap` per-crop keying, sibling isolation, reserved-entry exclusion with `bed_crop_id` set, per-crop latest-date + no cross-bucket leak, per-crop dot sort order.
+  - D3: +10 — auto-attribute happy path, virtual-legacy skip, planned-crop skip, non-harvest no-fire, explicit-value respect, no-bed_id no-fire, lookup-failure tolerance (with `console.warn` assertion), PATCH-no-auto regression guard, null-active short-circuit, response-echo round-trip.
+- Pre-commit typecheck green across all workspaces throughout the wave. Every Wave D step (D5, D6, D3) ran the full `/simplify → /cc-review → /cc-remediate → /cc-test` pipeline.
+
+### Documentation
+
+- `docs/feedback/REVIEW-FINDINGS.md` — Sessions 6 / 7 / 8 for Wave D D5 / D6 / D3 prepended to the cumulative log.
+- `docs/feedback/REMEDIATION.md` — remediation reports for each wave step (all 0 MUST-FIX; SHOULD-FIX + SUGGESTION findings resolved in one iteration each).
+- `docs/TEST_PLAN.md` — coverage gap analyses for D5 / D6 / D3 (all 0 MUST-ADD; all SHOULD-ADD implemented as regression locks or deferred with rationale).
+
+### Migration notes
+
+- No data migration. Pre-Wave-D diary entries retain `bed_crop_id=null` and surface on the bed-level / virtual-legacy row via the cascade lookup. Users can optionally backfill via PATCH; Wave E will revisit promotion policy.
+- Tag `v0.99.8.1` is develop-only at cut time — deliberately held back from main until the user chooses to ship.
+
+---
+
 ## [0.99.8.0] - 2026-04-24 — *#279 — 1:N bed-to-crop (Waves B + C)*
 
 ### Added
