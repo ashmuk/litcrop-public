@@ -16,21 +16,28 @@ import type { EventDot } from '../lib/diary-utils';
 
 // ── Types ────────────────────────────────────────────────────────
 
-interface GanttBed {
-  id: string;
-  name: string;
-  crop_type: string | null;
+/**
+ * Wave C (#279) — One row per crop cycle (not per bed). Multi-crop beds
+ * produce multiple rows. `cropId` is null for the legacy virtual projection
+ * (bed has inline crop fields but no real BedCrop row yet).
+ */
+interface GanttRow {
+  id: string;              // stable row key: `${bedId}:${cropId ?? 'legacy'}`
+  bedId: string;
+  bedName: string;
+  cropId: string | null;   // null ⇒ virtual legacy; handlers dispatch to legacy PATCH
+  cropType: string | null;
   planted_at?: string | null;
   expected_harvest?: string | null;
   completed_at?: string | null;
 }
 
 interface Props {
-  beds: GanttBed[];
+  rows: GanttRow[];
   entries: DiaryEntryResponse[];
   onDotClick?: (date: string, entryId: string) => void;
-  onMarkDone?: (bedId: string) => void;
-  onUndoDone?: (bedId: string) => void;
+  onMarkDone?: (bedId: string, cropId: string | null) => void;
+  onUndoDone?: (bedId: string, cropId: string | null) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -65,7 +72,7 @@ function buildMonthHeaders(rangeStart: Date, rangeEnd: Date): Array<{ label: str
 
 // ── Component ────────────────────────────────────────────────────
 
-export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUndoDone }: Props) {
+export default function GanttChart({ rows, entries, onDotClick, onMarkDone, onUndoDone }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [doneCollapsed, setDoneCollapsed] = useState(() => {
     try { return localStorage.getItem(LS_DONE_COLLAPSED) === 'true'; } catch { return false; }
@@ -94,9 +101,10 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
   const actualMap = useMemo(() => buildActualDatesMap(entries), [entries]);
   const dotMap = useMemo(() => buildEventDotMap(entries), [entries]);
 
-  // Split active vs done beds
-  const activeBeds = useMemo(() => beds.filter((b) => !b.completed_at), [beds]);
-  const doneBeds = useMemo(() => beds.filter((b) => !!b.completed_at), [beds]);
+  // Split active vs done rows (completed_at drives the divide for both real
+  // BedCrops and the legacy virtual fallback — unified predicate).
+  const activeRows = useMemo(() => rows.filter((r) => !r.completed_at), [rows]);
+  const doneRows = useMemo(() => rows.filter((r) => !!r.completed_at), [rows]);
 
   // Auto-scroll to center today on mount
   useEffect(() => {
@@ -115,47 +123,50 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
     });
   }
 
-  function renderRow(bed: GanttBed, isDone: boolean) {
+  function renderRow(row: GanttRow, isDone: boolean) {
     // Reserved bar
     let reservedPos: { left: number; width: number } | null = null;
-    if (bed.planted_at && bed.expected_harvest) {
-      reservedPos = computeBarPosition(parseDate(bed.planted_at), parseDate(bed.expected_harvest), rangeStart, rangeEnd);
+    if (row.planted_at && row.expected_harvest) {
+      reservedPos = computeBarPosition(parseDate(row.planted_at), parseDate(row.expected_harvest), rangeStart, rangeEnd);
     }
 
-    // Actual bar
+    // Actual bar — diary entries remain bed-level (DiaryEntry.bed_crop_id is
+    // Wave D scope), so all crops of a bed share the same actual bar + dots.
     let actualPos: { left: number; width: number } | null = null;
-    const actual = actualMap.get(bed.id);
+    const actual = actualMap.get(row.bedId);
     if (actual?.planted) {
       const actualEnd = actual.harvested ?? toDateString(new Date());
       actualPos = computeBarPosition(parseDate(actual.planted), parseDate(actualEnd), rangeStart, rangeEnd);
     }
 
-    // Event dots for this bed
-    const dots = dotMap.get(bed.id) ?? [];
+    // Event dots for this row's bed
+    const dots = dotMap.get(row.bedId) ?? [];
+
+    const label = `${row.bedName}${row.cropType ? ` — ${getCropName(row.cropType)}` : ''}`;
 
     return (
-      <div key={bed.id} class={`gantt__row${isDone ? ' gantt__row--done' : ''}`}>
-        <div class="gantt__label" title={`${bed.name}${bed.crop_type ? ` — ${getCropName(bed.crop_type)}` : ''}`}>
+      <div key={row.id} class={`gantt__row${isDone ? ' gantt__row--done' : ''}`}>
+        <div class="gantt__label" title={label}>
           <span class="gantt__label-text">
-            {bed.crop_type && <span class="gantt__label-emoji">{getCropEmoji(bed.crop_type)}</span>}
-            {bed.name}
+            {row.cropType && <span class="gantt__label-emoji">{getCropEmoji(row.cropType)}</span>}
+            {row.bedName}
           </span>
           {!isDone && onMarkDone && (
             <button
               type="button"
               class="gantt__done-btn"
-              onClick={(e) => { e.stopPropagation(); onMarkDone(bed.id); }}
+              onClick={(e) => { e.stopPropagation(); onMarkDone(row.bedId, row.cropId); }}
               title={t('gantt.mark_done')}
-              aria-label={`${t('gantt.mark_done')}: ${bed.name}`}
+              aria-label={`${t('gantt.mark_done')}: ${label}`}
             >✓</button>
           )}
           {isDone && onUndoDone && (
             <button
               type="button"
               class="gantt__undo-btn"
-              onClick={(e) => { e.stopPropagation(); onUndoDone(bed.id); }}
+              onClick={(e) => { e.stopPropagation(); onUndoDone(row.bedId, row.cropId); }}
               title={t('gantt.undo_done')}
-              aria-label={`${t('gantt.undo_done')}: ${bed.name}`}
+              aria-label={`${t('gantt.undo_done')}: ${label}`}
             >↺</button>
           )}
         </div>
@@ -171,7 +182,7 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
             <div
               class="gantt__bar gantt__bar--reserved"
               style={{ left: `${reservedPos.left}%`, width: `${reservedPos.width}%` }}
-              title={`${t('timeline.reserved')}: ${bed.planted_at} → ${bed.expected_harvest}`}
+              title={`${t('timeline.reserved')}: ${row.planted_at} → ${row.expected_harvest}`}
             />
           )}
           {/* Actual bar */}
@@ -204,8 +215,8 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
     );
   }
 
-  const hasActive = activeBeds.length > 0;
-  const hasDone = doneBeds.length > 0;
+  const hasActive = activeRows.length > 0;
+  const hasDone = doneRows.length > 0;
 
   if (!hasActive && !hasDone) {
     return (
@@ -239,8 +250,8 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
           </div>
         </div>
 
-        {/* Active beds */}
-        {activeBeds.map((bed) => renderRow(bed, false))}
+        {/* Active rows (one per active crop; legacy virtual collapses to one) */}
+        {activeRows.map((row) => renderRow(row, false))}
 
         {/* Done divider */}
         {hasDone && (
@@ -251,12 +262,12 @@ export default function GanttChart({ beds, entries, onDotClick, onMarkDone, onUn
             aria-expanded={!doneCollapsed}
           >
             <span class="gantt__divider-arrow">{doneCollapsed ? '▶' : '▼'}</span>
-            {t('gantt.done_section')} ({doneBeds.length})
+            {t('gantt.done_section')} ({doneRows.length})
           </button>
         )}
 
-        {/* Done beds */}
-        {hasDone && !doneCollapsed && doneBeds.map((bed) => renderRow(bed, true))}
+        {/* Done rows */}
+        {hasDone && !doneCollapsed && doneRows.map((row) => renderRow(row, true))}
       </div>
 
       {/* Legend */}

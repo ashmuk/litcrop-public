@@ -15,8 +15,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'preact/hooks';
-import { getDiaryEntries, getBeds, updateBed, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
-import type { FarmBedItem } from '@litcrop/shared';
+import { getDiaryEntries, getBeds, updateBed, updateBedCrop, listBedCrops, deleteDiaryEntry, type DiaryEntryResponse } from '../lib/api';
+import type { FarmBedItem, BedCrop } from '@litcrop/shared';
 import { t } from '../i18n/i18n';
 import { showToast } from './Toast';
 import DiaryEntryForm from './DiaryEntryForm';
@@ -217,6 +217,8 @@ export default function DiaryPage() {
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [beds, setBeds] = useState<FarmBedItem[]>([]);
+  // Wave C (#279) — crops per bed. Keyed by bedId. Populated alongside beds.
+  const [bedCropsMap, setBedCropsMap] = useState<Record<string, BedCrop[]>>({});
   const [filterBed, setFilterBed] = useState<string>(() => {
     try { return localStorage.getItem(LS_FILTER_BED) ?? ''; } catch { return ''; }
   });
@@ -309,12 +311,31 @@ export default function DiaryPage() {
     if (farmId && view === 'gantt') loadGanttEntries();
   }, [farmId, view]);
 
-  // Fetch beds for filter bar, calendar CropTimeline, and gantt
+  // Fetch beds + per-bed crops (Wave C #279) for filter bar, CropTimeline, and Gantt.
   useEffect(() => {
     if (!farmId) return;
-    getBeds(farmId)
-      .then(setBeds)
-      .catch(() => setBeds([]));
+    let cancelled = false;
+    (async () => {
+      try {
+        const bedsData = await getBeds(farmId);
+        if (cancelled) return;
+        setBeds(bedsData);
+        // Fan out one listBedCrops per bed. Individual failures degrade to [].
+        const cropsResults = await Promise.all(
+          bedsData.map((b) => listBedCrops(b.id, 'all').catch(() => [] as BedCrop[])),
+        );
+        if (cancelled) return;
+        const map: Record<string, BedCrop[]> = {};
+        bedsData.forEach((b, i) => { map[b.id] = cropsResults[i]; });
+        setBedCropsMap(map);
+      } catch {
+        if (!cancelled) {
+          setBeds([]);
+          setBedCropsMap({});
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, [farmId]);
 
   // Fetch the displayed month's entries when in calendar view
@@ -374,23 +395,41 @@ export default function DiaryPage() {
     else loadEntries();
   }
 
-  // Mark done / undo handlers for Gantt (#297)
-  async function handleMarkDone(bedId: string) {
+  // Mark done / undo handlers for Gantt (#297). Wave C (#279) — cropId routes
+  // real BedCrops through the new endpoint; cropId=null falls back to legacy
+  // PATCH /beds/:id for the virtual-legacy projection.
+  async function handleMarkDone(bedId: string, cropId: string | null) {
     if (!confirm(t('gantt.mark_done') + '?')) return;
-    const today = toDateString(new Date());
     try {
-      await updateBed(bedId, { completed_at: today });
-      setBeds((prev) => prev.map((b) => b.id === bedId ? { ...b, completed_at: today } : b));
+      if (cropId) {
+        const updated = await updateBedCrop(bedId, cropId, { status: 'harvested' });
+        setBedCropsMap((prev) => ({
+          ...prev,
+          [bedId]: (prev[bedId] ?? []).map((c) => c.id === cropId ? updated : c),
+        }));
+      } else {
+        const today = toDateString(new Date());
+        await updateBed(bedId, { completed_at: today });
+        setBeds((prev) => prev.map((b) => b.id === bedId ? { ...b, completed_at: today } : b));
+      }
       showToast(t('gantt.mark_done'), 'success');
     } catch {
       showToast(t('diary.error_loading'), 'error');
     }
   }
 
-  async function handleUndoDone(bedId: string) {
+  async function handleUndoDone(bedId: string, cropId: string | null) {
     try {
-      await updateBed(bedId, { completed_at: null });
-      setBeds((prev) => prev.map((b) => b.id === bedId ? { ...b, completed_at: undefined } : b));
+      if (cropId) {
+        const updated = await updateBedCrop(bedId, cropId, { status: 'active' });
+        setBedCropsMap((prev) => ({
+          ...prev,
+          [bedId]: (prev[bedId] ?? []).map((c) => c.id === cropId ? updated : c),
+        }));
+      } else {
+        await updateBed(bedId, { completed_at: null });
+        setBeds((prev) => prev.map((b) => b.id === bedId ? { ...b, completed_at: undefined } : b));
+      }
       showToast(t('gantt.undo_done'), 'success');
     } catch {
       showToast(t('diary.error_loading'), 'error');
@@ -453,6 +492,52 @@ export default function DiaryPage() {
   );
 
   // Split-pane data (memoized for #291)
+  // Wave C (#279) — flatten beds × crops into per-crop rows for Gantt + Timeline.
+  // Legacy beds with no real BedCrops emit a single row with cropId=null; the
+  // row's values come from bed.active_crop (shim) or raw legacy inline fields.
+  const ganttRows = useMemo(() => {
+    type Row = {
+      id: string; bedId: string; bedName: string; cropId: string | null;
+      cropType: string | null; planted_at?: string | null;
+      expected_harvest?: string | null; completed_at?: string | null;
+    };
+    const rows: Row[] = [];
+    for (const bed of beds) {
+      const bedCrops = bedCropsMap[bed.id] ?? [];
+      if (bedCrops.length > 0) {
+        for (const crop of bedCrops) {
+          rows.push({
+            id: `${bed.id}:${crop.id}`,
+            bedId: bed.id,
+            bedName: bed.name,
+            cropId: crop.id,
+            cropType: crop.crop_type,
+            planted_at: crop.planted_at,
+            expected_harvest: crop.expected_harvest,
+            completed_at: crop.completed_at,
+          });
+        }
+      } else {
+        const fallbackCropType = bed.active_crop?.crop_type ?? bed.crop_type ?? null;
+        const fallbackPlanted = bed.active_crop?.planted_at ?? bed.planted_at ?? null;
+        const fallbackHarvest = bed.active_crop?.expected_harvest ?? bed.expected_harvest ?? null;
+        if (fallbackCropType || fallbackPlanted || fallbackHarvest || bed.completed_at) {
+          rows.push({
+            id: `${bed.id}:legacy`,
+            bedId: bed.id,
+            bedName: bed.name,
+            cropId: null,
+            cropType: fallbackCropType,
+            planted_at: fallbackPlanted,
+            expected_harvest: fallbackHarvest,
+            completed_at: bed.completed_at,
+          });
+        }
+      }
+    }
+    return rows;
+  }, [beds, bedCropsMap]);
+
   const splitReserved = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'reserved'), [preFiltered]);
   const splitActual = useMemo(() => preFiltered.filter((e) => (e.entry_type ?? 'actual') === 'actual'), [preFiltered]);
   const splitMonths = useMemo(() => {
@@ -731,7 +816,7 @@ export default function DiaryPage() {
             onNextMonth={handleNextMonth}
             disableNext={!canGoNext}
           />
-          <CropTimeline beds={beds} entries={entries} year={calYear} month={calMonth} />
+          <CropTimeline rows={ganttRows} entries={entries} year={calYear} month={calMonth} />
           {selectedDate && (
             <div class="diary-list">
               <h3 class="diary-date-group__header" style={{ padding: '0 var(--space-4) var(--space-2)', fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-500)' }}>
@@ -759,10 +844,10 @@ export default function DiaryPage() {
         </>
       )}
 
-      {/* Gantt chart view (#297) */}
+      {/* Gantt chart view (#297) — Wave C #279 per-crop rows */}
       {!loading && !error && view === 'gantt' && (
         <GanttChart
-          beds={beds}
+          rows={ganttRows}
           entries={entries}
           onDotClick={handleGanttDotClick}
           onMarkDone={canWrite ? handleMarkDone : undefined}
