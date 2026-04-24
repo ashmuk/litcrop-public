@@ -119,6 +119,30 @@ describe('POST /api/v1/beds/:bedId/crops', () => {
 
     expect(res.status).toBe(404);
   });
+
+  it('counts a legacy inline crop toward the 5-cap (S5-4)', async () => {
+    // Legacy bed (crop_type set, no completed_at) + 4 real active crops = 5 effective active.
+    const fourReal: BedCrop[] = Array.from({ length: 4 }, (_, i) => ({
+      ...bedCropFixture,
+      id: `crop-${i}`,
+      status: 'active',
+    }));
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue({
+      ...bedFixture,
+      crop_type: 'legacy-tomato',
+      completed_at: undefined,
+    } as Bed);
+    vi.mocked(dynamoRepo.listBedCropsByBed).mockResolvedValue(fourReal);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/crops`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ crop_type: 'cucumber' }),
+    });
+
+    expect(res.status).toBe(409);
+    expect(vi.mocked(dynamoRepo.createBedCrop)).not.toHaveBeenCalled();
+  });
 });
 
 // ── GET /api/v1/beds/:bedId/crops ────────────────────────────────
@@ -192,6 +216,41 @@ describe('PATCH /api/v1/beds/:bedId/crops/:bedCropId', () => {
 
     expect(res.status).toBe(404);
   });
+
+  it('auto-sets completed_at on non-terminal → terminal transition (S5-1)', async () => {
+    vi.mocked(dynamoRepo.getBedCrop).mockResolvedValue({ ...bedCropFixture, status: 'active' });
+    vi.mocked(dynamoRepo.updateBedCrop).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/crops/${CROP_ID}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'harvested' }),
+    });
+
+    expect(res.status).toBe(200);
+    const updates = vi.mocked(dynamoRepo.updateBedCrop).mock.calls[0][3];
+    expect(updates).toHaveProperty('completed_at');
+    expect(typeof updates['completed_at']).toBe('string');
+  });
+
+  it('auto-clears completed_at on terminal → non-terminal transition (S5-1)', async () => {
+    vi.mocked(dynamoRepo.getBedCrop).mockResolvedValue({
+      ...bedCropFixture,
+      status: 'harvested',
+      completed_at: '2026-07-10',
+    });
+    vi.mocked(dynamoRepo.updateBedCrop).mockResolvedValue(undefined);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/crops/${CROP_ID}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active' }),
+    });
+
+    expect(res.status).toBe(200);
+    const updates = vi.mocked(dynamoRepo.updateBedCrop).mock.calls[0][3];
+    expect(updates['completed_at']).toBeNull();
+  });
 });
 
 // ── DELETE /api/v1/beds/:bedId/crops/:bedCropId ──────────────────
@@ -225,5 +284,23 @@ describe('DELETE /api/v1/beds/:bedId/crops/:bedCropId', () => {
     const updateCall = vi.mocked(dynamoRepo.updateBedCrop).mock.calls[0];
     expect(updateCall[3]).toMatchObject({ status: 'failed' });
     expect(updateCall[3]).toHaveProperty('completed_at');
+  });
+
+  it('returns 204 without mutating when the crop is already terminal (S5-2)', async () => {
+    vi.mocked(dynamoRepo.getBedCrop).mockResolvedValue({
+      ...bedCropFixture,
+      status: 'harvested',
+      completed_at: '2026-07-10',
+    });
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/crops/${CROP_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(204);
+    // Neither write path must fire — the historical completed_at is preserved.
+    expect(vi.mocked(dynamoRepo.deleteBedCrop)).not.toHaveBeenCalled();
+    expect(vi.mocked(dynamoRepo.updateBedCrop)).not.toHaveBeenCalled();
   });
 });

@@ -70,7 +70,9 @@ router.get('/:bedId', async (c) => {
     expected_harvest: active?.expected_harvest ?? bed.expected_harvest ?? null,
     notes: bed.notes ?? null,
     latest_status: bed.latest_status,
-    completed_at: bed.completed_at ?? null,
+    // S5-3 remediation — active_crop implies the cycle is live; never carry
+    // a legacy completed_at alongside it.
+    completed_at: active ? null : (bed.completed_at ?? null),
     active_crop: active,
     latest_image: latestImage ? await makeBedDetailImage(latestImage) : null,
   });

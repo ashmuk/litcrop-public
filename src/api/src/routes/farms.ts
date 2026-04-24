@@ -64,7 +64,9 @@ function bedToSummary(bed: Bed, activeCrop: BedCrop | null) {
     latest_status: bed.latest_status,
     planted_at: summary?.planted_at ?? bed.planted_at ?? null,
     expected_harvest: summary?.expected_harvest ?? bed.expected_harvest ?? null,
-    completed_at: bed.completed_at ?? null,
+    // S5-3 remediation — an active crop implies the cycle is live; force
+    // completed_at: null to prevent the `active_crop && bed.completed_at` contradiction.
+    completed_at: summary ? null : (bed.completed_at ?? null),
     active_crop: summary,
   };
 }

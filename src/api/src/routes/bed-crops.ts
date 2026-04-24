@@ -13,8 +13,17 @@ import {
   UpdateBedCropRequestSchema,
   BedCropStatusSchema,
   MAX_ACTIVE_CROPS_PER_BED,
+  hasActiveCrop,
 } from '@litcrop/shared';
 import type { Bed, BedCrop, BedCropStatus } from '@litcrop/shared';
+
+/**
+ * Terminal statuses for a BedCrop. Reaching one of these sets `completed_at`
+ * automatically on PATCH, and short-circuits DELETE (already terminal →
+ * 204 no-op so the historical `completed_at` is preserved).
+ */
+const TERMINAL_STATUSES: readonly BedCropStatus[] = ['harvested', 'failed'];
+const isTerminal = (s: BedCropStatus) => TERMINAL_STATUSES.includes(s);
 
 /**
  * BedCrop routes (#279 Wave B).
@@ -63,12 +72,18 @@ router.post('/:bedId/crops', async (c) => {
   const parsed = parseBody(CreateBedCropRequestSchema, body);
 
   // 5-cap enforcement (scope memory constraint 2 + DESIGN-279 §3.5):
-  // count active|planned rows for this bed; harvested/failed are unbounded.
+  // count active|planned real rows plus any legacy inline crop (S5-4 remediation:
+  // a legacy bed.crop_type without bed.completed_at represents an active crop
+  // from the user's POV and must count toward the cap during the Wave B → E
+  // shim window; otherwise a legacy-tomato bed could carry 5 real active + 1
+  // legacy = 6 effective active crops).
   const existing = await ddbCall(() => dynamoRepo.listBedCropsByBed(bedId));
-  const active = existing.filter((c) => c.status === 'active' || c.status === 'planned');
-  if (active.length >= MAX_ACTIVE_CROPS_PER_BED) {
+  const realActive = existing.filter((c) => c.status === 'active' || c.status === 'planned').length;
+  const legacyActive = hasActiveCrop(bed) && !bed.completed_at ? 1 : 0;
+  const activeCount = realActive + legacyActive;
+  if (activeCount >= MAX_ACTIVE_CROPS_PER_BED) {
     throw new ConflictError(
-      `Cannot add crop: bed already has ${active.length} active/planned crops (max ${MAX_ACTIVE_CROPS_PER_BED}).`,
+      `Cannot add crop: bed already has ${activeCount} active/planned crops (max ${MAX_ACTIVE_CROPS_PER_BED}).`,
     );
   }
 
@@ -133,9 +148,21 @@ router.patch('/:bedId/crops/:bedCropId', async (c) => {
   const body = await c.req.json<Record<string, unknown>>();
   const validated = parseBody(UpdateBedCropRequestSchema, body);
 
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const updates: Record<string, unknown> = { updated_at: now };
   for (const [key, value] of Object.entries(validated)) {
     if (value !== undefined) updates[key] = value;
+  }
+
+  // S5-1 remediation — auto-manage completed_at on status transitions when
+  // the caller didn't set it explicitly. Terminal statuses (harvested/failed)
+  // get `now`; non-terminal statuses (active/planned) clear any stale date.
+  if ('status' in validated && !('completed_at' in validated)) {
+    const nextStatus = validated.status as BedCropStatus;
+    const prevTerminal = isTerminal(existing.status);
+    const nextTerminal = isTerminal(nextStatus);
+    if (!prevTerminal && nextTerminal) updates['completed_at'] = now;
+    else if (prevTerminal && !nextTerminal) updates['completed_at'] = null;
   }
 
   await ddbCall(() => dynamoRepo.updateBedCrop(bed.farm_id, bedId, bedCropId, updates));
@@ -162,6 +189,11 @@ router.delete('/:bedId/crops/:bedCropId', async (c) => {
   await assertBedWriteAccess(bed, userId);
 
   const crop = await ddbCall(() => dynamoRepo.getBedCrop(bedId, bedCropId));
+
+  // S5-2 remediation — if the crop is already terminal (harvested / failed),
+  // DELETE is a no-op. Re-soft-deleting would overwrite the historical
+  // completed_at with `now`, destroying real harvest-date data.
+  if (isTerminal(crop.status)) return c.body(null, 204);
 
   // Hard-delete only when the crop was never active (status === 'planned');
   // otherwise soft-delete by flipping status to 'failed' + setting completed_at.

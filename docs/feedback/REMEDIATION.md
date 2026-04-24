@@ -1,3 +1,34 @@
+# Remediation Report — Wave B Close (2026-04-24)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` Session 5
+- Iterations: 1 of 3 max
+- Status: RESOLVED — 4/4 SHOULD-FIX addressed; 0 MUST-FIX to begin with
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| S5-1 | `routes/bed-crops.ts` PATCH — `status` transitions and `completed_at` decoupled. `harvested` settable without a date; rollback `harvested → planned` leaves stale `completed_at`. | SHOULD-FIX | FIXED | PATCH handler now auto-manages `completed_at` when the caller doesn't set it explicitly: non-terminal → terminal sets `now()`; terminal → non-terminal clears to `null`. Explicit caller values still win. `TERMINAL_STATUSES` constant + `isTerminal()` helper centralize the definition. |
+| S5-2 | `routes/bed-crops.ts` DELETE — soft-deleting a `harvested` crop rewrites it to `failed` and overwrites the historical harvest date with `now()`, destroying real data. | SHOULD-FIX | FIXED | DELETE short-circuits with `204` (idempotent no-op) when `crop.status` is already terminal. Neither `deleteBedCrop` nor `updateBedCrop` fires on that path — the historical `completed_at` is preserved. |
+| S5-3 | `routes/beds.ts:73` + `routes/farms.ts:67` compat shim — response can carry `active_crop: {...}` AND `bed.completed_at` set simultaneously during the shim window; contradicts DESIGN-279 §4.3 shim contract. | SHOULD-FIX | FIXED | `bedToSummary` (farms) and `GET /beds/:bedId` (beds) now emit `completed_at: null` whenever `active_crop` is non-null. Legacy `bed.completed_at` only surfaces when no active crop exists — consistent with the shim contract. |
+| S5-4 | `routes/bed-crops.ts` POST — 5-cap counts only persisted rows; a legacy bed can carry 1 virtual (inline `crop_type`) + 5 real = 6 effective active crops. | SHOULD-FIX | FIXED | POST handler counts real active/planned rows + 1 if the bed has legacy inline `crop_type` without `completed_at`. Documented in code comment; covered by new test case (`counts a legacy inline crop toward the 5-cap`). |
+
+## New test coverage
+
+| File | New cases |
+|------|-----------|
+| `src/api/src/__tests__/routes/bed-crops.test.ts` | 4 cases — PATCH auto-set / auto-clear `completed_at`, DELETE no-op on terminal, POST 5-cap with legacy count |
+
+Suite 1172 → 1176 (+4). Typecheck clean across shared + api. Zero regressions on existing 1172 cases.
+
+## Pipeline Status
+- Pre-review code (998986d Wave B full diff): 4 SHOULD-FIX surfaced.
+- Remediated files: `bed-crops.ts` (route), `beds.ts` (route), `farms.ts` (route), `bed-crops.test.ts` (tests), this ledger.
+- Next step: `/cc-test` produces the Wave B coverage note + confirms the 1176-green baseline for Wave B tag cut (v0.99.8.0).
+
+---
+
 # Remediation Report — Stream 2 Kickoff (2026-04-23)
 
 ## Summary
