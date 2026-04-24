@@ -19,6 +19,7 @@ import {
   TRIGGER_TYPES,
   isValidTriggerType,
   UpdateBedRequestSchema,
+  toBedActiveCropSummary,
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
 import { makeBedDetailImage, assertFarmAccess, parseBody } from './_helpers';
@@ -74,7 +75,11 @@ router.get('/:bedId', async (c) => {
 
   await assertBedAccess(bed, userId, isAdmin);
 
-  const latestImage = await dynamoRepo.getLatestImageForBed(bed.id);
+  const [latestImage, activeCrop] = await Promise.all([
+    dynamoRepo.getLatestImageForBed(bed.id),
+    dynamoRepo.getActiveCropForBed(bed.id),
+  ]);
+  const active = toBedActiveCropSummary(activeCrop);
 
   return c.json({
     id: bed.id,
@@ -82,13 +87,15 @@ router.get('/:bedId', async (c) => {
     row: bed.row,
     col: bed.col,
     name: bed.name,
-    crop_type: bed.crop_type ?? null,
-    crop_variety: bed.crop_variety ?? null,
-    planted_at: bed.planted_at ?? null,
-    expected_harvest: bed.expected_harvest ?? null,
+    // Wave B (#279) compat shim — inline fields mirror the active crop when one exists.
+    crop_type: active?.crop_type ?? bed.crop_type ?? null,
+    crop_variety: active?.crop_variety ?? bed.crop_variety ?? null,
+    planted_at: active?.planted_at ?? bed.planted_at ?? null,
+    expected_harvest: active?.expected_harvest ?? bed.expected_harvest ?? null,
     notes: bed.notes ?? null,
     latest_status: bed.latest_status,
     completed_at: bed.completed_at ?? null,
+    active_crop: active,
     latest_image: latestImage ? await makeBedDetailImage(latestImage) : null,
   });
 });

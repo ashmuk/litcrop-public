@@ -61,6 +61,8 @@ vi.mock('../services/dynamodb', () => ({
     createTag: vi.fn(),
     getConversationHistory: vi.fn().mockResolvedValue([]),
     saveConversationHistory: vi.fn().mockResolvedValue(undefined),
+    // #279 Wave B — FarmBed compat shim default to null
+    getActiveCropForBed: vi.fn().mockResolvedValue(null),
   },
 }));
 

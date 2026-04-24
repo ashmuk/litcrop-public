@@ -40,6 +40,8 @@ vi.mock('../../services/dynamodb', () => ({
     createBedsForPositions: vi.fn(),
     updateMemberRole: vi.fn(),
     getDiscoverableFarms: vi.fn(),
+    // #279 Wave B — FarmBed compat shim
+    getActiveCropForBed: vi.fn(),
   },
 }));
 
@@ -95,6 +97,8 @@ beforeEach(() => {
   vi.mocked(dynamoRepo.countUserMemberships).mockResolvedValue(0);
   // Default: user has no profile stored
   vi.mocked(dynamoRepo.getUserProfile).mockResolvedValue(null);
+  // #279 Wave B — default to no active crop (legacy inline-field path)
+  vi.mocked(dynamoRepo.getActiveCropForBed).mockResolvedValue(null);
 });
 
 // ── GET /api/v1/farms ─────────────────────────────────────────────

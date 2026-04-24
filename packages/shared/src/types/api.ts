@@ -48,6 +48,15 @@ export type ErrorCode =
 
 // ── Endpoint-Specific Response Types ────────────────────────────
 
+/** Projection of the bed's active BedCrop — Wave B compat shim (#279). */
+export interface BedActiveCropSummary {
+  id: string;
+  crop_type: string;
+  crop_variety?: string;
+  planted_at?: string;
+  expected_harvest?: string;
+}
+
 /** Bed summary within GET /api/v1/farms/{farmId} response */
 export interface FarmBed {
   id: string;
@@ -60,6 +69,13 @@ export interface FarmBed {
   planted_at?: string | null;
   expected_harvest?: string | null;
   completed_at?: string | null;
+  /**
+   * Wave B (#279) — canonical reference to the bed's active BedCrop. Inline
+   * crop fields above stay populated from this same source during the shim
+   * window (Wave B → D) and are removed in Wave E. Present on every response;
+   * null when the bed has no active or planned crop.
+   */
+  active_crop?: BedActiveCropSummary | null;
 }
 
 /** GET /api/v1/farms/{farmId} */

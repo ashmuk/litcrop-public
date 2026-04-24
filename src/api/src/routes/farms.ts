@@ -14,8 +14,9 @@ import {
   UpdateFarmRequestSchema,
   DEMO_FARM_ID,
   FREE_PLAN_MAX_OWNED_FARMS,
+  toBedActiveCropSummary,
 } from '@litcrop/shared';
-import type { Farm, FarmRole, Bed } from '@litcrop/shared';
+import type { Farm, FarmRole, Bed, BedCrop } from '@litcrop/shared';
 import { isConditionalCheckFailed, isTransactionCanceled, makeLatestImage, assertFarmAccess, parseBody } from './_helpers';
 import { appEvents } from '../services/events';
 
@@ -44,18 +45,27 @@ function farmToResponse(farm: Farm) {
   };
 }
 
-function bedToSummary(bed: Bed) {
+/**
+ * Serialize a Bed + its active BedCrop into the FarmBed wire shape (#279 Wave B).
+ * When an active crop exists, the inline crop fields mirror it — preserves the
+ * backward-compat contract described in DESIGN-279 §4.3 so consumers reading
+ * `bed.crop_type` see the same value as the canonical `bed.active_crop.crop_type`.
+ */
+function bedToSummary(bed: Bed, activeCrop: BedCrop | null) {
+  const summary = toBedActiveCropSummary(activeCrop);
   return {
     id: bed.id,
     row: bed.row,
     col: bed.col,
     name: bed.name,
-    crop_type: bed.crop_type ?? null,
-    crop_variety: bed.crop_variety ?? null,
+    // Prefer the active crop's values; fall back to the bed's legacy inline fields.
+    crop_type: summary?.crop_type ?? bed.crop_type ?? null,
+    crop_variety: summary?.crop_variety ?? bed.crop_variety ?? null,
     latest_status: bed.latest_status,
-    planted_at: bed.planted_at ?? null,
-    expected_harvest: bed.expected_harvest ?? null,
+    planted_at: summary?.planted_at ?? bed.planted_at ?? null,
+    expected_harvest: summary?.expected_harvest ?? bed.expected_harvest ?? null,
     completed_at: bed.completed_at ?? null,
+    active_crop: summary,
   };
 }
 
@@ -151,9 +161,17 @@ router.get('/:farmId', async (c) => {
 
   const beds = await dynamoRepo.getBedsForFarm(farmId);
 
+  // Wave B (#279) — resolve each bed's active crop for the FarmBed compat shim.
+  const bedsWithActive = await Promise.all(
+    beds.map(async (bed) => {
+      const activeCrop = await dynamoRepo.getActiveCropForBed(bed.id);
+      return bedToSummary(bed, activeCrop);
+    }),
+  );
+
   return c.json({
     ...farmToResponse(farm),
-    beds: beds.map(bedToSummary),
+    beds: bedsWithActive,
   });
 });
 
@@ -169,9 +187,12 @@ router.get('/:farmId/beds', async (c) => {
 
   const data = await Promise.all(
     beds.map(async (bed: Bed) => {
-      const latestImage = await dynamoRepo.getLatestImageForBed(bed.id);
+      const [latestImage, activeCrop] = await Promise.all([
+        dynamoRepo.getLatestImageForBed(bed.id),
+        dynamoRepo.getActiveCropForBed(bed.id),
+      ]);
       return {
-        ...bedToSummary(bed),
+        ...bedToSummary(bed, activeCrop),
         latest_image: latestImage ? await makeLatestImage(latestImage) : null,
       };
     }),

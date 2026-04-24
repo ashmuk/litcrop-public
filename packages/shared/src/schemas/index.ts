@@ -66,6 +66,15 @@ export const FarmBaseSchema = z.object({
 });
 
 /** Bed summary within GET /farms/:farmId response */
+/** #279 Wave B — compact projection of a bed's active BedCrop. */
+export const BedActiveCropSummarySchema = z.object({
+  id: z.string(),
+  crop_type: z.string(),
+  crop_variety: z.string().nullable().optional(),
+  planted_at: z.string().nullable().optional(),
+  expected_harvest: z.string().nullable().optional(),
+});
+
 export const FarmBedSchema = z.object({
   id: z.string(),
   row: z.number().int().min(1).max(5),
@@ -77,6 +86,8 @@ export const FarmBedSchema = z.object({
   planted_at: z.string().nullable().optional(),
   expected_harvest: z.string().nullable().optional(),
   completed_at: z.string().nullable().optional(),
+  /** #279 Wave B compat shim. Null when no active/planned crop exists. */
+  active_crop: BedActiveCropSummarySchema.nullable().optional(),
 });
 
 /** GET /api/v1/farms/:farmId — farm with flat beds array */
@@ -144,6 +155,8 @@ export const FarmBedItemSchema = z.object({
   planted_at: z.string().nullable().optional(),
   expected_harvest: z.string().nullable().optional(),
   completed_at: z.string().nullable().optional(),
+  /** #279 Wave B compat shim. Null when no active/planned crop exists. */
+  active_crop: BedActiveCropSummarySchema.nullable().optional(),
 });
 
 /** GET /api/v1/farms/:farmId/beds — envelope */

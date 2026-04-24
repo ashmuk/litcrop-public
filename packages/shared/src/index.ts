@@ -69,6 +69,7 @@ export type {
   ChatRequest,
   ChatResponse,
   UsageResponse,
+  BedActiveCropSummary,
 } from './types/api';
 
 // API request types
@@ -188,6 +189,7 @@ export {
   BedCropSchema,
   CreateBedCropRequestSchema,
   UpdateBedCropRequestSchema,
+  BedActiveCropSummarySchema,
 } from './schemas/index';
 
 // Crop library — shared types and data (#274)
@@ -197,8 +199,8 @@ export type { CropPropagation } from './crop-library';
 export { getDeviceClass } from './devices';
 export type { DeviceClass } from './devices';
 
-// Bed-crop helpers (#279 Wave A — pre-Wave B shims)
-export { hasActiveCrop } from './bed-crop';
+// Bed-crop helpers (#279 Wave A prep + Wave B compat shim)
+export { hasActiveCrop, toBedActiveCropSummary } from './bed-crop';
 
 // Timezone utilities
 export { getTimezoneOffsetFromCoords } from './timezone';
