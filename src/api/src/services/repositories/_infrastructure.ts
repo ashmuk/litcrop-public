@@ -40,6 +40,10 @@ export const sk = {
   device: (deviceId: string) => `${DDB_KEY_PREFIXES.DEVICE}${deviceId}`,
   diary: (date: string, entryId: string) => `${DDB_KEY_PREFIXES.DIARY}${date}#${entryId}`,
   notif: (createdAt: string, notifId: string) => `${DDB_KEY_PREFIXES.NOTIF}${createdAt}#${notifId}`,
+  /** BedCrop primary SK: CROP#<bedId>#<bedCropId> (#279 Wave B). */
+  crop: (bedId: string, bedCropId: string) => `${DDB_KEY_PREFIXES.CROP}${bedId}#${bedCropId}`,
+  /** BedCrop GSI1SK: CROP#<bedCropId> (#279 Wave B). Disambiguates the bed's #META row. */
+  cropGsi1: (bedCropId: string) => `${DDB_KEY_PREFIXES.CROP}${bedCropId}`,
 };
 
 // ── Pagination helpers ────────────────────────────────────────────

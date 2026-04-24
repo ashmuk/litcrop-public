@@ -5,6 +5,7 @@
 
 import * as farms from './repositories/farms';
 import * as beds from './repositories/beds';
+import * as bedCrops from './repositories/bed-crops';
 import * as images from './repositories/images';
 import * as tags from './repositories/tags';
 import * as members from './repositories/members';
@@ -38,6 +39,14 @@ export class DynamoRepository {
   updateBed = beds.updateBed;
   createBedsForFarm = beds.createBedsForFarm;
   createBedsForPositions = beds.createBedsForPositions;
+
+  // ── BedCrops (#279 Wave B) ─────────────────────────────────────
+  listBedCropsByBed = bedCrops.listBedCropsByBed;
+  getBedCrop = bedCrops.getBedCrop;
+  createBedCrop = bedCrops.createBedCrop;
+  updateBedCrop = bedCrops.updateBedCrop;
+  deleteBedCrop = bedCrops.deleteBedCrop;
+  getActiveCropForBed = bedCrops.getActiveCropForBed;
 
   // ── Images ─────────────────────────────────────────────────────
   getImagesForBed = images.getImagesForBed;

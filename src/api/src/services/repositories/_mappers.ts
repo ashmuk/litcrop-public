@@ -1,4 +1,4 @@
-import type { Farm, Bed, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, TempUnit, Theme } from '@litcrop/shared';
+import type { Farm, Bed, BedCrop, BedCropStatus, Image, Tag, TagValue, BedStatus, FarmRole, FarmMember, UserProfile, Locale, TempUnit, Theme } from '@litcrop/shared';
 import { TABLE_NAME, pk, sk } from './_infrastructure';
 import type { UserSettings } from './_types';
 import { DEFAULT_SETTINGS } from './_types';
@@ -38,6 +38,24 @@ export function itemToBed(item: Record<string, unknown>, farmId: string, bedId: 
     notes: item['notes'] as string | undefined,
     latest_status: (item['latest_status'] as BedStatus) ?? 'no_data',
     completed_at: item['completed_at'] as string | undefined,
+  };
+}
+
+export function itemToBedCrop(item: Record<string, unknown>): BedCrop {
+  return {
+    id: item['id'] as string,
+    bed_id: item['bed_id'] as string,
+    farm_id: item['farm_id'] as string,
+    crop_type: item['crop_type'] as string,
+    crop_variety: item['crop_variety'] as string | undefined,
+    planted_at: item['planted_at'] as string | undefined,
+    expected_harvest: item['expected_harvest'] as string | undefined,
+    completed_at: item['completed_at'] as string | undefined,
+    status: item['status'] as BedCropStatus,
+    notes: item['notes'] as string | undefined,
+    created_by: item['created_by'] as string,
+    created_at: item['created_at'] as string,
+    updated_at: item['updated_at'] as string,
   };
 }
 
