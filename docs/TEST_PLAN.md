@@ -150,3 +150,55 @@ Existing coverage reviewed:
 
 - target: `active.status === 'harvested'` / `'failed'` skip branch
   reason: `getActiveCropForBed`'s GSI1 query (per repo contract) surfaces only `status ∈ {active, planned}` crops; harvested/failed crops never reach the D3 block. The `active.status === 'active'` narrow is defensive against the planned case (tested in #3), not against harvested/failed which cannot arrive here. A test asserting "harvested crop is skipped" would require forcing the mock to violate the repo contract — exercising a condition the production code cannot observe.
+
+## Wave E step 1 — Coverage Gap Analysis
+
+Target artifacts:
+- `src/api/src/services/migrations/wave-e-promote-legacy.ts` — `promotedCropId`, `shouldPromoteBed`, `buildPromotedCrop`, `promoteLegacyCropForBed`
+- `scripts/migrate-wave-e-promote-legacy-crops.ts` — operational CLI wrapper (scan + orchestrate + aggregate counts)
+
+Existing coverage reviewed:
+- 17 Wave E1 unit tests in `src/api/src/__tests__/services/migrations/wave-e-promote-legacy.test.ts`: 7 × `shouldPromoteBed`, 2 × `buildPromotedCrop`, 8 × `promoteLegacyCropForBed`.
+- `shouldPromoteBed` branches exercised: needed-path, `crop_type` absent (undefined + empty string), `completed_at` set, `already-has-legacy` idempotency marker, `has-real-bedcrops`, marker-before-real precedence. Every early-exit reason has at least one test.
+- `buildPromotedCrop` branches exercised: full-field copy + marker stamping, optional-field absence (crop_variety/planted_at/expected_harvest undefined).
+- `promoteLegacyCropForBed` branches exercised: live-mode write + `created_by: 'system'` sentinel, dry-run no-write, idempotent already-has-legacy, skip real-bedcrops, skip no-crop, skip completed_at, deterministic default-id (concurrent-runs safety), D3 prefix-compat assertion (`promoted-*` is not `bed-legacy-*`).
+- Migration-script test convention: zero dedicated tests on `scripts/migrate-roles.ts`, `scripts/migrate-device-resolution.ts`; `grep '*.test.ts'` under `scripts/` returns empty. This script follows the same convention.
+- Repository contract: `listBedCropsByBed` and `createBedCrop` mocks are hoisted at file top; `resetAllMocks` + defaults re-applied in `beforeEach`. Both functions throw on DDB failure — bubble-up is the orchestrator's intentional contract (CLI `.catch` at line 85-88 logs + `return null` → continue to next bed).
+
+### MUST-ADD
+- None. All three pure-function units (`shouldPromoteBed`, `buildPromotedCrop`, `promotedCropId`) are fully branch-covered; the orchestrator covers the three layers that matter most for a one-shot production data migration: (a) predicate gatekeeping, (b) live vs dry-run write split, (c) idempotency-marker re-run safety. The two biggest production risks — double-promoting a bed on re-run, and clobbering a user-created BedCrop — are each locked down by dedicated tests (#5 `already-has-legacy`, #6 `has-real-bedcrops`). **Pass signal: Wave E1 can run against production on current coverage.**
+
+### SHOULD-ADD
+- id: T-E1-01
+  target: `promoteLegacyCropForBed` — `listBedCropsByBed` rejection bubbles out of the orchestrator
+  gap: No test asserts that a DDB failure in the repo read propagates up (where the CLI wrapper's `.catch` then logs + skips the bed). Today the orchestrator has no `try/catch` around `listBedCropsByBed`, so the rejection propagates naturally — but that is an undocumented behavior invariant. A future refactor that adds a blanket `try/catch` returning `{ action: 'skipped', reason: 'error' }` would pass every existing test while silently changing the CLI's per-bed failure semantics (count bucket attribution + operator log message shape). One `mockRejectedValueOnce(new Error('DDB throttle'))` + `await expect(...).rejects.toThrow('DDB throttle')` pins the contract.
+  rationale: The CLI's per-bed failure loop (`scripts/migrate-wave-e-promote-legacy-crops.ts:85-88`) depends on this bubble-up to decide "log + continue to next bed." If the orchestrator ever starts swallowing errors internally, the CLI would count failed beds into a `SkipReason` bucket instead of into stderr, and operators running dry-run before live would see a falsely clean summary. Low-cost invariant lock.
+  effort: S
+
+- id: T-E1-02
+  target: `promoteLegacyCropForBed` — `createBedCrop` rejection bubbles out (live mode only)
+  gap: Symmetric to T-E1-01 for the write side. No test asserts the write-failure propagation contract. Today: live mode calls `createBedCrop(buildPromotedCrop(...))`; if DDB rejects, the error bubbles to the CLI loop. Dry-run never calls `createBedCrop` so this path is only live-mode relevant.
+  rationale: Protects the same CLI "log + continue" semantics on the write leg. Also pins down the order-of-operations invariant that `createBedCrop` is NOT retried inside the orchestrator (operator-visible retries are the CLI's problem, not the service layer's). Adds alongside T-E1-01 with one shared fixture.
+  effort: S
+
+### NO-TEST-NEEDED (with reason)
+- target: `scripts/migrate-wave-e-promote-legacy-crops.ts` operational wrapper (ScanCommand pagination, heartbeat every 50, `farm_id`/`id` malformed-row guard, per-bed `.catch` continue, `SkipReason` counts tally, fatal top-level catch)
+  reason: Project convention — `scripts/migrate-roles.ts` and `scripts/migrate-device-resolution.ts` ship with zero dedicated unit tests, and the repo has no `scripts/*.test.ts` files at all. Each behavior in the wrapper is either (a) a thin pass-through to an already-tested unit (the per-bed orchestration call), (b) a DDB SDK surface that is implicitly covered by local dry-run verification against a test farm before production, or (c) operator-visible aggregate logging (heartbeat + summary) where a divergence from intent surfaces in the first dry-run's stdout. Operators will run `DRY_RUN=1 npx tsx ...` against production once before the live pass — any wrapper bug (bad filter expression missing rows, heartbeat frequency off, count bucket mis-keyed) surfaces there at zero customer impact. Crucially: the script's read path (`ScanCommand` + `itemToBed`) already round-trips through the BedCrop repo's writer path for every `promoted: true` bed during the live run, so a read-side deserialization bug becomes a write-side failure that T-E1-02 contract + CLI `.catch` contain. Adding a script-level test harness for one wave would (i) invert the project's migration-script convention and (ii) duplicate logic already covered by the unit tests the wrapper delegates to.
+
+- target: `shouldPromoteBed` — `crop_type: null` distinct from `undefined` / `''`
+  reason: The guard `if (!bed.crop_type)` is falsy-sensitive, so `null`, `undefined`, `''`, and `0` all take the same branch. TypeScript (`Bed.crop_type?: string`) prevents `null` at the compile boundary — the DDB mapper `itemToBed` returns `string | undefined`, never `string | null`. The current `undefined` + `''` tests cover the real shapes; a `null` test would exercise a type-impossible value and inflate fixture complexity without adding a reachable branch.
+
+- target: `shouldPromoteBed` — defensive `existingRealCrops: non-array` guard
+  reason: Parameter is typed `BedCrop[]`; every caller is either the orchestrator (which passes the repo's typed return) or a unit test (which controls the fixture). No production path delivers a non-array. A defensive test would encode a contract that does not exist in the type system and would lock down JavaScript coercion behavior rather than domain behavior.
+
+- target: `buildPromotedCrop` — bed with stray `notes` / `status` / `created_by` fields does not leak through
+  reason: The builder is pure and explicit — it destructures only the fields it needs (`id`, `bed_id`, `farm_id`, `crop_type`, `crop_variety`, `planted_at`, `expected_harvest`) and assigns `status`, `created_by`, `created_at`, `updated_at`, `created_from_legacy` from its own constants or arguments. `Bed` type has no `notes` / `status` / `created_by` fields, so the TypeScript compiler rejects a caller that tries to pass them. A "contamination" test would exercise a path the type system already makes unreachable.
+
+- target: Concurrency — two CLI processes running against the same table simultaneously
+  reason: Locked down by the `promotedCropId(bedId) = 'promoted-<bedId>'` deterministic id design (documented in source JSDoc R-E1-001) + the already-has-legacy predicate. Test #2 pins the determinism invariant; DDB last-writer-wins on identical PK+SK+content is safe by SDK contract. An operational-concurrency test would require a real DDB table — infrastructure out of scope for the project's unit-heavy pyramid.
+
+- target: Integration — 5-cap check at `POST /beds/:id/crops` vs migration-created rows
+  reason: Wave boundary. The 5-cap is enforced at route level against ALL BedCrops for a bed (persisted rows only). A migration-created BedCrop counts toward the cap the same as a user-created one — which is the intended behavior (the cap protects the free-tier economics, regardless of who created the row). Because each bed with a legacy `crop_type` produces at most one promoted BedCrop, and `shouldPromoteBed` already skips beds with any existing real BedCrop, no bed can exceed 1 after migration. An integration test crossing the migration/route boundary would exercise the cap logic (already unit-tested in Wave B) against a row shape (already unit-tested here) with no new combined risk.
+
+- target: Integration — migration running while live traffic writes to the same beds
+  reason: The `shouldPromoteBed` read happens inside `promoteLegacyCropForBed` (orchestrator) immediately before the write. If a user creates a BedCrop for bed X between the scan and the per-bed promote, the orchestrator's `listBedCropsByBed` read picks it up and returns `has-real-bedcrops` (test #6). If two migration processes both pass the predicate on the same bed, the deterministic id collapses to a last-writer-wins PutItem with identical content (test #2). The only unprotected window is: user creates a real BedCrop AFTER `listBedCropsByBed` returns empty but BEFORE `createBedCrop` writes — in that case, the bed ends with one user-created BedCrop + one `created_from_legacy: true` BedCrop, both valid, both rendered. This is a documented acceptable outcome (DESIGN-279 §6 — operator runs migration during a maintenance window or live, both supported). Asserting it under test would require DDB transaction infrastructure the project does not maintain.

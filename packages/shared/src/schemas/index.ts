@@ -790,6 +790,8 @@ export const BedCropSchema = z.object({
   created_by: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
+  // Wave E (#279) — idempotency marker for the promote-legacy migration.
+  created_from_legacy: z.boolean().optional(),
 });
 
 /** POST /api/v1/beds/:bedId/crops — create body. Status defaults to 'planned'. */

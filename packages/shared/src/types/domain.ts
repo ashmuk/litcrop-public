@@ -112,6 +112,13 @@ export interface BedCrop {
   created_by: string;
   created_at: string;
   updated_at: string;
+  /**
+   * Wave E (#279) — idempotency marker set when this BedCrop was created by
+   * the promote-legacy migration from a bed's inline `crop_type` field. Any
+   * re-run of the migration must skip beds that already have a BedCrop with
+   * this flag (see DESIGN-279 §6 step 1).
+   */
+  created_from_legacy?: boolean;
 }
 
 export interface Image {

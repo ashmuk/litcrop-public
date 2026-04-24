@@ -56,6 +56,7 @@ export function itemToBedCrop(item: Record<string, unknown>): BedCrop {
     created_by: item['created_by'] as string,
     created_at: item['created_at'] as string,
     updated_at: item['updated_at'] as string,
+    created_from_legacy: item['created_from_legacy'] as boolean | undefined,
   };
 }
 

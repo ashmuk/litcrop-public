@@ -1,3 +1,51 @@
+# Remediation Report — Wave E step 1 (2026-04-24)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` Session 9 (Wave E step 1)
+- Iterations: 1 of 3 max
+- Status: RESOLVED — 2/2 SHOULD-FIX + 2/3 SUGGESTION addressed; 0 MUST-FIX
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| R-E1-001 | Concurrent-run race window — two CLI processes could both PUT with different uuids → duplicate legacy rows + silent 5-cap breach | SHOULD-FIX | FIXED | Replaced `randomUUID()` default with deterministic `promoted-<bedId>` (new exported `promotedCropId()` helper). A concurrent race now collapses to an idempotent overwrite with identical content. Chose deterministic id over `ConditionExpression` because different uuids would bypass `attribute_not_exists(PK)` anyway; deterministic is structurally safe. Chose `promoted-` prefix (not `bed-legacy-`) because D3's auto-default skips ids starting with `bed-legacy-` as the virtual-projection sentinel — promoted rows must be treated as REAL crops by D3. Added 2 tests: concurrent-safety (two back-to-back calls yield identical ids) + D3-compat (id does NOT match `bed-legacy-` prefix). |
+| R-E1-002 | No progress heartbeat — 10k-bed migration runs silently for ~40 min | SHOULD-FIX | FIXED | Added per-50-beds heartbeat `[wave-e-promote] progress: N/M processed (promoted=X)`. Converted the `for (const bed of beds)` loop to `for (let i = 0; …)` to track index. |
+| R-E1-004 | Trust of `farm_id`/`id` columns on scanned bed rows — a hand-patched row with missing `farm_id` would produce a malformed `FARM#undefined` PK | SUGGESTION | FIXED | Added `if (!farmId || !bedId)` guard in `scanBeds()`: logs `console.error` with the offending PK+SK and continues. Prevents data corruption from malformed rows. |
+| R-E1-005 | Test coverage gaps: `created_by: 'system'` sentinel not pinned, default `randomUUID()` branch untested | SUGGESTION | FIXED (partial) | Added `created_by: 'system'` assertion to the `toHaveBeenCalledWith` in the live-mode test. The default-id branch is now covered by the R-E1-001 concurrent-safety test. Empty-string `completed_at` deferred (shouldPromoteBed treats any truthy completed_at as "skip"; empty-string is falsy, so behavior matches `no-completed_at` already-tested path). |
+| R-E1-003 | `idFactory` default is inline rather than module-level constant | SUGGESTION | DEFERRED | Superseded by R-E1-001 — the default is now `promotedCropId(bed.id)`, an exported helper. Separate module-level factory constant would be over-abstraction. |
+
+## Iteration Log
+
+### Iteration 1
+- Findings addressed: R-E1-001 (deterministic id), R-E1-002 (heartbeat), R-E1-004 (farm_id guard), R-E1-005 (test hardening)
+- Builder: inline application — four surgical edits (one id-scheme change, one `console.log` line, one guard clause, one test assertion + 2 new tests). Full my-builder dispatch would have added orchestration overhead without risk reduction.
+- Outcome: All SHOULD-FIX resolved. Vitest 1245 → 1247 (+2 race-safety/D3-compat tests). Typecheck clean after shared rebuild.
+
+## Verification
+
+```
+Test Files  55 passed (55)
+     Tests  1247 passed (1247)   ← baseline 1245 + 2 new
+  Duration  5.86s
+
+npm run typecheck: shared + api clean
+```
+
+Files changed:
+- `src/api/src/services/migrations/wave-e-promote-legacy.ts` — R-E1-001 (promotedCropId helper + deterministic default)
+- `scripts/migrate-wave-e-promote-legacy-crops.ts` — R-E1-002 (heartbeat) + R-E1-004 (farm_id guard)
+- `src/api/src/__tests__/services/migrations/wave-e-promote-legacy.test.ts` — R-E1-001 tests + R-E1-005 sentinel assertion
+
+LOC delta: +48 / -9.
+
+## Escalations
+None. 0 MUST-FIX; both SHOULD-FIX resolved; 2/3 SUGGESTION resolved; R-E1-003 deferred with rationale (superseded by R-E1-001's structural fix).
+
+*Remediation completed: 2026-04-24 | Status: RESOLVED*
+
+---
+
 # Remediation Report — Wave D D3 (2026-04-24)
 
 ## Summary
