@@ -23,6 +23,9 @@ vi.mock('../../services/dynamodb', () => ({
     deleteDiaryEntry: vi.fn(),
     updateBed: vi.fn(),
     getUserProfile: vi.fn(),
+    // #279 Wave B — diary bridge now prefers real BedCrop over bed inline fields
+    listBedCropsByBed: vi.fn(),
+    updateBedCrop: vi.fn(),
   },
 }));
 
@@ -105,6 +108,8 @@ beforeEach(() => {
   mockRepo.updateDiaryEntry.mockResolvedValue(entryFixture);
   mockRepo.deleteDiaryEntry.mockResolvedValue(undefined);
   mockRepo.getUserProfile.mockResolvedValue({ user_id: TEST_USER_ID, display_name: 'Test Farmer', preferred_role: 'staff', created_at: '2026-04-01T00:00:00Z' });
+  // #279 Wave B — default to no persisted BedCrops (legacy bed inline path)
+  mockRepo.listBedCropsByBed.mockResolvedValue([]);
 });
 
 // ── Harvest entry fixture (Beta-10) ──────────────────────────────

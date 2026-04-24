@@ -169,21 +169,35 @@ async function syncBedDatesFromDiary(
   try {
     const bed = await dynamoRepo.getBedById(bedId);
 
+    // #279 Wave B — prefer updating a real active BedCrop over the bed's
+    // legacy inline fields. listBedCropsByBed returns persisted rows only
+    // (virtual bed-legacy-* synthesized records never appear here).
+    const realCrops = await dynamoRepo.listBedCropsByBed(bedId);
+    const activeReal = realCrops.find((c) => c.status === 'active' || c.status === 'planned');
+
+    const plantingUpdates: Record<string, unknown> = { planted_at: date };
     if (category === 'planting') {
-      const updates: Record<string, unknown> = { planted_at: date };
-      if (date && hasActiveCrop(bed)) {
-        const harvest = estimateHarvestDate(date, bed.crop_type);
-        if (harvest) updates['expected_harvest'] = harvest;
+      const cropType = activeReal?.crop_type ?? (hasActiveCrop(bed) ? bed.crop_type : undefined);
+      if (date && cropType) {
+        const harvest = estimateHarvestDate(date, cropType);
+        if (harvest) plantingUpdates['expected_harvest'] = harvest;
       } else if (date === null) {
         // Clearing planted_at also clears auto-calculated expected_harvest
-        updates['expected_harvest'] = null;
+        plantingUpdates['expected_harvest'] = null;
       }
-      await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, updates);
+    }
+
+    const harvestUpdates: Record<string, unknown> = { expected_harvest: date };
+
+    if (activeReal) {
+      // Real BedCrop exists — it's the source of truth.
+      const updates = category === 'planting' ? plantingUpdates : harvestUpdates;
+      updates['updated_at'] = new Date().toISOString();
+      await dynamoRepo.updateBedCrop(bed.farm_id, bedId, activeReal.id, updates);
     } else {
-      // category === 'harvesting' — set expected_harvest directly
-      await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, {
-        expected_harvest: date,
-      });
+      // Legacy path — no persisted BedCrop, update the bed row's inline fields.
+      const updates = category === 'planting' ? plantingUpdates : harvestUpdates;
+      await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, updates);
     }
   } catch (err) {
     console.warn(`[diary→bed bridge] Failed to sync ${category} date for bed ${bedId}:`, err);
