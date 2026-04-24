@@ -1,3 +1,102 @@
+# Review Findings — Session 5 (2026-04-24) — Wave B data-layer
+
+> Scope: Wave B of #279 bed-to-crop 1:N — BedCrop types/schema + DDB repo + API routes + compat shim + diary bridge + /simplify pass.
+> Baseline: `806dcc7` (Wave A post-shim anchor on `develop`). Head: `998986d` (post-simplify).
+> Six commits reviewed: `c865d3c` · `9be8c52` · `4c8447f` · `b45021f` · `998986d` (in narrative order `806dcc7` scaffold → … → simplify).
+> Reviewer policy: `.agent/subagents/my-reviewer.md` (confidence-filtered — MUST-FIX and high-signal SHOULD-FIX only; no nitpicks).
+> Pipeline stage: `/cc-review` (this doc) → `/cc-remediate` if MUST-FIX, else `/cc-test` → Wave B tag cut `v0.99.8.0`.
+
+## S5.1. Scope reviewed
+
+### Shared (`packages/shared`)
+- `src/bed-crop.ts` — added `toBedActiveCropSummary()`; `hasActiveCrop` contract unchanged.
+- `src/types/domain.ts` — `BedCropStatus` + `BedCrop` entity exported.
+- `src/types/api.ts` — `BedActiveCropSummary` + `FarmBed.active_crop` (deprecated-inline shim documented).
+- `src/schemas/index.ts` — `BedCropSchema`, `BedCropStatusSchema`, `CreateBedCropRequestSchema`, `UpdateBedCropRequestSchema`, plus `active_crop` on `FarmBedSchema` / `FarmBedItemSchema`.
+- `src/constants.ts` — `MAX_ACTIVE_CROPS_PER_BED = 5`.
+
+### API (`src/api`)
+- `services/repositories/_infrastructure.ts` — `sk.crop()` + `sk.cropGsi1()` helpers.
+- `services/repositories/bed-crops.ts` — new repo (list/get/create/update/delete + `getActiveCropForBed` lazy-materialize).
+- `services/repositories/_mappers.ts` — `itemToBedCrop`.
+- `services/dynamodb.ts` — barrel re-export of 6 new methods.
+- `routes/bed-crops.ts` — new router, 4 handlers, mounted at `/api/v1/beds/:bedId/crops[/:bedCropId]`.
+- `routes/farms.ts` — `bedToSummary()` helper + parallel `getActiveCropForBed` in 2 list routes.
+- `routes/beds.ts` — GET/:bedId adds `active_crop`; PATCH untouched for Wave B.
+- `routes/diary.ts` — `syncBedDatesFromDiary` prefers real BedCrop; legacy fallback retained.
+- `routes/_helpers.ts` — unchanged (confirmed via diff).
+- `app.ts` — 3-line mount.
+- `__tests__/routes/bed-crops.test.ts` (11 cases) + `__tests__/services/bed-crops.test.ts` (11 cases).
+
+### Cross-checks performed
+- **S4-2 guardrail**: grepped every `GSI1PK.*BED#` / `pk.bed(` call site. `listBedCropsByBed` → `begins_with(GSI1SK, 'CROP#')` ✅. `getBedCrop` → exact `GSI1SK = CROP#<id>` (implicitly satisfies prefix) ✅. `beds.getBedById` → `GSI1SK = '#META'` (no CROP# collision). `createBedCrop` writes `GSI1SK=CROP#<id>` ✅. No raw `queryByGSI1('BED#…')` exposed anywhere.
+- **Route mount**: `app.ts:173-175` mounts under `/api/v1/beds`, so `beds.ts` (unchanged) and `bed-crops.ts` (new) share the prefix; Hono pattern-matching on `:bedId/crops` is specific enough to not shadow existing `:bedId` routes.
+- **Lazy virtual id reachability**: repo tests confirm `bed-legacy-<bedId>` is never returned by `listBedCropsByBed` — only by `getActiveCropForBed` fallback. The diary bridge explicitly uses `listBedCropsByBed` (not the fallback) so it cannot write against a virtual id. PATCH/DELETE handlers call `getBedCrop(bedId, virtualId)` which queries GSI1 for `CROP#bed-legacy-<bedId>` — returns no items → `NotFoundError` → 404. ✅ no write path reaches the repo with a virtual id.
+- **Ownership**: all 4 routes in `bed-crops.ts` go through `loadBed()` → `assertBedAccess` (reads) or `assertBedWriteAccess` (writes). Parent-bed pattern matches DESIGN-279 §4.1.
+- **Typecheck**: `npx tsc --noEmit -p src/api` and `-p packages/shared` reported clean at pipeline entry (claimed in task brief; not re-run here since the reviewer is read-only and the simplifier already gated on it).
+- **Test suite**: 1172/1172 vitest green claimed; not re-run.
+
+## S5.2. MUST-FIX findings
+
+**None.**
+
+No security, correctness-breaking, or scope-violating defects. Breakdown:
+
+| Check                                                                       | Verdict |
+|-----------------------------------------------------------------------------|---------|
+| Every `GSI1PK=BED#<b>` query is either `begins_with(GSI1SK, 'CROP#')` or `GSI1SK = #META` or `GSI1SK = CROP#<id>` — no collision | ✅ |
+| No write path can reach `updateBedCrop` / `deleteBedCrop` with a virtual `bed-legacy-<bedId>` id | ✅ |
+| All 4 new routes gated by `assertBedAccess` / `assertBedWriteAccess`; admin/owner restriction on writes | ✅ |
+| 5-cap enforced pre-write in POST handler (race condition already accepted in design §9) | ✅ |
+| Input validation: Zod schemas cover all request bodies; `status` enum tightly scoped; no SSRF/XSS/injection surface | ✅ |
+| No `any`, no unchecked casts beyond the existing DDB mapper pattern | ✅ |
+| Legacy diary-bridge fallback semantically equivalent to pre-Wave-B path when `activeReal` is absent | ✅ |
+| Ownership pattern matches `DESIGN-279 §4.1` parent-bed rule | ✅ |
+| No credentials, secrets, or sensitive logs introduced | ✅ |
+| Wave B scope boundary respected (no UI, no diary FK, no migration job) | ✅ |
+
+## S5.3. SHOULD-FIX findings
+
+| # | Severity | Location | Issue | Suggested fix |
+|---|----------|----------|-------|---------------|
+| S5-1 | SHOULD-FIX (high signal) | `src/api/src/routes/bed-crops.ts:123-153` (PATCH handler) | Status transitions and `completed_at` are **fully decoupled**: any transition is accepted (incl. `harvested → planned`, `failed → active`), and `completed_at` is never auto-managed. Two concrete defects follow: (a) `PATCH {status: 'harvested'}` without a client-supplied `completed_at` leaves `completed_at` unset, which disagrees with the DELETE soft-delete path (which always sets it); downstream UI will see a "harvested" crop with no completion date. (b) `PATCH {status: 'planned'}` on a previously-completed crop leaves the stale `completed_at` in place. The /simplify commit explicitly flagged (b) as review-worthy. | When status transitions to `harvested` or `failed` and the request omits `completed_at`, auto-populate it with `new Date().toISOString()`. When status transitions back to `active` or `planned` and the request omits `completed_at`, auto-REMOVE it (push `null` into the updates map). Align this with the DELETE branch that already does the former. |
+| S5-2 | SHOULD-FIX (high signal) | `src/api/src/routes/bed-crops.ts:157-181` (DELETE handler) | Soft-delete clobbers `completed_at` on a crop that is **already** in a terminal state. If status is `harvested`, DELETE rewrites it to `failed` and overwrites `completed_at` with `now()`. Two problems: (i) reclassifies a successful harvest as a failure — silently destroying history that the design §7 Wave E migration assumes is immutable; (ii) overwrites the real harvest date with the deletion timestamp. For `failed` the first problem is absent but the second still applies (loss of original failure date). | Short-circuit when `crop.status === 'harvested' || crop.status === 'failed'` and return 204 (idempotent no-op) OR 409 (already terminal — explicit refusal). Hard-delete on `planned` stays as-is. Only transition `active → failed` needs the current soft-delete path. |
+| S5-3 | SHOULD-FIX (high signal) | `src/api/src/routes/beds.ts:67-74` + `src/api/src/routes/farms.ts:54-70` (compat shim) | When a bed has a real active BedCrop AND the legacy `bed.completed_at` is still set from a prior cycle (a realistic state during the Wave B → E shim window), the response carries `active_crop: {…}` **and** `completed_at: "2026-02-01"` **simultaneously**. That is self-contradictory by the shim contract ("inline fields mirror the active crop when one exists"). Consumers (including the existing frontend reading `bed.completed_at` to hide finished beds) will misrender the bed as both live and completed. | When `active_crop` is non-null, force `completed_at: null` in both `beds.ts:73` and `farms.ts:67` (i.e. mirror it from `active_crop.completed_at`, which for active/planned rows is always null by schema). Fall back to `bed.completed_at` only when `active_crop` is null. This matches the §4.3 shim contract that the other 4 inline fields already follow. |
+| S5-4 | SHOULD-FIX (medium signal) | `src/api/src/routes/bed-crops.ts:65-73` (5-cap) | The cap counts only rows returned by `listBedCropsByBed` (persisted BedCrops). A legacy bed with `bed.crop_type` set but no real BedCrop has an implicit virtual crop that the cap does NOT count. Result: a bed that had a legacy inline crop + 5 newly-created active BedCrops effectively carries 6 active crops, one more than scope memory constraint 2 allows. This window closes at Wave E but it IS open during B→D. | Either (a) count the virtual fallback too — call `getActiveCropForBed()` alongside the list and subtract 1 from the budget when a virtual legacy crop exists, OR (b) document the off-by-one as an accepted shim-window artefact in the repo comment and the design §9 risk table. Option (a) is ~3 LOC and closes the loophole deterministically. |
+
+## S5.4. Items explicitly skipped per policy
+
+Per task brief "only report MUST-FIX and high-signal SHOULD-FIX; no nitpicks" and confidence-based filtering:
+
+- **Pre-existing `deleteImage` unused import in `beds.ts`** — called out in the task brief as out-of-scope (predates Wave B). Not a new regression; leave to a future tidying pass.
+- **DDB mapper `as` casts for `status` in `itemToBedCrop`** — same pattern as every other mapper in `_mappers.ts`; not a Wave-B-specific risk. Would require repo-wide hardening, not a Wave-B blocker.
+- **5-cap read-then-write race window** — acknowledged in DESIGN-279 §9 risk table (Low/Low), explicitly accepted. No new finding to log.
+- **`notes` field not `.trim()`-ed on Create (unlike `crop_type`)** — cosmetic whitespace, not a security concern. `.max(500)` bounds it; Preact escapes at render. Skip.
+- **PATCH updates merge into `existing` without re-fetch** — acceptable optimistic merge; the merged shape matches the on-disk post-update state except in concurrent-write windows. Not a correctness defect for this scope.
+
+## S5.5. Verification needed before `/cc-test`
+
+- [ ] If remediating S5-1/S5-2/S5-3/S5-4: re-run `npx vitest run src/api` — the 11 bed-crops route tests will need updates for the new status-transition auto-managed `completed_at` and the short-circuited DELETE-on-terminal branch.
+- [ ] Integration test (real DDB) deferred per Wave B coverage note — specifically validate that `GET /beds/:bedId` on a bed with a real active BedCrop AND legacy `bed.completed_at` returns `completed_at: null` (post-S5-3 fix).
+- [ ] No MUST-FIX → `/cc-remediate` is **optional** (decides based on whether the 4 SHOULD-FIX items are folded into `v0.99.8.0` or deferred to `v0.99.8.1` alongside Wave C frontend work).
+- [ ] Re-confirm 1172/1172 vitest after any SHOULD-FIX fold-in.
+
+## S5.6. Safety approval
+
+- [x] Impact understood: additive DDB entity + new routes + additive response field + diary-bridge branch. No destructive operations, no schema migration, no data rewrite of existing beds.
+- [x] Rollback verified: `git revert` the 5 Wave B commits restores the pre-Wave-B state. Any BedCrop rows written during a canary would remain in DDB but be orphaned (no reader); they do not poison legacy inline fields. The lazy-materialize fallback preserves pre-Wave-B read paths if the rollback precedes Wave E.
+- [x] Approved for execution: **YES** — no MUST-FIX. The 4 SHOULD-FIX items are behavioral polish, not correctness-breaks for the data-layer scope Wave B was approved to ship.
+
+## S5.7. Decision
+
+**Status**: **ACCEPT** — 0 MUST-FIX, 4 SHOULD-FIX.
+
+The S5-1/S5-2/S5-3/S5-4 items should be folded in before `v0.99.8.0` because they're all ~3-10 LOC, they harden the contract the Wave C frontend is about to depend on, and deferring them to C creates a "fix the data layer while building the UI" entanglement. `/cc-remediate` is the right next step; `/cc-test` can run either before or after.
+
+**Counts**: MUST-FIX: 0 · SHOULD-FIX: 4 · Verdict: **ACCEPT (remediate before tag cut)**
+
+---
+
 # Review Findings — Session 4 (2026-04-23) — Stream 2 kickoff
 
 > Scope: Stream 2 (Scale) kickoff — #279 bed-to-crop 1:N design doc + Wave A prep refactor on `develop`.
