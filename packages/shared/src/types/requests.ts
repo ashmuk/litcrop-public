@@ -4,7 +4,7 @@
  * Updated: Phase D — Farm→Bed flattening (ADR-20260322)
  */
 
-import type { Locale, Theme, TagValue, TempUnit } from './domain';
+import type { Locale, Theme, TagValue, TempUnit, BedCropStatus } from './domain';
 
 /** POST /api/v1/farms — Create Farm */
 export interface CreateFarmRequest {
@@ -47,6 +47,27 @@ export interface UpdateBedRequest {
   expected_harvest?: string | null;
   notes?: string | null;         // max 500 chars; null to clear
   completed_at?: string | null;  // YYYY-MM-DD; null to clear (reactivate)
+}
+
+/** POST /api/v1/beds/{bedId}/crops — Create BedCrop (#279 Wave B) */
+export interface CreateBedCropRequest {
+  crop_type: string;                  // 1-100 chars
+  crop_variety?: string;              // max 100 chars
+  planted_at?: string | null;         // ISO 8601 date
+  expected_harvest?: string | null;
+  status?: BedCropStatus;             // default 'planned'
+  notes?: string;                     // max 500 chars
+}
+
+/** PATCH /api/v1/beds/{bedId}/crops/{bedCropId} — Update BedCrop (#279 Wave B) */
+export interface UpdateBedCropRequest {
+  crop_type?: string;                 // 1-100 chars
+  crop_variety?: string | null;       // max 100 chars; null to clear
+  planted_at?: string | null;
+  expected_harvest?: string | null;
+  completed_at?: string | null;
+  status?: BedCropStatus;             // terminal transitions auto-set completed_at server-side
+  notes?: string | null;              // max 500 chars; null to clear
 }
 
 /** POST /api/v1/images/{imageId}/tags */

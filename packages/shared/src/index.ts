@@ -77,6 +77,8 @@ export type {
   CreateFarmRequest,
   UpdateFarmRequest,
   UpdateBedRequest,
+  CreateBedCropRequest,
+  UpdateBedCropRequest,
   CreateTagRequest,
   ChatMessageRequest,
   UpdateProfileRequest,

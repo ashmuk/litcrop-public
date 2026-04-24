@@ -21,6 +21,8 @@ import type {
   FarmResponse,
   FarmBedItem,
   BedDetailResponse,
+  BedCrop,
+  BedCropStatus,
   PaginatedResponse,
   ImageListItem,
   ImageUploadResponse,
@@ -35,7 +37,7 @@ import type {
   ApiError as ApiErrorBody,
 } from '@litcrop/shared';
 
-import type { CreateFarmRequest, UpdateFarmRequest, UpdateBedRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
+import type { CreateFarmRequest, UpdateFarmRequest, UpdateBedRequest, CreateBedCropRequest, UpdateBedCropRequest, CreateTagRequest, ChatMessageRequest } from '@litcrop/shared';
 
 // ── Base URL ──────────────────────────────────────────────────────
 
@@ -216,6 +218,34 @@ export async function getBed(bedId: string): Promise<BedDetailResponse> {
 /** PATCH /api/v1/beds/{bedId} */
 export async function updateBed(bedId: string, data: UpdateBedRequest): Promise<BedDetailResponse> {
   return request<BedDetailResponse>('PATCH', `/beds/${bedId}`, data);
+}
+
+// ── BedCrop Endpoints (#279 Wave C) ──────────────────────────────
+
+/** POST /api/v1/beds/{bedId}/crops */
+export async function createBedCrop(bedId: string, data: CreateBedCropRequest): Promise<BedCrop> {
+  return request<BedCrop>('POST', `/beds/${bedId}/crops`, data);
+}
+
+/** GET /api/v1/beds/{bedId}/crops?status=<all|active|planned|harvested|failed> */
+export async function listBedCrops(bedId: string, status?: BedCropStatus | 'all'): Promise<BedCrop[]> {
+  const query = status ? `?status=${status}` : '';
+  const res = await request<{ items: BedCrop[] }>('GET', `/beds/${bedId}/crops${query}`);
+  return res.items;
+}
+
+/** PATCH /api/v1/beds/{bedId}/crops/{bedCropId} */
+export async function updateBedCrop(
+  bedId: string,
+  bedCropId: string,
+  data: UpdateBedCropRequest,
+): Promise<BedCrop> {
+  return request<BedCrop>('PATCH', `/beds/${bedId}/crops/${bedCropId}`, data);
+}
+
+/** DELETE /api/v1/beds/{bedId}/crops/{bedCropId} — soft-deletes active crops to 'failed'; no-op on terminal. */
+export async function deleteBedCrop(bedId: string, bedCropId: string): Promise<void> {
+  await request<void>('DELETE', `/beds/${bedId}/crops/${bedCropId}`);
 }
 
 // ── Image Endpoints ───────────────────────────────────────────────
