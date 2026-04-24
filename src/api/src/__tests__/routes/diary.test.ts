@@ -84,6 +84,7 @@ const entryFixture = {
   description: 'Planted tomato seedlings',
   time_spent_minutes: 45,
   bed_id: BED_ID,
+  bed_crop_id: null,
   photo_ids: [],
   costs: [{ item: 'Seedlings', amount: 500, currency: 'JPY' as const }],
   created_by: TEST_USER_ID,

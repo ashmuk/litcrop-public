@@ -647,6 +647,7 @@ const baseEntryResponse = {
   entry_type: 'actual',
   time_spent_minutes: null,
   bed_id: null,
+  bed_crop_id: null,
   bed_name: null,
   photo_ids: [],
   costs: [],

@@ -308,6 +308,12 @@ export interface DiaryEntry {
   description: string;
   time_spent_minutes: number | null;
   bed_id: string | null;
+  /**
+   * Wave D (#279) — nullable FK to BedCrop.id for per-crop attribution.
+   * Legacy entries (pre-Wave D) stay null — no backfill migration per the
+   * #462 Phase 2 leave-null precedent. See DESIGN-279 §3.3.
+   */
+  bed_crop_id: string | null;
   photo_ids: string[];
   costs: CostItem[];
   created_by: string;

@@ -614,6 +614,8 @@ const DiaryEntryFieldsSchema = z.object({
   description: z.string().min(1).max(1000).trim(),
   time_spent_minutes: z.number().int().min(1).max(1440).nullable().optional(),
   bed_id: z.string().uuid().nullable().optional(),
+  /** Wave D (#279) — per-crop attribution. Nullable FK to BedCrop.id. */
+  bed_crop_id: z.string().uuid().nullable().optional(),
   photo_ids: z.array(z.string().uuid()).max(5).default([]),
   costs: z.array(CostItemSchema).max(10).default([]),
   // Beta-10: Harvest & revenue fields
@@ -678,6 +680,8 @@ export const DiaryEntryResponseSchema = z.object({
   description: z.string(),
   time_spent_minutes: z.number().nullable(),
   bed_id: z.string().nullable(),
+  /** Wave D (#279) — per-crop attribution (nullable; legacy entries stay null). */
+  bed_crop_id: z.string().nullable(),
   bed_name: z.string().nullable(),
   photo_ids: z.array(z.string()),
   costs: z.array(CostItemSchema),

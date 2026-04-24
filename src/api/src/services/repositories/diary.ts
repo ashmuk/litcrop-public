@@ -13,6 +13,9 @@ function itemToDiaryEntry(item: Record<string, unknown>, entryId: string): Diary
     description: item['description'] as string,
     time_spent_minutes: (item['time_spent_minutes'] as number) ?? null,
     bed_id: (item['bed_id'] as string) ?? null,
+    // Wave D (#279) — nullable FK to BedCrop.id; pre-Wave-D records lack the
+    // attribute and surface here as null (leave-null migration).
+    bed_crop_id: (item['bed_crop_id'] as string) ?? null,
     photo_ids: (item['photo_ids'] as string[]) ?? [],
     costs: (item['costs'] as CostItem[]) ?? [],
     harvest_amount: (item['harvest_amount'] as number) ?? null,
