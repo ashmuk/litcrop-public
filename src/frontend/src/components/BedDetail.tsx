@@ -5,14 +5,18 @@
  */
 
 import { useState, useEffect, useRef } from 'preact/hooks';
-import type { BedDetailResponse, ImageListItem, TagValue } from '@litcrop/shared';
-import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES } from '@litcrop/shared';
+import type { BedDetailResponse, ImageListItem, TagValue, BedCrop } from '@litcrop/shared';
+import { TAG_VALUES, MAX_IMAGE_SIZE_BYTES, MAX_ACTIVE_CROPS_PER_BED } from '@litcrop/shared';
 import CropAutocomplete from './CropAutocomplete';
+import Modal from './Modal';
 import { getCropDisplay } from '../lib/crops';
 import { CATEGORY_META } from '../lib/diary';
 import { estimateHarvestDate, getCropPropagation } from '@litcrop/shared';
 import type { PlantMethod } from '@litcrop/shared';
-import { getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError } from '../lib/api';
+import {
+  getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError,
+  listBedCrops, createBedCrop, updateBedCrop,
+} from '../lib/api';
 import { getLocalFarmRole, refreshFarmRoleCache } from '../lib/hooks';
 import { LS_FARM_ID } from '../lib/hooks';
 import { showToast } from './Toast';
@@ -95,6 +99,7 @@ async function toJpegBlob(file: File): Promise<Blob> {
 
 export default function BedDetail() {
   const [bed, setBed] = useState<BedDetailResponse | null>(null);
+  const [crops, setCrops] = useState<BedCrop[]>([]);
   const [images, setImages] = useState<ImageListItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +111,9 @@ export default function BedDetail() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const autoExpandedRef = useRef(false);
-  const [editing, setEditing] = useState(false);
+  // Wave C (#279) — modal-based add/edit replaces the inline editing toggle.
+  const [cropModalMode, setCropModalMode] = useState<'closed' | 'add' | 'edit'>('closed');
+  const [editingCropId, setEditingCropId] = useState<string | null>(null);
   const [cropForm, setCropForm] = useState({
     crop_type: '',
     crop_variety: '',
@@ -115,6 +122,8 @@ export default function BedDetail() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [plantMethod, setPlantMethod] = useState<PlantMethod>('seedling');
 
   const bedId =
@@ -136,9 +145,10 @@ export default function BedDetail() {
 
     async function load() {
       try {
-        const [bedData, imagesData] = await Promise.all([
+        const [bedData, imagesData, cropsData] = await Promise.all([
           getBed(bedId),
           getImages(bedId),
+          listBedCrops(bedId, 'all'),
         ]);
         if (cancelled) return;
         // Refresh role cache from API to prevent stale localStorage
@@ -148,6 +158,7 @@ export default function BedDetail() {
         setBed(bedData);
         setImages(imagesData.data);
         setNextCursor(imagesData.meta.next_cursor);
+        setCrops(cropsData);
         // Update nav header title with bed name and i18n screen label
         const titleEl = document.getElementById('bed-title');
         if (titleEl) titleEl.textContent = bedData.name ?? t('screens.plot_detail');
@@ -251,19 +262,36 @@ export default function BedDetail() {
     }
   }
 
-  function startEditing() {
+  function openAddModal() {
+    setCropForm({ crop_type: '', crop_variety: '', planted_at: '', expected_harvest: '', notes: '' });
+    setEditingCropId(null);
+    setPlantMethod('seedling');
+    setCropModalMode('add');
+  }
+
+  function openEditModal() {
+    const active = bed?.active_crop;
+    if (!active) return;
+    // Real crops: full BedCrop.notes lives on the list we loaded at mount.
+    // Virtual legacy projection (id prefix 'bed-legacy-'): notes live on bed.notes.
+    const isVirtual = active.id.startsWith('bed-legacy-');
+    const fullCrop = isVirtual ? null : crops.find((c) => c.id === active.id);
     setCropForm({
-      crop_type: bed?.crop_type ?? '',
-      crop_variety: bed?.crop_variety ?? '',
-      planted_at: bed?.planted_at ?? '',
-      expected_harvest: bed?.expected_harvest ?? '',
-      notes: bed?.notes ?? '',
+      crop_type: active.crop_type,
+      crop_variety: active.crop_variety ?? '',
+      planted_at: active.planted_at ?? '',
+      expected_harvest: active.expected_harvest ?? '',
+      notes: isVirtual ? (bed?.notes ?? '') : (fullCrop?.notes ?? ''),
     });
-    // Reconcile plantMethod with the loaded crop's propagation. For 'both'
-    // crops we leave the current state — we can't infer the original method.
-    const propagation = getCropPropagation(bed?.crop_type ?? '');
+    setEditingCropId(active.id);
+    const propagation = getCropPropagation(active.crop_type);
     if (propagation !== 'both') setPlantMethod(propagation);
-    setEditing(true);
+    setCropModalMode('edit');
+  }
+
+  function closeCropModal() {
+    setCropModalMode('closed');
+    setEditingCropId(null);
   }
 
   /** Update plantMethod and recalculate expected_harvest in a single batch. */
@@ -310,49 +338,140 @@ export default function BedDetail() {
     );
   }
 
+  /**
+   * Save handler for the Add/Edit modal (#279 Wave C).
+   *
+   * Dispatch on mode + crop id:
+   * - Add: POST /beds/:id/crops (always a real BedCrop).
+   * - Edit real crop: PATCH /beds/:id/crops/:cropId.
+   * - Edit virtual legacy crop (id prefix 'bed-legacy-'): PATCH /beds/:id
+   *   (legacy path; shim continues to project these into active_crop).
+   */
   async function handleSaveCrop() {
+    if (!bedId) return;
     setSaving(true);
-    try {
-      const data: Record<string, string | null> = {};
-      const newCropType = cropForm.crop_type.trim() || null;
-      const cropChanged = newCropType !== (bed?.crop_type ?? null);
-      data.crop_type = newCropType;
-      data.crop_variety = cropForm.crop_variety.trim() || null;
-      // Clear lifecycle dates when crop changes, unless user set new dates (#321)
-      data.planted_at = cropChanged && !cropForm.planted_at ? null : (cropForm.planted_at || null);
-      data.expected_harvest = cropChanged && !cropForm.expected_harvest ? null : (cropForm.expected_harvest || null);
-      data.notes = cropForm.notes.trim() || null;
-      const updated = await updateBed(bedId, data);
-      setBed(updated);
-      setEditing(false);
-      showToast(t('bed.crop_saved'), 'success');
+    const isAdd = cropModalMode === 'add';
+    const editingId = editingCropId;
+    const isVirtualEdit = !isAdd && !!editingId && editingId.startsWith('bed-legacy-');
 
-      // Create reserved diary entries only when dates actually changed (#289)
-      const farmId = localStorage.getItem(LS_FARM_ID);
+    const crop_type = cropForm.crop_type.trim();
+    const crop_variety = cropForm.crop_variety.trim();
+    const planted_at = cropForm.planted_at || null;
+    const expected_harvest = cropForm.expected_harvest || null;
+    const notes = cropForm.notes.trim();
+
+    // Capture pre-save dates to detect "new/changed" for reserved-diary gating.
+    const prevCrop = !isAdd && !isVirtualEdit && editingId ? crops.find((c) => c.id === editingId) : null;
+    const prevPlanted: string | null | undefined = isAdd ? null : (isVirtualEdit ? bed?.planted_at : prevCrop?.planted_at);
+    const prevHarvest: string | null | undefined = isAdd ? null : (isVirtualEdit ? bed?.expected_harvest : prevCrop?.expected_harvest);
+
+    try {
+      let savedCropType = crop_type;
+      const bedName = bed?.name ?? '';
+
+      if (isAdd) {
+        const created = await createBedCrop(bedId, {
+          crop_type,
+          crop_variety: crop_variety || undefined,
+          planted_at,
+          expected_harvest,
+          status: planted_at ? 'active' : 'planned',
+          notes: notes || undefined,
+        });
+        setCrops((prev) => [...prev, created]);
+        savedCropType = created.crop_type;
+        showToast(t('bed.crop_added'), 'success');
+      } else if (isVirtualEdit) {
+        const updated = await updateBed(bedId, {
+          crop_type: crop_type || null,
+          crop_variety: crop_variety || null,
+          planted_at,
+          expected_harvest,
+          notes: notes || null,
+        });
+        setBed(updated);
+        savedCropType = updated.crop_type ?? crop_type;
+        showToast(t('bed.crop_saved'), 'success');
+      } else if (editingId) {
+        const updated = await updateBedCrop(bedId, editingId, {
+          crop_type,
+          crop_variety: crop_variety || null,
+          planted_at,
+          expected_harvest,
+          notes: notes || null,
+        });
+        setCrops((prev) => prev.map((c) => (c.id === editingId ? updated : c)));
+        savedCropType = updated.crop_type;
+        showToast(t('bed.crop_saved'), 'success');
+      }
+
+      closeCropModal();
+
+      // Re-fetch to resync active_crop + active_crops_count (skipped on virtual
+      // edit since updateBed already returned a fresh BedDetailResponse).
+      if (!isVirtualEdit) {
+        const latest = await getBed(bedId);
+        setBed(latest);
+      }
+
+      // Reserved diary entries when dates are set (Add) or changed (Edit).
+      const farmId = typeof window !== 'undefined' ? localStorage.getItem(LS_FARM_ID) : null;
       if (farmId) {
-        if (data.planted_at && data.planted_at !== bed?.planted_at) {
+        if (planted_at && planted_at !== prevPlanted) {
           createDiaryEntry(farmId, {
-            date: data.planted_at,
+            date: planted_at,
             category: plantMethod === 'seed' ? 'seeding' : 'planting',
             entry_type: 'reserved',
-            description: `${t('diary.entry_reserved')}: ${getCropDisplay(data.crop_type ?? '')} → ${updated.name}`,
+            description: `${t('diary.entry_reserved')}: ${getCropDisplay(savedCropType)} → ${bedName}`,
             bed_id: bedId,
           }).catch(() => {});
         }
-        if (data.expected_harvest && data.expected_harvest !== bed?.expected_harvest) {
+        if (expected_harvest && expected_harvest !== prevHarvest) {
           createDiaryEntry(farmId, {
-            date: data.expected_harvest,
+            date: expected_harvest,
             category: 'harvesting',
             entry_type: 'reserved',
-            description: `${t('diary.entry_reserved')}: ${getCropDisplay(data.crop_type ?? '')} → ${updated.name}`,
+            description: `${t('diary.entry_reserved')}: ${getCropDisplay(savedCropType)} → ${bedName}`,
             bed_id: bedId,
           }).catch(() => {});
         }
       }
-    } catch {
-      showToast(t('bed.save_error'), 'error');
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : t('bed.save_error');
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  /**
+   * Complete-cycle handler (#279 Wave C).
+   *
+   * Real BedCrop: PATCH status='harvested' — server auto-sets completed_at
+   * (bed-crops.ts:160-166 S5-1). Virtual legacy: PATCH /beds/:id with
+   * completed_at=today.
+   */
+  async function handleCompleteCycle() {
+    const active = bed?.active_crop;
+    if (!active || !bedId) return;
+    setCompleting(true);
+    try {
+      if (active.id.startsWith('bed-legacy-')) {
+        const today = new Date().toISOString().slice(0, 10);
+        const updated = await updateBed(bedId, { completed_at: today });
+        setBed(updated);
+      } else {
+        const updated = await updateBedCrop(bedId, active.id, { status: 'harvested' });
+        setCrops((prev) => prev.map((c) => (c.id === active.id ? updated : c)));
+        const latest = await getBed(bedId);
+        setBed(latest);
+      }
+      showToast(t('bed.cycle_completed'), 'success');
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : t('bed.save_error');
+      showToast(msg, 'error');
+    } finally {
+      setCompleting(false);
     }
   }
 
@@ -398,7 +517,11 @@ export default function BedDetail() {
     );
   }
 
-  const cropLabel = getCropDisplay(bed.crop_type) || t('bed.no_crop');
+  const activeCrop = bed.active_crop ?? null;
+  const historyCrops = crops.filter((c) => c.status === 'harvested' || c.status === 'failed');
+  const activeCount = bed.active_crops_count ?? (activeCrop ? 1 : 0);
+  const canAddCrop = !isCropReadOnly && activeCount < MAX_ACTIVE_CROPS_PER_BED;
+  const cropLabel = activeCrop ? getCropDisplay(activeCrop.crop_type) : t('bed.no_crop');
   const dayGroups = groupByDay(images);
 
   return (
@@ -440,104 +563,123 @@ export default function BedDetail() {
         initialCursor={nextCursor}
       />
 
-      {/* -- Island 2: Bed/Crop Metadata -- */}
-      {editing && !isCropReadOnly ? (
-        <div class="crop-info" style="display:flex;flex-direction:column;gap:var(--space-3)">
-          <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold)">{bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}</h2>
-          <div class="form-group">
-            <label class="form-label">{t('plot.crop_type')}</label>
-            <CropAutocomplete
-              value={cropForm.crop_type}
-              onChange={(v) => {
-                // Auto-sync plantMethod to the crop's default propagation method
-                const propagation = getCropPropagation(v);
-                const nextMethod: PlantMethod =
-                  propagation === 'both' ? plantMethod : propagation;
-                if (nextMethod !== plantMethod) setPlantMethod(nextMethod);
-                setCropForm((f) => {
-                  const next = { ...f, crop_type: v };
-                  if (next.planted_at) {
-                    next.expected_harvest = estimateHarvestDate(next.planted_at, v, nextMethod) ?? next.expected_harvest;
-                  }
-                  return next;
-                });
-              }}
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="crop-variety">{t('plot.crop_variety')}</label>
-            <input id="crop-variety" type="text" class="form-input" value={cropForm.crop_variety} onInput={(e) => setCropForm({ ...cropForm, crop_variety: (e.target as HTMLInputElement).value })} placeholder="e.g. Cherry, Roma" />
-          </div>
-          {renderPlantMethodField()}
-          <div class="form-group">
-            <label class="form-label" for="planted-at">{plantMethod === 'seed' ? t('bed.seeding_date') : t('plot.planted')}</label>
-            <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => {
-              const planted = (e.target as HTMLInputElement).value;
-              const next = { ...cropForm, planted_at: planted };
-              if (planted && next.crop_type) {
-                next.expected_harvest = estimateHarvestDate(planted, next.crop_type, plantMethod) ?? next.expected_harvest;
-              }
-              setCropForm(next);
-            }} />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="expected-harvest">{t('plot.harvest')}</label>
-            <input id="expected-harvest" type="date" class="form-input" value={cropForm.expected_harvest} onInput={(e) => setCropForm({ ...cropForm, expected_harvest: (e.target as HTMLInputElement).value })} />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="crop-notes">{t('plot.notes')}</label>
-            <input id="crop-notes" type="text" class="form-input" value={cropForm.notes} onInput={(e) => setCropForm({ ...cropForm, notes: (e.target as HTMLInputElement).value })} maxLength={500} />
-          </div>
-          <div style="display:flex;gap:var(--space-3)">
-            <button class="btn-secondary" style="flex:1" onClick={() => setEditing(false)} disabled={saving}>{t('buttons.cancel')}</button>
-            <button class="btn-primary" style="flex:2" onClick={handleSaveCrop} disabled={saving}>{saving ? '...' : t('buttons.save')}</button>
-          </div>
-        </div>
-      ) : (
-        <div class="crop-info">
-          <h1 class="crop-info__title">{bed.name} — {cropLabel}</h1>
-          <dl>
-            {bed.crop_type && (
-              <>
-                <dt>{t('plot.crop_type')}</dt>
-                <dd>{getCropDisplay(bed.crop_type)}</dd>
-              </>
+      {/* -- Island 2: Bed/Crop Metadata (Wave C #279) -- */}
+      <div class="crop-info">
+        <h1 class="crop-info__title">{bed.name}{activeCrop ? ` — ${cropLabel}` : ''}</h1>
+
+        {activeCrop ? (
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <div>
+              <span
+                class={`crop-status-pill crop-status-pill--${activeCrop.status}`}
+                style="display:inline-block;font-size:var(--font-size-xs);padding:2px 8px;border-radius:var(--radius-sm);background:var(--color-gray-100);color:var(--color-gray-700)"
+              >
+                {t(`bed.crop_status.${activeCrop.status}`)}
+              </span>
+            </div>
+            <dl>
+              <dt>{t('plot.crop_type')}</dt>
+              <dd>{getCropDisplay(activeCrop.crop_type)}</dd>
+              {activeCrop.crop_variety && (
+                <>
+                  <dt>{t('plot.crop_variety')}</dt>
+                  <dd>{activeCrop.crop_variety}</dd>
+                </>
+              )}
+              {activeCrop.planted_at && (
+                <>
+                  <dt>{t('plot.planted')}</dt>
+                  <dd>{formatDateShort(activeCrop.planted_at)}</dd>
+                </>
+              )}
+              {activeCrop.expected_harvest && (
+                <>
+                  <dt>{t('plot.harvest')}</dt>
+                  <dd>{formatDateShort(activeCrop.expected_harvest)}</dd>
+                </>
+              )}
+              {bed.notes && (
+                <>
+                  <dt>{t('plot.notes')}</dt>
+                  <dd>{bed.notes}</dd>
+                </>
+              )}
+            </dl>
+            {!isCropReadOnly && (
+              <div style="display:flex;gap:var(--space-2);margin-top:var(--space-1)">
+                <button class="btn-secondary" style="font-size:var(--font-size-sm)" onClick={openEditModal}>
+                  {t('bed.edit_crop')}
+                </button>
+                <button
+                  class="btn-secondary"
+                  style="font-size:var(--font-size-sm)"
+                  onClick={handleCompleteCycle}
+                  disabled={completing}
+                >
+                  {completing ? '...' : t('bed.complete_cycle')}
+                </button>
+              </div>
             )}
-            {bed.crop_variety && (
-              <>
-                <dt>{t('plot.crop_variety')}</dt>
-                <dd>{bed.crop_variety}</dd>
-              </>
-            )}
-            {bed.planted_at && (
-              <>
-                <dt>{t('plot.planted')}</dt>
-                <dd>{formatDateShort(bed.planted_at)}</dd>
-              </>
-            )}
-            {bed.expected_harvest && (
-              <>
-                <dt>{t('plot.harvest')}</dt>
-                <dd>{formatDateShort(bed.expected_harvest)}</dd>
-              </>
-            )}
-            {bed.notes && (
-              <>
-                <dt>{t('plot.notes')}</dt>
-                <dd>{bed.notes}</dd>
-              </>
-            )}
-            {!bed.crop_type && (
-              <dd style="color:var(--color-gray-500);font-style:italic">{t('bed.no_crop')}</dd>
-            )}
-          </dl>
-          {!isCropReadOnly && (
-            <button class="btn-secondary" style="margin-top:var(--space-2);font-size:var(--font-size-sm)" onClick={startEditing}>
-              {bed.crop_type ? t('bed.edit_crop') : t('bed.assign_crop')}
+          </div>
+        ) : (
+          <div style="color:var(--color-gray-500);font-style:italic;padding:var(--space-2) 0">
+            {t('bed.no_active_crop')}
+          </div>
+        )}
+
+        {!isCropReadOnly && (
+          <button
+            class="btn-primary"
+            style={`margin-top:var(--space-3);font-size:var(--font-size-sm);opacity:${canAddCrop ? '1' : '0.5'}`}
+            onClick={openAddModal}
+            disabled={!canAddCrop}
+            title={canAddCrop ? undefined : t('bed.cap_reached')}
+          >
+            {t('bed.add_new_planting')} ({activeCount}/{MAX_ACTIVE_CROPS_PER_BED})
+          </button>
+        )}
+
+        {historyCrops.length > 0 && (
+          <div style="margin-top:var(--space-3)">
+            <button
+              class="btn-secondary"
+              style="font-size:var(--font-size-sm)"
+              onClick={() => setShowHistory((x) => !x)}
+              aria-expanded={showHistory}
+            >
+              {showHistory ? t('bed.hide_history') : t('bed.show_history')} ({historyCrops.length})
             </button>
-          )}
-        </div>
-      )}
+            {showHistory && (
+              <div style="margin-top:var(--space-2);display:flex;flex-direction:column;gap:var(--space-2)">
+                {historyCrops.map((hc) => (
+                  <div
+                    key={hc.id}
+                    style="padding:var(--space-2) var(--space-3);background:var(--color-gray-50);border-radius:var(--radius-md);display:flex;flex-direction:column;gap:var(--space-1)"
+                  >
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)">
+                      <strong>{getCropDisplay(hc.crop_type)}</strong>
+                      <span
+                        class={`crop-status-pill crop-status-pill--${hc.status}`}
+                        style="font-size:var(--font-size-xs);padding:2px 6px;border-radius:var(--radius-sm);background:var(--color-gray-100);color:var(--color-gray-700)"
+                      >
+                        {t(`bed.crop_status.${hc.status}`)}
+                      </span>
+                    </div>
+                    <div style="font-size:var(--font-size-xs);color:var(--color-gray-600)">
+                      {hc.planted_at && `${t('plot.planted')}: ${formatDateShort(hc.planted_at)}`}
+                      {hc.planted_at && hc.completed_at && ' · '}
+                      {hc.completed_at && `${t('bed.completed_on')}: ${formatDateShort(hc.completed_at)}`}
+                    </div>
+                    {hc.notes && (
+                      <div style="font-size:var(--font-size-xs);color:var(--color-gray-700)">{hc.notes}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* -- Island 3: Tag Buttons -- */}
       {bed.latest_image && (
@@ -650,6 +792,70 @@ export default function BedDetail() {
           </>
         )}
       </div>
+
+      {/* -- Add/Edit Crop Modal (Wave C #279) -- */}
+      <Modal
+        open={cropModalMode !== 'closed'}
+        onClose={closeCropModal}
+        title={cropModalMode === 'add' ? t('bed.add_new_planting') : t('bed.edit_crop')}
+        size="md"
+      >
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <div class="form-group">
+            <label class="form-label">{t('plot.crop_type')}</label>
+            <CropAutocomplete
+              value={cropForm.crop_type}
+              onChange={(v) => {
+                const propagation = getCropPropagation(v);
+                const nextMethod: PlantMethod = propagation === 'both' ? plantMethod : propagation;
+                if (nextMethod !== plantMethod) setPlantMethod(nextMethod);
+                setCropForm((f) => {
+                  const next = { ...f, crop_type: v };
+                  if (next.planted_at) {
+                    next.expected_harvest = estimateHarvestDate(next.planted_at, v, nextMethod) ?? next.expected_harvest;
+                  }
+                  return next;
+                });
+              }}
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crop-variety">{t('plot.crop_variety')}</label>
+            <input id="crop-variety" type="text" class="form-input" value={cropForm.crop_variety} onInput={(e) => setCropForm({ ...cropForm, crop_variety: (e.target as HTMLInputElement).value })} placeholder="e.g. Cherry, Roma" />
+          </div>
+          {renderPlantMethodField()}
+          <div class="form-group">
+            <label class="form-label" for="planted-at">{plantMethod === 'seed' ? t('bed.seeding_date') : t('plot.planted')}</label>
+            <input id="planted-at" type="date" class="form-input" value={cropForm.planted_at} onInput={(e) => {
+              const planted = (e.target as HTMLInputElement).value;
+              const next = { ...cropForm, planted_at: planted };
+              if (planted && next.crop_type) {
+                next.expected_harvest = estimateHarvestDate(planted, next.crop_type, plantMethod) ?? next.expected_harvest;
+              }
+              setCropForm(next);
+            }} />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="expected-harvest">{t('plot.harvest')}</label>
+            <input id="expected-harvest" type="date" class="form-input" value={cropForm.expected_harvest} onInput={(e) => setCropForm({ ...cropForm, expected_harvest: (e.target as HTMLInputElement).value })} />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="crop-notes">{t('plot.notes')}</label>
+            <input id="crop-notes" type="text" class="form-input" value={cropForm.notes} onInput={(e) => setCropForm({ ...cropForm, notes: (e.target as HTMLInputElement).value })} maxLength={500} />
+          </div>
+          <div style="display:flex;gap:var(--space-3)">
+            <button class="btn-secondary" style="flex:1" onClick={closeCropModal} disabled={saving}>{t('buttons.cancel')}</button>
+            <button
+              class="btn-primary"
+              style="flex:2"
+              onClick={handleSaveCrop}
+              disabled={saving || !cropForm.crop_type.trim()}
+            >
+              {saving ? '...' : t('buttons.save')}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Lightbox overlay */}
       {lightboxSrc && (
