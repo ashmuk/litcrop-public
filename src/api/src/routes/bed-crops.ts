@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { randomUUID } from 'crypto';
 import { dynamoRepo } from '../services/dynamodb';
 import { getAuthContext } from '../middleware/auth';
-import { assertFarmAccess, parseBody } from './_helpers';
+import { assertBedAccess, assertBedWriteAccess, parseBody } from './_helpers';
 import {
   NotFoundError,
   ConflictError,
@@ -29,47 +29,25 @@ import type { Bed, BedCrop, BedCropStatus } from '@litcrop/shared';
  * the original DESIGN-279 §4.1 draft suggested) so that ownership can be
  * checked via the parent bed without a secondary lookup, and so every
  * BedCrop query can use the repo's single `GSI1PK=BED#<b>` entrypoint.
- *
- * All handlers:
- *  - resolve the parent bed → farm via dynamoRepo.getBedById
- *  - delegate read-access authz to assertBedAccess (farm membership)
- *  - delegate write-access authz to assertBedWriteAccess (admin|owner)
  */
 
 const router = new Hono();
 
-/** Verify caller is a member of the farm containing this bed. */
-async function assertBedAccess(bed: Bed, userId: string, isAdmin?: boolean): Promise<void> {
+/**
+ * Wrap a DDB call and normalize failures: re-throw NotFoundError verbatim,
+ * convert anything else to 503. Used for every repo call in this router.
+ */
+async function ddbCall<T>(op: () => Promise<T>): Promise<T> {
   try {
-    await assertFarmAccess(bed.farm_id, userId, undefined, isAdmin);
-  } catch (err) {
-    if (err instanceof NotFoundError) {
-      throw new NotFoundError(`Bed not found: ${bed.id}`);
-    }
-    throw err;
-  }
-}
-
-/** Verify caller is admin|owner for the farm containing this bed (write ops). */
-async function assertBedWriteAccess(bed: Bed, userId: string): Promise<void> {
-  try {
-    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner']);
-  } catch (err) {
-    if (err instanceof NotFoundError) {
-      throw new NotFoundError(`Bed not found: ${bed.id}`);
-    }
-    throw err;
-  }
-}
-
-/** Fetch a bed or throw NotFoundError (wraps DDB errors as 503). */
-async function loadBed(bedId: string): Promise<Bed> {
-  try {
-    return await dynamoRepo.getBedById(bedId);
+    return await op();
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
     throw new ServiceUnavailableError('Storage service unavailable');
   }
+}
+
+async function loadBed(bedId: string): Promise<Bed> {
+  return ddbCall(() => dynamoRepo.getBedById(bedId));
 }
 
 // ── POST /api/v1/beds/:bedId/crops ───────────────────────────────
@@ -84,14 +62,9 @@ router.post('/:bedId/crops', async (c) => {
   const body = await c.req.json<Record<string, unknown>>();
   const parsed = parseBody(CreateBedCropRequestSchema, body);
 
-  // 5-cap enforcement — count active|planned rows for this bed.
-  // Scope memory constraint 2 + DESIGN-279 §3.5.
-  let existing: BedCrop[];
-  try {
-    existing = await dynamoRepo.listBedCropsByBed(bedId);
-  } catch {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  // 5-cap enforcement (scope memory constraint 2 + DESIGN-279 §3.5):
+  // count active|planned rows for this bed; harvested/failed are unbounded.
+  const existing = await ddbCall(() => dynamoRepo.listBedCropsByBed(bedId));
   const active = existing.filter((c) => c.status === 'active' || c.status === 'planned');
   if (active.length >= MAX_ACTIVE_CROPS_PER_BED) {
     throw new ConflictError(
@@ -115,11 +88,7 @@ router.post('/:bedId/crops', async (c) => {
     updated_at: now,
   };
 
-  try {
-    await dynamoRepo.createBedCrop(bedCrop);
-  } catch {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  await ddbCall(() => dynamoRepo.createBedCrop(bedCrop));
 
   return c.json(bedCrop, 201);
 });
@@ -134,10 +103,8 @@ router.get('/:bedId/crops', async (c) => {
   await assertBedAccess(bed, userId, isAdmin);
 
   const statusQ = c.req.query('status') ?? 'all';
-  let filter: BedCropStatus | 'all';
-  if (statusQ === 'all') {
-    filter = 'all';
-  } else {
+  let filter: BedCropStatus | 'all' = 'all';
+  if (statusQ !== 'all') {
     const parsed = BedCropStatusSchema.safeParse(statusQ);
     if (!parsed.success) {
       return c.json({ error: 'Invalid status filter', code: 'INVALID_STATUS' }, 400);
@@ -145,15 +112,8 @@ router.get('/:bedId/crops', async (c) => {
     filter = parsed.data;
   }
 
-  let items: BedCrop[];
-  try {
-    items = await dynamoRepo.listBedCropsByBed(bedId);
-  } catch {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
-  if (filter !== 'all') {
-    items = items.filter((c) => c.status === filter);
-  }
+  const all = await ddbCall(() => dynamoRepo.listBedCropsByBed(bedId));
+  const items = filter === 'all' ? all : all.filter((c) => c.status === filter);
 
   return c.json({ items });
 });
@@ -168,13 +128,7 @@ router.patch('/:bedId/crops/:bedCropId', async (c) => {
   await assertBedWriteAccess(bed, userId);
 
   // Verify the crop exists + belongs to this bed.
-  let existing: BedCrop;
-  try {
-    existing = await dynamoRepo.getBedCrop(bedId, bedCropId);
-  } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  const existing = await ddbCall(() => dynamoRepo.getBedCrop(bedId, bedCropId));
 
   const body = await c.req.json<Record<string, unknown>>();
   const validated = parseBody(UpdateBedCropRequestSchema, body);
@@ -184,22 +138,15 @@ router.patch('/:bedId/crops/:bedCropId', async (c) => {
     if (value !== undefined) updates[key] = value;
   }
 
-  try {
-    await dynamoRepo.updateBedCrop(bed.farm_id, bedId, bedCropId, updates);
-  } catch {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  await ddbCall(() => dynamoRepo.updateBedCrop(bed.farm_id, bedId, bedCropId, updates));
 
-  // Merge in-memory for response. Null-values were REMOVEs — drop those
-  // from the merged view so the response doesn't carry `"notes": null`
-  // when the caller asked to clear it.
-  const merged = { ...existing } as Record<string, unknown>;
+  // Merge in-memory for response. Null values were REMOVEs — drop them from
+  // the merged view so the response doesn't carry `"notes": null` when the
+  // caller asked to clear it.
+  const merged: Record<string, unknown> = { ...existing };
   for (const [key, value] of Object.entries(updates)) {
-    if (value === null) {
-      delete merged[key];
-    } else {
-      merged[key] = value;
-    }
+    if (value === null) delete merged[key];
+    else merged[key] = value;
   }
 
   return c.json(merged);
@@ -214,29 +161,21 @@ router.delete('/:bedId/crops/:bedCropId', async (c) => {
   const bed = await loadBed(bedId);
   await assertBedWriteAccess(bed, userId);
 
-  let crop: BedCrop;
-  try {
-    crop = await dynamoRepo.getBedCrop(bedId, bedCropId);
-  } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+  const crop = await ddbCall(() => dynamoRepo.getBedCrop(bedId, bedCropId));
 
-  // Soft-delete by default: flip status to 'failed' + set completed_at.
-  // Hard delete only when the crop was never active (status === 'planned').
-  try {
+  // Hard-delete only when the crop was never active (status === 'planned');
+  // otherwise soft-delete by flipping status to 'failed' + setting completed_at.
+  await ddbCall(() => {
     if (crop.status === 'planned') {
-      await dynamoRepo.deleteBedCrop(bed.farm_id, bedId, bedCropId);
-    } else {
-      await dynamoRepo.updateBedCrop(bed.farm_id, bedId, bedCropId, {
-        status: 'failed',
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+      return dynamoRepo.deleteBedCrop(bed.farm_id, bedId, bedCropId);
     }
-  } catch {
-    throw new ServiceUnavailableError('Storage service unavailable');
-  }
+    const now = new Date().toISOString();
+    return dynamoRepo.updateBedCrop(bed.farm_id, bedId, bedCropId, {
+      status: 'failed',
+      completed_at: now,
+      updated_at: now,
+    });
+  });
 
   return c.body(null, 204);
 });

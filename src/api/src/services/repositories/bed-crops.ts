@@ -138,23 +138,14 @@ export async function getActiveCropForBed(bedId: string): Promise<BedCrop | null
   if (active) return active;
 
   const bed = await getBedById(bedId);
-  if (bed.crop_type && !bed.completed_at) {
-    return synthesizeVirtualBedCrop(bed.id, bed.farm_id, bed);
-  }
-  return null;
-}
+  if (!bed.crop_type || bed.completed_at) return null;
 
-function synthesizeVirtualBedCrop(
-  bedId: string,
-  farmId: string,
-  bed: { crop_type?: string; crop_variety?: string; planted_at?: string; expected_harvest?: string },
-): BedCrop {
   const now = new Date().toISOString();
   return {
-    id: `bed-legacy-${bedId}`,
-    bed_id: bedId,
-    farm_id: farmId,
-    crop_type: bed.crop_type as string,
+    id: `bed-legacy-${bed.id}`,
+    bed_id: bed.id,
+    farm_id: bed.farm_id,
+    crop_type: bed.crop_type,
     crop_variety: bed.crop_variety,
     planted_at: bed.planted_at,
     expected_harvest: bed.expected_harvest,

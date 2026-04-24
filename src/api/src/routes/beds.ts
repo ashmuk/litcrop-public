@@ -22,7 +22,7 @@ import {
   toBedActiveCropSummary,
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
-import { makeBedDetailImage, assertFarmAccess, parseBody } from './_helpers';
+import { makeBedDetailImage, assertBedAccess, assertBedWriteAccess, parseBody } from './_helpers';
 import { appEvents } from '../services/events';
 
 const router = new Hono();
@@ -33,30 +33,6 @@ const NODE_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 
 function isJpegBytes(buf: Uint8Array): boolean {
   return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-}
-
-/** Verify caller is a member of the farm that contains this bed. */
-async function assertBedAccess(bed: Bed, userId: string, isAdmin?: boolean): Promise<void> {
-  try {
-    await assertFarmAccess(bed.farm_id, userId, undefined, isAdmin);
-  } catch (err) {
-    if (err instanceof NotFoundError) {
-      throw new NotFoundError(`Bed not found: ${bed.id}`);
-    }
-    throw err;
-  }
-}
-
-/** Verify caller has admin or owner role for the farm containing this bed (write operations). */
-async function assertBedWriteAccess(bed: Bed, userId: string): Promise<void> {
-  try {
-    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner']);
-  } catch (err) {
-    if (err instanceof NotFoundError) {
-      throw new NotFoundError(`Bed not found: ${bed.id}`);
-    }
-    throw err;
-  }
 }
 
 // ── GET /api/v1/beds/:bedId ─────────────────────────────────────

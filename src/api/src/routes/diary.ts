@@ -175,28 +175,26 @@ async function syncBedDatesFromDiary(
     const realCrops = await dynamoRepo.listBedCropsByBed(bedId);
     const activeReal = realCrops.find((c) => c.status === 'active' || c.status === 'planned');
 
-    const plantingUpdates: Record<string, unknown> = { planted_at: date };
+    const updates: Record<string, unknown> =
+      category === 'planting' ? { planted_at: date } : { expected_harvest: date };
+
     if (category === 'planting') {
       const cropType = activeReal?.crop_type ?? (hasActiveCrop(bed) ? bed.crop_type : undefined);
       if (date && cropType) {
         const harvest = estimateHarvestDate(date, cropType);
-        if (harvest) plantingUpdates['expected_harvest'] = harvest;
+        if (harvest) updates['expected_harvest'] = harvest;
       } else if (date === null) {
         // Clearing planted_at also clears auto-calculated expected_harvest
-        plantingUpdates['expected_harvest'] = null;
+        updates['expected_harvest'] = null;
       }
     }
 
-    const harvestUpdates: Record<string, unknown> = { expected_harvest: date };
-
     if (activeReal) {
       // Real BedCrop exists — it's the source of truth.
-      const updates = category === 'planting' ? plantingUpdates : harvestUpdates;
       updates['updated_at'] = new Date().toISOString();
       await dynamoRepo.updateBedCrop(bed.farm_id, bedId, activeReal.id, updates);
     } else {
       // Legacy path — no persisted BedCrop, update the bed row's inline fields.
-      const updates = category === 'planting' ? plantingUpdates : harvestUpdates;
       await dynamoRepo.updateBed(bed.farm_id, bedId, bed.row, bed.col, updates);
     }
   } catch (err) {

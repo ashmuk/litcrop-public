@@ -2,7 +2,7 @@ import { ZodError, type ZodSchema } from 'zod';
 import { getSignedThumbnailUrl, getSignedImageUrl } from '../services/s3';
 import { dynamoRepo } from '../services/dynamodb';
 import { NotFoundError, ServiceUnavailableError, ValidationError } from '../errors';
-import type { Farm, FarmMember, FarmRole, Image } from '@litcrop/shared';
+import type { Bed, Farm, FarmMember, FarmRole, Image } from '@litcrop/shared';
 
 export function isConditionalCheckFailed(err: unknown): boolean {
   return err instanceof Error && err.name === 'ConditionalCheckFailedException';
@@ -71,6 +71,34 @@ export async function assertFarmAccess(
   }
 
   return { farm, membership };
+}
+
+/**
+ * Verify caller is a member of the farm that contains this bed.
+ * Re-labels any NotFoundError (e.g. missing farm) as a bed-not-found
+ * so bed routes don't leak farm existence.
+ */
+export async function assertBedAccess(bed: Bed, userId: string, isAdmin?: boolean): Promise<void> {
+  try {
+    await assertFarmAccess(bed.farm_id, userId, undefined, isAdmin);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Bed not found: ${bed.id}`);
+    }
+    throw err;
+  }
+}
+
+/** Like assertBedAccess but restricted to admin|owner roles (write operations). */
+export async function assertBedWriteAccess(bed: Bed, userId: string): Promise<void> {
+  try {
+    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner']);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Bed not found: ${bed.id}`);
+    }
+    throw err;
+  }
 }
 
 export async function makeLatestImage(image: Image) {
