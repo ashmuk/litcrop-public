@@ -20,6 +20,7 @@ import {
   isValidTriggerType,
   UpdateBedRequestSchema,
   toBedActiveCropSummary,
+  hasActiveCrop,
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
 import { makeBedDetailImage, assertBedAccess, assertBedWriteAccess, parseBody } from './_helpers';
@@ -51,11 +52,17 @@ router.get('/:bedId', async (c) => {
 
   await assertBedAccess(bed, userId, isAdmin);
 
-  const [latestImage, activeCrop] = await Promise.all([
+  const [latestImage, activeCrop, allCrops] = await Promise.all([
     dynamoRepo.getLatestImageForBed(bed.id),
     dynamoRepo.getActiveCropForBed(bed.id),
+    dynamoRepo.listBedCropsByBed(bed.id),
   ]);
   const active = toBedActiveCropSummary(activeCrop);
+  // Wave C (#279) — formula mirrors the POST /beds/:id/crops cap check
+  // (bed-crops.ts S5-4 remediation) so UI pre-check matches server reject.
+  const realActiveCount = allCrops.filter((c) => c.status === 'active' || c.status === 'planned').length;
+  const legacyActiveCount = hasActiveCrop(bed) && !bed.completed_at ? 1 : 0;
+  const activeCropsCount = realActiveCount + legacyActiveCount;
 
   return c.json({
     id: bed.id,
@@ -74,6 +81,7 @@ router.get('/:bedId', async (c) => {
     // a legacy completed_at alongside it.
     completed_at: active ? null : (bed.completed_at ?? null),
     active_crop: active,
+    active_crops_count: activeCropsCount,
     latest_image: latestImage ? await makeBedDetailImage(latestImage) : null,
   });
 });

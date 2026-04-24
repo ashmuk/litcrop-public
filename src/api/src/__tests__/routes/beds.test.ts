@@ -20,6 +20,7 @@ vi.mock('../../services/dynamodb', () => ({
     getFarmMembership: vi.fn(),
     // #279 Wave B — FarmBed compat shim
     getActiveCropForBed: vi.fn(),
+    listBedCropsByBed: vi.fn(),
   },
 }));
 
@@ -42,6 +43,7 @@ beforeEach(() => {
   vi.mocked(getSignedThumbnailUrl).mockResolvedValue('https://example.com/signed-thumb.jpg');
   // #279 Wave B — default to no active crop (legacy inline-field path)
   vi.mocked(dynamoRepo.getActiveCropForBed).mockResolvedValue(null);
+  vi.mocked(dynamoRepo.listBedCropsByBed).mockResolvedValue([]);
 });
 
 // ── GET /api/v1/beds/:bedId ─────────────────────────────────────────
