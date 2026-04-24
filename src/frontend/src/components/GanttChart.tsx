@@ -130,17 +130,17 @@ export default function GanttChart({ rows, entries, onDotClick, onMarkDone, onUn
       reservedPos = computeBarPosition(parseDate(row.planted_at), parseDate(row.expected_harvest), rangeStart, rangeEnd);
     }
 
-    // Actual bar — diary entries remain bed-level (DiaryEntry.bed_crop_id is
-    // Wave D scope), so all crops of a bed share the same actual bar + dots.
+    // Actual bar + dots keyed per-crop (falls back to bed when cropId=null,
+    // matching the cascade in buildActualDatesMap / buildEventDotMap).
     let actualPos: { left: number; width: number } | null = null;
-    const actual = actualMap.get(row.bedId);
+    const diaryKey = row.cropId ?? row.bedId;
+    const actual = actualMap.get(diaryKey);
     if (actual?.planted) {
       const actualEnd = actual.harvested ?? toDateString(new Date());
       actualPos = computeBarPosition(parseDate(actual.planted), parseDate(actualEnd), rangeStart, rangeEnd);
     }
 
-    // Event dots for this row's bed
-    const dots = dotMap.get(row.bedId) ?? [];
+    const dots = dotMap.get(diaryKey) ?? [];
 
     const label = `${row.bedName}${row.cropType ? ` — ${getCropName(row.cropType)}` : ''}`;
 

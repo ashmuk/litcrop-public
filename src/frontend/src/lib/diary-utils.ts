@@ -114,9 +114,16 @@ export function computeBarPosition(
 // ── Actual dates map (#276) ────────────────────────────────────────
 
 /**
- * Extract actual planting/harvesting dates from diary entries, grouped by bed_id.
- * For each bed, returns the latest planting and latest harvesting diary entry dates.
- * Used by CropTimeline to render "actual" bars alongside "reserved" bars.
+ * Extract the latest actual planting/harvesting dates from diary entries,
+ * keyed by `bed_crop_id ?? bed_id` so sibling crops on the same bed render
+ * independent bars while legacy/virtual rows (no `bed_crop_id`) stay bucketed
+ * by bed. Callers do `map.get(cropId ?? bedId)`. Used by CropTimeline + GanttChart.
+ *
+ * Intentional edge case (per DESIGN-279 §3.3 "no data migration"): pre-Wave-D
+ * entries with `bed_crop_id=null` on a bed that later gained a real BedCrop
+ * are orphaned — they key under `bed_id`, but DiaryPage.ganttRows only emits
+ * a virtual-legacy row (`cropId=null`) when the bed has zero real BedCrops,
+ * so nothing renders them. Users can backfill via PATCH if desired.
  */
 export function buildActualDatesMap(
   entries: DiaryEntryResponse[],
@@ -128,7 +135,8 @@ export function buildActualDatesMap(
     if ((entry.entry_type ?? 'actual') === 'reserved') continue;
     if (entry.category !== 'planting' && entry.category !== 'harvesting') continue;
 
-    const existing = map.get(entry.bed_id) ?? {};
+    const key = entry.bed_crop_id ?? entry.bed_id;
+    const existing = map.get(key) ?? {};
 
     if (entry.category === 'planting') {
       if (!existing.planted || entry.date > existing.planted) {
@@ -140,7 +148,7 @@ export function buildActualDatesMap(
       }
     }
 
-    map.set(entry.bed_id, existing);
+    map.set(key, existing);
   }
 
   return map;
@@ -157,9 +165,10 @@ export interface EventDot {
 }
 
 /**
- * Group diary entries by bed_id for Gantt event dot rendering.
- * Excludes entries without bed_id. All 9 categories are included.
- * Returns Map<bedId, EventDot[]> sorted by date within each bed.
+ * Group diary entries into dot arrays for Gantt event rendering, keyed by
+ * `bed_crop_id ?? bed_id` (same cascade as `buildActualDatesMap`). Excludes
+ * entries without `bed_id`; all 9 categories are included; dots are sorted
+ * by date within each bucket. Callers do `map.get(row.cropId ?? row.bedId)`.
  */
 export function buildEventDotMap(
   entries: DiaryEntryResponse[],
@@ -177,15 +186,16 @@ export function buildEventDotMap(
       id: entry.id,
     };
 
-    const existing = map.get(entry.bed_id);
+    const key = entry.bed_crop_id ?? entry.bed_id;
+    const existing = map.get(key);
     if (existing) {
       existing.push(dot);
     } else {
-      map.set(entry.bed_id, [dot]);
+      map.set(key, [dot]);
     }
   }
 
-  // Sort dots by date within each bed
+  // Sort dots by date within each bucket
   for (const dots of map.values()) {
     dots.sort((a, b) => a.date.localeCompare(b.date));
   }

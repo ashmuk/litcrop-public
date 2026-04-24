@@ -57,3 +57,56 @@ Existing coverage reviewed:
 
 - target: `makeEntry` test-helper default (`bed_crop_id: null`, `entry_type: 'actual'`)
   reason: The default itself is validated by every existing `computeRoi*` test that omits an override — 30+ assertions collectively prove the default is benign. A dedicated test for the default would be tautological.
+
+## Wave D D6 — Coverage Gap Analysis
+
+Target artifacts:
+- `src/frontend/src/lib/diary-utils.ts` — `buildActualDatesMap`, `buildEventDotMap` re-keyed on `bed_crop_id ?? bed_id`
+- `src/frontend/src/components/GanttChart.tsx:136-143` — `diaryKey = row.cropId ?? row.bedId`
+- `src/frontend/src/components/CropTimeline.tsx:41,76` — same cascade
+- `src/frontend/src/__tests__/diary-utils.test.ts` — 6 new D6-tagged tests (3 × `buildActualDatesMap`, 3 × `buildEventDotMap`)
+
+Existing coverage reviewed:
+- Producer: 3 D6 tests per function lock down the cascade (cropId keying, sibling-crop separation, legacy+crop coexistence on one bed).
+- Producer: pre-D6 tests exercise reserved-exclusion, unknown-category fallback, empty input, missing `bed_id` exclusion — all still valid but use `bed_crop_id=null`.
+- Consumer: zero unit tests for `GanttChart.tsx` / `CropTimeline.tsx` (project convention — `components/` has no `*.test.*` files).
+- e2e: `/workspace/e2e/tests/diary-entry.spec.ts` (164 lines) makes zero reference to Gantt, Timeline, or `bed_crop_id`.
+- `cropId` domain: confirmed strictly uuid-or-null in `DiaryPage.tsx:505-534`. The `'legacy'` sentinel is baked only into `row.id` (`${bedId}:legacy`), never into `row.cropId`. No risk of a sentinel string becoming a Map key.
+
+### MUST-ADD
+- None. The three D6 additions per function cover the keying cascade, sibling-crop separation, and the legacy/crop coexistence invariant. Remaining gaps are either cross-exercised by pre-D6 branch tests (reserved exclusion, non-planting/harvesting skip) or are consumer-cascade concerns deferred to project convention. **Pass signal: Wave D can ship to main on the producer-side coverage as is.**
+
+### SHOULD-ADD
+- id: T-D6-01
+  target: `buildActualDatesMap` — reserved-entry exclusion still holds when `bed_crop_id` is set
+  gap: The existing "excludes reserved entries" test (line 401) and its mixed-input sibling (line 408) both use `bed_crop_id=null`. The D6 keying line now sits below the `entry_type === 'reserved'` guard — correct today, but no test pins down that a crop-attributed reserved entry (`bed_crop_id='crop-A', entry_type='reserved'`) is excluded. A future refactor that reorders guards ("key first, filter later") would pass the current suite.
+  rationale: The reserved-exclusion invariant is the difference between the `gantt__bar--reserved` amber band and the `gantt__bar--actual` green band. Silently bucketing a reserved entry into an `actualMap` key would paint a fake "in-progress" bar for a crop the user only planned.
+  effort: S
+
+- id: T-D6-02
+  target: `buildActualDatesMap` — latest-date logic holds per-crop bucket, no cross-bucket leak
+  gap: The "uses latest date when multiple planting entries exist" test (line 361) is bed-scoped. No test verifies that two planting entries on the SAME `bed_crop_id` resolve to the latest date in the cropId bucket, and no test verifies that latest-date on crop-A does NOT leak into crop-B's bucket on the same bed. Covered inferentially by the "sibling crops" test but not pinned down.
+  rationale: Cheap insurance — one fixture with two planting entries each on crop-A and crop-B, asserting each resolves to its own latest. Protects against a hypothetical accumulator leak across buckets.
+  effort: S
+
+- id: T-D6-03
+  target: `buildEventDotMap` — dot sort order holds per-crop bucket
+  gap: The "sorts dots by date within each bed" test (line 525) is bed-scoped with `bed_crop_id=null`. No test verifies that per-crop buckets ALSO sort independently. Sort is structurally guaranteed by `for (const dots of map.values())` but it's a one-line locality a refactor could move outside the loop.
+  rationale: Cheap to add alongside T-D6-02 with the same fixture shape. Dot order drives visual left-to-right placement on the Gantt track; an unsorted bucket shows events in ingestion order — random-looking scatter for crop-A/crop-B on one bed.
+  effort: S
+
+### NO-TEST-NEEDED (with reason)
+- target: `GanttChart.tsx` / `CropTimeline.tsx` — consumer cascade `row.cropId ?? row.bedId` regression protection
+  reason: Project convention. `components/` has zero unit tests. `RoiByBedTable`, `RoiByBedCropTable`, `RoiSummaryCards`, `CostByCategoryChart`, `MonthlyTrendChart`, `DiaryEntryForm`, `DiaryCalendar` are all uncovered at the component level and Wave A/B/C shipped on the same convention. The cascade is two characters (`??`) repeated in three call sites; an inverted expression (`row.bedId ?? row.cropId`) would collapse sibling crops into one bucket and be immediately visible on the dashboard — a visual-first regression surface. Adding unit tests for this one wave would set a per-wave-per-component precedent the project has declined.
+
+- target: Gantt / Timeline e2e coverage for sibling-crop rendering
+  reason: No Gantt/Timeline e2e exists (`/workspace/e2e/tests/diary-entry.spec.ts` makes zero reference to either component or `bed_crop_id`). Adding one as part of D6 would be a scope expansion into e2e infrastructure Wave D has not committed to, and would duplicate the producer-level coverage the six existing D6 unit tests already provide. If Wave D close-out later decides to add a Gantt e2e, it belongs in a separate ticket — not a D6 blocker.
+
+- target: Collision safety between `bed_id` and `bed_crop_id` UUIDs
+  reason: Both are v4 UUIDs; collision probability is cryptographic-negligible. The backend contract generates `bed_crop_id` fresh per BedCrop row, and the frontend never synthesizes either id locally. A frontend-enforced collision check would be a defensive test against a condition that cannot arise without a deliberate backend bug.
+
+- target: R-D6-002 "orphaned legacy entry" trade-off (pre-Wave-D entries with `bed_crop_id=null` on a bed that now has real BedCrops)
+  reason: Documented in the `buildActualDatesMap` JSDoc (lines 117-126) and mechanically proven by D6 test #3 ("legacy bed-level and crop-level stay in separate buckets"). The orphaning behavior — entry keys under `bed_id`, but `DiaryPage.ganttRows` only emits a virtual-legacy row (`cropId=null`) when the bed has zero real BedCrops — means the bucket exists but no row consumes it. A dedicated "orphan stays unrendered" test would require spinning up `GanttChart` or `DiaryPage` against a `ganttRows` fixture, which is component-level territory the project declines.
+
+- target: `GanttRow.cropId` sentinel-string safety (`'legacy'` as a Map key)
+  reason: Confirmed by direct inspection: `DiaryPage.tsx:505-534` sets `cropId: crop.id` (uuid) or `cropId: null` exclusively. The `'legacy'` sentinel is concatenated into `row.id` only (`${bed.id}:legacy` at line 526). `row.cropId` is never `'legacy'`; a sentinel string can never reach `actualMap.get()` as a key. TypeScript's `string | null` typing enforces the shape at compile time.

@@ -36,11 +36,9 @@ export default function CropTimeline({ rows, entries = [], year, month }: Props)
   const actualMap = buildActualDatesMap(entries);
 
   // Show rows that have reserved dates OR actual (diary-derived) dates.
-  // Actual dates are keyed by bedId — all crops of a bed share the same
-  // actual signal until Wave D (DiaryEntry.bed_crop_id).
   const eligible = rows.filter((r) => {
     const hasReserved = r.planted_at && r.expected_harvest;
-    const hasActual = actualMap.has(r.bedId);
+    const hasActual = actualMap.has(r.cropId ?? r.bedId);
     return hasReserved || hasActual;
   });
 
@@ -73,9 +71,10 @@ export default function CropTimeline({ rows, entries = [], year, month }: Props)
         );
       }
 
-      // Actual bar position (diary-derived, bed-level)
+      // Actual bar + dots keyed per-crop (falls back to bed when cropId=null,
+      // matching the cascade in buildActualDatesMap / buildEventDotMap).
       let actualPos: { left: number; width: number } | null = null;
-      const actual = actualMap.get(row.bedId);
+      const actual = actualMap.get(row.cropId ?? row.bedId);
       if (actual?.planted) {
         const actualEnd = actual.harvested ?? toDateString(new Date());
         actualPos = computeBarPosition(

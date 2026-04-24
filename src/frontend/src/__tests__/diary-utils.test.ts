@@ -419,6 +419,55 @@ describe('buildActualDatesMap', () => {
     const map = buildActualDatesMap([entry]);
     expect(map.get('bed-1')?.planted).toBe('2026-04-01');
   });
+
+  // Wave D D6 (#279) — per-crop attribution
+  it('D6: keys by bed_crop_id when set (crop-attributed entry)', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-10' }),
+    ]);
+    expect(map.get('crop-A')?.planted).toBe('2026-04-10');
+    expect(map.get('bed-1')).toBeUndefined();
+  });
+
+  it('D6: sibling crops on same bed aggregate into separate buckets', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', bed_crop_id: 'crop-B', category: 'planting', date: '2026-05-05' }),
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get('crop-A')?.planted).toBe('2026-04-01');
+    expect(map.get('crop-B')?.planted).toBe('2026-05-05');
+  });
+
+  it('D6: bed-level (bed_crop_id=null) and crop-level entries on same bed stay in separate buckets', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', bed_crop_id: null, category: 'planting', date: '2026-03-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-10' }),
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get('bed-1')?.planted).toBe('2026-03-01');  // legacy/virtual-row bucket
+    expect(map.get('crop-A')?.planted).toBe('2026-04-10'); // crop row bucket
+  });
+
+  it('D6: reserved entries are excluded even when bed_crop_id is set', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', entry_type: 'reserved' as const }),
+    ]);
+    expect(map.size).toBe(0);
+    expect(map.get('crop-A')).toBeUndefined();
+    expect(map.get('bed-1')).toBeUndefined();
+  });
+
+  it('D6: latest-date logic is per-crop bucket (no cross-crop leak)', () => {
+    const map = buildActualDatesMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-03-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-15' }),
+      makeEntry({ id: 'e3', bed_id: 'bed-1', bed_crop_id: 'crop-B', category: 'planting', date: '2026-05-01' }),
+      makeEntry({ id: 'e4', bed_id: 'bed-1', bed_crop_id: 'crop-B', category: 'planting', date: '2026-05-20' }),
+    ]);
+    expect(map.get('crop-A')?.planted).toBe('2026-04-15');
+    expect(map.get('crop-B')?.planted).toBe('2026-05-20');
+  });
 });
 
 // ── buildEventDotMap (#297) ──────────────────────────────────────
@@ -523,5 +572,49 @@ describe('buildEventDotMap', () => {
       makeEntry({ id: 'e2', bed_id: 'bed-1', category: 'planting', entry_type: 'actual' as const, date: '2026-04-11' }),
     ]);
     expect(map.get('bed-1')).toHaveLength(2);
+  });
+
+  // Wave D D6 (#279) — per-crop attribution
+  it('D6: keys dots by bed_crop_id when set', () => {
+    const map = buildEventDotMap([
+      makeEntry({ bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-10' }),
+    ]);
+    expect(map.get('crop-A')).toHaveLength(1);
+    expect(map.get('bed-1')).toBeUndefined();
+  });
+
+  it('D6: sibling crops on same bed produce independent dot arrays', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'watering', date: '2026-04-15' }),
+      makeEntry({ id: 'e3', bed_id: 'bed-1', bed_crop_id: 'crop-B', category: 'planting', date: '2026-05-01' }),
+    ]);
+    expect(map.get('crop-A')).toHaveLength(2);
+    expect(map.get('crop-B')).toHaveLength(1);
+    expect(map.get('bed-1')).toBeUndefined();
+  });
+
+  it('D6: legacy bed-level dots (bed_crop_id=null) coexist with crop-level dots on same bed', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', bed_crop_id: null, category: 'planting', date: '2026-03-01' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-10' }),
+    ]);
+    expect(map.get('bed-1')).toHaveLength(1);  // legacy/virtual-row bucket
+    expect(map.get('crop-A')).toHaveLength(1); // crop row bucket
+  });
+
+  it('D6: dots are sorted within each per-crop bucket', () => {
+    const map = buildEventDotMap([
+      makeEntry({ id: 'e1', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'planting', date: '2026-04-15' }),
+      makeEntry({ id: 'e2', bed_id: 'bed-1', bed_crop_id: 'crop-A', category: 'watering', date: '2026-04-01' }),
+      makeEntry({ id: 'e3', bed_id: 'bed-1', bed_crop_id: 'crop-B', category: 'planting', date: '2026-05-20' }),
+      makeEntry({ id: 'e4', bed_id: 'bed-1', bed_crop_id: 'crop-B', category: 'watering', date: '2026-05-01' }),
+    ]);
+    const dotsA = map.get('crop-A')!;
+    expect(dotsA[0].date).toBe('2026-04-01');
+    expect(dotsA[1].date).toBe('2026-04-15');
+    const dotsB = map.get('crop-B')!;
+    expect(dotsB[0].date).toBe('2026-05-01');
+    expect(dotsB[1].date).toBe('2026-05-20');
   });
 });

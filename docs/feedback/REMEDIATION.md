@@ -1,3 +1,45 @@
+# Remediation Report — Wave D D6 (2026-04-24)
+
+## Summary
+- Review source: `docs/feedback/REVIEW-FINDINGS.md` Session 7 (Wave D D6)
+- Iterations: 1 of 3 max
+- Status: RESOLVED — 1/1 SHOULD-FIX addressed + 1/2 SUGGESTION addressed; 0 MUST-FIX
+
+## Findings Resolution
+
+| # | Finding | Severity | Status | Notes |
+|---|---------|----------|--------|-------|
+| R-D6-001 | Stale "bed-level" phrase in `CropTimeline.tsx:74` comment — inconsistent with the corresponding Gantt cascade comment | SHOULD-FIX | FIXED | Replaced with the mirror comment used in `GanttChart.tsx` — cascade explanation with producer reference. |
+| R-D6-002 | Orphaned legacy entries (pre-Wave-D, `bed_crop_id=null` on a bed that now has real BedCrops) not documented in the affected source file | SUGGESTION | FIXED | Added a JSDoc paragraph to `buildActualDatesMap` in `diary-utils.ts` noting the intentional orphan behavior (per DESIGN-279 §3.3 "no data migration") and the user-backfill escape hatch. |
+| R-D6-003 | Two additional edge cases undertested (orphaned-legacy path, empty-string `bed_crop_id`) | SUGGESTION | DEFERRED | Orphaned-legacy is now documented (R-D6-002) rather than tested; empty-string `bed_crop_id` is a server-contract concern (Zod rejects it) not a frontend invariant. |
+
+## Iteration Log
+
+### Iteration 1
+- Findings addressed: R-D6-001 (comment polish), R-D6-002 (orphan-behavior doc)
+- Builder: inline application — both are comment-only edits, proportionate to scope; full my-builder dispatch would have added orchestration overhead without risk reduction.
+- Outcome: All SHOULD-FIX resolved. Vitest 1217/1217 still passing. Typecheck ceiling unchanged (20 pre-existing).
+
+## Verification
+
+```
+Test Files  54 passed (54)
+     Tests  1217 passed (1217)
+```
+
+Files changed:
+- `src/frontend/src/components/CropTimeline.tsx` — R-D6-001
+- `src/frontend/src/lib/diary-utils.ts` — R-D6-002
+
+LOC delta: +6 / -2 (comment-only).
+
+## Escalations
+None. 0 MUST-FIX; 1 SHOULD-FIX resolved; 1 SUGGESTION resolved; 1 SUGGESTION deferred with rationale.
+
+*Remediation completed: 2026-04-24 | Status: RESOLVED*
+
+---
+
 # Remediation Report — Wave D D5 (2026-04-24)
 
 ## Summary
