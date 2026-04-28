@@ -123,6 +123,13 @@ test.describe('Diary Page', () => {
     };
     await mockApi.onGet(`farms/${FARM_ID}/diary`, updatedDiary);
 
+    // Wave D D4 (#279) — DiaryEntryForm fan-outs `listBedCrops(bedId, 'all')`
+    // per bed to populate the per-crop dropdown options. Mocked-empty here
+    // since the test only exercises the bed-only attribution path.
+    for (const bed of API_BEDS) {
+      await mockApi.onGet(`beds/${bed.id}/crops?status=all`, { items: [] });
+    }
+
     // Open the form
     const addBtn = authenticatedPage.locator('button').filter({ hasText: '+' }).first();
     await addBtn.click();
@@ -132,7 +139,9 @@ test.describe('Diary Page', () => {
     await authenticatedPage.fill('#diary-date', '2026-04-13');
     await authenticatedPage.selectOption('#diary-category', 'planting');
     await authenticatedPage.fill('#diary-description', 'E2E test diary entry — planted seeds');
-    await authenticatedPage.selectOption('#diary-bed', BED_ID_1);
+    // Wave D D4 (#279): #diary-bed option values are encoded as
+    // `<bedId>|<cropId?>`. Empty cropId after the pipe = bed-only attribution.
+    await authenticatedPage.selectOption('#diary-bed', `${BED_ID_1}|`);
 
     // Submit
     const submitBtn = authenticatedPage.locator('button[type="submit"][form="diary-form"]');

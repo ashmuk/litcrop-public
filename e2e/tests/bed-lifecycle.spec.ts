@@ -24,9 +24,28 @@ import { expectNoSeriousA11y } from '../helpers/axe-scan';
 const BED_ID_1 = API_BEDS[0].id;
 const BED_ID_2 = API_BEDS[1].id;
 
-// BedDetail responses reuse the shared bed shapes with notes override
-const API_BED_DETAIL = { ...API_BEDS[0], notes: 'E2E test tomato bed' };
+// BedDetail responses reuse the shared bed shapes with notes override.
+// Wave C (#279) added the `active_crop` server-side projection on
+// BedDetailResponse — fixture mirrors what the API now returns for a bed
+// with inline `crop_type` (lazy-materialized virtual BedCrop).
+const API_BED_DETAIL = {
+  ...API_BEDS[0],
+  notes: 'E2E test tomato bed',
+  active_crop: {
+    id: `bed-legacy-${API_BEDS[0].id}`,
+    crop_type: API_BEDS[0].crop_type,
+    crop_variety: API_BEDS[0].crop_variety,
+    planted_at: API_BEDS[0].planted_at,
+    expected_harvest: API_BEDS[0].expected_harvest,
+    status: 'active' as const,
+  },
+  active_crops_count: 1,
+};
 const API_BED_DETAIL_EMPTY = API_BEDS[1];
+
+// Wave B (#279) — BedDetail.tsx now fetches BedCrop list in parallel via
+// `listBedCrops(bedId, 'all')`. Empty list is the legacy/virtual case.
+const API_EMPTY_BEDCROPS = { items: [] };
 
 // ── Tests ─────────────────────────────────────────────────────────
 
@@ -73,6 +92,7 @@ test.describe('Bed Lifecycle', () => {
     // Stub the individual bed endpoint
     await mockApi.onGet(`beds/${BED_ID_1}`, API_BED_DETAIL);
     await mockApi.onGet(`beds/${BED_ID_1}/images`, API_EMPTY_IMAGES);
+    await mockApi.onGet(`beds/${BED_ID_1}/crops?status=all`, API_EMPTY_BEDCROPS);
     await mockApi.onGet(`farms/${FARM_ID}/members`, { data: [] });
 
     // Navigate directly to BedDetail (avoids dependency on bed grid rendering)
@@ -88,6 +108,7 @@ test.describe('Bed Lifecycle', () => {
   }) => {
     await mockApi.onGet(`beds/${BED_ID_1}`, API_BED_DETAIL);
     await mockApi.onGet(`beds/${BED_ID_1}/images`, API_EMPTY_IMAGES);
+    await mockApi.onGet(`beds/${BED_ID_1}/crops?status=all`, API_EMPTY_BEDCROPS);
     await mockApi.onGet(`farms/${FARM_ID}/members`, { data: [] });
 
     await authenticatedPage.goto(`/beds/view?id=${BED_ID_1}`);
@@ -102,6 +123,7 @@ test.describe('Bed Lifecycle', () => {
   }) => {
     await mockApi.onGet(`beds/${BED_ID_1}`, API_BED_DETAIL);
     await mockApi.onGet(`beds/${BED_ID_1}/images`, API_EMPTY_IMAGES);
+    await mockApi.onGet(`beds/${BED_ID_1}/crops?status=all`, API_EMPTY_BEDCROPS);
     await mockApi.onGet(`farms/${FARM_ID}/members`, { data: [] });
 
     await authenticatedPage.goto(`/beds/view?id=${BED_ID_1}`);
@@ -124,14 +146,15 @@ test.describe('Bed Lifecycle', () => {
   }) => {
     await mockApi.onGet(`beds/${BED_ID_2}`, API_BED_DETAIL_EMPTY);
     await mockApi.onGet(`beds/${BED_ID_2}/images`, API_EMPTY_IMAGES);
+    await mockApi.onGet(`beds/${BED_ID_2}/crops?status=all`, API_EMPTY_BEDCROPS);
     await mockApi.onGet(`farms/${FARM_ID}/members`, { data: [] });
 
     await authenticatedPage.goto(`/beds/view?id=${BED_ID_2}`);
     await authenticatedPage.waitForSelector('.crop-info', { timeout: 10_000 });
 
-    // For an empty bed the BedDetail shows the no-crop placeholder
-    // (i18n key 'bed.no_crop' renders as something like "No crop assigned")
-    await expect(authenticatedPage.locator('.crop-info')).toContainText(/no crop|empty|assign/i);
+    // For an empty bed BedDetail shows the no-active-crop placeholder
+    // (Wave C #279: `bed.no_active_crop` renders "No active planting").
+    await expect(authenticatedPage.locator('.crop-info')).toContainText(/no active|no crop|empty|assign/i);
   });
 
   // R-008 + R-012 (#442): axe-core a11y scan for Bed detail page.
