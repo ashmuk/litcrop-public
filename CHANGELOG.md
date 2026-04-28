@@ -11,7 +11,47 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ## [Unreleased]
 
-_No unreleased changes._
+### Added
+
+- **Wave E step 1** (DESIGN-279 §6 step 1) — promote-legacy-crops
+  migration code. Adds the optional `created_from_legacy?: boolean`
+  idempotency marker to the `BedCrop` domain type + Zod schema +
+  DDB mapper. Adds `promotedCropId(bedId) = "promoted-<bedId>"` —
+  a deterministic id helper so a concurrent-runs race against the
+  same bed collapses to an idempotent overwrite with identical
+  content (R-E1-001 race fix). Intentionally distinct from the
+  `bed-legacy-` virtual-projection sentinel so D3's harvest auto-
+  default treats promoted rows as REAL crops.
+- New migration module
+  (`src/api/src/services/migrations/wave-e-promote-legacy.ts`):
+  `shouldPromoteBed` (pure predicate with 4 skip reasons),
+  `buildPromotedCrop` (pure builder), and
+  `promoteLegacyCropForBed` (orchestrator with dry-run support).
+- New CLI script
+  (`scripts/migrate-wave-e-promote-legacy-crops.ts`) — scans
+  `BED#`-prefixed rows; per-50-beds heartbeat; guard for malformed
+  rows missing `farm_id`/`id`; per-bed `log + continue` error
+  recovery. **Code only — the migration has NOT been executed by
+  this release.**
+- 19 vitest cases for the migration (predicate skip-reasons,
+  builder shape, orchestrator happy/dry-run/idempotent paths,
+  deterministic-id concurrent safety, D3-prefix compatibility,
+  T-E1-01/02 error-bubble regression locks).
+
+### Migration / Operator notes
+
+- Wave E1 unblocks the operator workflow that starts the **E2 soak
+  gate** (DESIGN-279 §6 step 2). Operator flow when ready:
+  ```
+  DRY_RUN=1 npx tsx scripts/migrate-wave-e-promote-legacy-crops.ts
+  # → review Summary counts, then:
+  npx tsx scripts/migrate-wave-e-promote-legacy-crops.ts
+  ```
+  Idempotent via the `created_from_legacy` marker; safe to re-run.
+- Wave E2/E3/E4 remain queued. E2 = ≥ 2 weeks of zero hits on the
+  lazy-materialize fallback in `getActiveCropForBed`. E3 =
+  fallback removal. E4 = drop inline `Bed.crop_type` etc. (breaking
+  release, coordinated with frontend migration). All gated on E2.
 
 ---
 
