@@ -58,6 +58,7 @@
 - [ ] Branch is up-to-date with target branch
 - [ ] Build passes locally (`npm run build`)
 - [ ] TypeScript check passes (`npx astro check`)
+- [ ] **If this PR adds a new version tag in `CHANGELOG.md`:** corresponding `<VersionEntry>` added to `src/frontend/src/components/VersionHistory.tsx` and `changelog.v<X>_item_N` keys added to both `en.json` and `ja.json`. The `changelog-versionhistory-consistency` vitest enforces this; PR will fail Test check if missed.
 - [ ] Ready for review
 
 ## Deployment Notes
