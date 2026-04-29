@@ -80,6 +80,8 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0998_3_item_1": "Behind-the-scenes: CI workflows updated to the next major version of GitHub's reusable actions, ahead of June 2026 when the older runtime gets retired",
+    "v0998_3_item_2": "Behind-the-scenes: the load-test harness now exercises the new multi-crop endpoints, ready for the upcoming performance baseline run against staging",
     "v0998_2_item_1": "Behind-the-scenes: a build-time check now keeps this version history page in sync with the engineering changelog — no more silently stale 'current' badge after a release",
     "v0998_2_item_2": "Behind-the-scenes: the data migration that prepares legacy single-crop beds for the new multi-crop shape ran successfully on staging and production — soak window now in progress before the next cleanup step",
     "v0998_1_item_1": "Diary: each entry can now be attributed to a specific crop on a multi-crop bed — or kept at bed-level as 'All crops'",

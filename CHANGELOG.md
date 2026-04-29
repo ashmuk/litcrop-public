@@ -13,6 +13,69 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
+## [0.99.8.3] - 2026-04-29 — *Soak-window infrastructure: Actions runtime bump + k6 multi-crop scenario*
+
+### Changed
+
+- **GitHub Actions runtime bumped to v5** — closes #472.
+  `actions/checkout@v4` → `@v5` (8 references), `actions/setup-node@v4`
+  → `@v5` (8 references), `actions/upload-artifact@v4` → `@v5` (1
+  reference) across all three workflow files
+  (`pr-checks.yml`, `deploy.yml`, `deploy-staging.yml`). The v5 line
+  of each action runs on the Node 24 action runtime, which becomes
+  the runner default on 2026-06-02 and the only available runtime
+  after Node 20 is removed from runner images on 2026-09-16. Language
+  pin (`node-version: '24'`) was already in place from earlier work —
+  this release addresses the action-runtime layer.
+
+### Added
+
+- **k6 multi-crop fan-out scenario** in
+  `tools/load-test/k6-baseline.js` — Wave E2 soak-window watch.
+  Lists farms → picks a farm → lists beds → fans out to
+  `GET /beds/:id/crops?status=all` for every bed with
+  `active_crops_count > 0`, bounded to 5 beds per iteration.
+  Detail-fetches the first non-virtual crop via
+  `GET /beds/:id/crops/:cropId`. Skips `bed-legacy-*` IDs to keep
+  the failure-rate metric clean. Threshold: p95 < 1500ms per request;
+  5 VUs for 90s. Combined with the existing 4 scenarios, the full
+  baseline now exercises ~28 VUs on staging for ~2 min.
+- Two new k6 Trends: `list_bed_crops_duration`,
+  `get_bed_crop_detail_duration`.
+- README + LOAD-TEST-BASELINE.md updated to reference the 5th
+  scenario, its threshold, and the multi-crop bed prerequisite for
+  the test fixture user.
+
+### Operations
+
+- **#472 live-verified passing** — Deploy Staging workflow run on
+  commit `2a05f80` successfully pulled `actions/checkout@v5` and
+  `actions/setup-node@v5` and completed a clean staging deploy of
+  develop. This is the live-verification step the issue called for;
+  no change to deploy behavior detected.
+- **k6 baseline still pending operator action** — the harness now
+  has the multi-crop scenario but no empirical baseline has been
+  captured yet (the harness was originally scaffolded 2026-04-20 in
+  v0.99.7.2 but never run). When run, results land in
+  `docs/reports/LOAD-TEST-BASELINE.md` per the existing template.
+
+### Tests
+
+- 1283 vitest cases green (no test additions; CI workflows + load-
+  test harness are the surfaces touched).
+
+### Migration / Operator notes
+
+- Wave E2 soak still in progress (clock started 2026-04-29; eligible
+  for E3 from 2026-05-13 conditional on zero `getActiveCropForBed`
+  fallback hits). Running the new k6 multi-crop scenario during the
+  soak window provides synthetic-load coverage of the same code path
+  the soak watches in organic prod traffic — useful for catching
+  missed code paths well before they could surface as a production
+  issue.
+
+---
+
 ## [0.99.8.2] - 2026-04-29 — *Wave E1 migration shipped + executed; soak window open + hygiene roll-up*
 
 ### Added
