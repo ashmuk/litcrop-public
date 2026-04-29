@@ -58,51 +58,55 @@ export const options = {
       vus: 5,
       duration: '90s',
       exec: 'coldPath',
-      tags: { scenario: 'cold-path' },
     },
     hotPath: {
       executor: 'constant-vus',
       vus: 10,
       duration: '2m',
       exec: 'hotPath',
-      tags: { scenario: 'hot-path' },
     },
     adminStats: {
       executor: 'constant-vus',
       vus: 3,
       duration: '60s',
       exec: 'adminStats',
-      tags: { scenario: 'admin-stats' },
     },
     meActivity: {
       executor: 'constant-vus',
       vus: 5,
       duration: '90s',
       exec: 'meActivity',
-      tags: { scenario: 'me-activity' },
     },
     multiCrop: {
       executor: 'constant-vus',
       vus: 5,
       duration: '90s',
       exec: 'multiCrop',
-      tags: { scenario: 'multi-crop' },
     },
   },
   thresholds: {
-    'http_req_duration{scenario:cold-path}': ['p(99)<3000'],
-    'http_req_duration{scenario:hot-path}': ['p(95)<1000'],
-    'http_req_duration{scenario:admin-stats}': ['p(95)<5000'],
+    // k6 auto-applies a `scenario` tag to every request, with VALUE = the
+    // scenario JS object key (e.g. `coldPath`). The previous version of
+    // this block also set `tags: { scenario: 'cold-path' }` on each scenario
+    // config trying to override that with a kebab-case name, but k6 v1.0.0
+    // does NOT replace the auto-tag — it adds a SECOND `scenario` tag, and
+    // the threshold filter only matches one of them (the auto camelCase one).
+    // Result in v1 baseline: per-scenario filters reported `0s` because the
+    // kebab-case values never matched any sample. Filters now use the
+    // camelCase scenario keys directly.
+    'http_req_duration{scenario:coldPath}': ['p(99)<3000'],
+    'http_req_duration{scenario:hotPath}': ['p(95)<1000'],
+    'http_req_duration{scenario:adminStats}': ['p(95)<5000'],
     // R5 threshold: at pilot scale (≤2 farms/user, ≤20 beds/farm, ≤100 images/bed)
     // the fan-out cost is bounded. p95 < 1500ms leaves headroom for Lambda cold
     // starts while still flagging regressions once per-user data grows post-pilot.
-    'http_req_duration{scenario:me-activity}': ['p(95)<1500'],
+    'http_req_duration{scenario:meActivity}': ['p(95)<1500'],
     // Multi-crop threshold: each iteration does sign-in + farms list + beds list
     // + N bed-crop listings (fan-out, one per multi-crop bed). The fan-out is
     // bounded to 5 beds per iteration so the worst-case is ~8 sequential reads.
     // p95 < 1500 per single request leaves headroom for getActiveCropForBed's
     // lazy-materialize fallback (which is what Wave E2 watches for in prod logs).
-    'http_req_duration{scenario:multi-crop}': ['p(95)<1500'],
+    'http_req_duration{scenario:multiCrop}': ['p(95)<1500'],
     http_req_failed: ['rate<0.05'],
   },
 };
@@ -298,11 +302,19 @@ export function multiCrop() {
     if (!check(bedsRes, { 'GET /farms/:id/beds 200': (r) => r.status === 200 })) return;
 
     const beds = bedsRes.json('data') || [];
-    // Filter to beds that should have at least one BedCrop row after the
+    // Prefer beds that should have at least one BedCrop row after the
     // Wave E1 migration. active_crops_count is set by farms.ts handler;
     // null/undefined beds (very old shape) fall through to fan-out anyway
     // since the read-side shim still returns something.
-    const targetBeds = beds.filter((b) => (b.active_crops_count ?? 0) > 0).slice(0, 5);
+    let targetBeds = beds.filter((b) => (b.active_crops_count ?? 0) > 0).slice(0, 5);
+    // Fallback: if the test user's farm has no multi-crop beds (e.g. fresh
+    // staging data where Wave E1 promoted beds belong to a different farm),
+    // exercise the BedCrop endpoint against the first 5 beds anyway. They'll
+    // return empty arrays but still hit getActiveCropForBed's lazy-materialize
+    // path — exactly the surface Wave E2 watches in prod logs.
+    if (targetBeds.length === 0) {
+      targetBeds = beds.slice(0, 5);
+    }
     if (targetBeds.length === 0) return;
 
     for (const bed of targetBeds) {
