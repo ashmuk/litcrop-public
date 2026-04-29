@@ -17,15 +17,37 @@ STATE_DIR="$HOME/.claude-state"
 # ── Create ~/.claude directory ──────────────────────────────────────────
 mkdir -p "$CLAUDE_DIR"
 
+# ── Layer 0: Reclaim bind-mount target parents from root ───────────────
+# Docker materializes the ~/.claude/projects/-workspace/memory bind mount
+# (defined in devcontainer.json) BEFORE this script runs. As a side effect,
+# the kernel creates the missing parent dirs (~/.claude/projects and
+# ~/.claude/projects/-workspace) as root:root, since mount-target creation
+# happens in the kernel's mount namespace, not the user's shell. Without
+# this fix, Claude Code (running as `developer`) silently fails to write
+# per-session transcripts at ~/.claude/projects/-workspace/<id>.jsonl,
+# which breaks /resume and /rename even though no setting disables them.
+#
+# Non-recursive chown — DO NOT add -R. The memory/ subdir is itself a
+# bind mount onto the host filesystem; its contents are owned and managed
+# host-side, and recursing into it can fight macOS ACLs.
+if [ -d "$CLAUDE_DIR/projects" ]; then
+    sudo chown developer:developer \
+        "$CLAUDE_DIR/projects" \
+        "$CLAUDE_DIR/projects/-workspace" 2>/dev/null || \
+        echo "[post-start] WARN: could not reclaim ownership of $CLAUDE_DIR/projects — /resume and /rename may not persist transcripts"
+fi
+
 # ── Layer 1: Writable state (persisted in volume) ──────────────────────
 # These directories/files need write access during Claude Code operation.
 #
-# NOTE: `projects` is intentionally omitted. The memory bind mount in
-# devcontainer.json (~/.claude/projects/-workspace/memory) causes Docker to
-# pre-create ~/.claude/projects as a root-owned real directory before this
-# script runs, which makes it a poor candidate for a state-volume symlink.
-# Per-project memory for `-workspace` lives on the host via the bind mount;
-# memory for any other project is ephemeral in the container layer (acceptable).
+# NOTE: `projects` is intentionally omitted from STATE_DIRS — it cannot be
+# symlinked to ~/.claude-state/projects/ because the bind-mount target above
+# pre-creates ~/.claude/projects as a real directory. Layer 0 (above) makes
+# that directory writable so per-session transcripts (.jsonl) land in the
+# container layer; per-project memory for `-workspace` lives on the host via
+# the bind mount; transcripts are ephemeral across container rebuilds. To
+# also persist transcripts across rebuilds, a deeper refactor is needed
+# (move the bind-mount target onto ~/.claude-state and symlink projects/).
 STATE_DIRS=(
     "backups"
     "cache"

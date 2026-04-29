@@ -150,8 +150,16 @@ ENV SHELL=/bin/zsh
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 # Create directories for workspace and Claude config
+# NOTE: /home/${USERNAME}/.claude/projects/-workspace must be pre-created so that
+# Docker does not fabricate it as root when materializing the
+# ~/.claude/projects/-workspace/memory bind mount declared in devcontainer.json.
+# Combined with `no-new-privileges:true` in compose.yml, root-owned parents
+# break /resume and /rename because post-start.sh cannot reclaim them via sudo.
 USER root
-RUN mkdir -p /workspace /home/${USERNAME}/.claude /home/${USERNAME}/.claude-state && \
+RUN mkdir -p /workspace \
+             /home/${USERNAME}/.claude \
+             /home/${USERNAME}/.claude/projects/-workspace \
+             /home/${USERNAME}/.claude-state && \
  chown -R ${USERNAME}:${USERNAME} /workspace /home/${USERNAME}/.claude /home/${USERNAME}/.claude-state
 
 # Copy Powerlevel10k configuration
