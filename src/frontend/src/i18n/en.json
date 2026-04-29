@@ -80,6 +80,8 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0998_5_item_1": "Behind-the-scenes: tightened code quality checks — unused imports and variables now fail the build instead of just warning, preventing subtle test rot from creeping in over time",
+    "v0998_5_item_2": "Behind-the-scenes: completed the first end-to-end performance baseline against staging — all key read paths show comfortable headroom (5×–13× under their targets), with the load-test harness now reporting accurate per-scenario metrics",
     "v0998_4_item_1": "Login page is now more reliable on slower devices and connections — fixed an intermittent issue where the very first tap or keystroke could be missed during page load",
     "v0998_4_item_2": "Behind-the-scenes: captured the first performance baseline against staging — auth and read paths well within budget, providing a reference point for future regressions",
     "v0998_3_item_1": "Behind-the-scenes: CI workflows updated to the next major version of GitHub's reusable actions, ahead of June 2026 when the older runtime gets retired",

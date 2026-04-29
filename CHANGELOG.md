@@ -13,6 +13,87 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
+## [0.99.8.5] - 2026-04-29 — *Lint hardening + load-test harness fixes + first complete k6 baseline*
+
+### Fixed
+
+- **k6 multi-crop scenario silent in v1 baseline** — when the test
+  user's first farm had no beds with `active_crops_count > 0`, the
+  multi-crop scenario early-returned, leaving
+  `list_bed_crops_duration` and `get_bed_crop_detail_duration`
+  Trends empty. Fix: fall back to the first 5 beds regardless. They
+  return empty arrays but still hit `getActiveCropForBed`'s
+  lazy-materialize path — exactly the surface Wave E2 watches in
+  prod logs.
+- **k6 per-scenario `http_req_duration{scenario:*}` filters reported
+  `0s`** in v1 baseline due to a tag-attribution mismatch. The
+  previous config tried to set kebab-case scenario tags
+  (`tags: { scenario: 'cold-path' }`), but k6 v1.0.0 also
+  auto-applies a `scenario` tag with the JS-key value (`coldPath`).
+  The two don't merge — threshold filters matched neither. Fix: drop
+  the custom kebab-case tags; threshold filters now use the
+  camelCase scenario keys k6 auto-applies.
+- **#471 unused-import lint warnings** (10 originally + 4 drift)
+  cleared. Type/tool imports deleted; data fixtures prefixed with
+  `_` to keep them as documentation while satisfying the eslint
+  `^_` allow-pattern.
+
+### Changed
+
+- **`@typescript-eslint/no-unused-vars` rule promoted from `warn` to
+  `error`** — prevents #471's drift class from recurring. New code
+  with unused imports / consts now fails lint outright. The `^_`
+  prefix escape hatch is preserved for fixtures.
+- **eslint config renamed to `.mjs`** — `eslint.config.js` →
+  `eslint.config.mjs`. Eliminates the `MODULE_TYPELESS_PACKAGE_JSON`
+  Node warning that fired on every `npm run lint` invocation.
+  ESLint v9+ supports both filenames; the `.mjs` extension tells
+  Node to parse the file as ES module without requiring
+  `"type": "module"` in `package.json` (which would affect other
+  JS files in the project).
+- **`npm run lint` consolidated to a single eslint invocation** —
+  was `eslint src/api/src --ext .ts && eslint packages/shared/src
+  --ext .ts`, now `eslint src/api/src packages/shared/src --ext .ts`.
+  Surfaces all warnings from both workspaces in one pass.
+- **Migration script `scripts/migrate-wave-e-promote-legacy-crops.ts`**
+  now requires `TABLE_NAME` to be set explicitly. The legacy
+  `litcrop-poc` default has been removed to prevent operator
+  errors — `litcrop-poc` is a stale table that still exists in the
+  account but is neither staging (`litcrop-mvp`) nor production
+  (`litcrop-prod`). Operators saw the trap during the actual
+  2026-04-29 migration; this guard prevents recurrence.
+
+### Added
+
+- **First complete + honest k6 baseline** captured against staging
+  at commit `b3603ec`. See `docs/reports/LOAD-TEST-BASELINE.md` for
+  the full v2 entry. Headlines: 7,162 requests, 0 failures, all 5
+  SLOs pass with multi-× headroom, multi-crop coverage now
+  established (`list_bed_crops_duration` p95 = 119 ms).
+- **Issue #478 filed** — delete-picture capability on the per-bed
+  crops page (owner/admin only, single + daily-bulk granularities).
+  Queued for next-scope work; not part of v0.99.8.5.
+
+### Tests
+
+- 1286 vitest cases green; consistency test now 38/38 with the new
+  v0.99.8.5 parameterized case.
+- `npm run lint`: 0 errors, 0 warnings (was 14 warnings before
+  #471's cleanup).
+
+### Migration / Operator notes
+
+- Wave E2 soak still in progress (clock started 2026-04-29;
+  eligible for E3 from 2026-05-13).
+- The k6 v2 baseline confirms `list_bed_crops_duration` p95 <
+  1500 ms under modest load — synthetic coverage of the Wave E2
+  watch surface, complementing the organic prod log monitoring.
+- GitHub Actions quota was at 100% as of 2026-04-29; resets ≤
+  2026-05-01. v0.99.8.5 ship PR (develop→main) was deferred until
+  quota reset to avoid stuck-CI churn.
+
+---
+
 ## [0.99.8.4] - 2026-04-29 — *#470 login hydration fix + first k6 baseline + load-test infrastructure polish*
 
 ### Fixed
