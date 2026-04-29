@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage, deleteImage, buildStorageKey } from '../services/s3';
+import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage, buildStorageKey } from '../services/s3';
 import {
   NotFoundError,
   ValidationError,

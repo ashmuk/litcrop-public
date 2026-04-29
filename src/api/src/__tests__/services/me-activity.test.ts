@@ -52,7 +52,7 @@ const BED_ID_2 = 'bed-00000000-0002';
 const DEVICE_ID = 'dev-00000000-0001';
 const DIARY_ID = 'diary-000000-0001';
 const IMAGE_ID_1 = 'img-00000000-0001';
-const IMAGE_ID_2 = 'img-00000000-0002';
+const _IMAGE_ID_2 = 'img-00000000-0002';
 
 const farmFixture = {
   id: FARM_ID,
@@ -84,7 +84,7 @@ const bedFixture1 = {
   name: 'A1',
   latest_status: 'healthy' as const,
 };
-const bedFixture2 = {
+const _bedFixture2 = {
   id: BED_ID_2,
   farm_id: FARM_ID,
   row: 1,

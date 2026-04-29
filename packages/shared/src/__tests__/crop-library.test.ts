@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { CROPS, CROP_MAP, getCropMeta, estimateHarvestDate, getCropPropagation } from '../crop-library';
-import type { CropEntry } from '../crop-library';
 
 describe('CROPS data', () => {
   it('has 100 entries', () => {

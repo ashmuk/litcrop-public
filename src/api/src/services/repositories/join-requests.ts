@@ -1,5 +1,4 @@
 import { PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import type { FarmRole } from '@litcrop/shared';
 import { DDB_KEY_PREFIXES } from '@litcrop/shared';
 import { ddb, TABLE_NAME, pk, sk, GSI1_INDEX } from './_infrastructure';
 import { buildMembershipItems } from './_mappers';

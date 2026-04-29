@@ -304,7 +304,7 @@ diaryRouter.post('/:farmId/diary', async (c) => {
       time_spent_minutes: parsed.time_spent_minutes ?? null,
       created_by: userId,
     });
-  } catch (err) {
+  } catch {
     throw new ServiceUnavailableError('Storage service unavailable');
   }
 

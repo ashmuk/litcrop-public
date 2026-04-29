@@ -16,7 +16,7 @@ vi.mock('../../services/dynamodb', () => ({
 
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
 const FARM_ID_2 = 'f0000000-0000-0000-0000-000000000002'; // for cache scenarios
-const FARM_ID_3 = 'f0000000-0000-0000-0000-000000000003'; // for stale cache
+const _FARM_ID_3 = 'f0000000-0000-0000-0000-000000000003'; // for stale cache
 const FARM_ID_4 = 'f0000000-0000-0000-0000-000000000004'; // for WMO 95
 
 const farmFixture = {

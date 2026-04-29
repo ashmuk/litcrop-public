@@ -10,7 +10,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
 import { getSignedImageUrl } from '../../services/s3';
-import { NotFoundError } from '../../errors';
 import type { Farm, Bed, Image } from '@litcrop/shared';
 
 vi.mock('../../services/dynamodb', () => ({

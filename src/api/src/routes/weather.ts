@@ -3,7 +3,7 @@ import { dynamoRepo } from '../services/dynamodb';
 import { UpstreamError } from '../errors';
 import { getAuthContext } from '../middleware/auth';
 import { WEATHER_CACHE_TTL_SECONDS, hasActiveCrop } from '@litcrop/shared';
-import type { Farm, Bed, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
+import type { Bed, HourlyForecast, DailyForecast, WeatherAlert, CropImpactCard } from '@litcrop/shared';
 import { assertFarmAccess } from './_helpers';
 
 const router = new Hono();

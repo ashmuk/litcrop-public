@@ -5,7 +5,6 @@ import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
 import { getSignedImageUrl, getSignedThumbnailUrl } from '../../services/s3';
 import { NotFoundError } from '../../errors';
-import type { Bed, Image, Tag } from '@litcrop/shared';
 
 vi.mock('../../services/dynamodb', () => ({
   dynamoRepo: {

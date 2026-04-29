@@ -3,7 +3,7 @@
  * Uses aws-sdk-client-mock to intercept DynamoDB calls without hitting AWS.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import {
@@ -13,7 +13,6 @@ import {
   nextMidnightUtc,
   todayStartUtc,
   getUsage,
-  budgetDdb,
   MESSAGES_PER_HOUR_LIMIT,
 } from '../../services/budget';
 
