@@ -13,6 +13,78 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
+## [0.99.8.4] - 2026-04-29 — *#470 login hydration fix + first k6 baseline + load-test infrastructure polish*
+
+### Fixed
+
+- **#470 — Chromium login flake eliminated.** The previous e2e
+  `beforeEach` waited only for the SSR'd `#login-email` element,
+  which existed before Preact's `onInput`/`onSubmit` handlers had
+  attached. On slower chromium workers, `page.fill()` wrote to the
+  raw DOM and `page.click()` fired native form submit before the
+  handlers were bound, causing flaky `.form-error` /
+  `.auth-server-error` assertions. Fix: `LoginForm.tsx` now sets
+  `data-hydrated="true"` on the form root after first client mount
+  via a separate `useEffect`; e2e tests wait for that marker
+  instead. SSR-safe (attribute absent in server-rendered HTML).
+  Validated by **5 consecutive CI runs without any retry recovery**
+  per #470's acceptance criteria. No user-visible behavior change.
+
+### Changed
+
+- **k6 load-test harness — per-VU Cognito token caching.** Adds a
+  `getOrSignIn()` helper backed by a per-VU `cachedIdToken`; routes
+  hot-path / me-activity / multi-crop / admin-stats scenarios
+  through it instead of re-authenticating on every iteration.
+  Eliminates the ~5-RPS-per-IP `InitiateAuth` throttle that caused
+  87% sign-in failures on the first attempted baseline run. The
+  cold-path scenario continues to call `cognitoSignIn()` directly
+  because measuring fresh sign-in latency is its job.
+- **k6 documentation corrected** — the original 2026-04-20 scaffold
+  (#443) documented `k6 run --env-file .env k6-baseline.js` in
+  three places. The `--env-file` flag does not exist in k6.
+  Replaced with the correct shell-sourcing pattern across README,
+  script header, and `LOAD-TEST-BASELINE.md`:
+  ```
+  set -a; source .env; set +a
+  k6 run k6-baseline.js
+  ```
+  Plus a quick-smoke-test command (`k6 run --vus 1 --duration 5s`)
+  for fast credential validation.
+
+### Added
+
+- **First empirical k6 baseline captured** — see
+  `docs/reports/LOAD-TEST-BASELINE.md`. Run on 2026-04-29 against
+  staging (`litcrop-mvp`) at commit `ea44fc3`: **6,497 requests,
+  0 failures, aggregate p95 = 259 ms** across 28 max VUs / 5
+  parallel scenarios for 2 minutes. Cognito auth p95 = 335 ms;
+  `me_profile` p95 = 82 ms; `me_activity_first_page` p95 = 75 ms
+  (~18× under the R5 SLO). Two limitations recorded transparently:
+  (1) per-scenario `http_req_duration{scenario:*}` filters report
+  `0s` due to a k6 tag-attribution quirk — custom Trends and the
+  aggregate http_req_duration are unaffected; (2) multi-crop
+  scenario went silent because the test user's first farm has no
+  beds with `active_crops_count > 0`. Both tracked as future-baseline
+  follow-ups.
+
+### Tests
+
+- 1285 vitest cases green. CHANGELOG ↔ VersionHistory consistency
+  test now 37/37 (added v0.99.8.4 parameterized case).
+
+### Migration / Operator notes
+
+- Wave E2 soak still in progress (clock started 2026-04-29;
+  eligible for E3 from 2026-05-13). The k6 multi-crop scenario is
+  wired but has no test-data coverage in this baseline; soak still
+  relies on organic prod traffic for `getActiveCropForBed`
+  fallback-branch monitoring. Test-data fix (provision a multi-crop
+  bed for the staging test user, OR loosen the script's filter)
+  recommended before the next baseline cycle.
+
+---
+
 ## [0.99.8.3] - 2026-04-29 — *Soak-window infrastructure: Actions runtime bump + k6 multi-crop scenario*
 
 ### Changed

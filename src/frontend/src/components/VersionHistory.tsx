@@ -60,13 +60,21 @@ export default function VersionHistory() {
       </p>
 
       <VersionEntry
+        version="v0.99.8.4"
+        date="2026-04-29"
+        items={[
+          t('changelog.v0998_4_item_1'),
+          t('changelog.v0998_4_item_2'),
+        ]}
+        current
+      />
+      <VersionEntry
         version="v0.99.8.3"
         date="2026-04-29"
         items={[
           t('changelog.v0998_3_item_1'),
           t('changelog.v0998_3_item_2'),
         ]}
-        current
       />
       <VersionEntry
         version="v0.99.8.2"

@@ -80,6 +80,8 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0998_4_item_1": "Login page is now more reliable on slower devices and connections — fixed an intermittent issue where the very first tap or keystroke could be missed during page load",
+    "v0998_4_item_2": "Behind-the-scenes: captured the first performance baseline against staging — auth and read paths well within budget, providing a reference point for future regressions",
     "v0998_3_item_1": "Behind-the-scenes: CI workflows updated to the next major version of GitHub's reusable actions, ahead of June 2026 when the older runtime gets retired",
     "v0998_3_item_2": "Behind-the-scenes: the load-test harness now exercises the new multi-crop endpoints, ready for the upcoming performance baseline run against staging",
     "v0998_2_item_1": "Behind-the-scenes: a build-time check now keeps this version history page in sync with the engineering changelog — no more silently stale 'current' badge after a release",
