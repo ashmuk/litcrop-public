@@ -12,9 +12,15 @@
  *                      and getActiveCropForBed lazy-materialize fallback;
  *                      DESIGN-279 §6 / RUNBOOK-WAVE-E-PROMOTE-LEGACY-CROPS.md).
  *
+ * Run with env vars loaded into the shell first (k6 has no built-in
+ * --env-file flag; this auto-exports every assignment from .env):
+ *   set -a; source .env; set +a
+ *   k6 run k6-baseline.js
+ *
  * Each scenario is tagged so a single one can be run via:
- *   k6 run --env-file .env --tag scenario=hot-path k6-baseline.js
- *   k6 run --env-file .env --tag scenario=multi-crop k6-baseline.js
+ *   set -a; source .env; set +a
+ *   k6 run --tag scenario=hot-path k6-baseline.js
+ *   k6 run --tag scenario=multi-crop k6-baseline.js
  *
  * Env vars (see .env.example):
  *   STAGING_API_BASE_URL       — e.g. https://api-staging.litcrop.com/v1

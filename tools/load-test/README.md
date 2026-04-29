@@ -32,14 +32,26 @@ tools/load-test/
 cd tools/load-test
 cp .env.example .env
 # Fill in: STAGING_API_BASE_URL, TEST_USER_EMAIL, TEST_USER_PASSWORD,
-#         COGNITO_CLIENT_ID, COGNITO_USER_POOL_ID
+#         COGNITO_CLIENT_ID, COGNITO_REGION
+# (COGNITO_CLIENT_ID is the same value the frontend reads as
+#  PUBLIC_COGNITO_CLIENT_ID — just drop the PUBLIC_ prefix.)
 
-# Full baseline run (all three scenarios, ~5 min)
-k6 run --env-file .env k6-baseline.js
+# Load env vars from .env into the shell, then run k6.
+# k6 has no built-in --env-file flag; the set -a / source / set +a
+# envelope auto-exports every assignment so k6 reads them via __ENV.
+set -a; source .env; set +a
+
+# Full baseline run (all five scenarios, ~5 min)
+k6 run --summary-export=baseline-$(date +%Y%m%d).json k6-baseline.js
 
 # Single scenario (faster iteration during tuning)
-k6 run --env-file .env --tag scenario=hot-path k6-baseline.js
+k6 run --tag scenario=hot-path k6-baseline.js
+k6 run --tag scenario=multi-crop k6-baseline.js
 ```
+
+> Quick smoke test before the full run: `k6 run --vus 1 --duration 5s
+> k6-baseline.js` exits in ~5 seconds. If sign-in fails (missing var,
+> wrong password), you see it immediately rather than after 90s.
 
 ## Target characteristics
 

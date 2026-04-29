@@ -21,10 +21,11 @@ After each baseline run:
 
 ```bash
 cd tools/load-test
-k6 run --env-file .env --summary-export=baseline-$(date +%Y%m%d).json k6-baseline.js
+set -a; source .env; set +a
+k6 run --summary-export=baseline-$(date +%Y%m%d).json k6-baseline.js
 ```
 
-Then paste the summary stats into a new section below following the template.
+Then paste the summary stats into a new section below following the template. (k6 has no built-in `--env-file` flag — the `set -a`/`source`/`set +a` envelope auto-exports every assignment from `.env` so k6 reads them via `__ENV`.)
 
 ## Template (copy this for each run)
 
