@@ -1,15 +1,20 @@
 /*
  * LitCrop — k6 load-test baseline (R-010, #443).
  *
- * Exercises four scenarios against staging:
+ * Exercises five scenarios against staging:
  *   1. Auth cold-path: SignUp → SignIn → GET /me/profile
  *   2. Farm hot-path:  GET /farms → GET /farms/:id → GET /farms/:id/beds
  *   3. Admin stats:    GET /admin/stats (scale-cliff target for #383)
  *   4. Me activity:    GET /me/activity + one Load-more cycle
  *                      (R5 regression detection for #462 fan-out query plan)
+ *   5. Multi-crop:     GET /farms → /farms/:id/beds → fan-out to /beds/:id/crops
+ *                      (Wave E2 soak-window watch for the multi-crop N+1 read
+ *                      and getActiveCropForBed lazy-materialize fallback;
+ *                      DESIGN-279 §6 / RUNBOOK-WAVE-E-PROMOTE-LEGACY-CROPS.md).
  *
  * Each scenario is tagged so a single one can be run via:
  *   k6 run --env-file .env --tag scenario=hot-path k6-baseline.js
+ *   k6 run --env-file .env --tag scenario=multi-crop k6-baseline.js
  *
  * Env vars (see .env.example):
  *   STAGING_API_BASE_URL       — e.g. https://api-staging.litcrop.com/v1
@@ -70,6 +75,13 @@ export const options = {
       exec: 'meActivity',
       tags: { scenario: 'me-activity' },
     },
+    multiCrop: {
+      executor: 'constant-vus',
+      vus: 5,
+      duration: '90s',
+      exec: 'multiCrop',
+      tags: { scenario: 'multi-crop' },
+    },
   },
   thresholds: {
     'http_req_duration{scenario:cold-path}': ['p(99)<3000'],
@@ -79,6 +91,12 @@ export const options = {
     // the fan-out cost is bounded. p95 < 1500ms leaves headroom for Lambda cold
     // starts while still flagging regressions once per-user data grows post-pilot.
     'http_req_duration{scenario:me-activity}': ['p(95)<1500'],
+    // Multi-crop threshold: each iteration does sign-in + farms list + beds list
+    // + N bed-crop listings (fan-out, one per multi-crop bed). The fan-out is
+    // bounded to 5 beds per iteration so the worst-case is ~8 sequential reads.
+    // p95 < 1500 per single request leaves headroom for getActiveCropForBed's
+    // lazy-materialize fallback (which is what Wave E2 watches for in prod logs).
+    'http_req_duration{scenario:multi-crop}': ['p(95)<1500'],
     http_req_failed: ['rate<0.05'],
   },
 };
@@ -87,6 +105,8 @@ const loginLatency = new Trend('cognito_login_duration');
 const meProfileLatency = new Trend('me_profile_duration');
 const meActivityFirstPageLatency = new Trend('me_activity_first_page_duration');
 const meActivityLoadMoreLatency = new Trend('me_activity_load_more_duration');
+const listBedCropsLatency = new Trend('list_bed_crops_duration');
+const getBedCropDetailLatency = new Trend('get_bed_crop_detail_duration');
 
 // ── Shared helpers ──────────────────────────────────────────────────
 
@@ -207,6 +227,78 @@ export function meActivity() {
       );
       meActivityLoadMoreLatency.add(loadMore.timings.duration);
       check(loadMore, { 'GET /me/activity (page 2) 200': (r) => r.status === 200 });
+    }
+  });
+  sleep(1);
+}
+
+// ── 5. Multi-crop scenario (Wave E2 soak-window watch) ─────────────
+//
+// Exercises the new BedCrop endpoints introduced by #279 Wave B. After
+// Wave E1's migration ran (2026-04-29), every legacy single-crop bed in
+// staging has a real BedCrop row; getActiveCropForBed should never fall
+// back to the inline-Bed.crop_type synthesis branch (bed-crops.ts:140-156)
+// during the 14-day E2 soak. This scenario stresses that exact code path
+// at modest concurrency so a regression — say, a code path that creates a
+// bed without going through the Wave-B writer — would surface here as
+// elevated p95 latency or 5xx instead of waiting for an organic prod hit.
+//
+// Pattern: list farms → pick a farm → list beds → for each bed with
+// active_crops_count > 0, list its crops + detail-fetch one. The fan-out
+// is bounded to 5 beds per iteration so the load profile stays consistent
+// regardless of farm size.
+//
+// Skips virtual `bed-legacy-*` IDs on the detail fetch — those would 404
+// post-migration (no real DDB row) and pollute the failure-rate metric.
+
+export function multiCrop() {
+  const idToken = cognitoSignIn();
+  if (!idToken) return;
+
+  group('multi-crop fan-out', () => {
+    const farmsRes = http.get(`${API_BASE}/farms`, {
+      headers: authHeaders(idToken),
+      tags: { name: 'list_farms' },
+    });
+    if (!check(farmsRes, { 'GET /farms 200': (r) => r.status === 200 })) return;
+
+    const farms = farmsRes.json('data') || [];
+    if (farms.length === 0) return;
+    const farmId = farms[0].id;
+
+    const bedsRes = http.get(`${API_BASE}/farms/${farmId}/beds`, {
+      headers: authHeaders(idToken),
+      tags: { name: 'list_beds' },
+    });
+    if (!check(bedsRes, { 'GET /farms/:id/beds 200': (r) => r.status === 200 })) return;
+
+    const beds = bedsRes.json('data') || [];
+    // Filter to beds that should have at least one BedCrop row after the
+    // Wave E1 migration. active_crops_count is set by farms.ts handler;
+    // null/undefined beds (very old shape) fall through to fan-out anyway
+    // since the read-side shim still returns something.
+    const targetBeds = beds.filter((b) => (b.active_crops_count ?? 0) > 0).slice(0, 5);
+    if (targetBeds.length === 0) return;
+
+    for (const bed of targetBeds) {
+      const cropsRes = http.get(`${API_BASE}/beds/${bed.id}/crops?status=all`, {
+        headers: authHeaders(idToken),
+        tags: { name: 'list_bed_crops' },
+      });
+      listBedCropsLatency.add(cropsRes.timings.duration);
+      check(cropsRes, { 'GET /beds/:id/crops 200': (r) => r.status === 200 });
+
+      const crops = cropsRes.json('data') || [];
+      if (crops.length === 0) continue;
+      const firstReal = crops.find((c) => !String(c.id).startsWith('bed-legacy-'));
+      if (!firstReal) continue;
+
+      const detailRes = http.get(`${API_BASE}/beds/${bed.id}/crops/${firstReal.id}`, {
+        headers: authHeaders(idToken),
+        tags: { name: 'get_bed_crop_detail' },
+      });
+      getBedCropDetailLatency.add(detailRes.timings.duration);
+      check(detailRes, { 'GET /beds/:id/crops/:cropId 200': (r) => r.status === 200 });
     }
   });
   sleep(1);
