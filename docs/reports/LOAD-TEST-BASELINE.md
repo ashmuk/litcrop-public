@@ -2,7 +2,7 @@
 
 Tracking document for R-010 (issue #443). Each baseline entry captures p50/p95/p99 latency, DynamoDB consumption, and cost-per-1k-requests for the five scenarios in `tools/load-test/k6-baseline.js` (auth cold-path, farm hot-path, admin stats, me-activity fan-out, multi-crop fan-out).
 
-**Status:** Harness scaffolded 2026-04-20 (#443); **no empirical baseline captured yet**. First run scheduled against staging after next deploy.
+**Status:** Harness scaffolded 2026-04-20 (#443); **first empirical baseline captured 2026-04-29** against staging (`litcrop-mvp`) at commit `ea44fc3`. See `## Baselines` section below.
 
 ## Pre-run checklist
 
@@ -79,7 +79,73 @@ Then paste the summary stats into a new section below following the template. (k
 
 <!-- Insert completed baseline sections above this comment, newest first. -->
 
-_No baseline runs captured yet. First run after R-010 PR merges and staging deploy completes._
+## Baseline — 2026-04-29 — v0.99.8.3 @ ea44fc3 (develop)
+
+- **Duration**: 2 min
+- **Concurrency**: cold-path 5 VUs / hot-path 10 VUs / admin-stats 3 VUs / me-activity 5 VUs / multi-crop 5 VUs (28 max VUs total, in parallel)
+- **Commit under test**: `ea44fc3` (`develop`) — includes the v0.99.8.3 release commit (`e00eb10`), the Wave E1 migration code (`124c71d` reachable from main), and the per-VU token cache fix (`ea44fc3`).
+- **Environment**: staging (`litcrop-mvp` table; `litcrop-mvp-web` Cognito App Client; `litcrop-mvp-api` Lambda).
+- **Total runs against API**: 6,497 HTTP requests across 2,735 iterations.
+
+### Latency
+
+| Scenario     | p50    | p95    | p99    | Fail %  | SLO                                | Verdict |
+|--------------|--------|--------|--------|---------|------------------------------------|---------|
+| Cold-path    | (1)    | (1)    | (1)    | 0.00%   | p99 < 3000 ms                      | ✅ via aggregate |
+| Hot-path     | (1)    | (1)    | (1)    | 0.00%   | p95 < 1000 ms                      | ✅ via aggregate |
+| Admin stats  | (1)    | (1)    | (1)    | 0.00%   | p95 < 5000 ms                      | ✅ via aggregate |
+| Me-activity  | (1)    | (1)    | (1)    | 0.00%   | p95 < 1500 ms (R5)                 | ✅ via aggregate |
+| Multi-crop   | —      | —      | —      | —       | p95 < 1500 ms (Wave E2 soak watch) | ⚠ scenario silent — see (2) |
+| **Aggregate (all scenarios)** | **86 ms** | **259 ms** | _max=1.72s_ | **0.00%** | n/a | ✅ |
+
+(1) **Per-scenario `http_req_duration{scenario:*}` reports `0s` in this run** — k6 isn't attributing samples to the scenario tag for these threshold filters. The SLO check marks for those filters are vacuously true. Aggregate `http_req_duration` (last row) IS accurate (avg=103ms / med=86ms / p95=259ms / max=1.72s across 6,497 requests). Per-scenario breakdown to be fixed in a follow-up patch (likely a tag-merge issue with the per-request `tags: { name: 'X' }` overriding the auto-applied scenario tag).
+
+(2) **Multi-crop scenario produced no `list_bed_crops_duration` or `get_bed_crop_detail_duration` samples** — the function early-returns when `targetBeds` (beds with `active_crops_count > 0`) is empty for the test user's first farm. The Wave E1 migration promoted 13 staging beds (logged 2026-04-29), but those don't appear to belong to this test user's first farm. Test data fix (not a script bug): add a multi-crop bed to the test user's farm, OR loosen the script's filter so it queries `/beds/:id/crops` on any bed regardless of `active_crops_count`. Both options leave Wave E2 soak coverage incomplete until addressed; the soak still relies on organic prod traffic.
+
+### Custom Trends (these DO have per-endpoint samples)
+
+| Trend                              | min     | med     | p95     | max     |
+|------------------------------------|---------|---------|---------|---------|
+| `cognito_login_duration`           | 218 ms  | 273 ms  | 335 ms  | 448 ms  |
+| `me_profile_duration`              | 39 ms   | 47 ms   | 82 ms   | 1.41 s  |
+| `me_activity_first_page_duration`  | 38 ms   | 48 ms   | 75 ms   | 1.64 s  |
+| `list_bed_crops_duration`          | _no samples_ | _no samples_ | _no samples_ | _no samples_ |
+| `get_bed_crop_detail_duration`     | _no samples_ | _no samples_ | _no samples_ | _no samples_ |
+
+### DynamoDB consumption (from CloudWatch, peak 1-minute)
+
+_Operator action: populate from CloudWatch console for the 2-minute window 2026-04-29 ~16:25 JST — query `AWS/DynamoDB` → ConsumedReadCapacityUnits / ConsumedWriteCapacityUnits / ThrottledRequests on the `litcrop-mvp` table._
+
+| Table         | Peak RCU | Peak WCU | Throttles |
+|---------------|----------|----------|-----------|
+| litcrop-mvp   | _(TBD)_  | _(TBD)_  | _(TBD)_   |
+
+### Cost slice (from Cost Explorer, the hour of the run)
+
+_Operator action: pull from Cost Explorer for hour ending 2026-04-29 ~16:30 JST. Filter to `litcrop-mvp-*` resources. Cognito InitiateAuth charges are usage-based (~$0.0055 per MAU); Lambda invocations and API Gateway are per-request._
+
+| Service       | Cost (USD) | Notes |
+|---------------|------------|-------|
+| Lambda        | _(TBD)_    | ~6,500 invocations (mostly `litcrop-mvp-api`) |
+| API Gateway   | _(TBD)_    | ~6,500 calls — REST API tier |
+| DynamoDB      | _(TBD)_    | on-demand |
+| Cognito       | _(TBD)_    | ~50 InitiateAuth calls (down from 28k thanks to per-VU token caching) |
+| **Total**     | _(TBD)_    | per 1000 requests → $_(TBD)_ |
+
+### Observations
+
+- **Auth path is healthy.** Cognito p95 = 335 ms is consistent with successful real auth (was 47 ms during pre-fix run because Cognito was returning errors fast). Sign-in count dropped from 28,928 to ~50 thanks to per-VU caching; this is the realistic-user shape.
+- **Read paths are well under SLO.** `me_profile` p95 = 82 ms (target was R5 fan-out concern; this clears it ~18× over). `me_activity_first_page` p95 = 75 ms is similarly comfortable.
+- **No 5xx, no failures.** 6,497 requests, 0 failures across all 5 scenarios. Suggests no obvious capacity issue at this concurrency level.
+- **Outlier presence.** `me_profile_duration` max=1.41s and `me_activity_first_page_duration` max=1.64s — single-request outliers under load. Worth re-checking if they recur on subsequent baselines (could be Lambda cold start, DDB throttle, or routine variance).
+- **Wave E2 soak coverage from synthetic load: incomplete** until the multi-crop scenario's test-data gap is fixed. Until then, the soak relies on organic prod traffic only.
+
+### Next actions triggered
+
+- **Test-data fix for multi-crop coverage** — either provision a multi-crop bed for the staging test user, or relax the script's `targetBeds` filter to query `/beds/:id/crops` on any bed. Tracked as a follow-up before next baseline.
+- **Per-scenario tag attribution patch** — investigate why `http_req_duration{scenario:*}` filters report `0s`. Likely the per-request `tags: { name: 'X' }` is replacing rather than merging with the auto-applied scenario tag. Fix in a small follow-up commit; re-run to validate.
+- **CloudWatch + Cost Explorer numbers** — operator to fill in the TBD cells from AWS console.
+- **Trend tracking** — at least 2 more baselines needed before any trend-line is informative; revisit cadence after Wave E2 soak closes (2026-05-13).
 
 ## Trend tracking
 
