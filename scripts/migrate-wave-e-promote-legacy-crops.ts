@@ -8,7 +8,8 @@
  * Run (dry-run):  DRY_RUN=1 npx tsx scripts/migrate-wave-e-promote-legacy-crops.ts
  * Run (live):     npx tsx scripts/migrate-wave-e-promote-legacy-crops.ts
  *
- * Env: TABLE_NAME (default: litcrop-poc), AWS_REGION (default: ap-northeast-1).
+ * Env: TABLE_NAME (REQUIRED — e.g. litcrop-mvp or litcrop-prod; legacy
+ *      `litcrop-poc` default removed), AWS_REGION (default: ap-northeast-1).
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -17,7 +18,16 @@ import type { Bed } from '@litcrop/shared';
 import { itemToBed } from '../src/api/src/services/repositories/_mappers';
 import { promoteLegacyCropForBed, type SkipReason } from '../src/api/src/services/migrations/wave-e-promote-legacy';
 
-const TABLE_NAME = process.env['TABLE_NAME'] ?? 'litcrop-poc';
+const TABLE_NAME = process.env['TABLE_NAME'];
+if (!TABLE_NAME) {
+  console.error(
+    '[wave-e-promote] FATAL: TABLE_NAME env var must be set explicitly ' +
+      '(e.g. `TABLE_NAME=litcrop-mvp` for staging, `TABLE_NAME=litcrop-prod` for prod). ' +
+      'The legacy `litcrop-poc` default has been removed to prevent operator errors — ' +
+      'see docs/ops/RUNBOOK-WAVE-E-PROMOTE-LEGACY-CROPS.md.',
+  );
+  process.exit(1);
+}
 const AWS_REGION = process.env['AWS_REGION'] ?? 'ap-northeast-1';
 const DRY_RUN = process.env['DRY_RUN'] === '1';
 
