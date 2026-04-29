@@ -11,6 +11,10 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ## [Unreleased]
 
+---
+
+## [0.99.8.2] - 2026-04-29 — *Wave E1 migration shipped + executed; soak window open + hygiene roll-up*
+
 ### Added
 
 - **Wave E step 1** (DESIGN-279 §6 step 1) — promote-legacy-crops
@@ -31,27 +35,84 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
   (`scripts/migrate-wave-e-promote-legacy-crops.ts`) — scans
   `BED#`-prefixed rows; per-50-beds heartbeat; guard for malformed
   rows missing `farm_id`/`id`; per-bed `log + continue` error
-  recovery. **Code only — the migration has NOT been executed by
-  this release.**
+  recovery.
 - 19 vitest cases for the migration (predicate skip-reasons,
   builder shape, orchestrator happy/dry-run/idempotent paths,
   deterministic-id concurrent safety, D3-prefix compatibility,
   T-E1-01/02 error-bubble regression locks).
+- CHANGELOG ↔ VersionHistory consistency test
+  (`src/frontend/src/__tests__/changelog-versionhistory-consistency.test.ts`)
+  — vitest assertion that the newest released CHANGELOG version is
+  present in `VersionHistory.tsx` with the `current` prop and has
+  matching `changelog.<key>_item_1` in both `en.json` and `ja.json`.
+  Closes the drift class surfaced on PR #469 where the in-app
+  `/history` page showed v0.99.7.5 as `current` after v0.99.8.1 had
+  shipped. 34 cases.
+- New operator runbook
+  (`docs/ops/RUNBOOK-WAVE-E-PROMOTE-LEGACY-CROPS.md`) — covers the
+  data-shape change, dual-read shim rationale, the 4-step Wave E
+  sequence, pre-flight checks, run order
+  (staging-dry → staging-live → prod-dry → prod-live), expected
+  output shape, recovery/rollback paths, and run history for both
+  environments.
+- PR template (`.github/PULL_REQUEST_TEMPLATE.md`) gains a checklist
+  line nudging contributors to update `VersionHistory.tsx` + i18n
+  whenever a new version tag is added to `CHANGELOG.md`.
+
+### Changed
+
+- `VersionHistory.tsx` (in-app `/history` view) catches up to
+  v0.99.7.6, v0.99.8.0, and v0.99.8.1 entries (3 new
+  `<VersionEntry>` blocks + 7 i18n keys, EN/JA). The `current` flag
+  transfers from v0.99.7.5 → v0.99.8.1 → v0.99.8.2 across the
+  catch-up + this release.
+
+### Fixed
+
+- DevContainer `/resume` and `/rename` no longer silently fail
+  after a rebuild. Root cause: Docker materializes the
+  `~/.claude/projects/-workspace/memory` bind mount before
+  `post-start.sh` runs, fabricating the parent dirs (`projects/`,
+  `projects/-workspace/`) as `root:root`. Combined with
+  `no-new-privileges:true` in `compose.yml`, `post-start.sh` could
+  not reclaim ownership via `sudo`. Two-part fix: Dockerfile
+  pre-creates `/home/${USERNAME}/.claude/projects/-workspace` so the
+  existing `chown -R` covers it before mount-time, and
+  `post-start.sh` adds a Layer 0 reclaim that non-recursively chowns
+  those parents if they still exist as `root`. Same bug class as
+  the earlier `.claude-state` volume permissions fix.
+
+### Operations
+
+- **Wave E1 migration EXECUTED** on both environments (2026-04-29):
+  - Staging (`litcrop-mvp`): **13 beds promoted** (cherry_tomato,
+    cucumber, eggplant, napa_cabbage, corn, watermelon, daikon,
+    shiso, melon, sweet_potato, edamame, zucchini, green_onion); 7
+    skipped (no-inline); 1 malformed orphan caught by guard
+    (pre-existing `PK=FIELD#…` row from earlier schema iterations).
+  - Production (`litcrop-prod`): **0 beds promoted**; 20 skipped
+    (no-inline). Prod is fresh — PR #469 (2026-04-28) was the first
+    time multi-crop reached prod; real users had not yet planted
+    via the legacy inline path at the time of migration.
+- **Wave E2 soak window OPEN** — clock started 2026-04-29.
+  Eligible for E3 from **2026-05-13** onward, conditional on zero
+  `getActiveCropForBed` fallback-branch hits in prod logs
+  (`bed-crops.ts:140-156`).
+
+### Tests
+
+- 1283 vitest cases green (1249 pre-PR-#473 + 34 from the new
+  CHANGELOG ↔ VersionHistory consistency test).
 
 ### Migration / Operator notes
 
-- Wave E1 unblocks the operator workflow that starts the **E2 soak
-  gate** (DESIGN-279 §6 step 2). Operator flow when ready:
-  ```
-  DRY_RUN=1 npx tsx scripts/migrate-wave-e-promote-legacy-crops.ts
-  # → review Summary counts, then:
-  npx tsx scripts/migrate-wave-e-promote-legacy-crops.ts
-  ```
-  Idempotent via the `created_from_legacy` marker; safe to re-run.
-- Wave E2/E3/E4 remain queued. E2 = ≥ 2 weeks of zero hits on the
-  lazy-materialize fallback in `getActiveCropForBed`. E3 =
-  fallback removal. E4 = drop inline `Bed.crop_type` etc. (breaking
-  release, coordinated with frontend migration). All gated on E2.
+- Wave E2/E3/E4 remain queued. E2 = ≥ 14 days zero hits on the
+  lazy-materialize fallback in `getActiveCropForBed`. E3 = fallback
+  removal. E4 = drop inline `Bed.crop_type` etc. (breaking release,
+  coordinated with frontend migration). All gated on E2.
+- Operator runbook above documents the run history table for
+  both environments and recovery procedures if any future re-run
+  is needed.
 
 ---
 

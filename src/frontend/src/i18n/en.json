@@ -80,6 +80,8 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0998_2_item_1": "Behind-the-scenes: a build-time check now keeps this version history page in sync with the engineering changelog — no more silently stale 'current' badge after a release",
+    "v0998_2_item_2": "Behind-the-scenes: the data migration that prepares legacy single-crop beds for the new multi-crop shape ran successfully on staging and production — soak window now in progress before the next cleanup step",
     "v0998_1_item_1": "Diary: each entry can now be attributed to a specific crop on a multi-crop bed — or kept at bed-level as 'All crops'",
     "v0998_1_item_2": "ROI dashboard: new 'ROI by Crop' table answers 'which crop made money', sitting alongside the existing per-bed view",
     "v0998_1_item_3": "Harvest entries auto-attribute to the bed's active crop when no specific crop is named — fewer taps in the common case",
