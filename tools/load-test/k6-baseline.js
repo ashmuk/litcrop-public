@@ -136,6 +136,25 @@ function cognitoSignIn() {
   return json && json.AuthenticationResult ? json.AuthenticationResult.IdToken : null;
 }
 
+// Per-VU token cache. k6's init context runs once per VU, so this
+// variable is local to each VU's iterations. Caching avoids hitting
+// Cognito's per-IP `InitiateAuth` throttle (~5 RPS) on every iteration
+// of the hot-path / me-activity / admin-stats / multi-crop scenarios —
+// those model logged-in user behavior where one sign-in covers many
+// requests. The cold-path scenario deliberately keeps the per-iteration
+// `cognitoSignIn()` call because measuring fresh sign-in latency is
+// its purpose.
+//
+// ID tokens are valid for 1h by default (CDK config); a 2-min baseline
+// fits inside that with margin, so no refresh logic is needed.
+let cachedIdToken = null;
+
+function getOrSignIn() {
+  if (cachedIdToken) return cachedIdToken;
+  cachedIdToken = cognitoSignIn();
+  return cachedIdToken;
+}
+
 function authHeaders(idToken) {
   return { Authorization: `Bearer ${idToken}` };
 }
@@ -166,7 +185,7 @@ export function coldPath() {
 // ── 2. Hot-path scenario (farm list + detail + bed listing) ─────────
 
 export function hotPath() {
-  const idToken = cognitoSignIn();
+  const idToken = getOrSignIn();
   if (!idToken) return;
 
   group('farm hot-path', () => {
@@ -205,7 +224,7 @@ export function hotPath() {
 // ~50. Per TEST-STRATEGY-462.md §6 R5.
 
 export function meActivity() {
-  const idToken = cognitoSignIn();
+  const idToken = getOrSignIn();
   if (!idToken) return;
 
   group('me activity', () => {
@@ -258,7 +277,7 @@ export function meActivity() {
 // post-migration (no real DDB row) and pollute the failure-rate metric.
 
 export function multiCrop() {
-  const idToken = cognitoSignIn();
+  const idToken = getOrSignIn();
   if (!idToken) return;
 
   group('multi-crop fan-out', () => {
@@ -313,7 +332,7 @@ export function multiCrop() {
 // ── 3. Admin stats scenario (scale-cliff target for #383) ───────────
 
 export function adminStats() {
-  const idToken = ADMIN_ID_TOKEN || cognitoSignIn();
+  const idToken = ADMIN_ID_TOKEN || getOrSignIn();
   if (!idToken) return;
 
   group('admin stats', () => {
