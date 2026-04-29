@@ -11,7 +11,7 @@
     "dev": "echo 'Use workspace-specific dev commands'",
     "build": "npm run build -w packages/shared && npm run build -w src/frontend -w src/api --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint src/api/src --ext .ts && eslint packages/shared/src --ext .ts",
+    "lint": "eslint src/api/src packages/shared/src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:shell": "bats scripts/camera-node/__tests__",

@@ -10,8 +10,11 @@ export default tseslint.config(
       sourceType: 'module',
     },
     rules: {
-      // Relax rules that conflict with existing patterns
-      '@typescript-eslint/no-unused-vars': ['warn', {
+      // Relax rules that conflict with existing patterns.
+      // no-unused-vars is `error` (was `warn`) to prevent #471's class of
+      // drift recurring — unused imports / consts must be deleted or
+      // prefixed with `_` to keep them as documentation.
+      '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
       }],
