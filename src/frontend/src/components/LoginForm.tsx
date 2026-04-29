@@ -58,12 +58,21 @@ export default function LoginForm() {
   const [passwordError, setPasswordError] = useState('');
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Hydration marker — flips to true after Preact attaches handlers on mount.
+  // Exposed as `data-hydrated` on the form root so e2e tests can wait for
+  // this island to be fully interactive before fill()/click(), avoiding the
+  // chromium-worker flake class tracked in #470.
+  const [hydrated, setHydrated] = useState(false);
 
   // If already authenticated, redirect away from login page
   useEffect(() => {
     getAccessToken().then((token) => {
       if (token) window.location.replace('/');
     });
+  }, []);
+
+  useEffect(() => {
+    setHydrated(true);
   }, []);
 
   async function handleSubmit(e: Event) {
@@ -109,7 +118,7 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleSubmit} noValidate data-hydrated={hydrated ? 'true' : undefined}>
       {serverError && (
         <div class="auth-server-error" role="alert">
           <span class="auth-server-error__icon" aria-hidden="true">⚠</span>
