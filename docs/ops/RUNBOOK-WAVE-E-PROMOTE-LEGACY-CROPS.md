@@ -1,6 +1,6 @@
 # Wave E1 Migration — Promote Legacy Crops
 
-> Created: 2026-04-29 | Issue: #279 (Stream 2 Wave E) | Status: staging done, prod pending
+> Created: 2026-04-29 | Issue: #279 (Stream 2 Wave E) | Status: staging done, prod done — Wave E2 soak window open
 > Script: [`scripts/migrate-wave-e-promote-legacy-crops.ts`](../../scripts/migrate-wave-e-promote-legacy-crops.ts)
 > Design: [`docs/design/DESIGN-279-bed-crop-1n.md §6`](../design/DESIGN-279-bed-crop-1n.md)
 
@@ -237,8 +237,12 @@ The malformed row is `PK=FIELD#72d44990-…  SK=BED#000001#ff55fc89-…` — an 
 
 | When | Mode | Result |
 | ---- | ---- | ------ |
-| _(pending)_ | DRY RUN | _(to be filled in)_ |
-| _(pending)_ | LIVE    | _(to be filled in)_ |
+| 2026-04-29 | DRY RUN | 20 scanned, 0 malformed, **0 promoted**, 20 skipped (no-inline) |
+| 2026-04-29 | LIVE    | 20 scanned, 0 malformed, **0 promoted**, 20 skipped (no-inline) |
+
+**Note on the 0-promoted outcome.** Prod first saw multi-crop functionality on 2026-04-28 via PR #469 (merge commit `58f84bc`). At the time the migration ran, all 20 prod beds had no `crop_type` set — neither legacy inline nor new `BedCrop` rows existed. The migration is therefore a no-op on prod, and that is the expected outcome for a fresh-prod scenario where real users have not yet planted anything.
+
+**Wave E2 soak still applies.** The soak window watches the shim's fallback branch (`getActiveCropForBed` line 140-156) for any traffic that synthesizes a virtual `bed-legacy-*` projection. With 0 promoted, the shim has nothing to fall back FROM today — but new users could plant via the legacy inline path during the 14-day window (until E3 deletes the shim entirely). Soak clock starts 2026-04-29; eligible to proceed to E3 from **2026-05-13** onward, conditional on zero fallback hits.
 
 ---
 
