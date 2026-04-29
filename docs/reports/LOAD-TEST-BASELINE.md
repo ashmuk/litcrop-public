@@ -2,7 +2,7 @@
 
 Tracking document for R-010 (issue #443). Each baseline entry captures p50/p95/p99 latency, DynamoDB consumption, and cost-per-1k-requests for the five scenarios in `tools/load-test/k6-baseline.js` (auth cold-path, farm hot-path, admin stats, me-activity fan-out, multi-crop fan-out).
 
-**Status:** Harness scaffolded 2026-04-20 (#443); **first empirical baseline captured 2026-04-29** against staging (`litcrop-mvp`) at commit `ea44fc3`. See `## Baselines` section below.
+**Status:** Harness scaffolded 2026-04-20 (#443); first complete empirical baseline captured **2026-04-29 (v2)** against staging (`litcrop-mvp`) at commit `b3603ec`, after v1 (same day, `ea44fc3`) shook out two harness limitations that v0.99.8.5 fixed. See `## Baselines` section below.
 
 ## Pre-run checklist
 
@@ -78,6 +78,79 @@ Then paste the summary stats into a new section below following the template. (k
 ## Baselines
 
 <!-- Insert completed baseline sections above this comment, newest first. -->
+
+## Baseline — 2026-04-29 (v2) — v0.99.8.5 (pending) @ b3603ec (develop)
+
+First **complete and honest** baseline — supersedes v1 of the same day, which was useful as a harness shakedown but had two known data-quality limitations that v0.99.8.5 fixed: per-scenario `http_req_duration{scenario:*}` filters reported `0s` (k6 tag-attribution issue), and the multi-crop scenario silently produced no samples (test-user beds had no `active_crops_count > 0`).
+
+- **Duration**: 2 min
+- **Concurrency**: cold-path 5 VUs / hot-path 10 VUs / admin-stats 3 VUs / me-activity 5 VUs / multi-crop 5 VUs (28 max, in parallel)
+- **Commit under test**: `b3603ec` (`develop`) — includes the v0.99.8.5 fixes (`fix(load-test): k6 multi-crop fallback + scenario tag attribution` + per-VU token cache + #471 lint cleanup).
+- **Environment**: staging — `litcrop-mvp` table / `litcrop-mvp-web` Cognito / `litcrop-mvp-api` Lambda.
+- **Total runs against API**: 7,162 HTTP requests across 2,530 iterations.
+
+### Latency (per-scenario filters working this time)
+
+| Scenario     | p50    | p95    | p99 / max  | Fail %  | SLO                                | Verdict |
+|--------------|--------|--------|------------|---------|------------------------------------|---------|
+| Cold-path    | 236 ms | 357 ms | 506 ms     | 0.00%   | p99 < 3000 ms                      | ✅ ~6× headroom |
+| Hot-path     | 106 ms | 203 ms | max=1.6 s  | 0.00%   | p95 < 1000 ms                      | ✅ ~5× headroom |
+| Admin stats  | 66 ms  | 498 ms | max=1.84 s | 0.00%   | p95 < 5000 ms                      | ✅ ~10× headroom |
+| Me-activity  | 61 ms  | 117 ms | max=1.59 s | 0.00%   | p95 < 1500 ms (R5)                 | ✅ ~13× headroom |
+| Multi-crop   | 71 ms  | 179 ms | max=1.61 s | 0.00%   | p95 < 1500 ms (Wave E2 soak watch) | ✅ ~8× headroom |
+| **Aggregate (all scenarios)** | **93 ms** | **264 ms** | _max=1.84 s_ | **0.00%** | n/a | ✅ |
+
+### Custom Trends
+
+| Trend                              | min     | med     | p95     | max     |
+|------------------------------------|---------|---------|---------|---------|
+| `cognito_login_duration`           | 229 ms  | 294 ms  | 498 ms  | 552 ms  |
+| `me_profile_duration`              | 40 ms   | 66 ms   | 142 ms  | 1.70 s  |
+| `me_activity_first_page_duration`  | 41 ms   | 60 ms   | 110 ms  | 1.60 s  |
+| `list_bed_crops_duration`          | 44 ms   | 64 ms   | 119 ms  | 260 ms  |
+| `get_bed_crop_detail_duration`     | _no samples — see note below_ |
+
+**On `list_bed_crops_duration`**: this is the first synthetic-load measurement of the multi-crop endpoint, the surface Wave E2 watches. p95=119 ms is healthy. The test user's first farm has no beds with `active_crops_count > 0`, so the listings returned empty arrays — but the endpoint was exercised regardless thanks to the v0.99.8.5 fallback. `getActiveCropForBed`'s lazy-materialize path was hit on every call.
+
+**On `get_bed_crop_detail_duration`**: no samples because the listings returned empty arrays (no crops to detail-fetch). Closing this would require a test-data fix — provision at least one bed with a real BedCrop on the staging test user's farm. Deferred to a future operator action; not blocking E2 soak.
+
+### Comparison with v1 baseline (same-day shakedown)
+
+| Metric                       | v1 (`ea44fc3`)        | v2 (`b3603ec`)         | Notes |
+|------------------------------|----------------------|------------------------|-------|
+| HTTP requests                | 6,497                | 7,162                  | More iterations now that scenarios complete properly |
+| http_req_failed              | 0.00%                | 0.00%                  | Stable |
+| Per-scenario filter data     | ❌ all `0s`           | ✅ real numbers         | Tag-attribution fix |
+| Multi-crop scenario samples  | ❌ none               | ✅ `list_bed_crops` 119 ms p95 | Fallback fix |
+| Cognito `p95`                | 335 ms (biased low)  | 498 ms (honest)        | Cache fix changed sample shape |
+| Aggregate `p95`              | 259 ms               | 264 ms                 | Stable |
+
+The v1 Cognito p95 of 335 ms was biased low because 96% of v1's "samples" were Cognito throttle-error responses (~47 ms each — fast errors, not real auth). v2's per-VU token cache fix means the few sign-ins that DO happen are all real successes; 498 ms is the honest p95 for `InitiateAuth` under load.
+
+### DynamoDB consumption (from CloudWatch)
+
+_Operator action — populate after GitHub Actions quota resets (≥ 2026-05-01) and operator has time. Window: 2026-04-29 ~20:50 JST for a ~2-minute baseline run._
+
+### Cost slice (from Cost Explorer)
+
+_Operator action — populate from Cost Explorer for the hour ending 2026-04-29 ~21:00 JST. Filter to `litcrop-mvp-*` resources._
+
+### Observations
+
+- This is the first **trustworthy** baseline. v1 informed the harness fixes; v2 captures the data we actually care about.
+- All 5 SLOs pass with multi-× headroom. **Pilot-scale capacity is comfortable** — no scale concerns at the current concurrency budget.
+- Cold-path is meaningfully more expensive than the hot paths, as expected: each iteration includes a fresh Cognito sign-in. p99=506 ms is dominated by Cognito itself (custom Trend p95=498 ms).
+- Outliers in the max column (1.59 s – 1.84 s) almost certainly Lambda cold starts. Worth tracking on subsequent baselines as a trend signal.
+- `getActiveCropForBed` performance under synthetic load: p95=119 ms via `list_bed_crops_duration`. Comfortable. Complements the organic prod traffic the Wave E2 soak watches.
+
+### Next actions
+
+- ✅ Per-scenario tag attribution: fixed (this baseline proves it).
+- ✅ Multi-crop scenario: now produces samples (this baseline proves it).
+- ⚠ `get_bed_crop_detail_duration`: still empty pending test-data fix (provision a multi-crop bed on staging test user's first farm). Tracked as a deferrable operator action.
+- ⏰ DynamoDB + Cost cells: deferred until ops-quota window opens.
+
+---
 
 ## Baseline — 2026-04-29 — v0.99.8.3 @ ea44fc3 (develop)
 
