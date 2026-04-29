@@ -31,8 +31,14 @@ const COGNITO_WRONG_PASSWORD_BODY = {
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
-    // Wait for the Preact island to hydrate
-    await page.waitForSelector('#login-email');
+    // Wait for the Preact island to FULLY hydrate (event handlers attached),
+    // not just for the SSR'd #login-email element to exist. Without this,
+    // page.fill() writes to the raw DOM before Preact's onInput is bound,
+    // and page.click() fires native form submit before onSubmit is bound —
+    // both manifesting as flaky .form-error / .auth-server-error assertions
+    // on slower chromium workers (#470). The form root carries
+    // data-hydrated="true" only after the client-side mount tick.
+    await page.waitForSelector('form[data-hydrated="true"]', { timeout: 10_000 });
   });
 
   test('page loads with email and password fields visible', async ({ page }) => {
