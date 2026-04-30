@@ -81,6 +81,8 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0998_6_item_1": "Bed detail: owners and admins can now delete pictures — single images via the 🗑 button on each thumbnail, or all photos from a given day via a one-tap bulk action — with a confirm step to prevent accidents",
+    "v0998_6_item_2": "Behind-the-scenes: bulk delete reports both successful and failed counts so partial failures don't go unnoticed; image tags and S3 storage are cleaned up alongside the database row",
     "v0998_5_item_1": "Behind-the-scenes: tightened code quality checks — unused imports and variables now fail the build instead of just warning, preventing subtle test rot from creeping in over time",
     "v0998_5_item_2": "Behind-the-scenes: completed the first end-to-end performance baseline against staging — all key read paths show comfortable headroom (5×–13× under their targets), with the load-test harness now reporting accurate per-scenario metrics",
     "v0998_4_item_1": "Login page is now more reliable on slower devices and connections — fixed an intermittent issue where the very first tap or keystroke could be missed during page load",

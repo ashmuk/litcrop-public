@@ -13,6 +13,62 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
+## [0.99.8.6] - 2026-05-01 — *#478 delete-picture capability (owner/admin only)*
+
+### Added
+
+- **#478 delete-picture capability** on the per-bed crops page (BedDetail).
+  Owner and admin roles can prune captured images, either one at a time
+  or in a daily-bulk batch. Staff and non-members do not see the
+  affordance, and the API rejects them with 404 per the existing
+  `assertBedWriteAccess` opacity convention.
+  - `DELETE /api/v1/images/:imageId` — single-image delete (204).
+  - `DELETE /api/v1/beds/:bedId/images?day=YYYY-MM-DD` — bulk per-day
+    delete (200 with `deleted_count`, `image_ids`, `failed_count`,
+    `failed_ids` — explicit partial-failure surfacing on a destructive
+    operation).
+  - DDB cascade: image row + tag rows via `BatchWriteCommand` chunked at
+    25 per AWS limit, with one `UnprocessedItems` retry (mirrors
+    `deleteFarm`).
+  - S3 cleanup: best-effort `deleteImage` + new `deleteThumbnail` helper
+    for the THUMBNAIL_BUCKET. Orphan S3 objects are harmless — signed
+    URLs 404 — and are caught by bucket lifecycle policies.
+  - Audit events: `image.deleted` (with `captured_at` for forensic
+    reconstruction) + `images.bulk_deleted` (carries the deleted ID
+    list).
+  - Day query parameter validates regex AND calendar correctness via
+    `Date` round-trip — rejects `2026-99-99` and rolled-over dates like
+    `2026-02-30` rather than silently no-opping.
+- **Cascade policy** is Option A — filter at read-time. Diary entries
+  retain their `photo_ids` arrays as-is; the badge count may slightly
+  overstate after a delete, and the lightbox 404s gracefully on a
+  deleted image. Accepted pilot trade-off; soft-delete (Option C) is
+  the upgrade path if needed at v1.0+.
+
+### Frontend
+
+- **BedDetail.tsx**: per-thumb 🗑 button (top-left corner, owner/admin
+  only) and a day-bulk "Delete N" button at the top of each expanded
+  day group's body. Confirm modal reuses the existing `Modal` + `btn-
+  danger` patterns. Delete affordances are gated client-side via
+  `canDeletePictures = !isCropReadOnly`, mirroring the existing role-
+  state pattern.
+- **i18n**: new `buttons.delete` + `delete_pictures.*` namespace (EN
+  and JA), with `{count}` and `{date}` placeholders for the bulk-confirm
+  copy. New regex test guards the placeholders against future
+  translation drift.
+
+### Tests
+
+- 1318 vitest cases green (was 1286). New repository-level tests for
+  `listImagesByBedAndDay` (SK prefix guardrail — `begins_with(SK,
+  'IMG#YYYY-MM-DD')`) and `deleteImage` (BatchWrite chunking at 25
+  items + `UnprocessedItems` retry). New i18n placeholder integrity
+  test for `delete_pictures.*`. Consistency test grew with the new
+  release.
+
+---
+
 ## [0.99.8.5] - 2026-04-29 — *Lint hardening + load-test harness fixes + first complete k6 baseline*
 
 ### Fixed
