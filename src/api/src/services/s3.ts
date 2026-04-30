@@ -112,6 +112,16 @@ export async function deleteImage(storageKey: string): Promise<void> {
   );
 }
 
+/** Delete a thumbnail from S3. Separate bucket from originals (THUMBNAIL_BUCKET). */
+export async function deleteThumbnail(thumbnailKey: string): Promise<void> {
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: THUMBNAIL_BUCKET,
+      Key: thumbnailKey,
+    }),
+  );
+}
+
 // ── Avatar helpers (Beta-5) ─────────────────────────────────────
 
 function avatarOriginalKey(userId: string): string {

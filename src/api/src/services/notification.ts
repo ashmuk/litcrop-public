@@ -90,6 +90,8 @@ export const DEFAULT_NOTIFICATION_PREFS: Record<AppEventType, boolean> = {
   'farm.updated': false,
   'bed.updated': false,
   'image.uploaded': false,
+  'image.deleted': false,
+  'images.bulk_deleted': false,
   'tag.created': false,
   'member.joined': false,
   'member.removed': false,

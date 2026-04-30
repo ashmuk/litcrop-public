@@ -79,6 +79,22 @@ export interface ImageUploadedPayload {
   farm_name: string;
 }
 
+export interface ImageDeletedPayload {
+  image_id: string;
+  bed_id: string;
+  farm_id: string;
+  /** Original capture timestamp (ISO 8601). Useful for forensic reconstruction
+   *  when reviewing what an image cohort looked like before deletion. */
+  captured_at: string;
+}
+
+export interface ImagesBulkDeletedPayload {
+  bed_id: string;
+  farm_id: string;
+  day: string;
+  image_ids: string[];
+}
+
 export interface TagCreatedPayload {
   image_id: string;
   tag_value: string;
@@ -175,6 +191,8 @@ export interface AppEventMap {
   'farm.updated':            AppEvent<'farm.updated', FarmUpdatedPayload>;
   'bed.updated':             AppEvent<'bed.updated', BedUpdatedPayload>;
   'image.uploaded':          AppEvent<'image.uploaded', ImageUploadedPayload>;
+  'image.deleted':           AppEvent<'image.deleted', ImageDeletedPayload>;
+  'images.bulk_deleted':     AppEvent<'images.bulk_deleted', ImagesBulkDeletedPayload>;
   'tag.created':             AppEvent<'tag.created', TagCreatedPayload>;
   'member.joined':           AppEvent<'member.joined', MemberJoinedPayload>;
   'member.removed':          AppEvent<'member.removed', MemberRemovedPayload>;

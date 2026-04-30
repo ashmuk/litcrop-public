@@ -54,6 +54,8 @@ export class DynamoRepository {
   getImageById = images.getImageById;
   createImage = images.createImage;
   updateImageThumbnailKey = images.updateImageThumbnailKey;
+  listImagesByBedAndDay = images.listImagesByBedAndDay;
+  deleteImage = images.deleteImage;
 
   // ── Tags ───────────────────────────────────────────────────────
   getTagsForImage = tags.getTagsForImage;

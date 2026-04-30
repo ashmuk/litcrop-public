@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, getSignedThumbnailUrl } from '../services/s3';
+import {
+  getSignedImageUrl,
+  getSignedThumbnailUrl,
+  deleteImage as s3DeleteImage,
+  deleteThumbnail as s3DeleteThumbnail,
+} from '../services/s3';
 import {
   NotFoundError,
   ValidationError,
@@ -31,6 +36,28 @@ async function assertImageOwnership(image: Image, userId: string, isAdmin?: bool
     }
     throw err;
   }
+}
+
+/** Like assertImageOwnership but restricted to admin|owner roles. Returns the bed for reuse. */
+async function assertImageWriteAccess(image: Image, userId: string, isAdmin?: boolean): Promise<Bed> {
+  let bed: Bed;
+  try {
+    bed = await dynamoRepo.getBedById(image.bed_id);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Image not found: ${image.id}`);
+    }
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+  try {
+    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner'], isAdmin);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Image not found: ${image.id}`);
+    }
+    throw err;
+  }
+  return bed;
 }
 
 /** Verify caller is a farm member for the farm containing this image (all roles can tag). */
@@ -171,6 +198,57 @@ router.post('/:imageId/tags', async (c) => {
     },
     201,
   );
+});
+
+// ── DELETE /api/v1/images/:imageId (#478) ────────────────────────
+
+router.delete('/:imageId', async (c) => {
+  const { imageId } = c.req.param();
+  const { userId, userEmail, isAdmin } = getAuthContext(c);
+
+  let image: Image;
+  try {
+    image = await dynamoRepo.getImageById(imageId);
+  } catch (err) {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  const bed = await assertImageWriteAccess(image, userId, isAdmin);
+
+  // DDB first — single source of truth. S3 cleanup is best-effort:
+  // an orphan S3 object is harmless (signed URL fetches will 404)
+  // and S3 lifecycle policies catch it eventually.
+  try {
+    await dynamoRepo.deleteImage(image);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  const s3Results = await Promise.allSettled([
+    s3DeleteImage(image.storage_key),
+    image.thumbnail_key ? s3DeleteThumbnail(image.thumbnail_key) : Promise.resolve(),
+  ]);
+  for (const r of s3Results) {
+    if (r.status === 'rejected') {
+      console.warn(`[DELETE /images/${imageId}] S3 cleanup failed:`, r.reason);
+    }
+  }
+
+  appEvents.emit('image.deleted', {
+    type: 'image.deleted',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      image_id: image.id,
+      bed_id: image.bed_id,
+      farm_id: bed.farm_id,
+      captured_at: image.captured_at,
+    },
+  });
+
+  return c.body(null, 204);
 });
 
 export default router;

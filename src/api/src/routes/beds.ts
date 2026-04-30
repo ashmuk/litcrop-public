@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
 import { dynamoRepo } from '../services/dynamodb';
-import { getSignedImageUrl, getSignedThumbnailUrl, uploadImage, buildStorageKey } from '../services/s3';
+import {
+  getSignedImageUrl,
+  getSignedThumbnailUrl,
+  uploadImage,
+  buildStorageKey,
+  deleteImage as s3DeleteImage,
+  deleteThumbnail as s3DeleteThumbnail,
+} from '../services/s3';
 import {
   NotFoundError,
   ValidationError,
@@ -23,7 +30,7 @@ import {
   hasActiveCrop,
 } from '@litcrop/shared';
 import type { Bed, Image } from '@litcrop/shared';
-import { makeBedDetailImage, assertBedAccess, assertBedWriteAccess, parseBody } from './_helpers';
+import { makeBedDetailImage, assertBedAccess, assertBedWriteAccess, assertFarmAccess, parseBody } from './_helpers';
 import { appEvents } from '../services/events';
 
 const router = new Hono();
@@ -401,6 +408,112 @@ router.post('/:bedId/images', async (c) => {
     },
     201,
   );
+});
+
+// ── DELETE /api/v1/beds/:bedId/images?day=YYYY-MM-DD (#478) ─────
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+router.delete('/:bedId/images', async (c) => {
+  const { bedId } = c.req.param();
+  const day = c.req.query('day');
+  const { userId, userEmail, isAdmin } = getAuthContext(c);
+
+  // Reject syntactic typos AND non-existent calendar dates (e.g. 2026-99-99).
+  // The Date round-trip catches the latter — `new Date('2026-99-99')` is NaN
+  // for clearly invalid months/days, and `toISOString().slice(0, 10)` would
+  // re-normalise an over-rolled date (e.g. month 13 → next year), so we also
+  // require the parsed value to round-trip back to the same string.
+  let dayValid = DAY_RE.test(day ?? '');
+  if (dayValid) {
+    const parsed = new Date(`${day}T00:00:00Z`);
+    dayValid = !isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
+  }
+  if (!day || !dayValid) {
+    throw new ValidationError("Invalid or missing 'day' query parameter: must be YYYY-MM-DD", {
+      field: 'day',
+      in: 'query',
+    });
+  }
+
+  let bed: Bed;
+  try {
+    bed = await dynamoRepo.getBedById(bedId);
+  } catch (err) {
+    if (err instanceof NotFoundError) throw err;
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  // Admin/owner only (super-admin override), wrap missing-farm as bed-not-found.
+  try {
+    await assertFarmAccess(bed.farm_id, userId, ['admin', 'owner'], isAdmin);
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new NotFoundError(`Bed not found: ${bedId}`);
+    }
+    throw err;
+  }
+
+  let images: Image[];
+  try {
+    images = await dynamoRepo.listImagesByBedAndDay(bedId, day);
+  } catch {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  if (images.length === 0) {
+    return c.json({ deleted_count: 0, image_ids: [], failed_count: 0, failed_ids: [] });
+  }
+
+  // Per-image: DDB delete (image+tags) then best-effort S3 cleanup. The
+  // response surfaces partial failures explicitly so the client can tell
+  // "all 10 deleted" from "8 deleted, 2 left behind" — silent partial
+  // success on a destructive op would be a footgun.
+  const deletedIds: string[] = [];
+  const failedIds: string[] = [];
+  await Promise.all(images.map(async (img) => {
+    try {
+      await dynamoRepo.deleteImage(img);
+      deletedIds.push(img.id);
+    } catch (err) {
+      console.warn(`[bulk-delete bed ${bedId} day ${day}] DDB delete failed for image ${img.id}:`, err);
+      failedIds.push(img.id);
+      return;
+    }
+    const s3Results = await Promise.allSettled([
+      s3DeleteImage(img.storage_key),
+      img.thumbnail_key ? s3DeleteThumbnail(img.thumbnail_key) : Promise.resolve(),
+    ]);
+    for (const r of s3Results) {
+      if (r.status === 'rejected') {
+        console.warn(`[bulk-delete bed ${bedId} day ${day}] S3 cleanup failed for image ${img.id}:`, r.reason);
+      }
+    }
+  }));
+
+  if (failedIds.length > 0 && deletedIds.length === 0) {
+    throw new ServiceUnavailableError('Storage service unavailable');
+  }
+
+  appEvents.emit('images.bulk_deleted', {
+    type: 'images.bulk_deleted',
+    timestamp: new Date().toISOString(),
+    actor_id: userId,
+    actor_email: userEmail,
+    payload: {
+      bed_id: bedId,
+      farm_id: bed.farm_id,
+      day,
+      image_ids: deletedIds,
+    },
+  });
+
+  return c.json({
+    deleted_count: deletedIds.length,
+    image_ids: deletedIds,
+    failed_count: failedIds.length,
+    failed_ids: failedIds,
+  });
 });
 
 export default router;

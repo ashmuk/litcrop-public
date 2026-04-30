@@ -46,7 +46,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "upload": "Upload image",
-    "back": "Back"
+    "back": "Back",
+    "delete": "Delete"
   },
   "farm": {
     "no_plots": "No beds yet",
@@ -1091,5 +1092,15 @@
     "step5_title": "Review your progress",
     "step5_desc": "Use timelapse playback to watch your crops grow over time. Filter by device or date range.",
     "changelog": "Changelog"
+  },
+  "delete_pictures": {
+    "confirm_single_title": "Delete this picture?",
+    "confirm_single_body": "This action cannot be undone.",
+    "confirm_bulk_title": "Delete pictures?",
+    "confirm_bulk_body": "All {count} pictures captured on {date} will be permanently deleted. This cannot be undone.",
+    "day_action": "Delete {count}",
+    "success_single": "Picture deleted",
+    "success_bulk": "{count} pictures deleted",
+    "error": "Could not delete"
   }
 }

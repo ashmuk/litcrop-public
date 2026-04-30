@@ -723,6 +723,42 @@
   right: 4px;
 }
 
+/* #478 — owner/admin-only per-thumb delete button (top-left corner) */
+.thumb-item__delete {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #FFFFFF;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast);
+  z-index: 1;
+}
+
+.thumb-item__delete:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.85); /* red-600 */
+}
+
+.thumb-item__delete:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-bg-card), 0 0 0 4px var(--color-status-issue);
+}
+
+.thumb-item__delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Color-coded bottom border by tag status */
 .thumb-item--tagged-healthy  { border-bottom: 4px solid var(--color-status-healthy); }
 .thumb-item--tagged-slow     { border-bottom: 4px solid var(--color-status-slow-growth); }

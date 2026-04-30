@@ -16,6 +16,7 @@ import type { PlantMethod } from '@litcrop/shared';
 import {
   getBed, getImages, createTag, uploadImage, updateBed, createDiaryEntry, ApiError,
   listBedCrops, createBedCrop, updateBedCrop,
+  deleteImage as apiDeleteImage, deleteImagesByDay,
 } from '../lib/api';
 import { getLocalFarmRole, refreshFarmRoleCache } from '../lib/hooks';
 import { LS_FARM_ID } from '../lib/hooks';
@@ -125,6 +126,12 @@ export default function BedDetail() {
   const [completing, setCompleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [plantMethod, setPlantMethod] = useState<PlantMethod>('seedling');
+  // #478 — delete-picture confirm modal
+  type DeleteConfirm =
+    | { kind: 'single'; img: ImageListItem }
+    | { kind: 'bulk'; dateKey: string; label: string; images: ImageListItem[] };
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const bedId =
     typeof window !== 'undefined'
@@ -555,6 +562,31 @@ export default function BedDetail() {
       }]
     : [];
   const dayGroups = groupByDay(images);
+  const canDeletePictures = !isCropReadOnly;
+
+  async function handleConfirmDelete() {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      let successMsg: string;
+      if (deleteConfirm.kind === 'single') {
+        await apiDeleteImage(deleteConfirm.img.id);
+        successMsg = t('delete_pictures.success_single');
+      } else {
+        const result = await deleteImagesByDay(bedId, deleteConfirm.dateKey);
+        successMsg = t('delete_pictures.success_bulk').replace('{count}', String(result.deleted_count));
+      }
+      const refreshed = await getImages(bedId);
+      setImages(refreshed.data);
+      setNextCursor(refreshed.meta.next_cursor);
+      showToast(successMsg, 'success');
+      setDeleteConfirm(null);
+    } catch {
+      showToast(t('delete_pictures.error'), 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <>
@@ -787,6 +819,19 @@ export default function BedDetail() {
                     </span>
                   </button>
                   <div id={bodyId} class={`day-group__body${isOpen ? ' day-group__body--open' : ''}`} role="region" aria-labelledby={`day-header-${group.dateKey}`}>
+                    {canDeletePictures && (
+                      <div style="display:flex;justify-content:flex-end;padding:var(--space-2) 0">
+                        <button
+                          type="button"
+                          class="btn-secondary"
+                          style="font-size:var(--font-size-xs);padding:var(--space-1) var(--space-2)"
+                          disabled={deleting}
+                          onClick={() => setDeleteConfirm({ kind: 'bulk', dateKey: group.dateKey, label: group.label, images: group.images })}
+                        >
+                          🗑 {t('delete_pictures.day_action').replace('{count}', String(group.images.length))}
+                        </button>
+                      </div>
+                    )}
                     <div class="thumb-grid">
                       {group.images.map((img) => (
                         <div
@@ -805,6 +850,20 @@ export default function BedDetail() {
                             <div class="thumb-item__motion">
                               <span class="badge-motion-sm">🏃</span>
                             </div>
+                          )}
+                          {canDeletePictures && (
+                            <button
+                              type="button"
+                              class="thumb-item__delete"
+                              aria-label={t('buttons.delete')}
+                              disabled={deleting}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ kind: 'single', img });
+                              }}
+                            >
+                              🗑
+                            </button>
                           )}
                         </div>
                       ))}
@@ -888,6 +947,46 @@ export default function BedDetail() {
               disabled={saving || !cropForm.crop_type.trim()}
             >
               {saving ? '...' : t('buttons.save')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* -- Delete-picture Confirm Modal (#478) -- */}
+      <Modal
+        open={deleteConfirm !== null}
+        onClose={() => { if (!deleting) setDeleteConfirm(null); }}
+        title={
+          deleteConfirm?.kind === 'bulk'
+            ? t('delete_pictures.confirm_bulk_title')
+            : t('delete_pictures.confirm_single_title')
+        }
+        size="sm"
+      >
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <p style="margin:0;color:var(--color-gray-700)">
+            {deleteConfirm?.kind === 'bulk'
+              ? t('delete_pictures.confirm_bulk_body')
+                  .replace('{count}', String(deleteConfirm.images.length))
+                  .replace('{date}', deleteConfirm.label)
+              : t('delete_pictures.confirm_single_body')}
+          </p>
+          <div style="display:flex;gap:var(--space-3)">
+            <button
+              class="btn-secondary"
+              style="flex:1"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deleting}
+            >
+              {t('buttons.cancel')}
+            </button>
+            <button
+              class="btn-danger"
+              style="flex:2"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? '...' : t('buttons.delete')}
             </button>
           </div>
         </div>

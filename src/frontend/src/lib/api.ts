@@ -276,6 +276,34 @@ export async function getImage(imageId: string): Promise<ImageDetailResponse> {
   return request<ImageDetailResponse>('GET', `/images/${imageId}`);
 }
 
+/**
+ * DELETE /api/v1/images/{imageId} — single-image delete (#478).
+ * Owner/admin only. 204 No Content on success.
+ */
+export async function deleteImage(imageId: string): Promise<void> {
+  await request<void>('DELETE', `/images/${imageId}`);
+}
+
+/** Response payload of the bulk per-day image delete endpoint (#478). */
+export interface DeleteImagesByDayResponse {
+  deleted_count: number;
+  image_ids: string[];
+  /** Number of images that failed to delete (DDB error). Zero on full success. */
+  failed_count: number;
+  failed_ids: string[];
+}
+
+/**
+ * DELETE /api/v1/beds/{bedId}/images?day=YYYY-MM-DD — bulk per-day delete (#478).
+ * Owner/admin only. Returns count and IDs of removed images.
+ */
+export async function deleteImagesByDay(bedId: string, day: string): Promise<DeleteImagesByDayResponse> {
+  return request<DeleteImagesByDayResponse>(
+    'DELETE',
+    `/beds/${bedId}/images?day=${encodeURIComponent(day)}`,
+  );
+}
+
 // ── Tag Endpoint ──────────────────────────────────────────────────
 
 /** POST /api/v1/images/{imageId}/tags */
