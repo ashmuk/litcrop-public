@@ -46,7 +46,8 @@
     "save": "保存",
     "cancel": "キャンセル",
     "upload": "画像をアップロード",
-    "back": "戻る"
+    "back": "戻る",
+    "delete": "削除"
   },
   "farm": {
     "no_plots": "ベッドがありません",
@@ -1091,5 +1092,15 @@
     "step5_title": "成長を振り返る",
     "step5_desc": "タイムラプス再生で作物の成長を時系列で確認。デバイスや期間でフィルタリング可能。",
     "changelog": "更新履歴"
+  },
+  "delete_pictures": {
+    "confirm_single_title": "この写真を削除しますか？",
+    "confirm_single_body": "この操作は取り消せません。",
+    "confirm_bulk_title": "写真を削除しますか？",
+    "confirm_bulk_body": "{date}に撮影された{count}枚の写真がすべて完全に削除されます。この操作は取り消せません。",
+    "day_action": "{count}枚を削除",
+    "success_single": "写真を削除しました",
+    "success_bulk": "{count}枚の写真を削除しました",
+    "error": "削除できませんでした"
   }
 }

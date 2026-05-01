@@ -1,6 +1,15 @@
 import { TEST_USER_ID, authHeaders, makeAuthHeaders } from '../helpers/auth';
 import { FARM_ID, BED_ID, IMAGE_ID, farmFixture, bedFixture, imageFixture, tagFixture, membershipFixture } from '../fixtures';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Set ADMIN_EMAILS before auth module loads (#478 super-admin bulk-delete test).
+// vi.hoisted runs before any import — required because ADMIN_EMAILS_SET is cached
+// at module level the first time `config.ts` is imported.
+const ADMIN_EMAIL = 'admin@litcrop.test';
+vi.hoisted(() => {
+  process.env['ADMIN_EMAILS'] = 'admin@litcrop.test';
+});
+
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
 import { getSignedImageUrl, getSignedThumbnailUrl } from '../../services/s3';
@@ -20,6 +29,9 @@ vi.mock('../../services/dynamodb', () => ({
     // #279 Wave B — FarmBed compat shim
     getActiveCropForBed: vi.fn(),
     listBedCropsByBed: vi.fn(),
+    // #478 — bulk image delete
+    listImagesByBedAndDay: vi.fn(),
+    deleteImage: vi.fn(),
   },
 }));
 
@@ -28,6 +40,7 @@ vi.mock('../../services/s3', () => ({
   getSignedThumbnailUrl: vi.fn(),
   uploadImage: vi.fn(),
   deleteImage: vi.fn(),
+  deleteThumbnail: vi.fn(),
   buildStorageKey: vi.fn().mockReturnValue('images/f0/bd0/2026/01/01/test-img.jpg'),
 }));
 
@@ -461,5 +474,200 @@ describe('POST /api/v1/beds/:bedId/images', () => {
     expect(dynamoRepo.createImage).toHaveBeenCalledOnce();
     const callArgs = vi.mocked(dynamoRepo.createImage).mock.calls[0];
     expect(callArgs[2]).toMatchObject({ uploaded_by: 'test-user-sub' });
+  });
+});
+
+// ── DELETE /api/v1/beds/:bedId/images?day=YYYY-MM-DD (#478) ─────
+
+describe('DELETE /api/v1/beds/:bedId/images?day=YYYY-MM-DD', () => {
+  const DAY = '2026-03-17';
+  const IMG_2_ID = 'im000000-0000-0000-0000-000000000002';
+  const IMG_3_ID = 'im000000-0000-0000-0000-000000000003';
+
+  function makeImage(id: string, capturedAt: string): import('@litcrop/shared').Image {
+    return {
+      ...imageFixture,
+      id,
+      captured_at: capturedAt,
+      storage_key: `images/${FARM_ID}/${BED_ID}/2026/03/17/${id}.jpg`,
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(dynamoRepo.getBedById).mockResolvedValue(bedFixture);
+    vi.mocked(dynamoRepo.deleteImage).mockResolvedValue();
+    // s3 mocks already exist on the module-level mock
+  });
+
+  it('owner happy path → 200 with deleted_count and image_ids', async () => {
+    const images = [
+      makeImage(IMAGE_ID, '2026-03-17T08:00:00.000Z'),
+      makeImage(IMG_2_ID, '2026-03-17T12:00:00.000Z'),
+      makeImage(IMG_3_ID, '2026-03-17T18:00:00.000Z'),
+    ];
+    vi.mocked(dynamoRepo.listImagesByBedAndDay).mockResolvedValue(images);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { deleted_count: number; image_ids: string[] };
+    expect(body.deleted_count).toBe(3);
+    expect(body.image_ids).toEqual(expect.arrayContaining([IMAGE_ID, IMG_2_ID, IMG_3_ID]));
+    expect(dynamoRepo.deleteImage).toHaveBeenCalledTimes(3);
+    expect(dynamoRepo.listImagesByBedAndDay).toHaveBeenCalledWith(BED_ID, DAY);
+  });
+
+  it('empty day → 200 with deleted_count: 0 (no DDB delete calls)', async () => {
+    vi.mocked(dynamoRepo.listImagesByBedAndDay).mockResolvedValue([]);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { deleted_count: number; image_ids: string[] };
+    expect(body.deleted_count).toBe(0);
+    expect(body.image_ids).toEqual([]);
+    expect(dynamoRepo.deleteImage).not.toHaveBeenCalled();
+  });
+
+  it('missing day → 400', async () => {
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(400);
+    expect(dynamoRepo.listImagesByBedAndDay).not.toHaveBeenCalled();
+  });
+
+  it('malformed day (e.g. 2026/03/17) → 400', async () => {
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=2026%2F03%2F17`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(400);
+    expect(dynamoRepo.listImagesByBedAndDay).not.toHaveBeenCalled();
+  });
+
+  it('non-existent calendar date (e.g. 2026-99-99) → 400', async () => {
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=2026-99-99`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(400);
+    expect(dynamoRepo.listImagesByBedAndDay).not.toHaveBeenCalled();
+  });
+
+  it('rolled-over date (e.g. 2026-02-30) → 400 (round-trip mismatch)', async () => {
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=2026-02-30`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(400);
+    expect(dynamoRepo.listImagesByBedAndDay).not.toHaveBeenCalled();
+  });
+
+  it('partial DDB failure → 200 with both deleted_ids and failed_ids', async () => {
+    const images = [
+      makeImage(IMAGE_ID, '2026-03-17T08:00:00.000Z'),
+      makeImage(IMG_2_ID, '2026-03-17T12:00:00.000Z'),
+      makeImage(IMG_3_ID, '2026-03-17T18:00:00.000Z'),
+    ];
+    vi.mocked(dynamoRepo.listImagesByBedAndDay).mockResolvedValue(images);
+    // Reject the second image's DDB delete; first and third succeed.
+    vi.mocked(dynamoRepo.deleteImage).mockImplementation(async (img) => {
+      if (img.id === IMG_2_ID) throw new Error('Throughput exceeded');
+    });
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      deleted_count: number; image_ids: string[]; failed_count: number; failed_ids: string[];
+    };
+    expect(body.deleted_count).toBe(2);
+    expect(body.failed_count).toBe(1);
+    expect(body.image_ids).toEqual(expect.arrayContaining([IMAGE_ID, IMG_3_ID]));
+    expect(body.failed_ids).toEqual([IMG_2_ID]);
+  });
+
+  it('total DDB failure → 503 (every image failed)', async () => {
+    const images = [
+      makeImage(IMAGE_ID, '2026-03-17T08:00:00.000Z'),
+      makeImage(IMG_2_ID, '2026-03-17T12:00:00.000Z'),
+    ];
+    vi.mocked(dynamoRepo.listImagesByBedAndDay).mockResolvedValue(images);
+    vi.mocked(dynamoRepo.deleteImage).mockRejectedValue(new Error('Throughput exceeded'));
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(503);
+  });
+
+  it('staff role → 404 + no list/delete calls', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      ...membershipFixture,
+      role: 'staff' as const,
+    });
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(404);
+    expect(dynamoRepo.listImagesByBedAndDay).not.toHaveBeenCalled();
+    expect(dynamoRepo.deleteImage).not.toHaveBeenCalled();
+  });
+
+  it('non-member → 404 + no list/delete calls', async () => {
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(404);
+    expect(dynamoRepo.listImagesByBedAndDay).not.toHaveBeenCalled();
+  });
+
+  it('bed not found → 404', async () => {
+    vi.mocked(dynamoRepo.getBedById).mockRejectedValue(new NotFoundError('Bed not found'));
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('super-admin (non-member) → 200 via admin bypass on assertFarmAccess', async () => {
+    // Super-admin: not a farm member, but JWT email matches ADMIN_EMAILS env →
+    // isAdmin=true bypasses membership check and synthesizes role 'admin'
+    // (matches required ['admin','owner']).
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+    const images = [makeImage(IMAGE_ID, '2026-03-17T08:00:00.000Z')];
+    vi.mocked(dynamoRepo.listImagesByBedAndDay).mockResolvedValue(images);
+
+    const res = await app.request(`/api/v1/beds/${BED_ID}/images?day=${DAY}`, {
+      method: 'DELETE',
+      headers: makeAuthHeaders('super-admin-sub', ADMIN_EMAIL),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as { deleted_count: number };
+    expect(body.deleted_count).toBe(1);
+    expect(dynamoRepo.deleteImage).toHaveBeenCalledTimes(1);
   });
 });

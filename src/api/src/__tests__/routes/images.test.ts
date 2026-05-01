@@ -2,7 +2,13 @@ import { TEST_USER_ID, authHeaders } from '../helpers/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import app from '../../app';
 import { dynamoRepo } from '../../services/dynamodb';
-import { getSignedImageUrl, getSignedThumbnailUrl } from '../../services/s3';
+import {
+  getSignedImageUrl,
+  getSignedThumbnailUrl,
+  deleteImage as s3DeleteImage,
+  deleteThumbnail as s3DeleteThumbnail,
+} from '../../services/s3';
+import { appEvents } from '../../services/events';
 import { NotFoundError } from '../../errors';
 import type { Image, Tag, Bed } from '@litcrop/shared';
 
@@ -11,6 +17,7 @@ vi.mock('../../services/dynamodb', () => ({
     getImageById: vi.fn(),
     getTagsForImage: vi.fn(),
     createTag: vi.fn(),
+    deleteImage: vi.fn(),
     // Ownership chain: image → bed → farm → membership
     getBedById: vi.fn(),
     getFarm: vi.fn(),
@@ -22,6 +29,8 @@ vi.mock('../../services/s3', () => ({
   getSignedImageUrl: vi.fn(),
   getSignedThumbnailUrl: vi.fn(),
   uploadImage: vi.fn(),
+  deleteImage: vi.fn(),
+  deleteThumbnail: vi.fn(),
 }));
 
 const FARM_ID = 'f0000000-0000-0000-0000-000000000001';
@@ -255,5 +264,146 @@ describe('POST /api/v1/images/:imageId/tags', () => {
       body: JSON.stringify({ tag: 'healthy' }),
     });
     expect(res.status).toBe(201);
+  });
+});
+
+// ── DELETE /api/v1/images/:imageId (#478) ────────────────────────
+
+describe('DELETE /api/v1/images/:imageId', () => {
+  beforeEach(() => {
+    vi.mocked(dynamoRepo.deleteImage).mockResolvedValue();
+    vi.mocked(s3DeleteImage).mockResolvedValue();
+    vi.mocked(s3DeleteThumbnail).mockResolvedValue();
+  });
+
+  it('owner happy path → 204 + DDB and S3 cleanup', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(204);
+    expect(dynamoRepo.deleteImage).toHaveBeenCalledWith(imageFixture);
+    expect(s3DeleteImage).toHaveBeenCalledWith(imageFixture.storage_key);
+    // No thumbnail_key on the fixture → deleteThumbnail not called
+    expect(s3DeleteThumbnail).not.toHaveBeenCalled();
+  });
+
+  it('also deletes thumbnail when image has thumbnail_key', async () => {
+    const thumbnailKey = `thumbnails/${FARM_ID}/${BED_ID}/2026/03/17/${IMAGE_ID}.jpg`;
+    const withThumb = { ...imageFixture, thumbnail_key: thumbnailKey };
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(withThumb);
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(204);
+    expect(s3DeleteThumbnail).toHaveBeenCalledWith(thumbnailKey);
+  });
+
+  it('admin role → 204', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'admin' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(204);
+    expect(dynamoRepo.deleteImage).toHaveBeenCalled();
+  });
+
+  it('staff role → 404 (codebase opacity convention) + no DDB/S3 mutation', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue({
+      user_id: TEST_USER_ID,
+      farm_id: FARM_ID,
+      role: 'staff' as const,
+      joined_at: '2026-03-17T00:00:00.000Z',
+    });
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(404);
+    expect(dynamoRepo.deleteImage).not.toHaveBeenCalled();
+    expect(s3DeleteImage).not.toHaveBeenCalled();
+  });
+
+  it('non-member → 404 + no mutation', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    vi.mocked(dynamoRepo.getFarmMembership).mockResolvedValue(null);
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(404);
+    expect(dynamoRepo.deleteImage).not.toHaveBeenCalled();
+  });
+
+  it('image not found → 404', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockRejectedValue(new NotFoundError('Image not found'));
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(404);
+    expect(dynamoRepo.deleteImage).not.toHaveBeenCalled();
+  });
+
+  it('emits image.deleted event with payload', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    const listener = vi.fn();
+    appEvents.on('image.deleted', listener);
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    expect(res.status).toBe(204);
+    // Wait one microtask flush for fire-and-forget emit
+    await new Promise((r) => setImmediate(r));
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'image.deleted',
+      actor_id: TEST_USER_ID,
+      payload: expect.objectContaining({
+        image_id: IMAGE_ID,
+        bed_id: BED_ID,
+        farm_id: FARM_ID,
+        captured_at: imageFixture.captured_at,
+      }),
+    }));
+    appEvents.off('image.deleted', listener);
+  });
+
+  it('S3 cleanup failure does NOT fail the delete (best-effort)', async () => {
+    vi.mocked(dynamoRepo.getImageById).mockResolvedValue(imageFixture);
+    vi.mocked(s3DeleteImage).mockRejectedValue(new Error('S3 unavailable'));
+
+    const res = await app.request(`/api/v1/images/${IMAGE_ID}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    // DDB delete already succeeded; client sees 204 even if S3 cleanup fails.
+    expect(res.status).toBe(204);
+    expect(dynamoRepo.deleteImage).toHaveBeenCalled();
   });
 });
