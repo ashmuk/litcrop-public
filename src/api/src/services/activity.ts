@@ -337,6 +337,32 @@ function fromPayload<T extends AppEventType>(
         details: { bed_id: p['bed_id'] },
       };
 
+    case 'image.deleted':
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'image',
+        target_id: String(p['image_id'] ?? ''),
+        target_name: '',
+        farm_id: String(p['farm_id'] ?? ''),
+        details: { bed_id: p['bed_id'], captured_at: p['captured_at'] },
+      };
+
+    case 'images.bulk_deleted': {
+      const imageIds = Array.isArray(p['image_ids']) ? (p['image_ids'] as string[]) : [];
+      return {
+        event_type: type,
+        actor_id: event.actor_id,
+        actor_email: event.actor_email,
+        target_type: 'image',
+        target_id: String(p['bed_id'] ?? ''),
+        target_name: '',
+        farm_id: String(p['farm_id'] ?? ''),
+        details: { bed_id: p['bed_id'], day: p['day'], image_ids: imageIds, count: imageIds.length },
+      };
+    }
+
     case 'tag.created':
       return {
         event_type: type,
@@ -510,6 +536,8 @@ const ALL_EVENT_TYPES: AppEventType[] = [
   'farm.updated',
   'bed.updated',
   'image.uploaded',
+  'image.deleted',
+  'images.bulk_deleted',
   'tag.created',
   'member.joined',
   'member.removed',

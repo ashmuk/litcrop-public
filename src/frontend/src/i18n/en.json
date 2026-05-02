@@ -539,6 +539,8 @@
     "activity_event_farm_updated": "Farm Updated",
     "activity_event_bed_updated": "Bed Updated",
     "activity_event_image_uploaded": "Image Uploaded",
+    "activity_event_image_deleted": "Image Deleted",
+    "activity_event_images_bulk_deleted": "Images Bulk Deleted",
     "activity_event_tag_created": "Tag Created",
     "activity_event_member_joined": "Member Joined",
     "activity_event_member_removed": "Member Removed",

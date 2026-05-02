@@ -172,7 +172,59 @@ describe('activity subscriptions — recordActivity', () => {
     expect(items[0]['target_type']).toBe('bed');
   });
 
-  it('records all 14 event types without throwing', async () => {
+  // ── #482 regression: image.deleted + images.bulk_deleted ────────
+  // These events were emitted by the routes (v0.99.8.6 / #478) but
+  // never persisted to the activity log because they were missing
+  // from ALL_EVENT_TYPES + fromPayload(). v0.99.8.7 (#482) wires
+  // them in. Tests assert end-to-end emit → persist → mapped row.
+
+  it('records image.deleted with target_type=image and details capturing bed_id + captured_at', async () => {
+    appEvents.emit('image.deleted', makeEvent('image.deleted', {
+      image_id: 'img-123',
+      bed_id: 'bed-001',
+      farm_id: 'farm-xyz',
+      captured_at: '2026-04-15T08:30:00.000Z',
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockDdbSend).toHaveBeenCalledOnce();
+    const items = getBatchWriteItems(mockDdbSend.mock.calls[0]);
+    expect(items).toHaveLength(2);
+
+    const global = items.find((i) => i['GSI2PK'] === 'ACTIVITY#ALL')!;
+    expect(global['event_type']).toBe('image.deleted');
+    expect(global['target_type']).toBe('image');
+    expect(global['target_id']).toBe('img-123');
+    expect(global['farm_id']).toBe('farm-xyz');
+    expect(global['details']).toEqual({ bed_id: 'bed-001', captured_at: '2026-04-15T08:30:00.000Z' });
+  });
+
+  it('records images.bulk_deleted with target_id=bed_id and details.count derived from image_ids', async () => {
+    appEvents.emit('images.bulk_deleted', makeEvent('images.bulk_deleted', {
+      bed_id: 'bed-001',
+      farm_id: 'farm-xyz',
+      day: '2026-04-15',
+      image_ids: ['img-1', 'img-2', 'img-3'],
+    }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockDdbSend).toHaveBeenCalledOnce();
+    const items = getBatchWriteItems(mockDdbSend.mock.calls[0]);
+    expect(items).toHaveLength(2);
+
+    const global = items.find((i) => i['GSI2PK'] === 'ACTIVITY#ALL')!;
+    expect(global['event_type']).toBe('images.bulk_deleted');
+    expect(global['target_type']).toBe('image');
+    expect(global['target_id']).toBe('bed-001');
+    expect(global['farm_id']).toBe('farm-xyz');
+    const details = global['details'] as Record<string, unknown>;
+    expect(details['bed_id']).toBe('bed-001');
+    expect(details['day']).toBe('2026-04-15');
+    expect(details['count']).toBe(3);
+    expect(details['image_ids']).toEqual(['img-1', 'img-2', 'img-3']);
+  });
+
+  it('records all enumerated event types without throwing', async () => {
     const events: Array<[string, unknown]> = [
       ['user.signup', { user_id: 'u1', display_name: 'A', email: 'a@test.com' }],
       ['farm.created', { farm_id: 'f1', farm_name: 'F1' }],
@@ -188,6 +240,8 @@ describe('activity subscriptions — recordActivity', () => {
       ['join_request.rejected', { farm_id: 'f1', farm_name: 'F1', target_user_id: 'u4', target_user_name: 'Eve' }],
       ['account.deleted', { user_id: 'u5', display_name: 'Fay', email: 'fay@test.com' }],
       ['user.profile_updated', { changed_fields: ['display_name'] }],
+      ['image.deleted', { image_id: 'i9', bed_id: 'b9', farm_id: 'f9', captured_at: '2026-04-15T08:30:00.000Z' }],
+      ['images.bulk_deleted', { bed_id: 'b9', farm_id: 'f9', day: '2026-04-15', image_ids: ['i1', 'i2'] }],
     ];
 
     for (const [type, payload] of events) {
@@ -197,7 +251,7 @@ describe('activity subscriptions — recordActivity', () => {
     await new Promise((r) => setTimeout(r, 100));
 
     // Each emit triggers one DDB send call (1 or 2 items depending on farm_id)
-    expect(mockDdbSend).toHaveBeenCalledTimes(14);
+    expect(mockDdbSend).toHaveBeenCalledTimes(events.length);
   });
 });
 

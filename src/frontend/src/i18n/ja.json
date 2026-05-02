@@ -539,6 +539,8 @@
     "activity_event_farm_updated": "農園更新",
     "activity_event_bed_updated": "ベッド更新",
     "activity_event_image_uploaded": "画像アップロード",
+    "activity_event_image_deleted": "画像削除",
+    "activity_event_images_bulk_deleted": "画像一括削除",
     "activity_event_tag_created": "タグ作成",
     "activity_event_member_joined": "メンバー参加",
     "activity_event_member_removed": "メンバー削除",

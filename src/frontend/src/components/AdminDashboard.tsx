@@ -466,6 +466,8 @@ const EVENT_LABELS: Record<string, { labelKey: string; color: string }> = {
   'farm.updated':              { labelKey: 'admin.activity_event_farm_updated',              color: '#60a5fa' },
   'bed.updated':               { labelKey: 'admin.activity_event_bed_updated',               color: '#a78bfa' },
   'image.uploaded':            { labelKey: 'admin.activity_event_image_uploaded',            color: '#fbbf24' },
+  'image.deleted':             { labelKey: 'admin.activity_event_image_deleted',             color: '#f87171' },
+  'images.bulk_deleted':       { labelKey: 'admin.activity_event_images_bulk_deleted',       color: '#dc2626' },
   'tag.created':               { labelKey: 'admin.activity_event_tag_created',               color: '#f59e0b' },
   'member.joined':             { labelKey: 'admin.activity_event_member_joined',             color: '#34d399' },
   'member.removed':            { labelKey: 'admin.activity_event_member_removed',            color: '#fb923c' },
