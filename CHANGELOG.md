@@ -13,6 +13,45 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
+## [0.99.8.7] - 2026-05-03 — *#482 audit-log gap for image-delete events*
+
+### Fixed
+
+- **#482 audit log shows image-delete events**. The `image.deleted`
+  and `images.bulk_deleted` events introduced in v0.99.8.6 (#478)
+  were emitted by their routes but never persisted to the activity
+  log, and the Admin UI couldn't filter for them. Three registries
+  had to stay aligned: `services/activity.ts` (subscription +
+  `fromPayload` mapper), `AdminDashboard.tsx` (`EVENT_LABELS` filter
+  dropdown + label/color), and `i18n` EN/JA (`activity_event_*` keys).
+  All three are now wired in.
+- **`image.deleted`** maps to `target_type=image`, `target_id=image_id`,
+  with `details: { bed_id, captured_at }`. **`images.bulk_deleted`**
+  maps to `target_type=image`, `target_id=bed_id` (the natural unit of
+  a bulk delete), with `details: { bed_id, day, image_ids, count }`
+  where `count` is derived from `image_ids.length`.
+
+### Tests
+
+- New regression cases in `activity.test.ts` assert end-to-end
+  emit → persist → mapped row for both new event types, including the
+  shape of `target_id` and `details.count` derivation.
+- The "records all enumerated event types" test now derives the
+  expected call count from `events.length` instead of a hardcoded
+  number, so future additions to the test array won't drift the
+  expected count.
+
+### Notes
+
+- Saved a feedback memory documenting that adding a new audit event
+  type requires updating three registries together — `events.ts` (type
+  union), `activity.ts` (subscription + mapper), `AdminDashboard.tsx`
+  (label + i18n). The class-of-bug shape is "hand-maintained registry
+  drift," same shape as the CHANGELOG ↔ VersionHistory drift the
+  consistency test guards against.
+
+---
+
 ## [0.99.8.6] - 2026-05-01 — *#478 delete-picture capability (owner/admin only)*
 
 ### Added
