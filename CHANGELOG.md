@@ -13,6 +13,37 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 ---
 
+## [0.99.8.8] - 2026-05-11 — *Documentation + tooling hygiene checkpoint (mid Wave E2 soak)*
+
+### Changed
+
+- **Documentation and feedback-memo housekeeping**. Added two local-changes
+  review reports (2026-05-08 + 2026-05-11) plus a session report covering
+  the v0.99.8.5 → v0.99.8.7 ship arc on 2026-05-01 → 2026-05-03. Renamed
+  internal test-strategy / test-plan files to kebab-case to match the rest
+  of the docs tree.
+- **Claude Code project settings reset**. Restored `.claude/settings.json`
+  from the upstream dotfiles template and trimmed project-local overrides
+  in favour of user-global defaults. `.agent/` synced from upstream with
+  kebab-case rename, presence checks, and the new `prompts/` directory.
+- **DevContainer pin + harden**. AWS CLI version pinned, and the `uv`
+  installer path is hardened against transient mirror failures.
+
+### Internal
+
+- `TASKS.md` synced to reflect #478 and #482 closed on main.
+- `.gitignore` adds canonical review/remediate scratch paths and globs
+  build outputs.
+
+### Notes
+
+- Cuts a checkpoint tag mid-soak (Wave E2 closes 2026-05-13). No
+  functional code changes — `getActiveCropForBed` and the BedCrop API
+  surface remain untouched, so the soak window is unaffected. The next
+  release will land with Wave E3 once the soak closes clean.
+
+---
+
 ## [0.99.8.7] - 2026-05-03 — *#482 audit-log gap for image-delete events*
 
 ### Fixed

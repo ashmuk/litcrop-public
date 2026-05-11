@@ -81,6 +81,8 @@
     "images_count": "{count} images"
   },
   "changelog": {
+    "v0998_8_item_1": "Behind-the-scenes: documentation and tooling refresh between releases — no visible changes for users. Includes a ship-arc session report and two local-changes reviews covering the v0.99.8.5 → v0.99.8.7 cycle.",
+    "v0998_8_item_2": "Behind-the-scenes: the development environment is more reliable (AWS CLI version pinned, package-installer hardened against transient mirror failures) and project settings have been reset to follow the standard developer template.",
     "v0998_7_item_1": "Behind-the-scenes: the admin audit log now records picture-delete events (single and bulk) — they were silently missing from the v0.99.8.6 release because of a wiring gap between the API and the admin UI",
     "v0998_7_item_2": "Behind-the-scenes: added regression coverage for audit-log persistence so future audit-event additions can't ship with the same gap",
     "v0998_6_item_1": "Bed detail: owners and admins can now delete pictures — single images via the 🗑 button on each thumbnail, or all photos from a given day via a one-tap bulk action — with a confirm step to prevent accidents",
