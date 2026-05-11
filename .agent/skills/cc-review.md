@@ -36,7 +36,7 @@ Review all relevant aspects of project progress, co-working with ClaudeCode buil
    - Safety for destructive actions
 4. Provide findings with severity: MUST-FIX / SHOULD-FIX / SUGGESTION
 5. Recommend concrete, actionable fixes
-6. Preserve findings in docs/feedback/REVIEW-FINDINGS.md
+6. Preserve findings in docs/feedback/REVIEW-FINDINGS.md (create the `docs/feedback/` directory first if it does not exist)
 7. Next: If MUST-FIX findings exist, invoke cc-remediate skill. Otherwise, accept.
 
 ## Issue Integration (optional)

@@ -68,6 +68,9 @@ Use these commands for common workflows:
 - `/cc-issue-create` — Create GitHub Issue with labels and milestones
 - `/cc-issue-sync` — Refresh TASKS.md from GitHub Issues
 
+**Project Status**:
+- `/cc-preview` — Visual project dashboard (sprint progress, what's next, risk items)
+
 **DevContainer Lifecycle**:
 - `/cc-devcontainer-up` — Start development environment
 - `/cc-devcontainer-down` — Stop and clean up development environment

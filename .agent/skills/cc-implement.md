@@ -40,23 +40,23 @@ Steps 8–9 form the **execution loop** — they repeat for each scope level (Po
    - **Opus** for architectural judgment, cross-package coordination, security-sensitive code
    - **Sonnet** for multi-file or complex logic, size:M+ tasks
    - **Haiku** for single-file, well-scoped tasks
-   - **Sonnet for size:S fixes** — when fixing mechanical issues (string renames, i18n keys, CSS tweaks, adding imports), delegate to Sonnet (my-builder) with clear acceptance criteria. Opus creates the issue + AC, Sonnet implements, Opus reviews. See ADR §5.
+   - **Sonnet for size:S fixes** — when fixing mechanical issues (string renames, i18n keys, CSS tweaks, adding imports), delegate to Sonnet (my-builder) with clear acceptance criteria. Opus drafts the acceptance criteria, Sonnet implements, Opus reviews.
 5. Apply my-reviewer agent policy for validation of what was implemented
 6. Finalize outcome by this feedback loop
 7. Preserve notable points in docs/IMPLEMENTATIONS.md
 
-### Per-Phase Gates (MVP+ pipeline — ADR-20260319)
+### Per-Phase Gates
 
 These gates apply at **MVP and Production** scope levels. At PoC scope, per-phase gates are optional.
 
 After completing each implementation phase boundary (not at the end of all phases):
 
-8. **Contract test gate** — run contract tests (`npm test` or the project's test command). If any contract test fails, fix immediately in this phase before proceeding. Do NOT move to the next phase with failing contract tests. See ADR §3.
-   - Skip if: no contract tests exist yet (Phase C of MVP-READINESS.md has not been completed)
+8. **Contract test gate** — run the project's test command (e.g. `npm test`, `pytest`, `go test ./...`). If any contract test fails, fix in the current phase before proceeding. Do NOT move to the next phase with failing contract tests.
+   - Skip if: no contract tests exist yet for this scope level.
 
-9. **Code simplification gate** — invoke the code-simplifier agent to review code written in this phase for duplication, dead code, and quality issues. Commit cleanup separately from feature code. See ADR §1.
-   - Skip if: phase produced fewer than 3 files or < 200 lines of new code
-   - Cost: ~$1-2 per run (Sonnet agent)
+9. **Code simplification gate** — invoke a code-simplification agent (e.g. `code-simplifier@claude-plugins-official`, or any equivalent agent the project has installed) to review code written in this phase for duplication, dead code, and quality issues. Commit cleanup separately from feature code.
+   - Skip if: phase produced fewer than ~3 files or under ~200 lines of new code (small phases rarely benefit).
+   - Skip if: no simplification agent is available in the current environment — log this and proceed.
 
 10. **Commit** — stage and commit the phase's work (feature commit + cleanup commit if simplification produced changes)
 
@@ -77,15 +77,26 @@ Then repeat steps 3–10 for the next phase.
     Do NOT proceed to Step 9 until user explicitly resumes.
 12. Next: Invoke cc-test skill (Step 9) for test strategy
 
-## Issue-First Rule (MVP pipeline — ADR-20260319)
+## Issue Sections — Roadmap
 
-When any feedback item, bug, or improvement is identified during implementation — whether from contract test failures, code review, user feedback, or agent discovery:
+This skill has three issue-related sections that cover distinct scenarios:
 
-1. **Create a GitHub Issue immediately** via `/cc-issue-create` — BEFORE deciding whether to fix now or defer
-2. Tag with appropriate milestone (MVP, Production) and severity labels
-3. THEN decide: fix now (branch from issue, PR references `Fixes #N`) or defer (issue stays open)
+| Section | Scope | Trigger |
+|---------|-------|---------|
+| **Issue-First Rule** (below) | Per-finding tracking | A single feedback item / bug / improvement is discovered mid-implementation |
+| **Issue Creation (at scope transition)** | Bulk task creation | Entering a new scope level (PoC → MVP, MVP → Production) |
+| **Issue Integration** | Posting summaries | A linked issue exists for the current branch/commit |
 
-The issue is the source of truth for work tracking. Feedback docs (if used) are narrative summaries with issue cross-references, not primary trackers. See ADR §2.
+The three are complementary, not alternatives — a single implementation cycle may use all three.
+
+## Issue-First Rule
+
+When any feedback item, bug, or improvement is identified during implementation — whether from contract test failures, code review, user feedback, or agent discovery — track it BEFORE deciding whether to fix now or defer:
+
+- **When `github_issues.enabled: true` in PROJECT.yaml:** create a GitHub Issue via `/cc-issue-create` with the appropriate milestone (MVP, Production) and severity labels. The issue is the source of truth; if you fix now, branch from it and reference `Fixes #N` in the PR. Feedback docs (if used) are narrative summaries with issue cross-references, not primary trackers.
+- **When GitHub integration is disabled or unreachable:** append the finding to `docs/feedback/REVIEW-FINDINGS.md` (or the project's chosen tracker) with severity, then decide fix-or-defer.
+
+The principle is the same regardless of tracker: capture the finding before fix-vs-defer triage, so the decision is recorded. (For bulk task creation at scope transitions, see [Issue Creation](#issue-creation-at-scope-transition--optional) below.)
 
 ## Issue Creation (at scope transition) — Optional
 When `github_issues.enabled: true` in PROJECT.yaml:
@@ -141,7 +152,7 @@ Result: Feature code committed, docs/IMPLEMENTATIONS.md updated
 ### Example 2: Test implementation from strategy
 User says: "Write the tests from the test strategy"
 Actions:
-1. Read docs/TEST_STRATEGY.md for test requirements
+1. Read docs/TEST-STRATEGY.md for test requirements
 2. my-builder writes tests in a SEPARATE session from feature code
 3. my-reviewer validates coverage against strategy
 Result: Test suite created matching the defined strategy

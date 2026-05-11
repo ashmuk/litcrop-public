@@ -41,7 +41,7 @@ An issue is "systemic" and requires escalation to my-architect when:
 5. my-reviewer agent re-validates the fixed code against the original finding set only (new concerns logged as SUGGESTION for next review cycle)
 6. If MUST-FIX findings remain from the original set, return to step 3 (max 3 iterations)
 7. If iteration cap reached or systemic issue criteria met, escalate to my-architect agent
-8. Preserve findings and resolution status in docs/feedback/REMEDIATION.md (see output template below)
+8. Preserve findings and resolution status in docs/feedback/REMEDIATION.md (create the `docs/feedback/` directory first if it does not exist; see output template below)
 9. Next: Determine outcome based on resolution status:
    - **All MUST-FIX resolved** → accept; remediation complete
    - **Systemic / architectural issues** → escalate beyond remediation:

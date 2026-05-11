@@ -132,6 +132,7 @@ Project Lifecycle (Stage 1 → 2 → ... → 6+)
 │   ├── cc-pr-merge.md     # /cc-pr-merge - Validate and merge a pull request
 │   ├── cc-issue-create.md # /cc-issue-create - Create GitHub Issue with labels
 │   ├── cc-issue-sync.md   # /cc-issue-sync - Refresh TASKS.md from GitHub Issues
+│   ├── cc-preview.md      # /cc-preview - Visual project status dashboard
 │   ├── cc-devcontainer-up.md
 │   ├── cc-devcontainer-down.md
 │   └── cc-devcontainer-rebuild.md
@@ -150,12 +151,42 @@ Project Lifecycle (Stage 1 → 2 → ... → 6+)
 │   ├── my-builder.md   # Implementation specialist
 │   ├── my-designer.md  # UX/UI design, API design, user flows
 │   └── my-reviewer.md  # Code review, security validation
+├── prompts/            # Reusable expert-persona prompts (read on demand by skills)
+│   ├── architecture/   # Architecture & code health audit
+│   ├── cost/           # Cost & financial sustainability audit
+│   ├── design/         # UI/UX critique, design system, design-to-code
+│   ├── docs-dx/        # Documentation & developer experience audit
+│   ├── legal/          # OSS license & legal compliance audit
+│   ├── perf-scale/     # Performance & scalability audit
+│   ├── review/         # Cross-domain master review prompt
+│   ├── security/       # AppSec threat model, supply chain, incident response
+│   ├── teamwork/       # Pipeline & multi-agent orchestration audit
+│   └── test/           # Test adequacy audit
 └── starters/           # Project initialization templates
     ├── PROJECT.staged.yaml   # For staged development projects
     ├── PROJECT.toolbox.yaml  # For ad-hoc toolbox projects
     ├── PLANS.md              # Roadmap template (staged)
     └── BACKLOG.md            # Task queue template (toolbox)
 ```
+
+### Prompt Library
+
+The `prompts/` directory holds long-form expert-persona prompts that skills load on demand. Each file is a self-contained briefing — drop it into a sub-agent (or your own context) when you need a deep audit in that domain.
+
+| Directory | When to use |
+|-----------|-------------|
+| `architecture/` | Module boundaries, coupling, complexity hotspots, technical debt audit |
+| `cost/` | Cloud spend, FinOps review, sustainability |
+| `design/` | UI/UX critique, design system definition, design-to-code |
+| `docs-dx/` | Onboarding, API docs, developer experience |
+| `legal/` | OSS license inventory and compliance |
+| `perf-scale/` | Latency, throughput, capacity planning |
+| `review/` | Cross-domain master prompt (entry point that triages across all 11 domains and delegates) |
+| `security/` | Threat modeling, supply chain (PSIRT), incident response (CSIRT) |
+| `teamwork/` | Pipeline discipline, agent orchestration |
+| `test/` | Test pyramid balance, coverage adequacy, flakiness |
+
+**Entry point:** `prompts/review/project_review_master_prompt.md` triages across all 11 domains and points at the right deep-dive prompt for each finding.
 
 ## Dual-Mode Project Characters
 
@@ -276,7 +307,7 @@ Step 5: System Design          → docs/DESIGNS.md
 Step 6: Task Breakdown         → docs/TASK-BREAKDOWN.md
 Step 7: Planning               → PLANS.md                 ← STOP
 Step 8: Build (cc-implement)   → code + artifacts         ← STOP
-Step 9: Test Strategy (cc-test) → docs/TEST_STRATEGY.md
+Step 9: Test Strategy (cc-test) → docs/TEST-STRATEGY.md
 ```
 
 Steps 8–9 form the **execution loop** — they repeat for each Scope Level (PoC → MVP → Production) as defined in PLANS.md. At each scope transition, cc-implement offers to create GitHub Issues for the next scope level.
@@ -284,6 +315,27 @@ Steps 8–9 form the **execution loop** — they repeat for each Scope Level (Po
 Post-pipeline: `cc-review → cc-remediate → cc-deploy`
 
 See individual skill files in `skills/` for detailed step documentation.
+
+## Migration Notes
+
+### 2026-05 — Pipeline artifact filename normalization
+
+Pipeline artifacts now use **kebab-case** instead of `SCREAMING_SNAKE_CASE`, and review artifacts moved into `docs/feedback/`. If your project predates this change, rename existing files after fetching from upstream:
+
+```bash
+# Pipeline artifacts: SCREAMING_SNAKE_CASE → kebab-case
+[ -f docs/TASK_BREAKDOWN.md  ] && git mv docs/TASK_BREAKDOWN.md  docs/TASK-BREAKDOWN.md
+[ -f docs/TEST_STRATEGY.md   ] && git mv docs/TEST_STRATEGY.md   docs/TEST-STRATEGY.md
+[ -f docs/TEST_PLAN.md       ] && git mv docs/TEST_PLAN.md       docs/TEST-PLAN.md
+
+# Review/remediation artifacts moved into docs/feedback/
+mkdir -p docs/feedback
+[ -f docs/REVIEW_FINDINGS.md ] && git mv docs/REVIEW_FINDINGS.md docs/feedback/REVIEW-FINDINGS.md
+[ -f docs/REVIEW-FINDINGS.md ] && git mv docs/REVIEW-FINDINGS.md docs/feedback/REVIEW-FINDINGS.md
+[ -f docs/REMEDIATION.md     ] && git mv docs/REMEDIATION.md     docs/feedback/REMEDIATION.md
+```
+
+After renaming, the pipeline skills (cc-design, cc-test, cc-review, cc-remediate) will pick up the new locations automatically. Date-stamped historical artifacts (e.g. `docs/REVIEW_FINDINGS_DOTFILES_20260306.md`) retain their original names.
 
 ## Quick Start
 

@@ -7,13 +7,22 @@ Generate a visual project dashboard for the user's review. This command should b
 
 ## Data Collection (run in parallel)
 
-1. **Git state**: `git log --oneline -5`, `git tag -l --sort=-version:refname | head -3`, `git branch --show-current`
-2. **Test health**: `npx vitest run --reporter=verbose 2>&1 | tail -5`
-3. **Task board**: Read `TASKS.md` for open/closed issues by milestone
-4. **Memory**: Read MEMORY.md index for project status, backlog overrides, and restart points
-5. **Uncommitted work**: `git status --short` and `git log origin/$(git branch --show-current)..HEAD --oneline`
-6. **PROJECT.yaml**: Read current stage and project character
-7. **Issue sync**: If `gh auth status` succeeds, run `gh issue list --state open --json number,title,labels` and `gh issue list --state closed --limit 10 --json number,title,closedAt` to cross-check against TASKS.md
+Each step has a presence check — skip the step (and omit its dashboard section) when the prerequisite is missing.
+
+1. **Git state** *(if `.git/` exists)*: `git log --oneline -5`, `git tag -l --sort=-version:refname | head -3`, `git branch --show-current`
+2. **Test health** *(probe in this order; use the first that matches)*:
+   - `package.json` with a `test` script → `npm test --silent 2>&1 | tail -5` (or the project's documented test command)
+   - `pyproject.toml` / `pytest.ini` → `pytest -q 2>&1 | tail -5`
+   - `go.mod` → `go test ./... 2>&1 | tail -5`
+   - `Cargo.toml` → `cargo test --quiet 2>&1 | tail -5`
+   - any `*.bats` files at `test/` or `tests/` → `bats -r test/ 2>&1 | tail -5` (or `tests/`, whichever exists)
+   - any `*test*.sh` or `*spec*.sh` scripts → run the project's documented shell-test entry point if one exists; otherwise skip
+   - none of the above → omit the Tests row from the status bar
+3. **Task board** *(if `TASKS.md` exists)*: read for open/closed issues by milestone
+4. **Memory** *(if `MEMORY.md` exists)*: read the index for project status, backlog overrides, and restart points
+5. **Uncommitted work** *(if `.git/` exists)*: `git status --short` and, if an upstream is set, `git log @{u}..HEAD --oneline`
+6. **PROJECT.yaml** *(if present)*: read current stage and project character
+7. **Issue sync** *(if `command -v gh` AND `gh auth status` succeeds AND a remote is configured)*: run `gh issue list --state open --json number,title,labels` and `gh issue list --state closed --limit 10 --json number,title,closedAt` to cross-check against TASKS.md. Skip the sync section silently when offline or when `gh` is not installed.
 
 ## Issue Sync Check (before rendering dashboard)
 

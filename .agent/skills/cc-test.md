@@ -44,7 +44,7 @@ Steps 8–9 form the **execution loop** — they repeat for each scope level (Po
 8. Select or confirm framework choices aligned with project conventions
 9. my-reviewer agent validates coverage completeness and strategy soundness
 10. Finalize outcome by this feedback loop
-11. Preserve all outcome in docs/TEST_STRATEGY.md or docs/TEST_PLAN.md
+11. Preserve all outcome in docs/TEST-STRATEGY.md or docs/TEST-PLAN.md
 12. Next: Invoke cc-implement skill so my-builder writes tests per the strategy, or invoke cc-deploy skill to execute deployment operations
 
 ## Issue Integration (optional)
@@ -72,7 +72,7 @@ Actions:
 2. Defines test pyramid: 70% unit, 20% integration, 10% e2e
 3. Maps critical paths: payment flow, refunds, webhook handling
 4. my-reviewer validates coverage completeness
-Result: docs/TEST_STRATEGY.md with prioritized test plan
+Result: docs/TEST-STRATEGY.md with prioritized test plan
 
 ### Example 2: Coverage gap analysis
 User says: "What's our test coverage gap?"
@@ -80,7 +80,7 @@ Actions:
 1. my-analyst reads existing tests and coverage reports
 2. Identifies untested code paths and high-risk areas
 3. Produces gap analysis with risk-ranked priorities
-Result: docs/TEST_STRATEGY.md with coverage gaps and remediation plan
+Result: docs/TEST-STRATEGY.md with coverage gaps and remediation plan
 
 ## Troubleshooting
 
