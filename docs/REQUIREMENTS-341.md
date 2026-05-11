@@ -484,7 +484,7 @@ Based on the `device_api_key` grep (14 hits total, excluding docs):
 
 **Docs (4 files, no change unless we refresh references)**:
 - `docs/ARCHITECTURE.md`, `docs/SYSTEM-DESIGN.md`, `docs/UX-DESIGNS.md`,
-  `docs/TEST_STRATEGY_BETA5.md`
+  `docs/TEST-STRATEGY-BETA5.md`
 
 **Memory note update required**:
 - `~/.claude/projects/-workspace/memory/project_341_device_auth.md` — update

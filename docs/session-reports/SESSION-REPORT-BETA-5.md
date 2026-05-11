@@ -156,7 +156,7 @@ Key design fixes:
 - `docs/mockups/device-list.html` — device list mockup
 - `docs/mockups/device-config.html` — config form mockup
 - `docs/mockups/profile-picture.html` — profile picture mockup
-- `docs/TEST_STRATEGY_BETA5.md` — test strategy (68 planned, 72 delivered)
+- `docs/TEST-STRATEGY-BETA5.md` — test strategy (68 planned, 72 delivered)
 - `docs/feedback/REVIEW-FINDINGS-BETA-5-DESIGN.md` — design review
 - `docs/feedback/REMEDIATION-BETA-5.md` — remediation report
 

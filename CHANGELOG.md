@@ -455,7 +455,7 @@ For the user-facing, bilingual version history see the in-app [/history](src/fro
 
 - `docs/feedback/REVIEW-FINDINGS.md` — Sessions 6 / 7 / 8 for Wave D D5 / D6 / D3 prepended to the cumulative log.
 - `docs/feedback/REMEDIATION.md` — remediation reports for each wave step (all 0 MUST-FIX; SHOULD-FIX + SUGGESTION findings resolved in one iteration each).
-- `docs/TEST_PLAN.md` — coverage gap analyses for D5 / D6 / D3 (all 0 MUST-ADD; all SHOULD-ADD implemented as regression locks or deferred with rationale).
+- `docs/TEST-PLAN.md` — coverage gap analyses for D5 / D6 / D3 (all 0 MUST-ADD; all SHOULD-ADD implemented as regression locks or deferred with rationale).
 
 ### Migration notes
 

@@ -70,7 +70,7 @@ None. 0 MUST-FIX; both SHOULD-FIX resolved; 2/3 SUGGESTION resolved; R-E1-003 de
 - Outcome: All SHOULD-FIX + SUGGESTION resolved. Vitest 1226 → 1228 (+2 new regression tests). Typecheck clean (shared + api).
 
 ### Iteration 2 (discovered via /cc-test)
-- my-analyst's D3 coverage gap analysis (`docs/TEST_PLAN.md` § Wave D D3) surfaced T-D3-02 as a test-shaped gap that on inspection was a **source-code contract bug**: `buildEntryResponse` (diary.ts:83-112) omitted `bed_crop_id` from the returned object, so D1/D2/D3 persistence was invisible to clients. Pre-dated D3 — D1 added the domain + schema + DDB mapper fields but never updated the outgoing response shape.
+- my-analyst's D3 coverage gap analysis (`docs/TEST-PLAN.md` § Wave D D3) surfaced T-D3-02 as a test-shaped gap that on inspection was a **source-code contract bug**: `buildEntryResponse` (diary.ts:83-112) omitted `bed_crop_id` from the returned object, so D1/D2/D3 persistence was invisible to clients. Pre-dated D3 — D1 added the domain + schema + DDB mapper fields but never updated the outgoing response shape.
 - Fix: added `bed_crop_id: entry.bed_crop_id` to `buildEntryResponse` return literal.
 - Plus added T-D3-01 (null-return short-circuit) + T-D3-02 (response-echo assertion) from the /cc-test strategy.
 - Outcome: vitest 1228 → 1230 (+2 new tests). Contract now consistent with the Zod `DiaryEntryResponseSchema` (requires `bed_crop_id`) and the frontend local type (updated in D5 commit `72c77aa`).

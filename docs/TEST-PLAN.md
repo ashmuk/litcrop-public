@@ -1,4 +1,4 @@
-# TEST_PLAN.md
+# TEST-PLAN.md
 
 Aggregated test plans and coverage gap analyses for the LitCrop codebase.
 Section-per-wave; append new sections, do not overwrite.
