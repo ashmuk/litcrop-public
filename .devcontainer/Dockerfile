@@ -11,6 +11,7 @@ ARG GIT_DELTA_VERSION=0.18.2
 ARG ZSH_IN_DOCKER_VERSION=1.2.0
 ARG YQ_VERSION=v4.44.1
 ARG UV_VERSION=0.7.3
+ARG AWS_CLI_VERSION=2.27.22
 
 # =============================================================================
 # Multi-Runtime Base Image
@@ -73,13 +74,19 @@ RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "arm64" ]; then AWS_ARCH="aarch64"; \
     elif [ "$ARCH" = "amd64" ]; then AWS_ARCH="x86_64"; \
     else AWS_ARCH="$ARCH"; fi && \
-    curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o /tmp/awscliv2.zip && \
+    curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}-${AWS_CLI_VERSION}.zip" -o /tmp/awscliv2.zip && \
     unzip -q /tmp/awscliv2.zip -d /tmp && \
     /tmp/aws/install && \
     rm -rf /tmp/awscliv2.zip /tmp/aws
 
 # Install uv (Python package/tool runner by Astral) for MCP server execution
-RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then UV_ARCH="aarch64"; \
+    elif [ "$ARCH" = "amd64" ]; then UV_ARCH="x86_64"; \
+    else UV_ARCH="$ARCH"; fi && \
+    curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" -o /tmp/uv.tar.gz && \
+    tar -xzf /tmp/uv.tar.gz -C /usr/local/bin --strip-components=1 && \
+    rm /tmp/uv.tar.gz
 
 # Create developer user from existing vscode user
 ARG USERNAME=developer
@@ -181,8 +188,13 @@ WORKDIR /workspace
 # (not here) because ~/.claude is a volume mount that overwrites Dockerfile changes
 
 # Alias for dangerous mode
-RUN echo "alias claude-hard=\"claude --dangerously-skip-permissions\"" >> "/home/${USERNAME}/.zshrc"
-RUN echo "alias claude-teams-hard='tmux new-session -s claude-agents \"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --dangerously-skip-permissions --teammate-mode tmux\"'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld='claude'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld-plan='claude --permission-mode plan'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld-god='CLAUDE_CODE_EFFORT_LEVEL=max claude'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld-god-prev='CLAUDE_CODE_EFFORT_LEVEL=max CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 claude --model claude-opus-4-6'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld-fast='CLAUDE_CODE_EFFORT_LEVEL=low claude'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld-teams-hard='tmux new-session -s claude-agents \"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_EFFORT_LEVEL=max claude --dangerously-skip-permissions --teammate-mode tmux\"'" >> "/home/${USERNAME}/.zshrc"
+RUN echo "alias cld-teams-auto='tmux new-session -s claude-agents \"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_EFFORT_LEVEL=xhigh claude --permission-mode auto --teammate-mode tmux\"'" >> "/home/${USERNAME}/.zshrc"
 
 # Enable vi mode
 RUN echo "bindkey -v" >> "/home/${USERNAME}/.zshrc"

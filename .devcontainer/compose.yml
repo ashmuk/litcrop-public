@@ -9,6 +9,7 @@ services:
         ZSH_IN_DOCKER_VERSION: "1.2.0"
         YQ_VERSION: "v4.44.1"
         UV_VERSION: "0.7.3"
+        AWS_CLI_VERSION: "2.27.22"
     image: project-devcontainer
     command: sleep infinity
     user: developer
