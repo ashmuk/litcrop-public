@@ -107,6 +107,11 @@ cmake-build-debug/
 .claude/worktrees/
 .claude/*.lock
 
+# Pipeline review/remediate scratch (canonical names — overwritten each cycle;
+# date-stamped historical records like REVIEW_FINDINGS_*_YYYYMMDD.md remain committable)
+docs/feedback/REVIEW-FINDINGS.md
+docs/feedback/REMEDIATION.md
+
 # Cache directories
 .cache/
 
@@ -146,13 +151,6 @@ venv.bak/
 
 # Node.js
 node_modules/
-*.tsbuildinfo
-
-# Astro
-src/frontend/.astro/
-
-# CDK
-cdk.out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -162,6 +160,15 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# TypeScript
+**/*.tsbuildinfo
+
+# Web Frameworks
+**/.astro/
+
+# Infrastructure as Code
+**/cdk.out/
 
 # Java
 *.class
