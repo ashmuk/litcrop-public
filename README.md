@@ -1,5 +1,11 @@
 # LitCrop
 
+[![Security](https://github.com/ashmuk/litcrop-public/actions/workflows/security.yml/badge.svg)](https://github.com/ashmuk/litcrop-public/actions/workflows/security.yml)
+[![PR Quality Checks](https://github.com/ashmuk/litcrop-public/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/ashmuk/litcrop-public/actions/workflows/pr-checks.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-active-025E8C?logo=dependabot&logoColor=white)](.github/dependabot.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Made with Claude Code](https://img.shields.io/badge/Made%20with-Claude%20Code-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
+
 > **This is a public, sanitised mirror of a private development repository.** Account IDs, hosted-zone IDs, Cognito User Pool IDs, CloudFront distribution IDs/domains, real email addresses, and a precise farm GPS location have been redacted across all 868 commits via `git filter-repo`. Issue/PR references in `CHANGELOG.md` and `docs/` point to the private parent repo and may resolve to 404 when followed from this mirror — they are retained as authentic historical context, not as live links.
 
 Remote farm observation and management web app — digitally track planting layouts, monitor crop growth through camera images, and make informed farming decisions from anywhere.
@@ -245,4 +251,6 @@ See [RULES.md](RULES.md) for the stable policy on AI-generated contributions.
 
 ## License
 
-Private — All rights reserved.
+Released under the [MIT License](LICENSE). The original LICENSE file
+has been part of the repository since v0.1; the public mirror retains
+it as-is.
