@@ -1,0 +1,34 @@
+# gitleaks configuration for litcrop-public.
+#
+# All allowlisted findings below have been individually reviewed and confirmed
+# to be either i18n translation keys, documented API placeholders, or
+# deterministic test/contract fixtures — never real credentials. Real secrets
+# (AWS keys, Anthropic keys, Cognito User Pool IDs, account IDs, hosted-zone
+# IDs, distribution IDs, personal email addresses) were stripped from full
+# history via `git filter-repo` before this repo was made public; see the
+# top-of-README notice.
+#
+# Re-scan command: `gitleaks detect --source . --redact`
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented false positives — reviewed 2026-06-03"
+
+paths = [
+  # i18n translation keys (e.g. `legal.privacy_s3_body_admin`) trigger the
+  # generic-api-key entropy rule because of the underscore-and-suffix shape.
+  '''src/frontend/src/components/LegalPage\.tsx''',
+
+  # API documentation with placeholder values like
+  # `Authorization: Bearer <JWT>` and `dev-a1b2c3d4` example IDs.
+  '''docs/UX-DESIGNS\.md''',
+
+  # Test fixtures: e2e and contract tests use deterministic dummy device
+  # API keys (`e2e-test-api-key-abc123`, `dk_abcdef1234...`) so Zod schema
+  # validation can run without a live backend. These are checked-in fixtures,
+  # not credentials.
+  '''e2e/tests/.*\.spec\.ts''',
+  '''src/api/src/__tests__/.*\.test\.ts''',
+]
