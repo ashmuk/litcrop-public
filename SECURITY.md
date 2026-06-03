@@ -16,7 +16,7 @@ Post-GA (v1.0) we will publish a formal N/N-1 support policy.
 
 **Please do not open a public GitHub issue for a security-sensitive report.**
 
-Instead, email **admin@example.com** (note: the "8" is intentional, not a typo) with:
+Instead, email the maintainer (contact via GitHub profile) with:
 
 - A clear description of the issue
 - Steps to reproduce or a proof-of-concept, if available

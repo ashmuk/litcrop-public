@@ -1,5 +1,7 @@
 # LitCrop
 
+> **This is a public, sanitised mirror of a private development repository.** Account IDs, hosted-zone IDs, Cognito User Pool IDs, CloudFront distribution IDs/domains, real email addresses, and a precise farm GPS location have been redacted across all 868 commits via `git filter-repo`. Issue/PR references in `CHANGELOG.md` and `docs/` point to the private parent repo and may resolve to 404 when followed from this mirror — they are retained as authentic historical context, not as live links.
+
 Remote farm observation and management web app — digitally track planting layouts, monitor crop growth through camera images, and make informed farming decisions from anywhere.
 
 ## Overview
