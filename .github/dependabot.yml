@@ -1,0 +1,142 @@
+version: 2
+
+updates:
+  # ── npm workspaces ─────────────────────────────────────────────
+  # Root + each workspace package separately. Workspaces share the
+  # root lockfile, but Dependabot needs each manifest declared so it
+  # knows which directories own which `dependencies` blocks.
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: scope
+    labels:
+      - dependencies
+    groups:
+      # One PR per week for non-major updates across all dev tooling
+      # (eslint, vitest, playwright, typescript, etc.). Keeps the
+      # review surface small while still landing security patches fast.
+      dev-tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      # Same idea for prod dependencies: group routine bumps, but let
+      # majors come through as individual PRs so each can be evaluated
+      # for breaking changes on its own.
+      production:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: "/packages/shared"
+    schedule: { interval: weekly, day: monday, time: "03:00", timezone: Asia/Tokyo }
+    open-pull-requests-limit: 3
+    commit-message: { prefix: "chore(deps)", prefix-development: "chore(deps-dev)", include: scope }
+    labels: [dependencies, shared]
+    groups:
+      shared-all:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/src/frontend"
+    schedule: { interval: weekly, day: monday, time: "03:00", timezone: Asia/Tokyo }
+    open-pull-requests-limit: 5
+    commit-message: { prefix: "chore(deps)", prefix-development: "chore(deps-dev)", include: scope }
+    labels: [dependencies, frontend]
+    groups:
+      astro-preact:
+        patterns: ["astro", "@astrojs/*", "preact", "@preact/*"]
+      frontend-all:
+        patterns: ["*"]
+        exclude-patterns: ["astro", "@astrojs/*", "preact", "@preact/*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/src/api"
+    schedule: { interval: weekly, day: monday, time: "03:00", timezone: Asia/Tokyo }
+    open-pull-requests-limit: 5
+    commit-message: { prefix: "chore(deps)", prefix-development: "chore(deps-dev)", include: scope }
+    labels: [dependencies, api]
+    groups:
+      aws-sdk:
+        patterns: ["@aws-sdk/*", "@smithy/*"]
+      hono:
+        patterns: ["hono", "@hono/*"]
+      api-all:
+        patterns: ["*"]
+        exclude-patterns: ["@aws-sdk/*", "@smithy/*", "hono", "@hono/*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/src/simulator"
+    schedule: { interval: weekly, day: monday, time: "03:00", timezone: Asia/Tokyo }
+    open-pull-requests-limit: 3
+    commit-message: { prefix: "chore(deps)", prefix-development: "chore(deps-dev)", include: scope }
+    labels: [dependencies, simulator]
+    groups:
+      simulator-all:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/src/thumbnail"
+    schedule: { interval: weekly, day: monday, time: "03:00", timezone: Asia/Tokyo }
+    open-pull-requests-limit: 3
+    commit-message: { prefix: "chore(deps)", prefix-development: "chore(deps-dev)", include: scope }
+    labels: [dependencies, thumbnail]
+    groups:
+      thumbnail-all:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: "/infra"
+    schedule: { interval: weekly, day: monday, time: "03:00", timezone: Asia/Tokyo }
+    open-pull-requests-limit: 5
+    commit-message: { prefix: "chore(deps)", prefix-development: "chore(deps-dev)", include: scope }
+    labels: [dependencies, infra]
+    groups:
+      # CDK + constructs move together — one PR per week for the
+      # whole AWS CDK surface keeps version skew from breaking
+      # synth/deploy.
+      aws-cdk:
+        patterns: ["aws-cdk*", "@aws-cdk/*", "constructs", "cdk-nag"]
+      infra-other:
+        patterns: ["*"]
+        exclude-patterns: ["aws-cdk*", "@aws-cdk/*", "constructs", "cdk-nag"]
+        update-types: [minor, patch]
+
+  # ── GitHub Actions ─────────────────────────────────────────────
+  # Keeps workflow action versions (actions/checkout@vN, etc.) current
+  # so we pick up security fixes in the runner itself.
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(actions)"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      actions-all:
+        patterns: ["*"]
+        update-types: [minor, patch]
