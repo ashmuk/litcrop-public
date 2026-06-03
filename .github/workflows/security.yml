@@ -1,0 +1,33 @@
+name: Security
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Weekly full-history rescan (Monday 03:00 JST = Sunday 18:00 UTC).
+    # Catches new detection rules added to upstream gitleaks since last push.
+    - cron: '0 18 * * 0'
+
+jobs:
+  gitleaks:
+    name: gitleaks secret scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          # Full history needed so push-event scans cover all commits, not
+          # just the tip, and so the scheduled rescan reflects the whole repo.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
