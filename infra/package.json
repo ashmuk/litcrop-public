@@ -15,13 +15,13 @@
     "@aws-cdk/aws-apigatewayv2-alpha": "2.114.1-alpha.0",
     "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.114.1-alpha.0",
     "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.114.1-alpha.0",
-    "aws-cdk-lib": "2.114.1",
-    "cdk-nag": "2.27.231",
-    "constructs": "^10.4.2"
+    "aws-cdk-lib": "2.257.0",
+    "cdk-nag": "2.38.2",
+    "constructs": "^10.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "aws-cdk": "2.114.1",
+    "aws-cdk": "2.1125.0",
     "esbuild": "^0.25.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.0.0"
