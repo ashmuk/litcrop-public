@@ -20,6 +20,11 @@ permissions:
 
 jobs:
   deploy:
+    # Guard: this workflow targets the private source-of-truth repo, which
+    # holds the AWS OIDC role and `production` environment secrets. On the
+    # public mirror (ashmuk/litcrop-public) the job is skipped — the file
+    # remains as evidence of the CI/CD design.
+    if: github.repository == 'ashmuk/litcrop'
     name: Deploy
     runs-on: ubuntu-latest
     environment: production   # CI-4: Triggers GitHub Environment approval gate
