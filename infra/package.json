@@ -24,7 +24,7 @@
     "aws-cdk": "2.114.1",
     "esbuild": "^0.25.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.0.0"
+    "typescript": "^6.0.3"
   },
   "optionalDependencies": {
     "sharp": "^0.34.5"
