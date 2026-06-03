@@ -19,6 +19,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.25.0"
+    "zod": "^4.4.3"
   }
 }
