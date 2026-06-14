@@ -22,11 +22,11 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "aws-cdk": "2.114.1",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.0.0"
   },
   "optionalDependencies": {
-    "sharp": "^0.34.5"
+    "sharp": "^0.35.1"
   }
 }
