@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # Full history needed so push-event scans cover all commits, not
           # just the tip, and so the scheduled rescan reflects the whole repo.
