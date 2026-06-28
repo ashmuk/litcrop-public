@@ -10,14 +10,14 @@
   "dependencies": {
     "@astrojs/preact": "^5.0.1",
     "@litcrop/shared": "*",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.11",
     "leaflet": "^1.9.4",
     "marked": "^17.0.5",
-    "preact": "^10.29.0"
+    "preact": "^10.29.3"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.3",
-    "@types/dompurify": "^3.0.5",
+    "@types/dompurify": "^3.2.0",
     "@types/leaflet": "^1.9.21",
     "astro": "^5.0.0"
   }
